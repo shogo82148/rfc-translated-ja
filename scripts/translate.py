@@ -1,5 +1,6 @@
-import xml2rfc
+#!/usr/bin/env python
 
+import xml2rfc
 import lxml
 import re
 import deepl

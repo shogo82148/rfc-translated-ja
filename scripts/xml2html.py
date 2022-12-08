@@ -158,7 +158,7 @@ class HtmlWriter:
         if name_slug:
             name_slug += '-' + self.lang
         pn = p.get('pn')
-        header = build('h1', id=name_slug)
+        header = build('h1', id=name_slug, lang=self.lang)
         h.append(header)
 
         if name_slug:
@@ -170,7 +170,7 @@ class HtmlWriter:
         return h
 
     def render1_t(self, h, x):
-        p = build('p')
+        p = build('p', lang=self.lang)
         h.append(p)
 
         if x.text:
@@ -190,7 +190,7 @@ class HtmlWriter:
 
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''
-        children = list(x.getchildren())
+        children = list(x)
         if children:
             for c in children:
                 self.render(h, c)

@@ -83,6 +83,15 @@ class HtmlWriter:
         head = build('head')
         html.append(head)
 
+        # CSS組み込み
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+        cssin = os.path.join(data_dir, 'xml2rfc-ja.css')
+        with open(cssin, encoding='utf-8') as f:
+            css = f.read()
+        style = build('style', type="text/css")
+        style.text = css
+        head.append(style)
+
         # <body> Element
         body = build('body')
         html.append(body)

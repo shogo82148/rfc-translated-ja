@@ -128,28 +128,61 @@ class HtmlWriter:
     def render_name(self, h, en, ja):
         parent = build('div')
         h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
         self.lang = 'en'
-        self.render1(parent, en)
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
         self.lang = 'ja'
-        self.render1(parent, ja)
+        self.render1(div_ja, ja)
         return h
 
     def render_t(self, h, en, ja):
         parent = build('div')
         h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
         self.lang = 'en'
-        self.render1(parent, en)
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
         self.lang = 'ja'
-        self.render1(parent, ja)
+        self.render1(div_ja, ja)
         return h
 
     def render_table(self, h, en, ja):
         parent = build('div')
         h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
         self.lang = 'en'
-        self.render1(parent, en)
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
         self.lang = 'ja'
-        self.render1(parent, ja)
+        self.render1(div_ja, ja)
         return h
 
     def render_back(self, h, ja, en):
@@ -187,7 +220,7 @@ class HtmlWriter:
         return h
 
     def render1_t(self, h, x):
-        p = build('p', lang=self.lang)
+        p = build('p')
         h.append(p)
 
         if x.text:
@@ -208,7 +241,7 @@ class HtmlWriter:
 
     # 表のレンダリング
     def render1_table(self, h, x):
-        table = build('table', lang=self.lang)
+        table = build('table')
         h.append(table)
         for c in x:
             self.render1(table, c)

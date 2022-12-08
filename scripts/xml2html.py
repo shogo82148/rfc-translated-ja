@@ -3,6 +3,7 @@
 import re
 import os
 
+import sys
 import xml2rfc
 import lxml
 from lxml.html import html_parser
@@ -25,9 +26,9 @@ class HtmlWriter:
         html = lxml.etree.tostring(html_tree, method='html', encoding='unicode', pretty_print=True, doctype="<!DOCTYPE html>")
         return html
 
-    def write(self):
+    def write(self, rfc_number):
         html_tree = self.render(None, self.root_en, self.root_ja)
-        with open("docs/rfc9226.html", 'w', encoding='utf-8') as file:
+        with open("docs/rfc%s.html" % (rfc_number,), 'w', encoding='utf-8') as file:
             text = self.html(html_tree)
             file.write(text)
 
@@ -408,13 +409,14 @@ class HtmlWriter:
         return len(components)
 
 def main():
-    parserEN = xml2rfc.XmlRfcParser("src/en/rfc9226.xml")
+    rfc_number = sys.argv[1]
+    parserEN = xml2rfc.XmlRfcParser("src/en/rfc%s.xml" % (rfc_number,))
     rfcEN = parserEN.parse()
-    parserJA = xml2rfc.XmlRfcParser("src/ja/rfc9226.xml")
+    parserJA = xml2rfc.XmlRfcParser("src/ja/rfc%s.xml" % (rfc_number,))
     rfcJA = parserJA.parse()
 
     writer = HtmlWriter(rfcEN, rfcJA)
-    writer.write()
+    writer.write(rfc_number)
 
 if __name__ == "__main__":
     main()

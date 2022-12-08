@@ -151,6 +151,34 @@ class HtmlWriter:
         h1_ja.text = title_ja
         div_ja.append(h1_ja)
 
+    def render_abstract(self, h, en, ja):
+        # 概要の見出しをレンダリング
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        h1_en = build('h1')
+        h1_en.text = 'Abstract'
+        div_en.append(h1_en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        h1_ja = build('h1')
+        h1_ja.text = '概要'
+        div_ja.append(h1_ja)
+
+        # 概要本文
+        abstract = build('section')
+        h.append(abstract)
+        for (c0, c1) in zip(en, ja):
+            self.render(abstract, c0, c1)
+        return abstract
 
     def render_middle(self, h, en, ja):
         for (c0, c1) in zip(en, ja):

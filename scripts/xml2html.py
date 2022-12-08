@@ -213,6 +213,7 @@ class HtmlWriter:
         h.append(header)
         if name_slug:
             a_title = build('a', href='#%s'%name_slug)
+            a_title.set('class', 'selfRef')
         else:
             a_title = build('span')
         self.inline_text_renderer(a_title, x)

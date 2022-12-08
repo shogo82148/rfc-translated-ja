@@ -12,8 +12,8 @@ build = ElementMaker(makeelement=html_parser.makeelement)
 
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
-        self._rootEN = xmlrfcEN.getroot()
-        self._rootJA = xmlrfcJA.getroot()
+        self.root_en = xmlrfcEN.getroot()
+        self.root_ja = xmlrfcJA.getroot()
 
     def html_tree(self):
         html_tree = self.render(None, self.root)
@@ -26,7 +26,7 @@ class HtmlWriter:
         return html
 
     def write(self):
-        html_tree = self.render(None, self._rootEN, self._rootJA)
+        html_tree = self.render(None, self.root_en, self.root_ja)
         with open("docs/rfc9226.html", 'w', encoding='utf-8') as file:
             text = self.html(html_tree)
             file.write(text)
@@ -123,7 +123,34 @@ class HtmlWriter:
         return html
 
     def render_front(self, h, en, ja):
-        return None # TODO
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
+    def render_title(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+        rfc_number = self.root_en.get('number')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        title_en = '\u2028'.join(en.itertext())
+        h1_en = build('h1')
+        h1_en.text = title_en
+        div_en.append(h1_en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        title_ja = '\u2028'.join(ja.itertext())
+        h1_ja = build('h1')
+        h1_ja.text = title_ja
+        div_ja.append(h1_ja)
+
 
     def render_middle(self, h, en, ja):
         for (c0, c1) in zip(en, ja):

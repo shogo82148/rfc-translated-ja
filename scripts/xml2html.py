@@ -185,6 +185,11 @@ class HtmlWriter:
             self.render(h, c0, c1)
         return h
 
+    def render_boilerplate(self, h, en, ja):
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
     def render_section(self, h, en, ja):
         section = build('section')
         h.append(section)

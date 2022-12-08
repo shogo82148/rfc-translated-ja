@@ -83,6 +83,18 @@ class HtmlWriter:
         head = build('head')
         html.append(head)
 
+        # 文字コードの指定
+        head.append(build('meta', charset='utf-8'))
+        head.append(build('meta', name='viewport', content='initial-scale=1.0'))
+
+        # タイトル
+        title = ja.find('./front/title')
+        text = ' '.join(title.itertext())
+        text = ("RFC %s: " % en.get('number')) + text + "（日本語訳）"
+        title = build('title')
+        title.text = text
+        head.append(title)
+
         # CSS組み込み
         data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
         cssin = os.path.join(data_dir, 'xml2rfc-ja.css')

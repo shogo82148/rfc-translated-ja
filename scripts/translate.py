@@ -6,6 +6,7 @@ import re
 import deepl
 from io import StringIO
 import os
+import sys
 
 auth_key = os.environ['DEEPL_API_KEY']
 translator = deepl.Translator(auth_key)
@@ -48,7 +49,8 @@ def walk(x):
         walk(c)
 
 def main():
-    parser = xml2rfc.XmlRfcParser("src/en/rfc9226.xml")
+    rfc_number = sys.argv[1]
+    parser = xml2rfc.XmlRfcParser("src/en/rfc%s.xml" % (rfc_number,))
     rfc = parser.parse()
 
     root = rfc.getroot()
@@ -56,6 +58,6 @@ def main():
     walk(root)
 
     writer = xml2rfc.ExpandV3XmlWriter(rfc)
-    writer.write("src/ja/rfc9226.xml")
+    writer.write("src/ja/rfc%s.xml" % (rfc_number,))
 
 main()

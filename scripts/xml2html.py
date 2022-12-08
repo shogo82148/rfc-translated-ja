@@ -1,96 +1,17 @@
 #!/usr/bin/env python
 
 import re
+import os
 
 import xml2rfc
 import lxml
 from lxml.html import html_parser
 from lxml.html.builder import ElementMaker
-from xml2rfc.utils import namespaces, is_htmlblock, find_duplicate_html_ids, build_dataurl, sdict, clean_text
-from xml2rfc.writers.base import default_options, BaseV3Writer, RfcWriterError
 
-def wrap(h, tag, **kwargs):
-    w = build(tag, **kwargs)
-    w.append(h)
-    return w
+build = ElementMaker(makeelement=html_parser.makeelement)
 
-def id_for_pn(pn):
-    """Convert a pn to an HTML element ID"""
-    if HtmlWriter.is_appendix(pn):
-        _, num, para = HtmlWriter.split_pn(pn)
-        frag = 'appendix-%s' % num.title()
-        if para is None or len(para) == 0:
-            return frag
-        else:
-            return '%s-%s' % (frag, para)
-    # not an appendix
-    return pn
-
-class ClassElementMaker(ElementMaker):
-
-    def __call__(self, tag, *children, **attrib):
-        classes = attrib.pop('classes', None)
-        attrib = sdict(dict( (k,v) for k,v in attrib.items() if v != None))
-        elem = super(ClassElementMaker, self).__call__(tag, *children, **attrib)
-        if classes:
-            elem.set('class', classes)
-        if is_htmlblock(elem) and (elem.tail is None or elem.tail.strip() == ''):
-            elem.tail = '\n'
-        return elem
-build = ClassElementMaker(makeelement=html_parser.makeelement)
-
-class ExtendingElementMaker(ClassElementMaker):
-
-    def __call__(self, tag, parent, precursor, *children, **attrib):
-        elem = super(ExtendingElementMaker, self).__call__(tag, *children, **attrib)
-        is_block = is_htmlblock(elem)
-        #
-        child = elem
-        if precursor != None:
-            pn = precursor.get('pn')
-            sn = precursor.get('slugifiedName')
-            an = precursor.get('anchor')
-            if   pn != None:
-                id = id_for_pn(pn)
-                elem.set('id', id)
-                if an != None:
-                    if is_block:
-                        child = wrap(elem, 'div', id=an)
-                    else:
-                        # cannot wrap a non-block in <div>, so we invert the
-                        # wrapping by swapping the tags:
-                        child = wrap(elem, 'div', id=id, **attrib)
-                        elem.tag = child.tag
-                        child.tag = tag
-                        for k in attrib:
-                            if k in elem.attrib:
-                                del elem.attrib[k]
-                        elem.set('id', an)
-            elif sn != None:
-                elem.set('id', sn)
-            elif an != None:
-                elem.set('id', an)
-            kp = precursor.get('keepWithPrevious', '')
-            if kp:
-                elem.set('class', ' '.join(s for s in [elem.get('class', ''), 'keepWithPrevious'] if s ))
-            kn = precursor.get('keepWithNext', '')
-            if kn:
-                elem.set('class', ' '.join(s for s in [elem.get('class', ''), 'keepWithNext'] if s ))
-            if not elem.text or elem.text.strip() == '':
-                elem.text = precursor.text
-            elem.tail = precursor.tail
-        if parent != None:
-            parent.append(child)
-        if is_block and (elem.tail is None or elem.tail.strip() == ''):
-            elem.tail = '\n'
-        if is_block and child != elem and (child.tail is None or child.tail.strip() == ''):
-            child.tail = '\n'
-        return elem
-add  = ExtendingElementMaker(makeelement=html_parser.makeelement)
-
-class HtmlWriter(BaseV3Writer):
+class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
-        super(HtmlWriter, self).__init__(xmlrfcEN)
         self._rootEN = xmlrfcEN.getroot()
         self._rootJA = xmlrfcJA.getroot()
 
@@ -101,15 +22,7 @@ class HtmlWriter(BaseV3Writer):
     def html(self, html_tree=None):
         if html_tree is None:
             html_tree = self.html_tree()
-        # 6.1.  DOCTYPE
-        # 
-        #    The DOCTYPE of the document is "html", which declares that the
-        #    document is compliant with HTML5.  The document will start with
-        #    exactly this string:
-        # 
-        #    <!DOCTYPE html>
         html = lxml.etree.tostring(html_tree, method='html', encoding='unicode', pretty_print=True, doctype="<!DOCTYPE html>")
-        html = re.sub(r'[\x00-\x09\x0B-\x1F]+', ' ', html)
         return html
 
     def write(self):
@@ -138,28 +51,43 @@ class HtmlWriter(BaseV3Writer):
             res = func(h, en, ja)
         return res
 
+    def render1(self, h, x):
+        res = None
+
+        if x.tag in (lxml.etree.PI, lxml.etree.Comment):
+            tail = x.tail if x.tail and x.tail.strip() else ''
+            if len(h):
+                last = h[-1]
+                last.tail = (last.tail or '') + tail
+            else:
+                h.text = (h.text or '') + tail
+        else:
+            func_name = "render1_%s" % (x.tag.lower(),)
+            func = getattr(self, func_name, None)
+            if func == None:
+                func = self.default_renderer1
+            res = func(h, x)
+        return res
+
     def default_renderer(self, h, en, ja):
-        parent = add('div', h, None)
-        add(en.tag, h, en)
-        add(ja.tag, h, ja)
-        for c in zip(en, ja):
-            self.render(parent, c[0], c[1])
-        return parent
+        return h
 
     def render_rfc(self, h, en, ja):
         self.part = en.tag
 
         # Root Element
-        html = h if h != None else build.html()
+        html = h if h != None else build('html')
         self.html_root = html
 
         # <head> Element
-        head = add.head(html, None)
-        add.meta(head, None, charset='utf-8')
-        add.meta(head, None, name="viewport", content="initial-scale=1.0")
+        head = build('head')
+        html.append(head)
 
         # <body> Element
-        body = add.body(html, None, classes='xml2rfc')
+        body = build('body')
+        html.append(body)
+
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 
         contents = zip(
             [ en.find('front'), en.find('middle'), en.find('back') ],
@@ -172,6 +100,96 @@ class HtmlWriter(BaseV3Writer):
             self.render(body, c1, c2)
 
         return html
+
+    def render_front(self, h, en, ja):
+        return None # TODO
+
+    def render_middle(self, h, en, ja):
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
+    def render_section(self, h, en, ja):
+        section = build('section')
+        h.append(section)
+        for (c0, c1) in zip(en, ja):
+            self.render(section, c0, c1)
+        return section
+
+    def render_name(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        self.lang = 'en'
+        self.render1(parent, en)
+        self.lang = 'ja'
+        self.render1(parent, ja)
+        return h
+
+    def render_t(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        self.lang = 'en'
+        self.render1(parent, en)
+        self.lang = 'ja'
+        self.render1(parent, ja)
+        return h
+
+    def render_back(self, h, ja, en):
+        return None # TODO
+
+    def default_renderer1(self, h, x):
+        h.text = x.text
+        return h
+
+    def render1_name(self, h, x):
+        p = x.getparent()
+        if p.tag not in [ 'note', 'section', 'references' ]:
+            return None
+        name_slug = x.get('slugifiedName') or None
+        if name_slug:
+            name_slug += '-' + self.lang
+        pn = p.get('pn')
+        header = build('h1', id=name_slug)
+        h.append(header)
+
+        if name_slug:
+            a_title = build('a', href='#%s'%name_slug)
+        else:
+            a_title = build('span')
+        self.inline_text_renderer(a_title, x)
+        header.append(a_title)
+        return h
+
+    def render1_t(self, h, x):
+        p = build('p')
+        h.append(p)
+
+        if x.text:
+            p.text = x.text
+        for c in x:
+            ret = self.render1(p, c)
+            if c.text:
+                ret.text = c.text
+            if c.tail:
+                ret.tail = c.tail
+        return p
+
+    def render1_xref(self, h, x):
+        a = build('a')
+        h.append(a)
+        return a
+
+    def inline_text_renderer(self, h, x):
+        h.text = x.text.lstrip() if x.text else ''
+        children = list(x.getchildren())
+        if children:
+            for c in children:
+                self.render(h, c)
+            last = h[-1]
+            last.tail = last.tail.rstrip() if last.tail else ''
+        else:
+            h.text = h.text.rstrip()
+        h.tail = x.tail
 
 def main():
     parserEN = xml2rfc.XmlRfcParser("src/en/rfc9226.xml")

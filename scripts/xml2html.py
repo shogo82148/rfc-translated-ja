@@ -143,6 +143,15 @@ class HtmlWriter:
         self.render1(parent, ja)
         return h
 
+    def render_table(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        self.lang = 'en'
+        self.render1(parent, en)
+        self.lang = 'ja'
+        self.render1(parent, ja)
+        return h
+
     def render_back(self, h, ja, en):
         return None # TODO
 
@@ -195,6 +204,60 @@ class HtmlWriter:
         a = build('a')
         h.append(a)
         return a
+
+
+    # 表のレンダリング
+    def render1_table(self, h, x):
+        table = build('table', lang=self.lang)
+        h.append(table)
+        for c in x:
+            self.render1(table, c)
+        return table
+
+    def render1_thead(self, h, x):
+        thead = build('thead')
+        h.append(thead)
+        for c in x:
+            self.render1(thead, c)
+        return thead
+
+    def render1_tbody(self, h, x):
+        tbody = build('tbody')
+        h.append(tbody)
+        for c in x:
+            self.render1(tbody, c)
+        return tbody
+
+    def render1_tr(self, h, x):
+        tr = build('tr')
+        h.append(tr)
+        for c in x:
+            self.render1(tr, c)
+        return tr
+
+    def render1_th(self, h, x):
+        th = build('th')
+        h.append(th)
+        if x.get('align'):
+            th.set('class', 'text-' + x.get('align'))
+        if x.get('colspan'):
+            th.set('colspan', x.get('colspan'))
+        if x.get('rowspan'):
+            th.set('rowspan', x.get('rowspan'))
+        self.inline_text_renderer(th, x)
+        return th
+
+    def render1_td(self, h, x):
+        td = build('td')
+        h.append(td)
+        if x.get('align'):
+            td.set('class', 'text-' + x.get('align'))
+        if x.get('colspan'):
+            td.set('colspan', x.get('colspan'))
+        if x.get('rowspan'):
+            td.set('rowspan', x.get('rowspan'))
+        self.inline_text_renderer(td, x)
+        return td
 
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''

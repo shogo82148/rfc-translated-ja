@@ -94,6 +94,10 @@ class HtmlWriter(BaseV3Writer):
         self._rootEN = xmlrfcEN.getroot()
         self._rootJA = xmlrfcJA.getroot()
 
+    def html_tree(self):
+        html_tree = self.render(None, self.root)
+        return html_tree
+
     def html(self, html_tree=None):
         if html_tree is None:
             html_tree = self.html_tree()
@@ -135,10 +139,39 @@ class HtmlWriter(BaseV3Writer):
         return res
 
     def default_renderer(self, h, en, ja):
-        hh = add(ja.tag, h, ja)
+        parent = add('div', h, None)
+        add(en.tag, h, en)
+        add(ja.tag, h, ja)
         for c in zip(en, ja):
-            self.render(hh, c[0], c[1])
-        return hh
+            self.render(parent, c[0], c[1])
+        return parent
+
+    def render_rfc(self, h, en, ja):
+        self.part = en.tag
+
+        # Root Element
+        html = h if h != None else build.html()
+        self.html_root = html
+
+        # <head> Element
+        head = add.head(html, None)
+        add.meta(head, None, charset='utf-8')
+        add.meta(head, None, name="viewport", content="initial-scale=1.0")
+
+        # <body> Element
+        body = add.body(html, None, classes='xml2rfc')
+
+        contents = zip(
+            [ en.find('front'), en.find('middle'), en.find('back') ],
+            [ ja.find('front'), ja.find('middle'), ja.find('back') ],
+        )
+        for (c1, c2) in contents:
+            if c1 == None or c2 == None:
+                continue
+            self.part = c1.tag
+            self.render(body, c1, c2)
+
+        return html
 
 def main():
     parserEN = xml2rfc.XmlRfcParser("src/en/rfc9226.xml")

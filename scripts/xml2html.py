@@ -154,13 +154,21 @@ class HtmlWriter:
         p = x.getparent()
         if p.tag not in [ 'note', 'section', 'references' ]:
             return None
+
+        # アンカー設定
         name_slug = x.get('slugifiedName') or None
         if name_slug:
             name_slug += '-' + self.lang
-        pn = p.get('pn')
-        header = build('h1', id=name_slug, lang=self.lang)
-        h.append(header)
 
+        # 見出しレベル設定
+        pn = p.get('pn')
+        _, num, _ = self.split_pn(pn)
+        num += '.'
+        level = min([6, self.level_of_section_num(num) + 1])
+        tag = 'h%d' % level
+
+        header = build(tag, id=name_slug, lang=self.lang)
+        h.append(header)
         if name_slug:
             a_title = build('a', href='#%s'%name_slug)
         else:
@@ -199,6 +207,36 @@ class HtmlWriter:
         else:
             h.text = h.text.rstrip()
         h.tail = x.tail
+
+    @staticmethod
+    def split_pn(pn):
+        """Split a pn into meaningful parts
+
+        Returns a tuple (element_type, section_number, paragraph_number).
+        If there is no paragraph number, it will be None.
+        """
+        parts = pn.split('-', 2)
+        elt_type = parts[0]
+        sect_num = parts[1]
+        paragraph_num = parts[2] if len(parts) > 2 else None
+
+        # see if section num needs special handling
+        components = sect_num.split('.', 1)
+        if components[0] in ['appendix', 'boilerplate', 'note', 'toc']:
+            sect_num = components[1]  # these always have a second component
+        return elt_type, sect_num, paragraph_num
+
+    @staticmethod
+    def level_of_section_num(num):
+        """Determine hierarchy level of a section number
+
+        Top level items have level 1. N.B., num is a string.
+        """
+        num_with_no_trailing_dot = num.rstrip('.')
+        components = num_with_no_trailing_dot.split('.')
+        if any([len(cpt) == 0 for cpt in components]):
+            log.warn('Empty section number component in "{}"'.format(num))
+        return len(components)
 
 def main():
     parserEN = xml2rfc.XmlRfcParser("src/en/rfc9226.xml")

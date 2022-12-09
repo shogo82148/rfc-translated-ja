@@ -312,6 +312,36 @@ class HtmlWriter:
         h.append(a)
         return a
 
+    # eref
+    # <a href="https://..." class="eref">the text</a>
+    def render1_eref(self, h, x):
+        target = x.get('target')
+        brackets = x.get('brackets') or 'none'
+        if x.text:
+            a = build('a', href=target)
+            a.text = x.text
+            a.set('class', 'eref')
+            h.append(a)
+            return a
+        else:
+            if brackets == 'none':
+                a = build('a', href=target)
+                a.text = target
+                a.set('class', 'eref')
+                span = build('span')
+                span.append(a)
+                h.append(span)
+                return span
+            elif brackets == 'angle':
+                a = build('a', href=target)
+                a.text = target
+                a.set('class', 'eref')
+                span = build('span')
+                span.text = '<'
+                span.tail = '>'
+                span.append(a)
+                h.append(span)
+                return span
 
     # 表のレンダリング
     def render1_table(self, h, x):

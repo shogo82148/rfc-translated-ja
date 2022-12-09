@@ -191,6 +191,11 @@ class HtmlWriter:
             self.render(h, c0, c1)
         return h
 
+    def render_toc(self, h, en, ja):
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
     def render_section(self, h, en, ja):
         section = build('section')
         h.append(section)
@@ -239,6 +244,26 @@ class HtmlWriter:
         return h
 
     def render_table(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    def render_ul(self, h, en, ja):
         parent = build('div')
         h.append(parent)
         parent.set('class', 'row')
@@ -466,6 +491,21 @@ class HtmlWriter:
         else:
             h.text = h.text.rstrip()
         h.tail = x.tail
+
+    # 番号付きリスト
+    def render1_ul(self, h, x):
+        ul = build('ul')
+        h.append(ul)
+        for c in x:
+            self.render1(ul, c)
+        return ul
+
+    def render1_li(self, h, x):
+        li = build('li')
+        h.append(li)
+        for c in x:
+            self.render1(li, c)
+        return li
 
     @staticmethod
     def split_pn(pn):

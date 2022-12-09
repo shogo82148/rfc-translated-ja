@@ -308,9 +308,33 @@ class HtmlWriter:
         return p
 
     def render1_xref(self, h, x):
-        a = build('a')
-        h.append(a)
-        return a
+        target  = x.get('target')
+        format  = x.get('format')
+        section = x.get('section')
+        relative= x.get('relative')
+        reftext = x.get('derivedContent', '')
+        in_name = len(list(x.iterancestors('name'))) > 0
+        content = ''.join(x.itertext()).strip()
+        if not (section or relative):
+            a = build('a', href='#%s-%s'%(target, self.lang))
+            a.text = reftext
+            a.tail = x.tail
+            h.append(a)
+            return a
+        else:
+            label = 'Section' if section[0].isdigit() else 'Appendix' if re.search(r'^[A-Z](\.|$)', section) else 'Part'
+            link = x.get('derivedLink')
+            format  = x.get('sectionFormat')
+            exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
+
+            if format == 'of':
+                pass # TODO
+            elif format == 'comma':
+                pass # TODO
+            elif format == 'parens':
+                pass # TODO
+            elif format == 'bare':
+                pass # TODO
 
     # eref
     # <a href="https://..." class="eref">the text</a>
@@ -345,8 +369,43 @@ class HtmlWriter:
 
     # 表のレンダリング
     def render1_table(self, h, x):
-        table = build('table')
+        # 自己参照用のアンカー
+        name = x.find('name')
+        name_slug = None
+        if name != None:
+            name_slug = name.get('slugifiedName')
+            if name_slug:
+                h.append(build('span', id='%s-%s'%(name_slug,self.lang)))
+        
+        anchor = x.get('anchor')
+        if anchor:
+            h.append(build('span', id='%s-%s'%(anchor,self.lang)))
+
+        pn = x.get('pn')
+        table = build('table', id='%s-%s'%(pn,self.lang))
         h.append(table)
+
+        # キャプション
+        caption = build('caption')
+        table.append(caption)
+        a = build('a', href='#%s-%s'%(pn,self.lang))
+        text = pn.split('-', 1)
+        if self.lang == 'ja':
+            if text[0] == 'table':
+                text[0] = '表'
+            else:
+                text[0] = text[0].title()
+        else:
+            text[0] = text[0].title()
+        a.text = ' '.join(text)
+        a.set('class', 'selfRef')
+        caption.append(a)
+        if name != None and name_slug:
+            a.tail = ':\n'
+            aa = build('a', href='#%s-%s'%(name_slug,self.lang))
+            aa.set('class', 'selfRef')
+            caption.append(aa)
+            self.inline_text_renderer(aa, name)
         for c in x:
             self.render1(table, c)
         return table

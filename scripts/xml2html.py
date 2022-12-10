@@ -332,6 +332,7 @@ class HtmlWriter:
                 ret.tail = c.tail
         return p
 
+    # <xref>
     def render1_xref(self, h, x):
         target  = x.get('target')
         format  = x.get('format')
@@ -341,6 +342,7 @@ class HtmlWriter:
         in_name = len(list(x.iterancestors('name'))) > 0
         content = ''.join(x.itertext()).strip()
         if not (section or relative):
+            # e.g. Table 1
             a = build('a', href='#%s-%s'%(target, self.lang))
             a.text = reftext
             a.tail = x.tail
@@ -360,6 +362,9 @@ class HtmlWriter:
                 pass # TODO
             elif format == 'bare':
                 pass # TODO
+            a = build('a', href='#%s-%s'%(target, self.lang))
+            h.append(a)
+            return a
 
     # eref
     # <a href="https://..." class="eref">the text</a>

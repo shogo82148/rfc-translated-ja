@@ -15,6 +15,17 @@ class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
         self.root_en = xmlrfcEN.getroot()
         self.root_ja = xmlrfcJA.getroot()
+        self.refname_mapping = self.get_refname_mapping()
+
+    # 参考文献リスト
+    def get_refname_mapping(self):
+        reflist = self.root_en.xpath('.//references/reference|.//references/referencegroup')
+        if self.root_en.get('symRefs', 'true') == 'true':
+            refname_mapping = dict( (e.get('anchor'), e.get('anchor')) for e in reflist )
+        else:
+            refname_mapping = (dict( (e.get('anchor'), str(i+1)) for i,e in enumerate(reflist) ))
+        refname_mapping.update(dict( (e.get('target'), e.get('to')) for e in self.root_en.xpath('.//displayreference') ))
+        return refname_mapping
 
     def html_tree(self):
         html_tree = self.render(None, self.root)
@@ -342,12 +353,24 @@ class HtmlWriter:
         in_name = len(list(x.iterancestors('name'))) > 0
         content = ''.join(x.itertext()).strip()
         if not (section or relative):
-            # e.g. Table 1
-            a = build('a', href='#%s-%s'%(target, self.lang))
-            a.text = reftext
-            a.tail = x.tail
-            h.append(a)
-            return a
+            if target in self.refname_mapping and format != 'title':
+                # 参考文献への参照
+                # e.g. [RFCxxxx]
+                span = build('span')
+                h.append(span)
+                span.text = '['
+                a = build('a', href='#%s-%s'%(target, self.lang))
+                span.append(a)
+                a.text = reftext
+                a.tail = ']'
+                return span
+            else:
+                # e.g. Table 1
+                a = build('a', href='#%s-%s'%(target, self.lang))
+                a.text = reftext
+                a.tail = x.tail
+                h.append(a)
+                return a
         else:
             label = 'Section' if section[0].isdigit() else 'Appendix' if re.search(r'^[A-Z](\.|$)', section) else 'Part'
             link = x.get('derivedLink')
@@ -355,7 +378,19 @@ class HtmlWriter:
             exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
 
             if format == 'of':
-                pass # TODO
+                # e.g. Section x.y.z of [RFCxxxx]
+                span = build('span')
+                h.append(span)
+                a1 = build('a', href=link)
+                span.append(a1)
+                a1.text = '%s %s' % (label, section)
+                a1.tail = ' of ['
+                a2 = build('a', href="#%s"%target)
+                span.append(a2)
+                a2.text = reftext
+                a2.tail = ']'
+                span.tail = x.tail
+                return span
             elif format == 'comma':
                 pass # TODO
             elif format == 'parens':

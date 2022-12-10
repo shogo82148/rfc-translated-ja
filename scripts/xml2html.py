@@ -480,6 +480,11 @@ class HtmlWriter:
         self.inline_text_renderer(td, x)
         return td
 
+    def render1_em(self, h, x):
+        em = build('em')
+        h.append(em)
+        return em
+
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''
         children = list(x)

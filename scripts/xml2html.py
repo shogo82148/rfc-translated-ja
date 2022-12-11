@@ -390,7 +390,7 @@ class HtmlWriter:
             a_title = build('span')
         self.inline_text_renderer(a_title, x)
         header.append(a_title)
-        return h
+        return header
 
     def render1_t(self, h, x):
         p = build('p')
@@ -601,14 +601,14 @@ class HtmlWriter:
 
     def render1_bcp14(self, h, x):
         bcp14 = build('span')
+        h.append(bcp14)
         bcp14.set('class', 'bcp14')
         if x.text:
             bcp14.text = x.text
         if x.tail:
             bcp14.tail = x.tail
         for c in x:
-            self.render1(ul, c)
-        h.append(bcp14)
+            self.render1(bcp14, c)
         return bcp14
 
     def inline_text_renderer(self, h, x):

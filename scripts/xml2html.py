@@ -435,15 +435,8 @@ class HtmlWriter:
             self.render(h, c0, c1)
         return h
 
-    # 参考文献一覧
-    def render_references(self, h, en, ja):
-        self.part = en.tag
-        for (c0, c1) in zip(en, ja):
-            self.render(h, c0, c1)
-        return h
-
     # 参考文献
-    def render_reference(self, h, en, ja):
+    def render_references(self, h, en, ja):
         parent = build('div')
         h.append(parent)
         parent.set('class', 'row')
@@ -785,15 +778,38 @@ class HtmlWriter:
             self.render1(quote, c)
         return quote
 
+    def render1_references(self, h, x):
+        self.part = x.tag
+        section = build('section')
+        h.append(section)
+        hh = section
+        for c in x:
+            if c.tag in ['reference', 'referencegroup'] and hh.tag != 'dl':
+                dl = build('dl')
+                hh.append(dl)
+                dl.set('class', 'references')
+                hh = dl
+            self.render1(hh, c)
+        return section
+
     # 参考文献
     def render1_reference(self, h, x):
-        dt = build('dt')
-        h.append(dt)
-        dt.text = '[%s]' % x.get('derivedAnchor')
-        dd = build('dd')
-        h.append(dd)
-        outer = dt
-        inner = dd
+        p = x.getparent()
+        if p.tag == 'referencegroup':
+            div = build(div, id='%s-%s'%(x.get('anchor'),self.lang))
+            h.append(div)
+            div.text = x.div
+            outer = div
+            inner = div
+        else:
+            dt = build('dt', id='%s-%s'%(x.get('anchor'),self.lang))
+            h.append(dt)
+            dt.text = '[%s]' % x.get('derivedAnchor')
+            dd = build('dd')
+            dd.set('class', 'break')
+            h.append(dd)
+            outer = dt
+            inner = dd
 
         # Deal with parts in the correct order
         for c in x.iterdescendants('author'):

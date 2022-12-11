@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-import re
+import calendar
 import os
-
+import re
 import sys
+
 import xml2rfc
 import lxml
 from lxml.html import html_parser
@@ -37,6 +38,50 @@ def clean_text(s):
     # zero-width
     s = re.sub(r'[\u200B\u2060\ue060]', '', s)
     return s.strip()
+
+###### date time utils #####
+
+def normalize_month(month):
+    for i, m in enumerate(calendar.month_name):
+        if m and m.lower().startswith(month.lower()):
+            month = '%02d' % (i)
+    return month
+
+def extract_date(e):
+    day = e.get('day')
+    month = e.get('month')
+    year = e.get('year')
+
+    if year:
+        year = int(year)
+    if month:
+        if not month.isdigit():
+            month = normalize_month(month)
+        month = int(month)
+    if day:
+        day = int(day)
+    return year, month, day
+
+def format_date_iso(year, month, day):
+    if   year and month and day:
+        return '%4d-%02d-%02d' % (year, month, day)
+    elif year and month:
+        return '%4d-%02d' % (year, month)
+    elif year:
+        return '%4d' % (year)
+
+def format_date(year, month, day):
+    if month:
+        month = calendar.month_name[month]
+        if day:
+            date = '%s %s, %s' % (month, day, year)
+        else:
+            date = '%s %s' % (month, year)
+    elif year:
+        date = '%s' % year
+    else:
+        date = ''
+    return date
 
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
@@ -786,9 +831,28 @@ class HtmlWriter:
 
     def render1_date(self, h, x):
         have_date = x.get('day') or x.get('month') or x.get('year')
-        span = build('span')
-        h.append(span)
-        return span
+        year, month, day = extract_date(x)
+        text = format_date(year, month, day)
+        datetime = format_date_iso(year, month, day) if have_date else None
+        if x.text and have_date:
+            text = "%s (%s)" % (x.text, text)
+        elif x.text:
+            text = x.text
+        if datetime:
+            time = build('time', datetime=datetime)
+            if x.getparent() == self.root_en.find('front'):
+                time.set('class', 'published')
+            elif list(x.iterancestors('reference')):
+                time.set('class', 'refDate')
+            time.text = text
+            h.append(time)
+        elif text:
+            time = build('span')
+            time.text = text
+            h.append(time)
+        else:
+            time = None
+        return time
 
     @staticmethod
     def split_pn(pn):

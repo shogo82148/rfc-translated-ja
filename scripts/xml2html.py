@@ -571,6 +571,10 @@ class HtmlWriter:
     def render1_li(self, h, x):
         li = build('li')
         h.append(li)
+        if x.text:
+            li.text = x.text
+        if x.tail:
+            li.tail = x.tail
         for c in x:
             self.render1(li, c)
         return li

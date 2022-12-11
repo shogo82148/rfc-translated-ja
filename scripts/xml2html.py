@@ -11,6 +11,33 @@ from lxml.html.builder import ElementMaker
 
 build = ElementMaker(makeelement=html_parser.makeelement)
 
+def wrap_ascii(tag, name, ascii, role='', classes=None):
+    """Build a tag containing a name optionally formatted to show its ascii representation"""
+    role = ('','') if role in ['',None] else (', ', role)
+    if ascii:
+        e = build(tag,
+                build.span(name, classes='non-ascii'),
+                ' (',
+                build.span(ascii, classes='ascii'),
+                ')',
+                *role,
+                classes=classes
+            )
+    else:
+        e = build(tag, name, *role)
+        e.set('class', classes)
+    return e
+
+def clean_text(s):
+    """Replace internal use code points and various other special code points with plain equivalents"""
+    # spaces
+    s = re.sub(r'[\u00a0\u2028]', ' ', s)
+    # hyphens
+    s = s.replace(r'\u2011', '-')
+    # zero-width
+    s = re.sub(r'[\u200B\u2060\ue060]', '', s)
+    return s.strip()
+
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
         self.root_en = xmlrfcEN.getroot()
@@ -85,7 +112,7 @@ class HtmlWriter:
         return h
 
     def render_rfc(self, h, en, ja):
-        self.part = en.tag
+        self.part = 'rfc'
 
         # Root Element
         html = h if h != None else build('html')
@@ -357,8 +384,39 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
-    def render_back(self, h, ja, en):
-        return None # TODO
+    # 文章の最後
+    def render_back(self, h, en, ja):
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
+    # 参考文献一覧
+    def render_references(self, h, en, ja):
+        self.part = en.tag
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
+    # 参考文献
+    def render_reference(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
 
     def default_renderer1(self, h, x):
         h.text = x.text
@@ -623,7 +681,7 @@ class HtmlWriter:
             h.text = h.text.rstrip()
         h.tail = x.tail
 
-    # 番号付きリスト
+    # リスト
     def render1_ul(self, h, x):
         ul = build('ul')
         h.append(ul)
@@ -681,6 +739,56 @@ class HtmlWriter:
         for c in x:
             self.render1(quote, c)
         return quote
+
+    # 参考文献
+    def render1_reference(self, h, x):
+        dt = build('dt')
+        h.append(dt)
+        dt.text = '[%s]' % x.get('derivedAnchor')
+        dd = build('dd')
+        h.append(dd)
+        outer = dt
+        inner = dd
+
+        # Deal with parts in the correct order
+        for c in x.iterdescendants('author'):
+            self.render1(inner, c)
+        for ctag in ('title', 'refcontent', 'stream', 'seriesInfo', 'date', ):
+            for c in x.iterdescendants(ctag):
+                if len(inner):
+                    inner[-1].tail = ', '
+                self.render1(inner, c)
+        for c in x.iterdescendants('annotation'):
+            self.render1(inner, c)
+        return outer
+
+    def render1_title(self, h, x):
+        span = build('span')
+        h.append(span)
+
+        pp = x.getparent().getparent()
+        title = '\u2028'.join(x.itertext())
+        if pp.get("quoteTitle") == 'true':
+            title = '"%s"' % title
+        ascii = x.get('ascii')
+
+        if self.part == 'references':
+            span = wrap_ascii('span', clean_text(title), ascii, '', classes='refTitle')
+            h.append(span)
+            return span
+
+    def render1_refcontent(self, h, x):
+        span = build('span')
+        h.append(span)
+        span.set('class', 'refContent')
+        for c in x:
+            self.render(span, c)
+
+    def render1_date(self, h, x):
+        have_date = x.get('day') or x.get('month') or x.get('year')
+        span = build('span')
+        h.append(span)
+        return span
 
     @staticmethod
     def split_pn(pn):

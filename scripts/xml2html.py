@@ -294,6 +294,7 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # ソースコード
     def render_sourcecode(self, h, en, ja):
         parent = build('div')
         h.append(parent)
@@ -308,6 +309,48 @@ class HtmlWriter:
 
         # 日本語
         div_ja = build('div')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # アートワーク
+    def render_artwork(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # 引用
+    def render_blockquote(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
         div_ja.set('class', 'col')
         parent.append(div_ja)
         self.lang = 'ja'
@@ -615,6 +658,29 @@ class HtmlWriter:
         pre.text = x.text
         div.append(pre)
         return div
+
+    def render1_artwork(self, h, x):
+        type = x.get('type')
+        align = x.get('align', 'left')
+
+        if type not in ['svg', 'binary-art']:
+            text = x.text + ''.join(c.tail for c in x)
+            text = text.expandtabs()
+            text = '\n'.join(l.rstrip() for l in text.split('\n'))
+            pre = build('pre')
+            pre.text = text
+            div = build('div', lang='')
+            div.append(pre)
+            h.append(div)
+            return div
+
+    # 引用
+    def render1_blockquote(self, h, x):
+        quote = build('blockquote')
+        h.append(quote)
+        for c in x:
+            self.render1(quote, c)
+        return quote
 
     @staticmethod
     def split_pn(pn):

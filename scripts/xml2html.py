@@ -536,6 +536,18 @@ class HtmlWriter:
         h.append(em)
         return em
 
+    def render1_bcp14(self, h, x):
+        bcp14 = build('span')
+        bcp14.set('class', 'bcp14')
+        if x.text:
+            bcp14.text = x.text
+        if x.tail:
+            bcp14.tail = x.tail
+        for c in x:
+            self.render1(ul, c)
+        h.append(bcp14)
+        return bcp14
+
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''
         children = list(x)

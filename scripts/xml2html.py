@@ -378,18 +378,29 @@ class HtmlWriter:
             exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
 
             if format == 'of':
-                # e.g. Section x.y.z of [RFCxxxx]
                 span = build('span')
                 h.append(span)
-                a1 = build('a', href=link)
-                span.append(a1)
-                a1.text = '%s %s' % (label, section)
-                a1.tail = ' of ['
-                a2 = build('a', href="#%s"%target)
-                span.append(a2)
-                a2.text = reftext
-                a2.tail = ']'
                 span.tail = x.tail
+                if self.lang == 'ja':
+                    # e.g. [RFCxxxx]のSection x.y.z
+                    span.text = '['
+                    a1 = build('a', href='#%s-%s'%(target, self.lang))
+                    a1.text = reftext
+                    span.append(a1)
+                    a1.tail = ']の'
+                    a2 = build('a', href=link)
+                    a2.text = '%s %s' % (label, section)
+                    span.append(a2)
+                else:
+                    # e.g. Section x.y.z of [RFCxxxx]
+                    a1 = build('a', href=link)
+                    span.append(a1)
+                    a1.text = '%s %s' % (label, section)
+                    a1.tail = ' of ['
+                    a2 = build('a', href='#%s-%s'%(target, self.lang))
+                    span.append(a2)
+                    a2.text = reftext
+                    a2.tail = ']'
                 return span
             elif format == 'comma':
                 pass # TODO

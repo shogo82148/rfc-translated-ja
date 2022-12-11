@@ -294,6 +294,26 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    def render_sourcecode(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
     def render_back(self, h, ja, en):
         return None # TODO
 
@@ -578,6 +598,23 @@ class HtmlWriter:
         for c in x:
             self.render1(li, c)
         return li
+
+    # ソースコード
+    def render1_sourcecode(self, h, x):
+        classes = 'sourcecode'
+        if type:
+            classes += ' lang-%s' % type
+        if len(x.text.split('\n')) > 50:
+            classes += ' breakable'
+
+        div = build('div')
+        div.set('class', classes)
+        div.tail = x.tail
+        h.append(div)
+        pre = build('pre')
+        pre.text = x.text
+        div.append(pre)
+        return div
 
     @staticmethod
     def split_pn(pn):

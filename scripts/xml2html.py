@@ -10,6 +10,11 @@ import lxml
 from lxml.html import html_parser
 from lxml.html.builder import ElementMaker
 
+from xml2rfc.util.name import ( full_author_name_expansion, short_author_role,
+                                ref_author_name_first, ref_author_name_last, 
+                                short_author_name_set, full_author_name_set,
+                                short_org_name_set, full_org_name, )
+
 build = ElementMaker(makeelement=html_parser.makeelement)
 
 def wrap_ascii(tag, name, ascii, role='', classes=None):
@@ -822,6 +827,73 @@ class HtmlWriter:
         for c in x.iterdescendants('annotation'):
             self.render1(inner, c)
         return outer
+
+    def render1_author(self, h, x):
+        p = x.getparent()
+        if self.part == 'front':
+            pass # TODO
+        elif p.tag == 't':
+            # New handling for inline <contact>
+            pass # TODO:
+        elif self.part == 'back' or p.tag == 'section':
+            # このドキュメントの著者
+            pass
+        elif self.part == 'references':
+            # 参考文献の著者
+            prev  = x.getprevious()
+            if prev.tag == 'author':
+                prev_name = ref_author_name_first(prev)[0]
+            else:
+                prev = None
+                prev_name = ''
+
+            next  = x.getnext()
+            if next is not None and next.tag == 'author':
+                after_next = next.getnext()
+                if after_next is not None and after_next.tag != 'author':
+                    after_next = None
+            else:
+                next = None
+                after_next = None
+
+            role = short_author_role(x)
+
+            # I do not know why "prev_name == ''" is a condition only for prev, but keeping behavior
+            is_first = (prev is None) or (prev_name == '')
+            is_last = next is None
+            is_second_to_last = (not is_last) and (after_next is None)
+
+            # Choose name format.
+            if is_last and not is_first:
+                # This is the last author in a list. Use the "last author" name format.
+                name, ascii = ref_author_name_last(x)
+            else:
+                # All other cases use the "first author" name format.
+                name, ascii = ref_author_name_first(x)
+
+            span = wrap_ascii('span', name, ascii)
+            span.set('class', 'refAuthor')
+
+            # Now determine whether the span should be trailed by a conjunction.
+            tail = span.tail or ''
+            if not is_last:
+                # This is not the last author in the list. A conjunction may be needed.
+                if not is_second_to_last:
+                    # This is not last and not second-to-last, so insert a comma.
+                    tail += ', '
+                else:
+                    # This is the second-to-last author, so 'and' is needed. May also need a comma.
+                    if is_first:
+                        # Both first and second-to-last means only two authors. No comma needed.
+                        tail += ' and '
+                    else:
+                        # There must be at least 3 authors, so include a comma.
+                        tail += ', and '
+            span.tail = tail
+
+            if ''.join(span.itertext()).strip():
+                h.append(span)
+            return span
 
     def render1_title(self, h, x):
         span = build('span')

@@ -895,6 +895,18 @@ class HtmlWriter:
                 h.append(span)
             return span
 
+    def render1_seriesinfo(self, h, x):
+        name = x.get('name')
+        value = x.get('value')
+        if self.part == 'front':
+            pass # TODO
+        elif self.part == 'references':
+            span = build('span')
+            span.text = '%s %s' % (name, value)
+            span.set('class', 'seriesInfo')
+            h.append(span)
+            return span
+
     def render1_title(self, h, x):
         span = build('span')
         h.append(span)

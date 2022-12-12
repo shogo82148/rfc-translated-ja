@@ -287,6 +287,13 @@ class HtmlWriter:
     def render_section(self, h, en, ja):
         section = build('section')
         h.append(section)
+
+        # アンカー
+        span_en = build('span', id='%s-en'%en.get('anchor'))
+        section.append(span_en)
+        span_ja = build('span', id='%s-ja'%en.get('anchor'))
+        section.append(span_ja)
+
         for (c0, c1) in zip(en, ja):
             self.render(section, c0, c1)
         return section

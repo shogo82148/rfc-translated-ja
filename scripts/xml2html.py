@@ -574,7 +574,18 @@ class HtmlWriter:
                     a2.tail = ']'
                 return span
             elif format == 'comma':
-                pass # TODO
+                # See [RFC9999], Section 2.3
+                span = build('span')
+                h.append(span)
+                span.text = '%s['%exptext
+                a1 = build('a', href='#%s-%s'%(target, self.lang))
+                a1.text = reftext
+                a1.tail = '], '
+                span.append(a1)
+                a2 = build('a', href=link)
+                a2.text = '%s %s' % (label, section)
+                span.append(a2)
+                return span
             elif format == 'parens':
                 pass # TODO
             elif format == 'bare':

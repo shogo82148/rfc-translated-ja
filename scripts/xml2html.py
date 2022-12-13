@@ -358,7 +358,29 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 順序なしリスト
     def render_ul(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # 順序付きリスト
+    def render_ol(self, h, en, ja):
         parent = build('div')
         h.append(parent)
         parent.set('class', 'row')
@@ -745,6 +767,13 @@ class HtmlWriter:
     # リスト
     def render1_ul(self, h, x):
         ul = build('ul')
+        h.append(ul)
+        for c in x:
+            self.render1(ul, c)
+        return ul
+
+    def render1_ol(self, h, x):
+        ul = build('ol')
         h.append(ul)
         for c in x:
             self.render1(ul, c)

@@ -226,19 +226,16 @@ class HtmlWriter:
         div_en = build('div', lang='en')
         div_en.set('class', 'col')
         parent.append(div_en)
-        title_en = '\u2028'.join(en.itertext())
-        h1_en = build('h1')
-        h1_en.text = title_en
-        div_en.append(h1_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
 
         # 日本語
         div_ja = build('div', lang='ja')
         div_ja.set('class', 'col')
         parent.append(div_ja)
-        title_ja = '\u2028'.join(ja.itertext())
-        h1_ja = build('h1')
-        h1_ja.text = title_ja
-        div_ja.append(h1_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
 
     def render_abstract(self, h, en, ja):
         # 概要の見出しをレンダリング
@@ -972,6 +969,15 @@ class HtmlWriter:
             span = wrap_ascii('span', clean_text(title), ascii, '', classes='refTitle')
             h.append(span)
             return span
+        else:
+            rfc_number = self.root_en.get('number')
+            h1 = build('h1', id='rfcnum')
+            h1.text = 'RFC %s' % rfc_number
+            h.append(h1)
+            h1 = build('h1', id='title')
+            h1.text = title
+            h.append(h1)
+            return h1
 
     def render1_refcontent(self, h, x):
         span = build('span')

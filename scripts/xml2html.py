@@ -879,9 +879,6 @@ class HtmlWriter:
         p = x.getparent()
         if self.part == 'front':
             pass # TODO
-        elif p.tag == 't':
-            # New handling for inline <contact>
-            pass # TODO:
         elif self.part == 'back' or p.tag == 'section':
             # このドキュメントの著者
             pass
@@ -941,6 +938,13 @@ class HtmlWriter:
             if ''.join(span.itertext()).strip():
                 h.append(span)
             return span
+
+    def render1_contact(self, h, x):
+        name, ascii = full_author_name_set(x)
+        span = wrap_ascii('span', name, ascii, '', classes='contact-name')
+        span.tail = x.tail
+        h.append(span)
+        return span
 
     def render1_seriesinfo(self, h, x):
         name = x.get('name')

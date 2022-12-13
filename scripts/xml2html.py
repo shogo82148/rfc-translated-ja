@@ -1,20 +1,108 @@
 #!/usr/bin/env python
 
-import re
+import calendar
 import os
-
+import re
 import sys
+
 import xml2rfc
 import lxml
 from lxml.html import html_parser
 from lxml.html.builder import ElementMaker
 
+from xml2rfc.util.name import ( full_author_name_expansion, short_author_role,
+                                ref_author_name_first, ref_author_name_last, 
+                                short_author_name_set, full_author_name_set,
+                                short_org_name_set, full_org_name, )
+
 build = ElementMaker(makeelement=html_parser.makeelement)
+
+def wrap_ascii(tag, name, ascii, role='', classes=None):
+    """Build a tag containing a name optionally formatted to show its ascii representation"""
+    role = ('','') if role in ['',None] else (', ', role)
+    if ascii:
+        e = build(tag,
+                build.span(name, classes='non-ascii'),
+                ' (',
+                build.span(ascii, classes='ascii'),
+                ')',
+                *role,
+                classes=classes
+            )
+    else:
+        e = build(tag, name, *role)
+        e.set('class', classes)
+    return e
+
+def clean_text(s):
+    """Replace internal use code points and various other special code points with plain equivalents"""
+    # spaces
+    s = re.sub(r'[\u00a0\u2028]', ' ', s)
+    # hyphens
+    s = s.replace(r'\u2011', '-')
+    # zero-width
+    s = re.sub(r'[\u200B\u2060\ue060]', '', s)
+    return s.strip()
+
+###### date time utils #####
+
+def normalize_month(month):
+    for i, m in enumerate(calendar.month_name):
+        if m and m.lower().startswith(month.lower()):
+            month = '%02d' % (i)
+    return month
+
+def extract_date(e):
+    day = e.get('day')
+    month = e.get('month')
+    year = e.get('year')
+
+    if year:
+        year = int(year)
+    if month:
+        if not month.isdigit():
+            month = normalize_month(month)
+        month = int(month)
+    if day:
+        day = int(day)
+    return year, month, day
+
+def format_date_iso(year, month, day):
+    if   year and month and day:
+        return '%4d-%02d-%02d' % (year, month, day)
+    elif year and month:
+        return '%4d-%02d' % (year, month)
+    elif year:
+        return '%4d' % (year)
+
+def format_date(year, month, day):
+    if month:
+        month = calendar.month_name[month]
+        if day:
+            date = '%s %s, %s' % (month, day, year)
+        else:
+            date = '%s %s' % (month, year)
+    elif year:
+        date = '%s' % year
+    else:
+        date = ''
+    return date
 
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
         self.root_en = xmlrfcEN.getroot()
         self.root_ja = xmlrfcJA.getroot()
+        self.refname_mapping = self.get_refname_mapping()
+
+    # 参考文献リスト
+    def get_refname_mapping(self):
+        reflist = self.root_en.xpath('.//references/reference|.//references/referencegroup')
+        if self.root_en.get('symRefs', 'true') == 'true':
+            refname_mapping = dict( (e.get('anchor'), e.get('anchor')) for e in reflist )
+        else:
+            refname_mapping = (dict( (e.get('anchor'), str(i+1)) for i,e in enumerate(reflist) ))
+        refname_mapping.update(dict( (e.get('target'), e.get('to')) for e in self.root_en.xpath('.//displayreference') ))
+        return refname_mapping
 
     def html_tree(self):
         html_tree = self.render(None, self.root)
@@ -74,7 +162,7 @@ class HtmlWriter:
         return h
 
     def render_rfc(self, h, en, ja):
-        self.part = en.tag
+        self.part = 'rfc'
 
         # Root Element
         html = h if h != None else build('html')
@@ -199,6 +287,13 @@ class HtmlWriter:
     def render_section(self, h, en, ja):
         section = build('section')
         h.append(section)
+
+        # アンカー
+        span_en = build('span', id='%s-en'%en.get('anchor'))
+        section.append(span_en)
+        span_ja = build('span', id='%s-ja'%en.get('anchor'))
+        section.append(span_ja)
+
         for (c0, c1) in zip(en, ja):
             self.render(section, c0, c1)
         return section
@@ -263,6 +358,7 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 順序なしリスト
     def render_ul(self, h, en, ja):
         parent = build('div')
         h.append(parent)
@@ -283,8 +379,116 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
-    def render_back(self, h, ja, en):
-        return None # TODO
+    # 順序付きリスト
+    def render_ol(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # ソースコード
+    def render_sourcecode(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # アートワーク
+    def render_artwork(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # 引用
+    def render_blockquote(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
+    # 文章の最後
+    def render_back(self, h, en, ja):
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
+        return h
+
+    # 参考文献
+    def render_references(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
 
     def default_renderer1(self, h, x):
         h.text = x.text
@@ -316,7 +520,7 @@ class HtmlWriter:
             a_title = build('span')
         self.inline_text_renderer(a_title, x)
         header.append(a_title)
-        return h
+        return header
 
     def render1_t(self, h, x):
         p = build('p')
@@ -332,6 +536,7 @@ class HtmlWriter:
                 ret.tail = c.tail
         return p
 
+    # <xref>
     def render1_xref(self, h, x):
         target  = x.get('target')
         format  = x.get('format')
@@ -341,11 +546,24 @@ class HtmlWriter:
         in_name = len(list(x.iterancestors('name'))) > 0
         content = ''.join(x.itertext()).strip()
         if not (section or relative):
-            a = build('a', href='#%s-%s'%(target, self.lang))
-            a.text = reftext
-            a.tail = x.tail
-            h.append(a)
-            return a
+            if target in self.refname_mapping and format != 'title':
+                # 参考文献への参照
+                # e.g. [RFCxxxx]
+                span = build('span')
+                h.append(span)
+                span.text = '['
+                a = build('a', href='#%s-%s'%(target, self.lang))
+                span.append(a)
+                a.text = reftext
+                a.tail = ']'
+                return span
+            else:
+                # e.g. Table 1
+                a = build('a', href='#%s-%s'%(target, self.lang))
+                a.text = reftext
+                a.tail = x.tail
+                h.append(a)
+                return a
         else:
             label = 'Section' if section[0].isdigit() else 'Appendix' if re.search(r'^[A-Z](\.|$)', section) else 'Part'
             link = x.get('derivedLink')
@@ -353,13 +571,50 @@ class HtmlWriter:
             exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
 
             if format == 'of':
-                pass # TODO
+                span = build('span')
+                h.append(span)
+                span.tail = x.tail
+                if self.lang == 'ja':
+                    # e.g. [RFCxxxx]のSection x.y.z
+                    span.text = '['
+                    a1 = build('a', href='#%s-%s'%(target, self.lang))
+                    a1.text = reftext
+                    span.append(a1)
+                    a1.tail = ']の'
+                    a2 = build('a', href=link)
+                    a2.text = '%s %s' % (label, section)
+                    span.append(a2)
+                else:
+                    # e.g. Section x.y.z of [RFCxxxx]
+                    a1 = build('a', href=link)
+                    span.append(a1)
+                    a1.text = '%s %s' % (label, section)
+                    a1.tail = ' of ['
+                    a2 = build('a', href='#%s-%s'%(target, self.lang))
+                    span.append(a2)
+                    a2.text = reftext
+                    a2.tail = ']'
+                return span
             elif format == 'comma':
-                pass # TODO
+                # See [RFC9999], Section 2.3
+                span = build('span')
+                h.append(span)
+                span.text = '%s['%exptext
+                a1 = build('a', href='#%s-%s'%(target, self.lang))
+                a1.text = reftext
+                a1.tail = '], '
+                span.append(a1)
+                a2 = build('a', href=link)
+                a2.text = '%s %s' % (label, section)
+                span.append(a2)
+                return span
             elif format == 'parens':
                 pass # TODO
             elif format == 'bare':
                 pass # TODO
+            a = build('a', href='#%s-%s'%(target, self.lang))
+            h.append(a)
+            return a
 
     # eref
     # <a href="https://..." class="eref">the text</a>
@@ -485,6 +740,18 @@ class HtmlWriter:
         h.append(em)
         return em
 
+    def render1_bcp14(self, h, x):
+        bcp14 = build('span')
+        h.append(bcp14)
+        bcp14.set('class', 'bcp14')
+        if x.text:
+            bcp14.text = x.text
+        if x.tail:
+            bcp14.tail = x.tail
+        for c in x:
+            self.render1(bcp14, c)
+        return bcp14
+
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''
         children = list(x)
@@ -497,9 +764,16 @@ class HtmlWriter:
             h.text = h.text.rstrip()
         h.tail = x.tail
 
-    # 番号付きリスト
+    # リスト
     def render1_ul(self, h, x):
         ul = build('ul')
+        h.append(ul)
+        for c in x:
+            self.render1(ul, c)
+        return ul
+
+    def render1_ol(self, h, x):
+        ul = build('ol')
         h.append(ul)
         for c in x:
             self.render1(ul, c)
@@ -508,9 +782,228 @@ class HtmlWriter:
     def render1_li(self, h, x):
         li = build('li')
         h.append(li)
+        if x.text:
+            li.text = x.text
+        if x.tail:
+            li.tail = x.tail
         for c in x:
             self.render1(li, c)
         return li
+
+    # ソースコード
+    def render1_sourcecode(self, h, x):
+        classes = 'sourcecode'
+        if type:
+            classes += ' lang-%s' % type
+        if len(x.text.split('\n')) > 50:
+            classes += ' breakable'
+
+        div = build('div')
+        div.set('class', classes)
+        div.tail = x.tail
+        h.append(div)
+        pre = build('pre')
+        pre.text = x.text
+        div.append(pre)
+        return div
+
+    def render1_artwork(self, h, x):
+        type = x.get('type')
+        align = x.get('align', 'left')
+
+        if type not in ['svg', 'binary-art']:
+            text = x.text + ''.join(c.tail for c in x)
+            text = text.expandtabs()
+            text = '\n'.join(l.rstrip() for l in text.split('\n'))
+            pre = build('pre')
+            pre.text = text
+            div = build('div', lang='')
+            div.append(pre)
+            h.append(div)
+            return div
+
+    # 引用
+    def render1_blockquote(self, h, x):
+        quote = build('blockquote')
+        h.append(quote)
+        for c in x:
+            self.render1(quote, c)
+        return quote
+
+    def render1_references(self, h, x):
+        self.part = x.tag
+        section = build('section')
+        h.append(section)
+        hh = section
+        for c in x:
+            if c.tag in ['reference', 'referencegroup'] and hh.tag != 'dl':
+                dl = build('dl')
+                hh.append(dl)
+                dl.set('class', 'references')
+                hh = dl
+            self.render1(hh, c)
+        return section
+
+    # 参考文献
+    def render1_reference(self, h, x):
+        p = x.getparent()
+        if p.tag == 'referencegroup':
+            div = build(div, id='%s-%s'%(x.get('anchor'),self.lang))
+            h.append(div)
+            div.text = x.div
+            outer = div
+            inner = div
+        else:
+            dt = build('dt', id='%s-%s'%(x.get('anchor'),self.lang))
+            h.append(dt)
+            dt.text = '[%s]' % x.get('derivedAnchor')
+            dd = build('dd')
+            dd.set('class', 'break')
+            h.append(dd)
+            outer = dt
+            inner = dd
+
+        # Deal with parts in the correct order
+        for c in x.iterdescendants('author'):
+            self.render1(inner, c)
+        for ctag in ('title', 'refcontent', 'stream', 'seriesInfo', 'date', ):
+            for c in x.iterdescendants(ctag):
+                if len(inner):
+                    inner[-1].tail = ', '
+                self.render1(inner, c)
+        for c in x.iterdescendants('annotation'):
+            self.render1(inner, c)
+        return outer
+
+    def render1_author(self, h, x):
+        p = x.getparent()
+        if self.part == 'front':
+            pass # TODO
+        elif self.part == 'back' or p.tag == 'section':
+            # このドキュメントの著者
+            pass
+        elif self.part == 'references':
+            # 参考文献の著者
+            prev  = x.getprevious()
+            if prev.tag == 'author':
+                prev_name = ref_author_name_first(prev)[0]
+            else:
+                prev = None
+                prev_name = ''
+
+            next  = x.getnext()
+            if next is not None and next.tag == 'author':
+                after_next = next.getnext()
+                if after_next is not None and after_next.tag != 'author':
+                    after_next = None
+            else:
+                next = None
+                after_next = None
+
+            role = short_author_role(x)
+
+            # I do not know why "prev_name == ''" is a condition only for prev, but keeping behavior
+            is_first = (prev is None) or (prev_name == '')
+            is_last = next is None
+            is_second_to_last = (not is_last) and (after_next is None)
+
+            # Choose name format.
+            if is_last and not is_first:
+                # This is the last author in a list. Use the "last author" name format.
+                name, ascii = ref_author_name_last(x)
+            else:
+                # All other cases use the "first author" name format.
+                name, ascii = ref_author_name_first(x)
+
+            span = wrap_ascii('span', name, ascii)
+            span.set('class', 'refAuthor')
+
+            # Now determine whether the span should be trailed by a conjunction.
+            tail = span.tail or ''
+            if not is_last:
+                # This is not the last author in the list. A conjunction may be needed.
+                if not is_second_to_last:
+                    # This is not last and not second-to-last, so insert a comma.
+                    tail += ', '
+                else:
+                    # This is the second-to-last author, so 'and' is needed. May also need a comma.
+                    if is_first:
+                        # Both first and second-to-last means only two authors. No comma needed.
+                        tail += ' and '
+                    else:
+                        # There must be at least 3 authors, so include a comma.
+                        tail += ', and '
+            span.tail = tail
+
+            if ''.join(span.itertext()).strip():
+                h.append(span)
+            return span
+
+    def render1_contact(self, h, x):
+        name, ascii = full_author_name_set(x)
+        span = wrap_ascii('span', name, ascii, '', classes='contact-name')
+        span.tail = x.tail
+        h.append(span)
+        return span
+
+    def render1_seriesinfo(self, h, x):
+        name = x.get('name')
+        value = x.get('value')
+        if self.part == 'front':
+            pass # TODO
+        elif self.part == 'references':
+            span = build('span')
+            span.text = '%s %s' % (name, value)
+            span.set('class', 'seriesInfo')
+            h.append(span)
+            return span
+
+    def render1_title(self, h, x):
+        span = build('span')
+        h.append(span)
+
+        pp = x.getparent().getparent()
+        title = '\u2028'.join(x.itertext())
+        if pp.get("quoteTitle") == 'true':
+            title = '"%s"' % title
+        ascii = x.get('ascii')
+
+        if self.part == 'references':
+            span = wrap_ascii('span', clean_text(title), ascii, '', classes='refTitle')
+            h.append(span)
+            return span
+
+    def render1_refcontent(self, h, x):
+        span = build('span')
+        h.append(span)
+        span.set('class', 'refContent')
+        for c in x:
+            self.render(span, c)
+
+    def render1_date(self, h, x):
+        have_date = x.get('day') or x.get('month') or x.get('year')
+        year, month, day = extract_date(x)
+        text = format_date(year, month, day)
+        datetime = format_date_iso(year, month, day) if have_date else None
+        if x.text and have_date:
+            text = "%s (%s)" % (x.text, text)
+        elif x.text:
+            text = x.text
+        if datetime:
+            time = build('time', datetime=datetime)
+            if x.getparent() == self.root_en.find('front'):
+                time.set('class', 'published')
+            elif list(x.iterancestors('reference')):
+                time.set('class', 'refDate')
+            time.text = text
+            h.append(time)
+        elif text:
+            time = build('span')
+            time.text = text
+            h.append(time)
+        else:
+            time = None
+        return time
 
     @staticmethod
     def split_pn(pn):

@@ -874,6 +874,20 @@ class HtmlWriter:
                 if len(inner):
                     inner[-1].tail = ', '
                 self.render1(inner, c)
+
+        if p.tag != 'referencegroup':
+            # リンクを追加
+            target = x.get('target')
+            if len(inner):
+                inner[-1].tail = ', '
+            if target:
+                a = build('a', href=target)
+                a.text = target
+                span = build('span')
+                span.text = '<'
+                span.append(a)
+                a.tail = '>'
+                inner.append(span)
         for c in x.iterdescendants('annotation'):
             self.render1(inner, c)
         return outer

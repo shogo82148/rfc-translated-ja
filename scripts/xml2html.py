@@ -88,6 +88,18 @@ def format_date(year, month, day):
         date = ''
     return date
 
+def id_for_pn(pn):
+    """Convert a pn to an HTML element ID"""
+    if HtmlWriter.is_appendix(pn):
+        _, num, para = HtmlWriter.split_pn(pn)
+        frag = 'appendix-%s' % num.title()
+        if para is None or len(para) == 0:
+            return frag
+        else:
+            return '%s-%s' % (frag, para)
+    # not an appendix
+    return pn
+
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA):
         self.root_en = xmlrfcEN.getroot()
@@ -510,9 +522,21 @@ class HtmlWriter:
 
         header = build(tag, id=name_slug, lang=self.lang)
         h.append(header)
+
+        # セクション番号
+        numbered = p.get('numbered')=='true'
+        if num and numbered:
+            if self.is_appendix(pn) and self.is_top_level_section(num):
+                num = 'Appendix %s' % num
+            a_number = build('a', id=id_for_pn(pn), href='#%s'%id_for_pn(pn))
+            a_number.set('class', 'section-number selfRef')
+            a_number.text = num.title()
+            a_number.tail = ' '
+            header.append(a_number)
+
         if name_slug:
             a_title = build('a', href='#%s'%name_slug)
-            a_title.set('class', 'selfRef')
+            a_title.set('class', 'section-name selfRef')
         else:
             a_title = build('span')
         self.inline_text_renderer(a_title, x)
@@ -1046,6 +1070,16 @@ class HtmlWriter:
         if any([len(cpt) == 0 for cpt in components]):
             log.warn('Empty section number component in "{}"'.format(num))
         return len(components)
+
+    @classmethod
+    def is_top_level_section(cls, num):
+        return cls.level_of_section_num(num) == 1
+
+    appendix_pn_re = re.compile(r'^section-[a-z]\.|^section-appendix\.')
+    @classmethod
+    def is_appendix(cls, pn):
+        """Is a section with this number an appendix?"""
+        return cls.appendix_pn_re.match(pn) is not None
 
 def main():
     rfc_number = sys.argv[1]

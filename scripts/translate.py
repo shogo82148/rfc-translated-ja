@@ -35,16 +35,23 @@ def stringify_children(node):
             parts.append(text)
     return ''.join(parts)
 
+def translate_node(x):
+    s = stringify_children(x)
+    s = translate(s)
+
+    y = lxml.etree.parse(StringIO('<%s>%s</%s>'%(x.tag,s,x.tag))).getroot()
+    for (key, value) in x.items():
+        y.set(key, value)
+    x.getparent().replace(x, y)
+
 def walk(x):
     if x.tag == 't':
-        s = stringify_children(x)
-        s = translate(s)
-
-        y = lxml.etree.parse(StringIO('<t>'+s+'</t>')).getroot()
-        for (key, value) in x.items():
-            y.set(key, value)
-        x.getparent().replace(x, y)
+        translate_node(x)
         return
+    elif x.tag == 'li':
+        translate_node(x)
+        return
+
     for c in x:
         walk(c)
 

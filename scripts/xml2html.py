@@ -644,6 +644,12 @@ class HtmlWriter:
                 h.append(span)
                 return span
 
+    def render1_br(self, h, x):
+        br = build('br')
+        h.append(br)
+        br.tail = x.tail
+        return br
+
     # 表のレンダリング
     def render1_table(self, h, x):
         # 自己参照用のアンカー

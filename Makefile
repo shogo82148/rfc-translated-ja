@@ -1,4 +1,11 @@
-all: docs/rfc9401.html docs/rfc9226.html docs/rfc9225.html docs/rfc8941.html docs/rfc8174.html docs/rfc2119.html
+all: \
+	docs/rfc9401.html \
+	docs/rfc9226.html \
+	docs/rfc9225.html \
+	docs/rfc8941.html \
+	docs/rfc8174.html \
+	docs/rfc2119.html
+
 docs/rfc9401.html: src/en/rfc9401.xml src/ja/rfc9401.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9401
 docs/rfc9226.html: src/en/rfc9226.xml src/ja/rfc9226.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js

@@ -4,7 +4,8 @@ use v5.36;
 
 sub generate_makefile(@rfc_numbers) {
     open my $fh, ">", "Makefile" or die "failed to open: %!";
-    say $fh "all: ", join " ", map { "docs/rfc$_.html" } @rfc_numbers;
+    say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
+    say $fh "";
     for my $number(@rfc_numbers) {
         say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
         say $fh "\tscripts/xml2html.py $number";

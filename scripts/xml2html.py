@@ -451,6 +451,27 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 図
+    def render_figure(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
     # 引用
     def render_blockquote(self, h, en, ja):
         parent = build('div')
@@ -848,6 +869,14 @@ class HtmlWriter:
             div.append(pre)
             h.append(div)
             return div
+
+    def render1_figure(self, h, x):
+        print("figure")
+        figure = build('figure')
+        h.append(figure)
+        for c in x:
+            self.render1(figure, c)
+        return figure
 
     # 引用
     def render1_blockquote(self, h, x):

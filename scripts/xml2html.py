@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# based on https://github.com/ietf-tools/xml2rfc
 
 import calendar
 import os

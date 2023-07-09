@@ -56,11 +56,15 @@ sub handle_section($section) {
     print "\n";
 
     # contents
+    my $index = 0;
     for my $content(@{$section->{contents}}) {
         if ($content->{type} eq "t") {
+            $index++;
             print '  ' x ($level+2);
-            print '<t>' . escape($content->{content}) . '</t>';
-            print "\n";
+            print '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
+            my $content = escape($content->{content});
+            print $content;
+            print "</t>\n";
         } elsif ($content->{type} eq "section") {
             handle_section($content);
         } else {
@@ -126,12 +130,20 @@ for my $content(@contents) {
         $context = $content;
 
         if ($context =~ /^\d+[.]/) {
-            my $title = parseSectionName($content);
+            my @contents = split /\s\s\s/, $context, 2;
+            my $title = parseSectionName(shift @contents);
             my $new_section = +{
                 type => "section",
                 title => $title,
                 contents => [],
             };
+            if (my $content = shift @contents) {
+                $content =~ s/^\s\s\s//mg;
+                push @{$new_section->{contents}}, +{
+                    type => "t",
+                    content => $content,
+                };
+            }
             if ($title->{level} == 1) {
                 push @{$root->{contents}}, $new_section;
                 $new_section->{parent} = $root;

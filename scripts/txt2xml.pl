@@ -300,7 +300,8 @@ for my $content(@contents) {
         push @tableOfContents, $content;
     } elsif ($context eq "Acknowledgements") {
         push @acknowledgements, $content;
-    } elsif ($context eq "Author's Address") {
+    } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
+        # 解析が大変なのでギブアップ
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
         $content =~ s/\s+/ /g;
         push @{$current_references->{contents}}, parseReference($content);
@@ -338,10 +339,16 @@ if ($meta->{doi}) {
 say "  <front>";
 say "    <title>" . escape($meta->{title}) . "</title>";
 say '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="IETF"/>';
-# TODO: Author
-# TODO: Date
-# TODO: Area
-# TODO: Workgroup
+
+if ($meta->{pub_date} && $meta->{pub_date} =~ /(?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+)/) {
+    my $month = $1;
+    my $year = $2;
+    print '    <date year="' . $year . '"';
+    if ($month) {
+        print ' month="' . $month . '"';
+    }
+    print "/>\n";
+}
 
 # Abstract
 say '    <abstract pn="section-abstract">';

@@ -44,6 +44,27 @@ sub parseSectionName($s) {
     };
 }
 
+sub parseAppendixName($s) {
+    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.])*)\s+(.+)$/) {
+        die "invalid appendix name: $s";
+    }
+    my $appendix = $1;
+    my $number = $2;
+    my $name = $3;
+
+    $number =~ s/[.]$//; # 末尾のピリオドを削除
+    my @numbers = split /[.]/, $number;
+    my $slugified_name = lc($name =~ s/\s+/-/gr);
+    return +{
+        anchor => $slugified_name,
+        pn => $appendix ? "section-appendix.$number" : "section-$number",
+        number => $number,
+        level => scalar(@numbers),
+        slugified_name => "name-$slugified_name",
+        name => $name,
+    };
+}
+
 sub parseReference($s) {
     $s =~ s(^\[([^]]+)\] ([^"]*)"([^"]+)")();
     my $anchor = $1;
@@ -234,7 +255,7 @@ sub handle_section($section) {
             print '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
             print $content->{content};
             print "</t>\n";
-        } elsif ($content->{type} eq "section") {
+        } elsif ($content->{type} eq "section" || $content->{type} eq "appendix") {
             handle_section($content);
         } else {
             die "unknown content type: $content->{type}";
@@ -348,6 +369,14 @@ my $referencesRoot = {
 };
 my $current_references = undef;
 
+# 付録
+my $appendix_root = {
+    type => "appendix-root",
+    parent => undef,
+    level => 0,
+};
+my $current_appendix = undef;
+
 # 通常セクション
 my $root = {
     type => "root",
@@ -388,6 +417,25 @@ for my $content(@contents) {
                 $new_references->{parent} = $parent;
             }
             $current_references = $new_references;
+        } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
+            my $title = parseAppendixName($context);
+            my $new_appendix = +{
+                type => "appendix",
+                title => $title,
+                contents => [],
+            };
+            if ($title->{level} == 1) {
+                push @{$appendix_root->{contents}}, $new_appendix;
+                $new_appendix->{parent} = $appendix_root;
+            } else {
+                my $parent = $current_appendix;
+                while ($parent->{title}->{level} >= $title->{level}) {
+                    $parent = $parent->{parent};
+                }
+                push @{$parent->{contents}}, $new_appendix;
+                $new_appendix->{parent} = $parent;
+            }
+            $current_appendix = $new_appendix;
         } elsif ($context =~ /^\d+[.]/) {
             my @contents = split /\s\s\s/, $context, 2;
             my $title = parseSectionName(shift @contents);
@@ -439,6 +487,11 @@ for my $content(@contents) {
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
         $content =~ s/\s+/ /g;
         push @{$current_references->{contents}}, parseReference($content);
+    } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
+        push @{$current_appendix->{contents}}, {
+            type => "t",
+            content => parseT($content),
+        };
     } elsif ($context =~ /^\d+[.]/) {
         push @{$current_section->{contents}}, {
             type => "t",
@@ -544,6 +597,11 @@ say '  <back>';
 # References
 for my $references(@{$referencesRoot->{contents}}) {
     handle_references($references);
+}
+
+# Appendix
+for my $appendix(@{$appendix_root->{contents}}) {
+    handle_section($appendix);
 }
 
 # Acknowledgements

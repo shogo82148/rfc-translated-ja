@@ -2,7 +2,7 @@
 
 use v5.36;
 
-use JSON::XS qw(decode_json);
+use JSON qw(decode_json);
 
 sub generate_makefile(@rfc_numbers) {
     open my $fh, ">", "Makefile" or die "failed to open: %!";
@@ -16,7 +16,7 @@ sub generate_makefile(@rfc_numbers) {
             say $fh "\tcp \$< \$\@";
         } else {
             say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.txt scripts/txt2xml.pl";
-            say $fh "\tscripts/txt2xml.pl \$< > \$\@";
+            say $fh "\tscripts/txt2xml.pl $number > \$\@";
         }
     }
     close($fh);
@@ -29,7 +29,6 @@ sub get_en_title($number) {
 
     my $meta = decode_json($content);
     my $title = $meta->{title};
-    say $title;
     $title =~ s/\s+$//;
     return $title
 }

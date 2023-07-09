@@ -57,7 +57,7 @@ sub parseAppendixName($s) {
     my $slugified_name = lc($name =~ s/\s+/-/gr);
     return +{
         anchor => $slugified_name,
-        pn => $appendix ? "section-appendix.$number" : "section-$number",
+        pn => lc($appendix ? "section-appendix.$number" : "section-$number"),
         number => $number,
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
@@ -223,7 +223,7 @@ sub handle_section_toc($section) {
     print '</xref>';
     print "</t>\n";
 
-    if (my @subsections = grep {$_->{type} eq 'section'} @{$section->{contents}}) {
+    if (my @subsections = grep {$_->{type} =~ /^(?:section|appendix)$/} @{$section->{contents}}) {
         print '  ' x ($level+5);
         print '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
         print "\n";
@@ -584,6 +584,14 @@ if (@tableOfContents) {
     say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
     for my $section(@{$root->{contents}}) {
         handle_section_toc($section);
+    }
+    for my $section(@{$appendix_root->{contents}}) {
+        handle_section_toc($section);
+    }
+    if (@acknowledgements) {
+        say '          <li pn="section-toc.1-1-1">';
+        say '            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
+        say '          </li>';
     }
     say '      </ul>';
     say '      </section>';

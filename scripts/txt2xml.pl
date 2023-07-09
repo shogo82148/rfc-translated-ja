@@ -370,7 +370,7 @@ shift @contents; # タイトルを削除
 
 # 特別なセクション
 my @abstract = ();
-my @statusOfThisMemo = ();
+my @status_of_this_memo = ();
 my @copyrightNotice = ();
 my @tableOfContents = ();
 my @acknowledgements = ();
@@ -489,7 +489,7 @@ for my $content(@contents) {
     if ($context eq "Abstract") {
         push @abstract, $content;
     } elsif ($context =~ /Status of This Memo/i) {
-        push @statusOfThisMemo, parseT($content);
+        push @status_of_this_memo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
         push @copyrightNotice, parseT($content);
     } elsif ($context eq "Table of Contents") {
@@ -562,11 +562,11 @@ say '    </abstract>';
 say "    <boilerplate>";
 
 # Status of This Memo
-if (@statusOfThisMemo) {
+if (@status_of_this_memo) {
     say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
     say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
-    for my $i(0..$#statusOfThisMemo) {
-        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $statusOfThisMemo[$i] . '</t>';
+    for my $i(0..$#status_of_this_memo) {
+        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $status_of_this_memo[$i] . '</t>';
     }
     say '      </section>';
 }

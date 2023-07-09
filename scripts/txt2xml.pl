@@ -129,6 +129,16 @@ sub handle_references($references) {
             print '  ' x ($level+4);
             printf "<title>%s</title>\n", escape($content->{title});
 
+            # 公開日
+            if ($content->{year}) {
+                print '  ' x ($level+4);
+                printf "<date year=\"%s\"", escape($content->{year});
+                if ($content->{month}) {
+                    printf " month=\"%s\"", escape($content->{month});
+                }
+                print "/>\n";
+            }
+
             print '  ' x ($level+3);
             print "</front>\n";
 

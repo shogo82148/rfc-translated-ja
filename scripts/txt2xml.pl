@@ -78,6 +78,76 @@ sub parseReference($s) {
     };
 }
 
+sub parseT($s) {
+    $s = escape($s);
+    $s =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
+
+    if ($s =~ /^\s*\+(?:-{3,}\+)+\s*$/m) {
+        # 表のパース
+        my $is_body = 0;
+        my @thead;
+        my @tbody;
+        for my $row(split /\n/, $s) {
+            if ($row =~ /^\s*\+(?:-{3,}\+)+\s*$/) {
+                if (@thead) {
+                    $is_body = 1;
+                }
+                next;
+            }
+            $row =~ s/^\s*\|//;
+            $row =~ s/\|\s*$//;
+            my @cells = split /\s*[|]\s*/, $row;
+            if ($is_body) {
+                if ($cells[0]) {
+                    push @tbody, [@cells];
+                } else {
+                    # 一列目は見出し列として扱う
+                    # 見出し列がカラの場合は、前の行のセルと結合
+                    for my $i(0..$#cells) {
+                        $tbody[-1][$i] .= ' ' . $cells[$i];
+                    }
+                }
+            } else {
+                if (@thead) {
+                    # ヘッダーが複数行にまたがっている場合は、セルを結合
+                    for my $i(0..$#cells) {
+                        $thead[-1][$i] .= ' ' . $cells[$i];
+                    }
+                } else {
+                    push @thead, [@cells];
+                }
+            }
+        }
+
+        # 表のレンダリング
+        my $ret = '<table align="center">' . "\n";
+        $ret .= '<thead>' . "\n";
+        $ret .= '<tr>' . "\n";
+        for my $row(@thead) {
+            $ret .= '<tr>'. "\n";
+            for my $cell(@$row) {
+                $ret .= sprintf('<td align="left">%s</td>'."\n", $cell);
+            }
+            $ret .= '</tr>' . "\n";
+        }
+        $ret .= '</tr>' . "\n";
+        $ret .= '</thead>' . "\n";
+        $ret .= '<tbody>' . "\n";
+        for my $row(@tbody) {
+            $ret .= '<tr>'. "\n";
+            for my $cell(@$row) {
+                $ret .= sprintf('<td align="left">%s</td>'."\n", $cell);
+            }
+            $ret .= '</tr>' . "\n";
+        }
+        $ret .= '</tbody>' . "\n";
+        $ret .= '</table>' . "\n";
+        return $ret;
+    }
+
+    return $s;
+}
+
 # セクションの目次を表示
 sub handle_section_toc($section) {
     my $title = $section->{title};
@@ -132,12 +202,7 @@ sub handle_section($section) {
             $index++;
             print '  ' x ($level+2);
             print '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
-            my $content = escape($content->{content});
-
-            # BCP 14のキーワードを置換
-            $content =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
-
-            print $content;
+            print $content->{content};
             print "</t>\n";
         } elsif ($content->{type} eq "section") {
             handle_section($content);
@@ -229,6 +294,9 @@ $content =~ s/^(\s*\n)*//; # 先頭の空行を削除
 $content =~ s/(\s*\n)*$//; # 末尾の空行を削除
 $content =~ s/\n\s*\n(\s*\n)*/\n\n/g; # 連続する空行を1行にまとめる
 
+# 二ページに連続する表を結合
+$content =~ s/[|]\n\n *[|]/|\n|/g;
+
 # 空行区切りで分割
 @contents = split /\n\n/, $content;
 
@@ -302,7 +370,7 @@ for my $content(@contents) {
                 $content =~ s/^\s\s\s//mg;
                 push @{$new_section->{contents}}, +{
                     type => "t",
-                    content => $content,
+                    content => parseT($content),
                 };
             }
             if ($title->{level} == 1) {
@@ -329,13 +397,13 @@ for my $content(@contents) {
     if ($context eq "Abstract") {
         push @abstract, $content;
     } elsif ($context eq "Status of This Memo") {
-        push @statusOfThisMemo, $content;
+        push @statusOfThisMemo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
-        push @copyrightNotice, $content;
+        push @copyrightNotice, parseT($content);
     } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
     } elsif ($context eq "Acknowledgements") {
-        push @acknowledgements, $content;
+        push @acknowledgements, parseT($content);
     } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
         # 解析が大変なのでギブアップ
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
@@ -344,7 +412,7 @@ for my $content(@contents) {
     } elsif ($context =~ /^\d+[.]/) {
         push @{$current_section->{contents}}, {
             type => "t",
-            content => $content,
+            content => parseT($content),
         };
     }
 }
@@ -401,7 +469,7 @@ if (@statusOfThisMemo) {
     say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
     say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
     for my $i(0..$#statusOfThisMemo) {
-        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . escape($statusOfThisMemo[$i]) . '</t>';
+        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $statusOfThisMemo[$i] . '</t>';
     }
     say '      </section>';
 }
@@ -411,23 +479,25 @@ if (@copyrightNotice) {
     say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
     say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
     for my $i(0..$#copyrightNotice) {
-        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
+        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyrightNotice[$i] . '</t>';
     }
     say '      </section>';
 }
 say "    </boilerplate>";
 
 # 目次
-say '    <toc>';
-say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
-say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
-say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
-for my $section(@{$root->{contents}}) {
-    handle_section_toc($section);
+if (@tableOfContents) {
+    say '    <toc>';
+    say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
+    say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
+    say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
+    for my $section(@{$root->{contents}}) {
+        handle_section_toc($section);
+    }
+    say '      </ul>';
+    say '      </section>';
+    say '    </toc>';
 }
-say '      </ul>';
-say '      </section>';
-say '    </toc>';
 
 # End of Front
 say "  </front>";
@@ -451,7 +521,7 @@ if (@acknowledgements) {
     print '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">' . "\n";
     print '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
     for my $i(0..$#acknowledgements) {
-        say '        <t indent="0" pn="section-appendix.a-' . ($i + 1) . '">' . escape($acknowledgements[$i]) . '</t>';
+        say '        <t indent="0" pn="section-appendix.a-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
     }
     say '      </section>';
 }

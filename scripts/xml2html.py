@@ -711,30 +711,34 @@ class HtmlWriter:
             h.append(build('span', id='%s-%s'%(anchor,self.lang)))
 
         pn = x.get('pn')
-        table = build('table', id='%s-%s'%(pn,self.lang))
+        if pn:
+            table = build('table', id='%s-%s'%(pn,self.lang))
+        else:
+            table = build('table')
         h.append(table)
 
-        # キャプション
-        caption = build('caption')
-        table.append(caption)
-        a = build('a', href='#%s-%s'%(pn,self.lang))
-        text = pn.split('-', 1)
-        if self.lang == 'ja':
-            if text[0] == 'table':
-                text[0] = '表'
+        if pn:
+            # キャプション
+            caption = build('caption')
+            table.append(caption)
+            a = build('a', href='#%s-%s'%(pn,self.lang))
+            text = pn.split('-', 1)
+            if self.lang == 'ja':
+                if text[0] == 'table':
+                    text[0] = '表'
+                else:
+                    text[0] = text[0].title()
             else:
                 text[0] = text[0].title()
-        else:
-            text[0] = text[0].title()
-        a.text = ' '.join(text)
-        a.set('class', 'selfRef')
-        caption.append(a)
-        if name != None and name_slug:
-            a.tail = ':\n'
-            aa = build('a', href='#%s-%s'%(name_slug,self.lang))
-            aa.set('class', 'selfRef')
-            caption.append(aa)
-            self.inline_text_renderer(aa, name)
+            a.text = ' '.join(text)
+            a.set('class', 'selfRef')
+            caption.append(a)
+            if name != None and name_slug:
+                a.tail = ':\n'
+                aa = build('a', href='#%s-%s'%(name_slug,self.lang))
+                aa.set('class', 'selfRef')
+                caption.append(aa)
+                self.inline_text_renderer(aa, name)
         for c in x:
             self.render1(table, c)
         return table
@@ -872,7 +876,6 @@ class HtmlWriter:
             return div
 
     def render1_figure(self, h, x):
-        print("figure")
         figure = build('figure')
         h.append(figure)
         for c in x:

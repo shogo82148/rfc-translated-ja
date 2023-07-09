@@ -229,7 +229,7 @@ sub handle_section_toc($section) {
     print '</xref>';
     print "</t>\n";
 
-    if (my @subsections = grep {$_->{type} =~ /^(?:section|appendix)$/} @{$section->{contents}}) {
+    if (my @subsections = grep {$_->{type} =~ /^(?:section|appendix|references)$/} @{$section->{contents}}) {
         print '  ' x ($level+5);
         print '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
         print "\n";
@@ -590,6 +590,9 @@ if (@table_of_contents) {
     say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
     for my $section(@{$root->{contents}}) {
         handle_section_toc($section);
+    }
+    for my $references(@{$referencesRoot->{contents}}) {
+        handle_section_toc($references);
     }
     for my $section(@{$appendix_root->{contents}}) {
         handle_section_toc($section);

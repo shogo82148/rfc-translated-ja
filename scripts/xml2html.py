@@ -573,10 +573,6 @@ class HtmlWriter:
             p.text = x.text
         for c in x:
             ret = self.render1(p, c)
-            if c.text:
-                ret.text = c.text
-            if c.tail:
-                ret.tail = c.tail
         return p
 
     # <xref>
@@ -585,7 +581,7 @@ class HtmlWriter:
         format  = x.get('format')
         section = x.get('section')
         relative= x.get('relative')
-        reftext = x.get('derivedContent', '')
+        reftext = x.get('derivedContent', '') or x.text
         in_name = len(list(x.iterancestors('name'))) > 0
         content = ''.join(x.itertext()).strip()
         if not (section or relative):
@@ -599,6 +595,7 @@ class HtmlWriter:
                 span.append(a)
                 a.text = reftext
                 a.tail = ']'
+                span.tail = x.tail
                 return span
             else:
                 # e.g. Table 1
@@ -650,12 +647,16 @@ class HtmlWriter:
                 a2 = build('a', href=link)
                 a2.text = '%s %s' % (label, section)
                 span.append(a2)
+                span.tail = x.tail
                 return span
             elif format == 'parens':
                 pass # TODO
             elif format == 'bare':
                 pass # TODO
+
             a = build('a', href='#%s-%s'%(target, self.lang))
+            a.text = reftext
+            a.tail = x.tail
             h.append(a)
             return a
 
@@ -864,16 +865,16 @@ class HtmlWriter:
         type = x.get('type')
         align = x.get('align', 'left')
 
+        div = build('div', lang='')
+        h.append(div)
         if type not in ['svg', 'binary-art']:
             text = x.text + ''.join(c.tail for c in x)
             text = text.expandtabs()
             text = '\n'.join(l.rstrip() for l in text.split('\n'))
             pre = build('pre')
             pre.text = text
-            div = build('div', lang='')
             div.append(pre)
-            h.append(div)
-            return div
+        return div
 
     def render1_figure(self, h, x):
         figure = build('figure')

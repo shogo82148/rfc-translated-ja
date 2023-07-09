@@ -4,6 +4,9 @@ use v5.36;
 use utf8;
 use JSON qw(decode_json);
 
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
 my $number = $ARGV[0];
 
 sub slurp($file) {
@@ -34,6 +37,7 @@ sub parseSectionName($s) {
     return +{
         anchor => $slugified_name,
         pn => "section-$number",
+        number => $number,
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
         name => $name,
@@ -74,6 +78,38 @@ sub parseReference($s) {
     };
 }
 
+# セクションの目次を表示
+sub handle_section_toc($section) {
+    my $title = $section->{title};
+    my $level = $title->{level};
+    print '  ' x ($level+4);
+    print '<li pn="section-toc.1-1.' . $title->{number} . '">' . "\n";
+
+    print '  ' x ($level+5);
+    print '<t indent="0" keepWithNext="true" pn="section-toc.1-1.' . $title->{number} . '.1">';
+    print '<xref derivedContent="' . $title->{number} . '" format="counter" sectionFormat="of" target="'. $title->{pn} .'"/>';
+    print '.  ';
+    print '<xref derivedContent="" format="title" sectionFormat="of" target="' . escape($title->{slugified_name}) .'">';
+    print escape($title->{name});
+    print '</xref>';
+    print "</t>\n";
+
+    if (my @subsections = grep {$_->{type} eq 'section'} @{$section->{contents}}) {
+        print '  ' x ($level+5);
+        print '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
+        print "\n";
+        for my $subsection(@subsections) {
+            handle_section_toc($subsection);
+        }
+        print '  ' x ($level+5);
+        print "</ul>\n";
+    }
+
+    print '  ' x ($level+4);
+    print "</li>\n";
+}
+
+# セクションを表示
 sub handle_section($section) {
     my $title = $section->{title};
     my $level = $title->{level};
@@ -356,38 +392,45 @@ for my $i(0..$#abstract) {
     say '      <t indent="0" pn="section-abstract-' . ($i + 1) . '">' . escape($abstract[$i]) . '</t>';
 }
 say '    </abstract>';
-say "  </front>";
 
 # boilerplate
 say "    <boilerplate>";
 
 # Status of This Memo
-say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
-say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
-for my $i(0..$#statusOfThisMemo) {
-    say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . escape($statusOfThisMemo[$i]) . '</t>';
+if (@statusOfThisMemo) {
+    say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
+    say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
+    for my $i(0..$#statusOfThisMemo) {
+        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . escape($statusOfThisMemo[$i]) . '</t>';
+    }
+    say '      </section>';
 }
-say '      </section>';
 
 # Copyright
-say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
-say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
-for my $i(0..$#copyrightNotice) {
-    say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
+if (@copyrightNotice) {
+    say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
+    say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
+    for my $i(0..$#copyrightNotice) {
+        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
+    }
+    say '      </section>';
 }
-say '      </section>';
 say "    </boilerplate>";
 
-if (@tableOfContents) {
-    # TODO: Table of Contents
-    # say '    <toc>';
-    # say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
-    # say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
-
-    # say '      </section>';
-    # say '    </toc>';
+# 目次
+say '    <toc>';
+say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
+say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
+say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
+for my $section(@{$root->{contents}}) {
+    handle_section_toc($section);
 }
+say '      </ul>';
+say '      </section>';
+say '    </toc>';
 
+# End of Front
+say "  </front>";
 
 # MIDDLE
 say '  <middle>';

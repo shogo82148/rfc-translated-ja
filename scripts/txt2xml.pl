@@ -488,7 +488,7 @@ for my $content(@contents) {
 
     if ($context eq "Abstract") {
         push @abstract, $content;
-    } elsif ($context eq "Status of This Memo") {
+    } elsif ($context =~ /Status of This Memo/i) {
         push @statusOfThisMemo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
         push @copyrightNotice, parseT($content);

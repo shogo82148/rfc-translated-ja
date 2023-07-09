@@ -376,8 +376,8 @@ my @table_of_contents = ();
 my @acknowledgements = ();
 
 # 参考文献
-my $referencesRoot = {
-    type => "referencesRoot",
+my $references_root = {
+    type => "references_root",
     parent => undef,
     level => 0,
 };
@@ -420,8 +420,8 @@ for my $content(@contents) {
                 contents => [],
             };
             if ($title->{level} == 1) {
-                push @{$referencesRoot->{contents}}, $new_references;
-                $new_references->{parent} = $referencesRoot;
+                push @{$references_root->{contents}}, $new_references;
+                $new_references->{parent} = $references_root;
             } else {
                 my $parent = $current_references;
                 while ($parent->{title}->{level} >= $title->{level}) {
@@ -591,7 +591,7 @@ if (@table_of_contents) {
     for my $section(@{$root->{contents}}) {
         handle_section_toc($section);
     }
-    for my $references(@{$referencesRoot->{contents}}) {
+    for my $references(@{$references_root->{contents}}) {
         handle_section_toc($references);
     }
     for my $section(@{$appendix_root->{contents}}) {
@@ -621,7 +621,7 @@ say '  </middle>';
 # BACK
 say '  <back>';
 # References
-for my $references(@{$referencesRoot->{contents}}) {
+for my $references(@{$references_root->{contents}}) {
     handle_references($references);
 }
 

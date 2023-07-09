@@ -24,6 +24,12 @@ sub escape($s) {
     return $s;
 }
 
+sub appendix_number($n) {
+    my $a = "a";
+    $a++ for 1..$n;
+    return $a;
+}
+
 sub parseSectionName($s) {
     unless($s =~ /^((?:\d+[.])+)\s+(.+)$/) {
         die "invalid section name: $s";
@@ -589,8 +595,9 @@ if (@tableOfContents) {
         handle_section_toc($section);
     }
     if (@acknowledgements) {
-        say '          <li pn="section-toc.1-1-1">';
-        say '            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
+        my $num = appendix_number(scalar(@{$appendix_root->{contents}}));
+        say '          <li pn="section-toc.1-1.' . $num . '">';
+        say '            <t indent="0" pn="section-toc.1-1.' . $num . '.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.' . $num . '"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
         say '          </li>';
     }
     say '      </ul>';
@@ -622,10 +629,11 @@ for my $appendix(@{$appendix_root->{contents}}) {
 
 # Acknowledgements
 if (@acknowledgements) {
-    print '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">' . "\n";
+    my $num = appendix_number(scalar(@{$appendix_root->{contents}}));
+    print '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.' . $num . '">' . "\n";
     print '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
     for my $i(0..$#acknowledgements) {
-        say '        <t indent="0" pn="section-appendix.a-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
+        say '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
     }
     say '      </section>';
 }

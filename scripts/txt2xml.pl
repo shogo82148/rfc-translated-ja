@@ -372,7 +372,7 @@ shift @contents; # タイトルを削除
 my @abstract = ();
 my @status_of_this_memo = ();
 my @copyright_notice = ();
-my @tableOfContents = ();
+my @table_of_contents = ();
 my @acknowledgements = ();
 
 # 参考文献
@@ -493,7 +493,7 @@ for my $content(@contents) {
     } elsif ($context eq "Copyright Notice") {
         push @copyright_notice, parseT($content);
     } elsif ($context eq "Table of Contents") {
-        push @tableOfContents, $content;
+        push @table_of_contents, $content;
     } elsif ($context eq "Acknowledgements") {
         push @acknowledgements, parseT($content);
     } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
@@ -583,7 +583,7 @@ if (@copyright_notice) {
 say "    </boilerplate>";
 
 # 目次
-if (@tableOfContents) {
+if (@table_of_contents) {
     say '    <toc>';
     say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
     say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';

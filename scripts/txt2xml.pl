@@ -71,7 +71,7 @@ sub parse_appendix_name($s) {
     };
 }
 
-sub parseReference($s) {
+sub parse_reference($s) {
     $s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")();
     my $anchor = $1;
     my $authors = $2;
@@ -500,7 +500,7 @@ for my $content(@contents) {
         # 解析が大変なのでギブアップ
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
         $content =~ s/\s+/ /g;
-        push @{$current_references->{contents}}, parseReference($content);
+        push @{$current_references->{contents}}, parse_reference($content);
     } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
         push @{$current_appendix->{contents}}, {
             type => "t",

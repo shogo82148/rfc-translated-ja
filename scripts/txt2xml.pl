@@ -30,7 +30,7 @@ sub appendix_number($n) {
     return $a;
 }
 
-sub parseSectionName($s) {
+sub parse_section_name($s) {
     unless($s =~ /^((?:\d+[.])+)\s+(.+)$/) {
         die "invalid section name: $s";
     }
@@ -413,7 +413,7 @@ for my $content(@contents) {
         $context = $content;
 
         if ($context =~ /(:?Normative\s|Informative\s)?References/) {
-            my $title = parseSectionName($context);
+            my $title = parse_section_name($context);
             my $new_references = +{
                 type => "references",
                 title => $title,
@@ -452,7 +452,7 @@ for my $content(@contents) {
             $current_appendix = $new_appendix;
         } elsif ($context =~ /^\d+[.]/) {
             my @contents = split /\s\s\s/, $context, 2;
-            my $title = parseSectionName(shift @contents);
+            my $title = parse_section_name(shift @contents);
             my $new_section = +{
                 type => "section",
                 title => $title,

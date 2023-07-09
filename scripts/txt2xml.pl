@@ -100,6 +100,14 @@ sub parseReference($s) {
 }
 
 sub parseT($s) {
+    if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{3}/) {
+        # 整形済みテキスト
+        my $ret = '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
+        $ret .= "$s\n";
+        $ret .= ']]></artwork>' . "\n";
+        return $ret;
+    }
+
     $s = escape($s);
     $s =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
 

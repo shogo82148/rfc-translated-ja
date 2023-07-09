@@ -66,7 +66,7 @@ sub parseAppendixName($s) {
 }
 
 sub parseReference($s) {
-    $s =~ s(^\[([^]]+)\] ([^"]*)"([^"]+)")();
+    $s =~ s(^\[([^\]\s]+)\] ([^"]*)"([^"]+)")();
     my $anchor = $1;
     my $authors = $2;
     my $title = $3;
@@ -167,7 +167,7 @@ sub parseT($s) {
     }
 
     # 参照
-    $s =~ s((?:Section\s+([0-9.]+)\s+of\s+)?\[([^\]]+)\](?:,\s+Section\s+([0-9.]))?)(format_reference($1, $2, $3))eg;
+    $s =~ s((?:Section\s+([0-9.]+)\s+of\s+)?\[([^\]\s]+)\](?:,\s+Section\s+([0-9.]))?)(format_reference($1, $2, $3))eg;
 
     return $s;
 }

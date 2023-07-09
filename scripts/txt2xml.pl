@@ -30,7 +30,7 @@ sub appendix_number($n) {
     return $a;
 }
 
-sub parseSectionName($s) {
+sub parse_section_name($s) {
     unless($s =~ /^((?:\d+[.])+)\s+(.+)$/) {
         die "invalid section name: $s";
     }
@@ -50,7 +50,7 @@ sub parseSectionName($s) {
     };
 }
 
-sub parseAppendixName($s) {
+sub parse_appendix_name($s) {
     unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.])*)\s+(.+)$/) {
         die "invalid appendix name: $s";
     }
@@ -71,7 +71,7 @@ sub parseAppendixName($s) {
     };
 }
 
-sub parseReference($s) {
+sub parse_reference($s) {
     $s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")();
     my $anchor = $1;
     my $authors = $2;
@@ -370,14 +370,14 @@ shift @contents; # タイトルを削除
 
 # 特別なセクション
 my @abstract = ();
-my @statusOfThisMemo = ();
-my @copyrightNotice = ();
-my @tableOfContents = ();
+my @status_of_this_memo = ();
+my @copyright_notice = ();
+my @table_of_contents = ();
 my @acknowledgements = ();
 
 # 参考文献
-my $referencesRoot = {
-    type => "referencesRoot",
+my $references_root = {
+    type => "references_root",
     parent => undef,
     level => 0,
 };
@@ -413,15 +413,15 @@ for my $content(@contents) {
         $context = $content;
 
         if ($context =~ /(:?Normative\s|Informative\s)?References/) {
-            my $title = parseSectionName($context);
+            my $title = parse_section_name($context);
             my $new_references = +{
                 type => "references",
                 title => $title,
                 contents => [],
             };
             if ($title->{level} == 1) {
-                push @{$referencesRoot->{contents}}, $new_references;
-                $new_references->{parent} = $referencesRoot;
+                push @{$references_root->{contents}}, $new_references;
+                $new_references->{parent} = $references_root;
             } else {
                 my $parent = $current_references;
                 while ($parent->{title}->{level} >= $title->{level}) {
@@ -432,7 +432,7 @@ for my $content(@contents) {
             }
             $current_references = $new_references;
         } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
-            my $title = parseAppendixName($context);
+            my $title = parse_appendix_name($context);
             my $new_appendix = +{
                 type => "appendix",
                 title => $title,
@@ -452,7 +452,7 @@ for my $content(@contents) {
             $current_appendix = $new_appendix;
         } elsif ($context =~ /^\d+[.]/) {
             my @contents = split /\s\s\s/, $context, 2;
-            my $title = parseSectionName(shift @contents);
+            my $title = parse_section_name(shift @contents);
             my $new_section = +{
                 type => "section",
                 title => $title,
@@ -489,18 +489,18 @@ for my $content(@contents) {
     if ($context eq "Abstract") {
         push @abstract, $content;
     } elsif ($context =~ /Status of This Memo/i) {
-        push @statusOfThisMemo, parseT($content);
+        push @status_of_this_memo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
-        push @copyrightNotice, parseT($content);
+        push @copyright_notice, parseT($content);
     } elsif ($context eq "Table of Contents") {
-        push @tableOfContents, $content;
+        push @table_of_contents, $content;
     } elsif ($context eq "Acknowledgements") {
         push @acknowledgements, parseT($content);
     } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
         # 解析が大変なのでギブアップ
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
         $content =~ s/\s+/ /g;
-        push @{$current_references->{contents}}, parseReference($content);
+        push @{$current_references->{contents}}, parse_reference($content);
     } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
         push @{$current_appendix->{contents}}, {
             type => "t",
@@ -562,28 +562,28 @@ say '    </abstract>';
 say "    <boilerplate>";
 
 # Status of This Memo
-if (@statusOfThisMemo) {
+if (@status_of_this_memo) {
     say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
     say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
-    for my $i(0..$#statusOfThisMemo) {
-        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $statusOfThisMemo[$i] . '</t>';
+    for my $i(0..$#status_of_this_memo) {
+        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $status_of_this_memo[$i] . '</t>';
     }
     say '      </section>';
 }
 
 # Copyright
-if (@copyrightNotice) {
+if (@copyright_notice) {
     say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
     say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
-    for my $i(0..$#copyrightNotice) {
-        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyrightNotice[$i] . '</t>';
+    for my $i(0..$#copyright_notice) {
+        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyright_notice[$i] . '</t>';
     }
     say '      </section>';
 }
 say "    </boilerplate>";
 
 # 目次
-if (@tableOfContents) {
+if (@table_of_contents) {
     say '    <toc>';
     say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
     say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
@@ -591,7 +591,7 @@ if (@tableOfContents) {
     for my $section(@{$root->{contents}}) {
         handle_section_toc($section);
     }
-    for my $references(@{$referencesRoot->{contents}}) {
+    for my $references(@{$references_root->{contents}}) {
         handle_section_toc($references);
     }
     for my $section(@{$appendix_root->{contents}}) {
@@ -621,7 +621,7 @@ say '  </middle>';
 # BACK
 say '  <back>';
 # References
-for my $references(@{$referencesRoot->{contents}}) {
+for my $references(@{$references_root->{contents}}) {
     handle_references($references);
 }
 

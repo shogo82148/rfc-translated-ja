@@ -204,6 +204,7 @@ my @abstract = ();
 my @statusOfThisMemo = ();
 my @copyrightNotice = ();
 my @tableOfContents = ();
+my @acknowledgements = ();
 
 # 参考文献
 my $referencesRoot = {
@@ -298,6 +299,7 @@ for my $content(@contents) {
     } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
     } elsif ($context eq "Acknowledgements") {
+        push @acknowledgements, $content;
     } elsif ($context eq "Author's Address") {
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
         $content =~ s/\s+/ /g;
@@ -364,7 +366,7 @@ say '      </section>';
 say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
 say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
 for my $i(0..$#copyrightNotice) {
-    say '        <t indent="0" pn="section-boilerplate.2.' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
+    say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
 }
 say '      </section>';
 say "    </boilerplate>";
@@ -393,6 +395,17 @@ say '  <back>';
 for my $references(@{$referencesRoot->{contents}}) {
     handle_references($references);
 }
+
+# Acknowledgements
+if (@acknowledgements) {
+    print '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">' . "\n";
+    print '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
+    for my $i(0..$#acknowledgements) {
+        say '        <t indent="0" pn="section-appendix.a-' . ($i + 1) . '">' . escape($acknowledgements[$i]) . '</t>';
+    }
+    say '      </section>';
+}
+
 say '  </back>';
 
 # end of RFC

@@ -61,11 +61,13 @@ for my $content(@contents) {
     $content =~ s/^\s\s\s//mg;
     if ($context eq "Abstract") {
         push @abstract, $content;
-    } elsif ($content eq "Status of This Memo") {
+    } elsif ($context eq "Status of This Memo") {
         push @statusOfThisMemo, $content;
-    } elsif ($content eq "Table of Contents") {
+    } elsif ($context eq "Copyright Notice") {
+        push @copyrightNotice, $content;
+    } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
-    } elsif ($content eq "Appendix") {
+    } elsif ($context eq "Appendix") {
         push @appendix, $content;
     }
 }
@@ -96,8 +98,38 @@ if ($meta->{doi}) {
 say "  <front>";
 say "    <title>" . escape($meta->{title}) . "</title>";
 say '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="IETF"/>';
+# TODO: Author
+# TODO: Date
+# TODO: Area
+# TODO: Workgroup
+
+# Abstract
+say '    <abstract pn="section-abstract">';
+for my $i(0..$#abstract) {
+    say '      <t indent="0" pn="section-abstract-' . ($i + 1) . '">' . escape($abstract[$i]) . '</t>';
+}
+say '    </abstract>';
 say "  </front>";
 
+# boilerplate
+say "    <boilerplate>";
+
+# Status of This Memo
+say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
+say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
+for my $i(0..$#statusOfThisMemo) {
+    say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . escape($statusOfThisMemo[$i]) . '</t>';
+}
+say '      </section>';
+
+# Copyright
+say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
+say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
+for my $i(0..$#copyrightNotice) {
+    say '        <t indent="0" pn="section-boilerplate.2.' . ($i + 1) . '">' . escape($copyrightNotice[$i]) . '</t>';
+}
+say '      </section>';
+say "    </boilerplate>";
 say "</rfc>";
 
 1;

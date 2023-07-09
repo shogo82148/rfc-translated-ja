@@ -29,9 +29,9 @@ src/en/rfc8941.xml: src/rfcs/rfc8941.xml
 	cp $< $@
 docs/rfc8174.html: src/en/rfc8174.xml src/ja/rfc8174.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 8174
-src/en/rfc8174.xml: src/rfcs/rfc8174.xml
-	cp $< $@
+src/en/rfc8174.xml: src/rfcs/rfc8174.txt scripts/txt2xml.pl
+	scripts/txt2xml.pl 8174 > $@
 docs/rfc2119.html: src/en/rfc2119.xml src/ja/rfc2119.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 2119
-src/en/rfc2119.xml: src/rfcs/rfc2119.xml
-	cp $< $@
+src/en/rfc2119.xml: src/rfcs/rfc2119.txt scripts/txt2xml.pl
+	scripts/txt2xml.pl 2119 > $@

@@ -51,6 +51,18 @@ sub parseReference($s) {
     my $year = $2;
     my $target = $3;
 
+    my @series_info;
+    for my $info(split /,/, $s) {
+        $info =~ s/^\s+//;
+        $info =~ s/\s+$//;
+        if ($info =~ m(^(DOI|RFC|BCP|Internet-Draft|STD|IEEE|ISO/IEC|ITU-T Recommendation|FIPS PUB) (.*)$)) {
+            push @series_info, +{
+                name => $1,
+                value => $2,
+            };
+        }
+    }
+
     return +{
         type => "reference",
         anchor => $anchor,
@@ -58,6 +70,7 @@ sub parseReference($s) {
         month => $month,
         year => $year,
         target => $target,
+        series_info => [@series_info],
     };
 }
 
@@ -141,6 +154,12 @@ sub handle_references($references) {
 
             print '  ' x ($level+3);
             print "</front>\n";
+
+            # series Info
+            for my $info(@{$content->{series_info}}) {
+                print '  ' x ($level+3);
+                printf "<seriesInfo name=\"%s\">%s</seriesInfo>\n", escape($info->{name}), escape($info->{value});
+            }
 
             print '  ' x ($level+2);
             print "</reference>\n";

@@ -40,6 +40,27 @@ sub parseSectionName($s) {
     };
 }
 
+sub parseReference($s) {
+    $s =~ s(^\[([^]]+)\] ([^"]*)"([^"]+)")();
+    my $anchor = $1;
+    my $authors = $2;
+    my $title = $3;
+
+    $s =~ s((?:, (?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+))?(?:, <([^>]*)>)?[.]$)();
+    my $month = $1;
+    my $year = $2;
+    my $target = $3;
+
+    return +{
+        type => "reference",
+        anchor => $anchor,
+        title => $title,
+        month => $month,
+        year => $year,
+        target => $target,
+    };
+}
+
 sub handle_section($section) {
     my $title = $section->{title};
     my $level = $title->{level};
@@ -80,6 +101,40 @@ sub handle_section($section) {
     say '</section>';
 }
 
+sub handle_references($references) {
+    my $title = $references->{title};
+    my $level = $title->{level};
+    print '  ' x ($level+1);
+    say '<references pn="' . escape($title->{pn}) . '">';
+    print '  ' x ($level+2);
+    printf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
+    print "\n";
+
+    for my $content(@{$references->{contents}}) {
+        if ($content->{type} eq 'reference') {
+            print '  ' x ($level+2);
+            print '<reference';
+            print ' anchor="' . escape($content->{anchor}) . '"';
+            if ($content->{target}) {
+                print ' target="' . escape($content->{target}) . '"';
+            }
+            print ' quoteTitle="true"';
+            print ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            print ">\n";
+
+            print '  ' x ($level+2);
+            print "</reference>\n";
+        } elsif ($content->{type} eq 'references') {
+            handle_references($content);
+        } else {
+            die "unknown content type: $content->{type}";
+        }
+    }
+
+    print '  ' x ($level+1);
+    print "</references>\n";
+}
+
 my $content = slurp("src/rfcs/rfc$number.txt");
 my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 
@@ -110,7 +165,14 @@ my @abstract = ();
 my @statusOfThisMemo = ();
 my @copyrightNotice = ();
 my @tableOfContents = ();
-my @appendixes = ();
+
+# 参考文献
+my $referencesRoot = {
+    type => "referencesRoot",
+    parent => undef,
+    level => 0,
+};
+my $current_references = undef;
 
 # 通常セクション
 my $root = {
@@ -133,7 +195,26 @@ for my $content(@contents) {
         # 概要・目次・セクション等の開始
         $context = $content;
 
-        if ($context =~ /^\d+[.]/) {
+        if ($context =~ /(:?Normative\s|Informative\s)?References/) {
+            my $title = parseSectionName($context);
+            my $new_references = +{
+                type => "references",
+                title => $title,
+                contents => [],
+            };
+            if ($title->{level} == 1) {
+                push @{$referencesRoot->{contents}}, $new_references;
+                $new_references->{parent} = $referencesRoot;
+            } else {
+                my $parent = $current_references;
+                while ($parent->{title}->{level} >= $title->{level}) {
+                    $parent = $parent->{parent};
+                }
+                push @{$parent->{contents}}, $new_references;
+                $new_references->{parent} = $parent;
+            }
+            $current_references = $new_references;
+        } elsif ($context =~ /^\d+[.]/) {
             my @contents = split /\s\s\s/, $context, 2;
             my $title = parseSectionName(shift @contents);
             my $new_section = +{
@@ -177,6 +258,11 @@ for my $content(@contents) {
         push @copyrightNotice, $content;
     } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
+    } elsif ($context eq "Acknowledgements") {
+    } elsif ($context eq "Author's Address") {
+    } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
+        $content =~ s/\s+/ /g;
+        push @{$current_references->{contents}}, parseReference($content);
     } elsif ($context =~ /^\d+[.]/) {
         push @{$current_section->{contents}}, {
             type => "t",
@@ -264,6 +350,10 @@ say '  </middle>';
 
 # BACK
 say '  <back>';
+# References
+for my $references(@{$referencesRoot->{contents}}) {
+    handle_references($references);
+}
 say '  </back>';
 
 # end of RFC

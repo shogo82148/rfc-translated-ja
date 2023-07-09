@@ -50,7 +50,7 @@ sub parse_section_name($s) {
     };
 }
 
-sub parseAppendixName($s) {
+sub parse_appendix_name($s) {
     unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.])*)\s+(.+)$/) {
         die "invalid appendix name: $s";
     }
@@ -432,7 +432,7 @@ for my $content(@contents) {
             }
             $current_references = $new_references;
         } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
-            my $title = parseAppendixName($context);
+            my $title = parse_appendix_name($context);
             my $new_appendix = +{
                 type => "appendix",
                 title => $title,

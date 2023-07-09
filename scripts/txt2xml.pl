@@ -63,6 +63,10 @@ sub handle_section($section) {
             print '  ' x ($level+2);
             print '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
             my $content = escape($content->{content});
+
+            # BCP 14のキーワードを置換
+            $content =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
+
             print $content;
             print "</t>\n";
         } elsif ($content->{type} eq "section") {

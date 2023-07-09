@@ -145,7 +145,37 @@ sub parseT($s) {
         return $ret;
     }
 
+    # 参照
+    $s =~ s((?:Section ([0-9.]+) of )?\[([^\]]+)\](?:, Section ([0-9.]))?)(format_reference($1, $2, $3))eg;
+
     return $s;
+}
+
+sub format_reference($section_of, $ref, $section_comma) {
+    if ($ref =~ /^RFC(\d+)$/) {
+        # RFCのリンクはわかっているので、該当セクションへのリンクを生成する
+        if ($section_of) {
+            my $number = $1;
+            my $link = sprintf("https://www.rfc-editor.org/rfc/rfc%d#section-%s", 0+$number, $section_of);
+            return sprintf('<xref target="%s" section="%s" format="default" sectionFormat="of" derivedLink="%s" derivedContent="%s"/>', $ref, $section_of, $link, $ref);
+        }
+        if ($section_comma) {
+            my $number = $1;
+            my $link = sprintf("https://www.rfc-editor.org/rfc/rfc%d#section-%s", 0+$number, $section_comma);
+            return sprintf('<xref target="%s" section="%s" format="default" sectionFormat="comma" derivedLink="%s" derivedContent="%s"/>', $ref, $section_comma, $link, $ref);
+        }
+
+        return sprintf('<xref target="%s" format="default" sectionFormat="of" derivedContent="%s"/>', $ref, $ref);
+    }
+
+    # リンクがわからないので、文字列にフォールバック
+    if ($section_of) {
+        return sprintf('Section %s of <xref target="%s" format="default" sectionFormat="of" derivedContent="%s"/>', $section_of, $ref, $ref);
+    }
+    if ($section_comma) {
+        return sprintf('<xref target="%s" format="default" sectionFormat="comma" derivedContent="%s"/>, Section %s', $ref, $ref, $section_comma);
+    }
+    return sprintf('<xref target="%s" format="default" sectionFormat="of" derivedContent="%s"/>', $ref, $ref);
 }
 
 # セクションの目次を表示

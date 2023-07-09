@@ -146,7 +146,7 @@ sub parseT($s) {
     }
 
     # 参照
-    $s =~ s((?:Section ([0-9.]+) of )?\[([^\]]+)\](?:, Section ([0-9.]))?)(format_reference($1, $2, $3))eg;
+    $s =~ s((?:Section\s+([0-9.]+)\s+of\s+)?\[([^\]]+)\](?:,\s+Section\s+([0-9.]))?)(format_reference($1, $2, $3))eg;
 
     return $s;
 }

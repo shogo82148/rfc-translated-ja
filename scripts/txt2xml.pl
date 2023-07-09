@@ -21,6 +21,57 @@ sub escape($s) {
     return $s;
 }
 
+sub parseSectionName($s) {
+    unless($s =~ /^((?:\d+[.])+)\s+(.+)$/) {
+        die "invalid section name: $s";
+    }
+    my $number = $1;
+    my $name = $2;
+
+    $number =~ s/[.]$//; # 末尾のピリオドを削除
+    my @numbers = split /[.]/, $number;
+    my $slugified_name = lc($name =~ s/\s+/-/gr);
+    return +{
+        anchor => $slugified_name,
+        pn => "section-$number",
+        level => scalar(@numbers),
+        slugified_name => "name-$slugified_name",
+        name => $name,
+    };
+}
+
+sub handle_section($section) {
+    my $title = $section->{title};
+    my $level = $title->{level};
+    print '  ' x ($level+1);
+    print '<section';
+    print ' anchor="' . escape($title->{anchor}) . '"';
+    print ' numbered="true" removeInRFC="false" toc="include"';
+    print ' pn="' . escape($title->{pn}) . '"';
+    print ">\n";
+
+    # name
+    print '  ' x ($level+2);
+    printf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
+    print "\n";
+
+    # contents
+    for my $content(@{$section->{contents}}) {
+        if ($content->{type} eq "t") {
+            print '  ' x ($level+2);
+            print '<t>' . escape($content->{content}) . '</t>';
+            print "\n";
+        } elsif ($content->{type} eq "section") {
+            handle_section($content);
+        } else {
+            die "unknown content type: $content->{type}";
+        }
+    }
+
+    print '  ' x ($level+1);
+    say '</section>';
+}
+
 my $content = slurp("src/rfcs/rfc$number.txt");
 my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 
@@ -46,19 +97,62 @@ $content =~ s/\n\s*\n(\s*\n)*/\n\n/g; # 連続する空行を1行にまとめる
 shift @contents; # ドキュメントヘッダーを削除
 shift @contents; # タイトルを削除
 
+# 特別なセクション
 my @abstract = ();
 my @statusOfThisMemo = ();
 my @copyrightNotice = ();
 my @tableOfContents = ();
-my @appendix = ();
+my @appendixes = ();
+
+# 通常セクション
+my $root = {
+    type => "root",
+    parent => undef,
+    title => {
+        anchor => "root",
+        pn => "section-root",
+        level => 0,
+        slugified_name => "name-root",
+        name => "root",
+    },
+    contents => [],
+};
+my $current_section = undef;
 
 my $context = "";
 for my $content(@contents) {
     if ($content !~ /^\s+/) {
+        # 概要・目次・セクション等の開始
         $context = $content;
+
+        if ($context =~ /^\d+[.]/) {
+            my $title = parseSectionName($content);
+            my $new_section = +{
+                type => "section",
+                title => $title,
+                contents => [],
+            };
+            if ($title->{level} == 1) {
+                push @{$root->{contents}}, $new_section;
+                $new_section->{parent} = $root;
+            } else {
+                my $parent = $current_section;
+                while ($parent->{title}->{level} >= $title->{level}) {
+                    $parent = $parent->{parent};
+                }
+                $parent->{contents} = [] unless $parent->{contents};
+                push @{$parent->{contents}}, $new_section;
+                $new_section->{parent} = $parent;
+            }
+            $current_section = $new_section;
+        }
         next;
     }
+
+    # セクションの内容
+    # 各行の先頭の空白を削除
     $content =~ s/^\s\s\s//mg;
+
     if ($context eq "Abstract") {
         push @abstract, $content;
     } elsif ($context eq "Status of This Memo") {
@@ -67,8 +161,11 @@ for my $content(@contents) {
         push @copyrightNotice, $content;
     } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
-    } elsif ($context eq "Appendix") {
-        push @appendix, $content;
+    } elsif ($context =~ /^\d+[.]/) {
+        push @{$current_section->{contents}}, {
+            type => "t",
+            content => $content,
+        };
     }
 }
 
@@ -130,6 +227,30 @@ for my $i(0..$#copyrightNotice) {
 }
 say '      </section>';
 say "    </boilerplate>";
+
+if (@tableOfContents) {
+    # TODO: Table of Contents
+    # say '    <toc>';
+    # say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
+    # say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
+
+    # say '      </section>';
+    # say '    </toc>';
+}
+
+
+# MIDDLE
+say '  <middle>';
+for my $section(@{$root->{contents}}) {
+    handle_section($section);
+}
+say '  </middle>';
+
+# BACK
+say '  <back>';
+say '  </back>';
+
+# end of RFC
 say "</rfc>";
 
 1;

@@ -122,6 +122,16 @@ sub handle_references($references) {
             print ' derivedAnchor="' . escape($content->{anchor}) . '"';
             print ">\n";
 
+            print '  ' x ($level+3);
+            print "<front>\n";
+
+            # タイトル
+            print '  ' x ($level+4);
+            printf "<title>%s</title>\n", escape($content->{title});
+
+            print '  ' x ($level+3);
+            print "</front>\n";
+
             print '  ' x ($level+2);
             print "</reference>\n";
         } elsif ($content->{type} eq 'references') {

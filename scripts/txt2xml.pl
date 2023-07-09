@@ -371,7 +371,7 @@ shift @contents; # タイトルを削除
 # 特別なセクション
 my @abstract = ();
 my @status_of_this_memo = ();
-my @copyrightNotice = ();
+my @copyright_notice = ();
 my @tableOfContents = ();
 my @acknowledgements = ();
 
@@ -491,7 +491,7 @@ for my $content(@contents) {
     } elsif ($context =~ /Status of This Memo/i) {
         push @status_of_this_memo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
-        push @copyrightNotice, parseT($content);
+        push @copyright_notice, parseT($content);
     } elsif ($context eq "Table of Contents") {
         push @tableOfContents, $content;
     } elsif ($context eq "Acknowledgements") {
@@ -572,11 +572,11 @@ if (@status_of_this_memo) {
 }
 
 # Copyright
-if (@copyrightNotice) {
+if (@copyright_notice) {
     say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
     say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
-    for my $i(0..$#copyrightNotice) {
-        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyrightNotice[$i] . '</t>';
+    for my $i(0..$#copyright_notice) {
+        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyright_notice[$i] . '</t>';
     }
     say '      </section>';
 }

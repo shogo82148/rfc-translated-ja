@@ -8,6 +8,8 @@ sub generate_makefile(@rfc_numbers) {
     open my $fh, ">", "Makefile" or die "failed to open: %!";
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";
+
+    my @txt2xml_rfcs = ();
     for my $number(@rfc_numbers) {
         say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
         say $fh "\tscripts/xml2html.py $number";
@@ -17,7 +19,14 @@ sub generate_makefile(@rfc_numbers) {
         } else {
             say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.txt scripts/txt2xml.pl";
             say $fh "\tscripts/txt2xml.pl $number > \$\@";
+            push @txt2xml_rfcs, $number;
         }
+    }
+
+    say $fh "";
+    say $fh "update-english:";
+    for my $number(@txt2xml_rfcs) {
+        say $fh "\tscripts/txt2xml.pl $number > src/ja/rfc$number.xml";
     }
     close($fh);
 }

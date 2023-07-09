@@ -106,7 +106,7 @@ sub parse_reference($s) {
 }
 
 sub parseT($s) {
-    if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{3}/) {
+    if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{2,}/) {
         # 整形済みテキスト
         my $ret = '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
         $ret .= "$s\n";

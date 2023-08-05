@@ -22,6 +22,7 @@
 ```xml
 <bcp14>必要があります（MUST）</bcp14>
 <bcp14>しなければならない（MUST）</bcp14>
+<bcp14>べきです（SHOULD）</bcp14>
 ```
 
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

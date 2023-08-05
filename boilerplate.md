@@ -1,3 +1,5 @@
+# boilerplate
+
 ```xml
 この文書は、BCP 78およびIETFドキュメントに関するIETFトラストの法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従う必要があります。これらの文書をよく確認し、この文書に関するあなたの権利と制限を説明しています。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているSimplified BSD Licenseのテキストが含まれている必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
 ```
@@ -27,8 +29,4 @@ shown here.
 「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
 BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
 ただし、ここに示すようにすべて大文字で表示される場合に限ります。
-```
-
-```xml
-<bcp14>必要があります（MUST）</bcp14>
 ```

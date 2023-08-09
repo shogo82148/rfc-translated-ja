@@ -22,6 +22,7 @@
 ```xml
 <bcp14>必要があります（MUST）</bcp14>
 <bcp14>しなければならない（MUST）</bcp14>
+<bcp14>なりません（MUST NOT）</bcp14>
 <bcp14>べきです（SHOULD）</bcp14>
 ```
 

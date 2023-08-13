@@ -105,6 +105,22 @@ sub parse_reference($s) {
     };
 }
 
+sub parse_content($s) {
+    if ($s =~ /^o /) {
+        # リスト
+        my @items = split m/^o /m, $s;
+        shift @items; # 先頭は空文字列
+        return {
+            type => "ul",
+            content => [map {escape($_ =~ s/\s*$//r)} @items],
+        };
+    }
+
+    return {
+        type => "t",
+        content => parseT($s),
+    };
+}
 sub parseT($s) {
     if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{2,}/) {
         # 整形済みテキスト
@@ -271,6 +287,20 @@ sub handle_section($section) {
             print "</t>\n";
         } elsif ($content->{type} eq "section" || $content->{type} eq "appendix") {
             handle_section($content);
+        } elsif ($content->{type} eq "ul") {
+            $index++;
+            print '  ' x ($level+2);
+            print '<ul bare="false" empty="false" indent="3" spacing="normal" pn="' . escape("$title->{pn}-$index") . '">' . "\n";
+            my $no = 0;
+            for my $item(@{$content->{content}}) {
+                $no++;
+                print '  ' x ($level+3);
+                print '<li pn="' . escape("$title->{pn}-$index.$no") . '">';
+                print $item;
+                print "</li>\n";
+            }
+            print '  ' x ($level+2);
+            print "</ul>\n";
         } else {
             die "unknown content type: $content->{type}";
         }
@@ -465,10 +495,7 @@ for my $content(@contents) {
             };
             if (my $content = shift @contents) {
                 $content =~ s/^\s\s\s//mg;
-                push @{$new_section->{contents}}, +{
-                    type => "t",
-                    content => parseT($content),
-                };
+                push @{$new_section->{contents}}, parse_content($content);
             }
             if ($title->{level} == 1) {
                 push @{$root->{contents}}, $new_section;
@@ -507,15 +534,9 @@ for my $content(@contents) {
         $content =~ s/\s+/ /g;
         push @{$current_references->{contents}}, parse_reference($content);
     } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
-        push @{$current_appendix->{contents}}, {
-            type => "t",
-            content => parseT($content),
-        };
+        push @{$current_appendix->{contents}}, parse_content($content);
     } elsif ($context =~ /^\d+[.]/) {
-        push @{$current_section->{contents}}, {
-            type => "t",
-            content => parseT($content),
-        };
+        push @{$current_section->{contents}}, parse_content($content);
     }
 }
 

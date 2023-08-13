@@ -348,10 +348,15 @@ my @contents = split /\n\f\n/, $content;
 
 # 各ページの先頭と末尾には、ページヘッダー・フッターが入っているので削除
 @contents = map {
-    my @lines = split /\n/, $_;
-    pop @lines;
-    shift @lines;
-    join "\n", @lines;
+    my $c = $_;
+    $c =~ s/^.*\n//; # ヘッダー削除
+    $c =~ s/\n.*$//; # フッター削除
+    $c =~ s/([^.\s])\s*$/$1/; # 末尾の空白を削除
+    $c =~ s/^\n*//; # 先頭の改行を削除
+
+    $c =~ s/^((?:Appendix\s)?[A-Z0-9]+[.](?:[0-9]+[.])*\s\s)/\n$1/; # 章番号の前には改行が必要
+    $c =~ s/^(\s*[^a-zA-Z\s])/\n$1/; # アートワークの前には改行が必要
+    $c;
 } @contents;
 
 $content = join "\n", @contents;

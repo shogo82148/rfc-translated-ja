@@ -1,7 +1,7 @@
 # boilerplate
 
 ```xml
-この文書は、BCP 78およびIETFドキュメントに関するIETFトラストの法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従う必要があります。これらの文書をよく確認し、この文書に関するあなたの権利と制限を説明しています。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているSimplified BSD Licenseのテキストが含まれている必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+この文書は、BCP 78およびIETFドキュメントに関するIETFトラストの法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）にしたがう必要があります。これらの文書をよく確認し、この文書に関するあなたの権利と制限を説明しています。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているSimplified BSD Licenseのテキストが含まれている必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
 ```
 
 ## BCP14(RFC8174)

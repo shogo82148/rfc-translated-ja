@@ -377,8 +377,8 @@ my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 my @contents = split /\n\f\n/, $content;
 
 # 各ページの先頭と末尾には、ページヘッダー・フッターが入っているので削除
-@contents = map {
-    my $c = $_;
+my $last_indent = 0;
+for my $c(@contents) {
     $c =~ s/^.*\n//; # ヘッダー削除
     $c =~ s/\n.*$//; # フッター削除
     $c =~ s/([^.\s])\s*$/$1/; # 末尾の空白を削除
@@ -386,10 +386,18 @@ my @contents = split /\n\f\n/, $content;
 
     $c =~ s/^((?:Appendix\s)?[A-Z0-9]+[.](?:[0-9]+[.])*\s\s)/\n$1/; # 章番号の前には改行が必要
     $c =~ s/^Acknowledgements/\nAcknowledgements/; # 謝辞の前には改行が必要
-    $c =~ s/^(\s*o\s{2,})/\n$1/; # リストの前には改行が必要
-    $c =~ s/^(\s*[^a-zA-Z\s])/\n$1/; # アートワークの前には改行が必要
-    $c;
-} @contents;
+    $c =~ s/^(\s{3}o\s{2,})/\n$1/; # リストの前には改行が必要
+    if ($c =~ /^(\s+)/) {
+        my $current_indent = length($1);
+        if ($current_indent != $last_indent) {
+            # インデントが変わったら改行
+            $c = "\n" . $c;
+        }
+    }
+    if ($c =~ /\n+(\s+).*$/) {
+        $last_indent = length($1);
+    }
+}
 
 $content = join "\n", @contents;
 $content =~ s/^(\s*\n)*//; # 先頭の空行を削除

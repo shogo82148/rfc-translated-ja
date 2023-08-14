@@ -385,6 +385,8 @@ my @contents = split /\n\f\n/, $content;
     $c =~ s/^\n*//; # 先頭の改行を削除
 
     $c =~ s/^((?:Appendix\s)?[A-Z0-9]+[.](?:[0-9]+[.])*\s\s)/\n$1/; # 章番号の前には改行が必要
+    $c =~ s/^Acknowledgements/\nAcknowledgements/; # 謝辞の前には改行が必要
+    $c =~ s/^o /\n^o /; # リストの前には改行が必要
     $c =~ s/^(\s*[^a-zA-Z\s])/\n$1/; # アートワークの前には改行が必要
     $c;
 } @contents;

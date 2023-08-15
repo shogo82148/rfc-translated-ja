@@ -814,6 +814,12 @@ class HtmlWriter:
     def render1_em(self, h, x):
         em = build('em')
         h.append(em)
+        if x.text:
+            em.text = x.text
+        if x.tail:
+            em.tail = x.tail
+        for c in x:
+            self.render1(em, c)
         return em
 
     def render1_bcp14(self, h, x):

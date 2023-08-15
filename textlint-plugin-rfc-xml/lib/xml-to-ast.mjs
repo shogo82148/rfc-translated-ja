@@ -93,7 +93,6 @@ export function parse(xml, options) {
           raw: xml.slice(range[0], range[1]),
         };
         children.push(header);
-        console.log(header);
         return false;
       }
     }

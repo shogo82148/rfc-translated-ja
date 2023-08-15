@@ -811,6 +811,19 @@ class HtmlWriter:
         self.inline_text_renderer(td, x)
         return td
 
+    #　テレタイプテキスト
+    def render1_tt(self, h, x):
+        code = build('code')
+        h.append(code)
+        if x.text:
+            code.text = x.text
+        if x.tail:
+            code.tail = x.tail
+        for c in x:
+            self.render1(code, c)
+        return code
+
+    # 強調
     def render1_em(self, h, x):
         em = build('em')
         h.append(em)

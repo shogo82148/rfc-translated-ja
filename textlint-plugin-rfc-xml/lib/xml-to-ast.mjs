@@ -83,6 +83,18 @@ export function parse(xml, options) {
         };
         children.push(paragraph);
         return false;
+      } else if (node.tagName === "name") {
+        const { loc, range } = location(src, node);
+        const header = {
+          type: "Header",
+          children: collect_text(node),
+          loc,
+          range,
+          raw: xml.slice(range[0], range[1]),
+        };
+        children.push(header);
+        console.log(header);
+        return false;
       }
     }
     return true;

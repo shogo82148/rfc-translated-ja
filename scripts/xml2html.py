@@ -675,6 +675,7 @@ class HtmlWriter:
             if brackets == 'none':
                 a = build('a', href=target)
                 a.text = target
+                a.tail = x.tail
                 a.set('class', 'eref')
                 span = build('span')
                 span.append(a)

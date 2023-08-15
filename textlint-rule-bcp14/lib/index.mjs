@@ -37,21 +37,6 @@ export default function (context) {
       // get text from node
       const text = getSource(node);
       switch (text) {
-        case "MUST":
-        case "MUST NOT":
-        case "MUST\nNOT":
-        case "REQUIRED":
-        case "SHALL":
-        case "SHALL NOT":
-        case "SHALL\nNOT":
-        case "SHOULD":
-        case "SHOULD NOT":
-        case "SHOULD\nNOT":
-        case "RECOMMENDED":
-        case "NOT RECOMMENDED":
-        case "NOT\nRECOMMENDED":
-        case "MAY":
-        case "OPTIONAL":
         case "しなければなりません（MUST）":
         case "してはなりません（MUST NOT）":
         case "要求されています（REQUIRED）":

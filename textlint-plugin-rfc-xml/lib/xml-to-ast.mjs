@@ -40,6 +40,20 @@ export function parse(xml, options) {
   const collect_text = (node) => {
     const children = [];
     walk(node, (child) => {
+      if (child.type === "element" && child.tagName === "bcp14") {
+        const { loc, range } = location(src, child);
+        children.push({
+          type: "Strong",
+          children: collect_text({ children: child.children }),
+          loc,
+          range,
+          raw: xml.slice(range[0], range[1]),
+          properties: {
+            className: ["bcp14"],
+          },
+        });
+        return false;
+      }
       if (child.type === "text") {
         const { loc, range } = location(src, child);
         children.push({
@@ -67,7 +81,6 @@ export function parse(xml, options) {
           range,
           raw: xml.slice(range[0], range[1]),
         };
-        console.log(paragraph);
         children.push(paragraph);
         return false;
       }

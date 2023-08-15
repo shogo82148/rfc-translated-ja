@@ -811,7 +811,7 @@ class HtmlWriter:
         children = list(x)
         if children:
             for c in children:
-                self.render(h, c)
+                self.render1(h, c)
             last = h[-1]
             last.tail = last.tail.rstrip() if last.tail else ''
         else:

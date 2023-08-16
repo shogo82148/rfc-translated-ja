@@ -835,6 +835,18 @@ class HtmlWriter:
             self.render1(em, c)
         return em
 
+    # 上付き文字
+    def render1_sup(self, h, x):
+        sup = build('sup')
+        h.append(sup)
+        if x.text:
+            sup.text = x.text
+        if x.tail:
+            sup.tail = x.tail
+        for c in x:
+            self.render1(sup, c)
+        return sup
+
     def render1_bcp14(self, h, x):
         bcp14 = build('span')
         h.append(bcp14)

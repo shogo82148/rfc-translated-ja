@@ -368,6 +368,27 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 定義リスト
+    def render_dl(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
     # 順序なしリスト
     def render_ul(self, h, en, ja):
         parent = build('div')
@@ -675,6 +696,7 @@ class HtmlWriter:
             if brackets == 'none':
                 a = build('a', href=target)
                 a.text = target
+                a.tail = x.tail
                 a.set('class', 'eref')
                 span = build('span')
                 span.append(a)
@@ -789,9 +811,28 @@ class HtmlWriter:
         self.inline_text_renderer(td, x)
         return td
 
+    #　テレタイプテキスト
+    def render1_tt(self, h, x):
+        code = build('code')
+        h.append(code)
+        if x.text:
+            code.text = x.text
+        if x.tail:
+            code.tail = x.tail
+        for c in x:
+            self.render1(code, c)
+        return code
+
+    # 強調
     def render1_em(self, h, x):
         em = build('em')
         h.append(em)
+        if x.text:
+            em.text = x.text
+        if x.tail:
+            em.tail = x.tail
+        for c in x:
+            self.render1(em, c)
         return em
 
     def render1_bcp14(self, h, x):
@@ -811,12 +852,42 @@ class HtmlWriter:
         children = list(x)
         if children:
             for c in children:
-                self.render(h, c)
+                self.render1(h, c)
             last = h[-1]
             last.tail = last.tail.rstrip() if last.tail else ''
         else:
             h.text = h.text.rstrip()
         h.tail = x.tail
+
+    # 定義リスト
+    def render1_dl(self, h, x):
+        dl = build('dl')
+        h.append(dl)
+        for c in x:
+            self.render1(dl, c)
+        return dl
+
+    def render1_dt(self, h, x):
+        dt = build('dt')
+        h.append(dt)
+        if x.text:
+            dt.text = x.text
+        if x.tail:
+            dt.tail = x.tail
+        for c in x:
+            self.render1(dt, c)
+        return dt
+
+    def render1_dd(self, h, x):
+        dd = build('dd')
+        h.append(dd)
+        if x.text:
+            dd.text = x.text
+        if x.tail:
+            dd.tail = x.tail
+        for c in x:
+            self.render1(dd, c)
+        return dd
 
     # リスト
     def render1_ul(self, h, x):

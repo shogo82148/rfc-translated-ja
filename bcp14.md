@@ -24,6 +24,7 @@
 <bcp14>しなければならない（MUST）</bcp14>
 <bcp14>なりません（MUST NOT）</bcp14>
 <bcp14>べきです（SHOULD）</bcp14>
+<bcp14>場合があります（MAY）</bcp14>
 ```
 
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

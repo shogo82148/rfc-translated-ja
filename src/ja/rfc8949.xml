@@ -436,7 +436,7 @@ BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedConten
           <dd pn="section-1.2-4.16">
   データストリームをデコードし、データアイテムが受信されるたびにアプリケーションで利用可能にします。</dd>
         </dl>
-        <t indent="0" pn="section-1.2-5">Infinity、NaN（非数）、負のゼロ、およびサブノーマルなどの浮動小数点値に関する用語や概念は、<xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>で定義されています。</t>
+        <t indent="0" pn="section-1.2-5">無限大、NaN（非数）、負のゼロ、および非正規化数などの浮動小数点値に関する用語や概念は、<xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>で定義されています。</t>
         <t indent="0" pn="section-1.2-6">ビット演算やデータ型の説明において、本文書ではCプログラミング言語でお馴染みの表記法を使用しています (<xref target="C" format="default" sectionFormat="of" derivedContent="C"/>)。ただし、".."は両端を含む範囲を表し、上付き文字は累乗を表します。たとえば、2の64乗は2<sup>64</sup>と表記されます。
 この仕様書のプレーンテキスト版では、上付き文字は使用できないため、代替表記でレンダリングされます。この表記法はRFCに最適化されておらず、Cの排他的論理和と曖昧になることがあります（これは付録でのみ使用され、さらに累乗は使用されません）。プレーンテキスト版の読者は注意が必要です。</t>
         <t indent="0" pn="section-1.2-7">例と疑似コード
@@ -518,7 +518,7 @@ BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedConten
   0から2<sup>64</sup>-1までの範囲の符号なし整数。エンコードされたアイテムの値は引数自体です。たとえば、整数10は1バイトの0b000_01010（メジャータイプ0、追加情報10）として表されます。整数500は0b000_11001（メジャータイプ0、追加情報25）に続いて、10進数で500を表す2バイトの0x01f4が続きます。</dd>
           <dt pn="section-3.1-2.3">メジャータイプ1：</dt>
           <dd pn="section-3.1-2.4">
-  -2<sup>64</sup>から-1までの範囲の負の整数。アイテムの値は、引数から-1を引いたものです。たとえば、整数-500は0b001_11001（メジャータイプ1、追加情報25）に続いて、10進数で499を表す2バイトの0x01f3が続きます。</dd>
+  -2<sup>64</sup>から-1までの範囲の負の整数。アイテムの値は、-1から引数を引いたものです。たとえば、整数-500は0b001_11001（メジャータイプ1、追加情報25）に続いて、10進数で499を表す2バイトの0x01f3が続きます。</dd>
           <dt pn="section-3.1-2.5">メジャータイプ2：</dt>
           <dd pn="section-3.1-2.6">
   バイト文字列。文字列のバイト数は引数と等しい。たとえば、長さが5のバイト文字列は、初期バイトが0b010_00101（メジャータイプ2、追加情報5で長さを示す）であるバイナリコンテンツの5バイトに続きます。長さが500のバイト文字列は、長さを示すための2バイトの0x01f4に続く3つの初期バイト0b010_11001（メジャータイプ2、追加情報25）を持ち、500バイトのバイナリコンテンツが続きます。</dd>
@@ -1070,856 +1070,297 @@ base64urlとbase64の両方の場合、パディングビットはゼロに設�
       <name slugifiedName="name-serialization-consideration">Serialization Considerations</name>
       <section anchor="preferred" toc="include" numbered="true" removeInRFC="false" pn="section-4.1">
         <name slugifiedName="name-preferred-serialization">Preferred Serialization</name>
-        <t indent="0" pn="section-4.1-1">For some values at the data model level, CBOR provides multiple
-serializations.
-For many applications, it is desirable that an encoder always chooses
-a preferred serialization (preferred encoding); however, the present specification does not
-put the burden of enforcing this preference on either the encoder or decoder.</t>
-        <t indent="0" pn="section-4.1-2">Some constrained decoders may be limited in their ability to decode
-        non-preferred serializations: for example, if only integers below
-        1_000_000_000 (one billion) are expected in an application, the
-        decoder may leave out the code that would be needed to decode 64-bit
-        arguments in integers.  An encoder that always uses preferred
-        serialization ("preferred encoder") interoperates with this decoder
-        for the numbers that can occur in this application.  Generally
-        speaking, a preferred encoder is more universally interoperable (and
-        also less wasteful) than one that, say, always uses 64-bit
-        integers.</t>
-        <t indent="0" pn="section-4.1-3">Similarly, a constrained encoder may be limited in the variety of
-representation variants it supports such that it does not
-emit preferred serializations ("variant encoder"). For instance, a constrained encoder could
-be designed to
-always use the 32-bit variant for an integer that it encodes even if a
-short representation is available (assuming that there is no application need for integers that can only
-be represented with the 64-bit variant).
-A decoder that does not rely on 
-receiving only preferred serializations ("variation-tolerant decoder") can therefore be said to be more
-universally interoperable (it might very well optimize for the case of
-receiving preferred serializations, though).
-Full implementations of CBOR decoders are by definition
-variation tolerant; the distinction is only relevant if a constrained
-implementation of a CBOR decoder meets a variant encoder.</t>
-        <t indent="0" pn="section-4.1-4">The preferred serialization always uses the shortest form of
-representing the argument (<xref target="encoding" format="default" sectionFormat="of" derivedContent="Section 3"/>); it also uses the shortest
-floating-point encoding that preserves the value being encoded.</t>
-        <t indent="0" pn="section-4.1-5">The preferred serialization for a floating-point value is the shortest
-floating-point encoding that preserves its value, e.g., 0xf94580 for
-the number 5.5, and 0xfa45ad9c00 for the number 5555.5.  For NaN
-values, a shorter encoding is preferred if zero-padding the shorter
-significand towards the right reconstitutes the original NaN value
-(for many applications, the single NaN encoding 0xf97e00 will
-suffice).</t>
-        <t indent="0" pn="section-4.1-6">Definite-length encoding is preferred whenever the length is known at
-the time the serialization of the item starts.</t>
+        <t indent="0" pn="section-4.1-1">データモデルレベルの一部の値について、CBORは複数のシリアル化を提供しています。
+        多くのアプリケーションでは、エンコーダーが常に優先されるシリアル化（優先エンコーディング）を選択することが望ましいですが、この仕様書では、この優先順位をエンコーダーまたはデコーダーのどちらにも課すことはありません。</t>
+        <t indent="0" pn="section-4.1-2">いくつかの制約のあるデコーダーは、非優先シリアル化をデコードする能力に制限がある場合があります。たとえば、アプリケーションで1_000_000_000（10億）未満の整数のみが想定されている場合、デコーダーは整数の64ビット引数をデコードするために必要なコードを省略する場合があります。常に優先シリアル化（「優先エンコーダー」）を使用するエンコーダーは、このアプリケーションで発生する可能性のある数値に対してこのデコーダーと相互運用します。一般的に、優先エンコーダーは、64ビット整数を常に使用するエンコーダーよりも普遍的に相互運用可能であり（また、無駄が少ない）、より望ましいです。</t>
+        <t indent="0" pn="section-4.1-3">同様に、制約のあるエンコーダーは、優先シリアル化を出力しないように設計されることがあります（「バリアントエンコーダー」）。たとえば、制約のあるエンコーダーは、64ビットバリアントが必要ない場合でも、常に32ビットバリアントを使用するように設計されることがあります（64ビットバリアントでしか表現できない整数がアプリケーションで必要ない場合）。優先シリアル化のみを受信することを前提としないデコーダー（「バリエーショントレラントデコーダー」）は、より普遍的に相互運用可能であると言えます（ただし、優先シリアル化を受信することを最適化することもできます）。CBORデコーダーの完全な実装は、定義上、バリエーショントレラントであり、制約のあるCBORデコーダーがバリアントエンコーダーに対応する場合にのみ、この区別が重要です。</t>
+        <t indent="0" pn="section-4.1-4">優先シリアル化は、常に引数を表現する最短の形式を使用します（<xref target="encoding" format="default" sectionFormat="of" derivedContent="Section 3"/>）。また、エンコードされる値を保持する最短の浮動小数点エンコーディングも使用します。</t>
+        <t indent="0" pn="section-4.1-5">浮動小数点値の優先シリアル化は、その値を保持する最短の浮動小数点エンコーディングを使用します。たとえば、数値5.5の場合は0xf94580、数値5555.5の場合は0xfa45ad9c00が使用されます。NaN値の場合、元のNaN値を再構成するために右側に向かって短い有効桁数をゼロでパディングできる場合、より短いエンコーディングが優先されます（多くのアプリケーションでは、単一のNaNエンコーディング0xf97e00が十分です）。</t>
+        <t indent="0" pn="section-4.1-6">長さがアイテムのシリアル化が開始される時点で既知である場合、明示的長さエンコーディングが優先されます。</t>
       </section>
       <section anchor="det-enc" toc="include" numbered="true" removeInRFC="false" pn="section-4.2">
         <name slugifiedName="name-deterministically-encoded-c">Deterministically Encoded CBOR</name>
-        <t indent="0" pn="section-4.2-1">Some protocols may want encoders to only emit CBOR in a particular
-deterministic format; those protocols might also have the decoders check
-that their input is in that deterministic format. Those protocols are
-free to define what
-they mean by a "deterministic format" and what encoders and decoders are
-expected to do. This section defines a set of restrictions that can
-serve as the base of such a deterministic format.</t>
+        <t indent="0" pn="section-4.2-1">一部のプロトコルでは、エンコーダーがCBORを特定の決定論的形式でのみ出力するように要求し、デコーダーが入力がその決定論的形式であることを確認することを望む場合があります。これらのプロトコルは、「決定論的形式」とは何を意味するか、エンコーダーとデコーダーが何をすることが期待されるかを定義できます。このセクションでは、そのような決定論的形式の基礎となる一連の制限を定義しています。</t>
         <section anchor="core-det" toc="include" numbered="true" removeInRFC="false" pn="section-4.2.1">
           <name slugifiedName="name-core-deterministic-encoding">Core Deterministic Encoding Requirements</name>
-          <t indent="0" pn="section-4.2.1-1">A CBOR encoding satisfies the "core deterministic encoding requirements" if
-it satisfies the following restrictions:</t>
+          <t indent="0" pn="section-4.2.1-1">CBORエンコーディングが「コア決定論的エンコーディング要件」を満たす場合、以下の制限を満たす場合です。</t>
           <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2.1-2">
             <li pn="section-4.2.1-2.1">
-              <t indent="0" pn="section-4.2.1-2.1.1">Preferred serialization <bcp14>MUST</bcp14> be used.  In particular, this means
-that arguments (see <xref target="encoding" format="default" sectionFormat="of" derivedContent="Section 3"/>) for integers, lengths in major types
-2 through 5, and tags <bcp14>MUST</bcp14> be as short as possible, for instance:  </t>
+              <t indent="0" pn="section-4.2.1-2.1.1">優先シリアル化を使用<bcp14>しなければなりません（MUST）</bcp14>。とくに、整数の引数（<xref target="encoding" format="default" sectionFormat="of" derivedContent="Section 3"/>を参照）、メジャータイプ2から5の長さ、およびタグは、できるだけ短くする必要があります。たとえば、次のようになります。</t>
               <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2.1-2.1.2">
-                <li pn="section-4.2.1-2.1.2.1">0 to 23 and -1 to -24 <bcp14>MUST</bcp14> be expressed in the same byte as the
-major type;</li>
-                <li pn="section-4.2.1-2.1.2.2">24 to 255 and -25 to -256 <bcp14>MUST</bcp14> be expressed only with an
-additional uint8_t;</li>
-                <li pn="section-4.2.1-2.1.2.3">256 to 65535 and -257 to -65536 <bcp14>MUST</bcp14> be expressed only with an
-additional uint16_t;</li>
-                <li pn="section-4.2.1-2.1.2.4">65536 to 4294967295 and -65537 to -4294967296 <bcp14>MUST</bcp14> be expressed
-only with an additional uint32_t.</li>
+                <li pn="section-4.2.1-2.1.2.1">0から23および-1から-24は、同じバイトで表現<bcp14>しなければなりません（MUST）</bcp14>。</li>
+                <li pn="section-4.2.1-2.1.2.2">24から255および-25から-256は、追加のuint8_tでのみ表現<bcp14>しなければなりません（MUST）</bcp14>。</li>
+                <li pn="section-4.2.1-2.1.2.3">256から65535および-257から-65536は、追加のuint16_tでのみ表現<bcp14>しなければなりません（MUST）</bcp14>。</li>
+                <li pn="section-4.2.1-2.1.2.4">65536から4294967295および-65537から-4294967296は、追加のuint32_tでのみ表現<bcp14>しなければなりません（MUST）</bcp14>。</li>
               </ul>
               <t indent="0" pn="section-4.2.1-2.1.3">
-Floating-point values also <bcp14>MUST</bcp14> use the shortest form that preserves
-the value, e.g., 1.5 is encoded as 0xf93e00 (binary16) and 1000000.5 as
-0xfa49742408 (binary32).
-(One implementation of this is to have all floats start as a 64-bit
-float, then do a test conversion to a 32-bit float; if the result is
-the same numeric value, use the shorter form and repeat the process
-with a test conversion to a 16-bit float.  This also works to select
-16-bit float for positive and negative Infinity as well.)</t>
+              浮動小数点値も、値を保持する最短の形式を使用<bcp14>しなければなりません（MUST）</bcp14>。たとえば、1.5は0xf93e00（binary16）としてエンコードされ、1000000.5は0xfa49742408（binary32）としてエンコードされます。
+              （これの1つの実装方法は、すべての浮動小数点数を64ビット浮動小数点数として開始し、32ビット浮動小数点数へのテスト変換を行います。結果が同じ数値である場合、より短い形式を使用して、16ビット浮動小数点数へのテスト変換を繰り返します。これは、正のおよび負の無限大に対して16ビット浮動小数点数を選択するためにも機能します。）</t>
             </li>
-            <li pn="section-4.2.1-2.2">Indefinite-length items <bcp14>MUST NOT</bcp14> appear. They can be encoded as
-definite-length items instead.</li>
+            <li pn="section-4.2.1-2.2">不定長のアイテムは出現<bcp14>してはなりません（MUST NOT）</bcp14>。代わりに、定長のアイテムとしてエンコードします。</li>
             <li pn="section-4.2.1-2.3">
-              <t indent="0" pn="section-4.2.1-2.3.1">The keys in every map <bcp14>MUST</bcp14> be sorted in the
-              bytewise lexicographic order of their deterministic
-              encodings. For example, the following keys are sorted correctly:
-              </t>
-              <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.1-2.3.2"><li pn="section-4.2.1-2.3.2.1" derivedCounter="1.">10, encoded as 0x0a.</li>
-                <li pn="section-4.2.1-2.3.2.2" derivedCounter="2.">100, encoded as 0x1864.</li>
-                <li pn="section-4.2.1-2.3.2.3" derivedCounter="3.">-1, encoded as 0x20.</li>
-                <li pn="section-4.2.1-2.3.2.4" derivedCounter="4.">"z", encoded as 0x617a.</li>
-                <li pn="section-4.2.1-2.3.2.5" derivedCounter="5.">"aa", encoded as 0x626161.</li>
-                <li pn="section-4.2.1-2.3.2.6" derivedCounter="6.">[100], encoded as 0x811864.</li>
-                <li pn="section-4.2.1-2.3.2.7" derivedCounter="7.">[-1], encoded as 0x8120.</li>
-                <li pn="section-4.2.1-2.3.2.8" derivedCounter="8.">false, encoded as 0xf4.</li>
+              <t indent="0" pn="section-4.2.1-2.3.1">すべてのマップのキーは、その決定論的エンコーディングのバイト単位の辞書順序でソート<bcp14>しなければなりません（MUST）</bcp14>。たとえば、次のキーは正しくソートされます。</t>
+              <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.1-2.3.2">
+                <li pn="section-4.2.1-2.3.2.1" derivedCounter="1.">10は0x0aとしてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.2" derivedCounter="2.">100は0x1864としてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.3" derivedCounter="3.">-1は0x20としてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.4" derivedCounter="4.">"z"は0x617aとしてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.5" derivedCounter="5.">"aa"は0x626161としてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.6" derivedCounter="6.">[100]は0x811864としてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.7" derivedCounter="7.">[-1]は0x8120としてエンコードされます。</li>
+                <li pn="section-4.2.1-2.3.2.8" derivedCounter="8.">falseは0xf4としてエンコードされます。</li>
               </ol>
             </li>
           </ul>
           <aside pn="section-4.2.1-3">
             <t indent="0" pn="section-4.2.1-3.1">
-Implementation note: the self-delimiting nature of the CBOR
-encoding means that there are no two well-formed CBOR encoded data
-items where one is a prefix of the other.
-The bytewise lexicographic comparison of deterministic encodings of
-different map keys therefore always ends in a position where the
-byte differs between the keys, before the end of a key is reached.</t>
+            実装上の注意：CBORの自己区切り性質により、1つが他の1つの接頭辞である2つの正しいCBORエンコードされたデータ項目は存在しません。
+            異なるマップキーの決定論的エンコーディングのバイト単位の辞書順序のバイト単位のレキシコグラフィック比較は、常に、キーの終わりに到達する前に、キー間のバイトが異なる位置で終了します。</t>
           </aside>
         </section>
         <section anchor="additional-deterministic-encoding-considerations" toc="include" numbered="true" removeInRFC="false" pn="section-4.2.2">
           <name slugifiedName="name-additional-deterministic-en">Additional Deterministic Encoding Considerations</name>
-          <t indent="0" pn="section-4.2.2-1">CBOR tags present additional considerations for deterministic
-encoding.  If a CBOR-based protocol were to provide the same semantics
-for the presence and absence of a specific tag (e.g., by allowing both
-tag 1 data items and raw numbers in a date/time position, treating the
-latter as if they were tagged), the deterministic format would not
-allow the presence of the tag, based on the "shortest form" principle.
-For example, a protocol might give encoders the choice of representing a URL as
-either a text string or, using <xref target="encodedtext" format="default" sectionFormat="of" derivedContent="Section 3.4.5.3"/>, tag number 32 containing a
-text string. This protocol's deterministic encoding needs either to
-require that the tag is present or to require that it is absent, not
-allow either one.</t>
-          <t indent="0" pn="section-4.2.2-2">In a protocol that does require tags in certain places to
-obtain specific semantics, the tag needs to appear in the
-deterministic format as well.  Deterministic encoding considerations
-also apply to the content of tags.</t>
-          <t indent="0" pn="section-4.2.2-3">If a protocol includes a field that can express integers with an
-absolute value of 2<sup>64</sup> or larger using tag numbers 2 or 3
-(<xref target="bignums" format="default" sectionFormat="of" derivedContent="Section 3.4.3"/>), the protocol's deterministic encoding needs to specify
-whether smaller integers are also expressed using these tags or using
-major types 0 and 1.  Preferred serialization uses the latter choice,
-which is therefore recommended.</t>
-          <t indent="0" pn="section-4.2.2-4">Protocols that include floating-point values, whether represented
-using basic floating-point values (<xref target="fpnocont" format="default" sectionFormat="of" derivedContent="Section 3.3"/>) or using tags (or
-both), may need to define extra requirements on their deterministic
-encodings, such as:</t>
+          <t indent="0" pn="section-4.2.2-1">CBORタグは、決定論的エンコーディングに追加の考慮事項を提供します。CBORベースのプロトコルが、特定のタグの存在と不在に対して同じセマンティクスを提供する場合（たとえば、日付/時刻の位置においてタグ1のデータ項目と生の数値の両方を許可し、後者をタグ付きであるかのように扱うことにより）、最短形式の原則に基づいて、決定論的形式ではタグの存在を許可しません。たとえば、プロトコルがURLをテキスト文字列またはテキスト文字列を含むタグ番号32として表現する選択肢をエンコーダーに与える場合、このプロトコルの決定論的エンコーディングは、タグが存在することを要求するか、存在しないことを要求するか、どちらかを要求する必要があります。</t>
+          <t indent="0" pn="section-4.2.2-2">特定のセマンティクスを取得するために、特定の場所でタグが必要なプロトコルでは、タグは決定論的形式でも表示する必要があります。タグの内容にも決定論的エンコーディングの考慮事項が適用されます。</t>
+          <t indent="0" pn="section-4.2.2-3">プロトコルに2のタグ番号または3のタグ番号を使用して絶対値が2<sup>64</sup>以上の整数を表現できるフィールドが含まれている場合、プロトコルの決定論的エンコーディングは、小さい整数もこれらのタグを使用して表現するか、major type 0および1を使用して表現するかを指定する必要があります。優先シリアル化は後者の選択肢を使用するため、推奨されます。</t>
+          <t indent="0" pn="section-4.2.2-4">基本的な浮動小数点値（<xref target="fpnocont" format="default" sectionFormat="of" derivedContent="Section 3.3"/>を参照）またはタグを使用して表現される浮動小数点値を含むプロトコルは、決定論的エンコーディングに対して追加の要件を定義する必要がある場合があります。これらの要件には、次のようなものがあります。</t>
           <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2.2-5">
-            <li pn="section-4.2.2-5.1">Although IEEE floating-point values can represent both positive and negative zero as
-distinct values, the application might not distinguish these and might
-decide to represent all zero values with a positive sign, disallowing
-negative zero.
-(The application may also want to restrict the precision of
-floating-point values in such a way that there is never a need to represent
-64-bit -- or even 32-bit -- floating-point values.)</li>
+            <li pn="section-4.2.2-5.1">IEEE浮動小数点値は、正のゼロと負のゼロの両方を区別できる値として表現できますが、アプリケーションはこれらを区別せず、すべてのゼロ値を正の符号で表現することを決定し、負のゼロを許可しない場合があります。
+            （アプリケーションは、64ビットまたは32ビットの浮動小数点値を表現する必要がないように、浮動小数点値の精度を制限することもできます。）</li>
             <li pn="section-4.2.2-5.2">
-              <t indent="0" pn="section-4.2.2-5.2.1">If a protocol includes a field that can express floating-point values,
-with a specific data model that declares integer and
-floating-point values to be interchangeable, the protocol's
-deterministic encoding needs to specify
-whether, for example, the integer 1.0 is encoded as 0x01 (unsigned
-integer), 0xf93c00 (binary16), 0xfa3f800000 (binary32),
-or 0xfb3ff0000000000000 (binary64). Example rules for this are:
-              </t>
-              <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.2-5.2.2"><li pn="section-4.2.2-5.2.2.1" derivedCounter="1.">Encode integral values that fit in 64 bits as values from major
-types 0 and 1, and other values as the preferred (smallest of 16-, 32-, or
-64-bit) floating-point representation that accurately represents the value,</li>
-                <li pn="section-4.2.2-5.2.2.2" derivedCounter="2.">Encode all values as the preferred
-floating-point representation that accurately represents the
-value, even for integral values, or</li>
-                <li pn="section-4.2.2-5.2.2.3" derivedCounter="3.">Encode all values as 64-bit floating-point representations.</li>
+              <t indent="0" pn="section-4.2.2-5.2.1">プロトコルに、整数と浮動小数点値を相互変換可能であると宣言された特定のデータモデルを持つ浮動小数点値を表現できるフィールドが含まれている場合、プロトコルの決定論的エンコーディングは、たとえば、整数1.0が0x01（符号なし整数）、0xf93c00（binary16）、0xfa3f800000（binary32）、または0xfb3ff0000000000000（binary64）としてエンコードされるかを指定する必要があります。これに関する例のルールは以下のとおりです。</t>
+              <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.2-5.2.2">
+                <li pn="section-4.2.2-5.2.2.1" derivedCounter="1.">64ビットに収まる整数値は、major type 0および1の値としてエンコードし、その他の値は、値を正確に表現する最小の16ビット、32ビット、または64ビットの浮動小数点表現としてエンコードします。</li>
+                <li pn="section-4.2.2-5.2.2.2" derivedCounter="2.">整数値であっても、値を正確に表現する最小の浮動小数点表現として、すべての値をエンコードします。</li>
+                <li pn="section-4.2.2-5.2.2.3" derivedCounter="3.">すべての値を64ビット浮動小数点表現としてエンコードします。</li>
               </ol>
               <t indent="0" pn="section-4.2.2-5.2.3">
-Rule 1 straddles the boundaries between integers and floating-point
-values, and Rule 3 does not use preferred serialization, so Rule 2 may be
-a good choice in many cases.</t>
+              ルール1は整数と浮動小数点値の境界をまたいでおり、ルール3は優先シリアル化を使用していないため、ルール2は多くの場合良い選択肢となります。</t>
             </li>
-            <li pn="section-4.2.2-5.3">If NaN is an allowed value, and there is no intent to support NaN
-payloads or signaling NaNs, the protocol needs to pick a single
-representation, typically 0xf97e00.  If that simple choice is not
-possible, specific attention will be needed for NaN handling.</li>
-            <li pn="section-4.2.2-5.4">Subnormal numbers (nonzero numbers with the lowest possible exponent
-of a given IEEE 754 number format) may be flushed to zero outputs or
-be treated as zero inputs in some floating-point implementations.
-A protocol's deterministic encoding may want to specifically
-accommodate such implementations while creating an onus on other
-implementations by excluding subnormal numbers from interchange,
-interchanging zero instead.</li>
-            <li pn="section-4.2.2-5.5">The same number can be represented by different decimal fractions,
-by different bigfloats, and by different forms under other tags that
-may be defined to express numeric values. Depending on the
-implementation, it may not always be practical to determine whether
-any of these forms (or forms in the basic generic data model) are
-equivalent.  An application protocol that presents choices of this
-kind for the representation format of numbers needs to be explicit
-about how the formats for deterministic encoding are to be chosen.</li>
+            <li pn="section-4.2.2-5.3">NaNが許容されており、NaNペイロードまたはシグナリングNaNをサポートする意図がない場合、プロトコルは通常、単一の表現（通常は0xf97e00）を選択する必要があります。この単純な選択ができない場合は、NaNの処理に特別な注意が必要です。</li>
+            <li pn="section-4.2.2-5.4">サブノーマル数（あるIEEE 754数値フォーマットの最低指数を持つゼロ以外の数値）は、一部の浮動小数点実装ではゼロにフラッシュされる出力として扱われる場合があります。プロトコルの決定論的エンコーディングは、サブノーマル数を交換から除外し、代わりにゼロを交換することで、そのような実装に特に対応することができます。</li>
+            <li pn="section-4.2.2-5.5">同じ数値は、異なる小数、異なるbigfloat、および数値値を表現するために定義された他のタグの異なる形式によって表現することができます。実装によっては、これらの形式のいずれか（または基本的な一般的なデータモデルの形式）が等価であるかどうかを判断することが常に実用的ではない場合があります。数値の表現形式の選択肢を提示するアプリケーションプロトコルは、決定論的エンコーディングの形式がどのように選択されるかについて明示する必要があります。</li>
           </ul>
         </section>
         <section anchor="length-first" toc="include" numbered="true" removeInRFC="false" pn="section-4.2.3">
           <name slugifiedName="name-length-first-map-key-orderi">Length-First Map Key Ordering</name>
-          <t indent="0" pn="section-4.2.3-1">The core deterministic encoding requirements (<xref target="core-det" format="default" sectionFormat="of" derivedContent="Section 4.2.1"/>) sort map keys in a different
-order from the one suggested by <xref target="RFC7049" section="3.9" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7049#section-3.9" derivedContent="RFC7049"/> (called
-"Canonical CBOR" there). Protocols that need to
-be compatible with the order specified in <xref target="RFC7049" format="default" sectionFormat="of" derivedContent="RFC7049"/> can instead be specified in
-terms of this specification's "length-first core deterministic encoding
-requirements":</t>
-          <t indent="0" pn="section-4.2.3-2">A CBOR encoding satisfies the "length-first core deterministic encoding
-requirements" if it satisfies the core deterministic encoding requirements
-except that the keys in every map <bcp14>MUST</bcp14> be sorted such that:</t>
-          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.3-3"><li pn="section-4.2.3-3.1" derivedCounter="1.">If two keys have different lengths, the shorter one sorts earlier;</li>
-            <li pn="section-4.2.3-3.2" derivedCounter="2.">If two keys have the same length, the one with the lower value in
-(bytewise) lexical order sorts earlier.</li>
+          <t indent="0" pn="section-4.2.3-1">コア決定論的エンコーディング要件（<xref target="core-det" format="default" sectionFormat="of" derivedContent="Section 4.2.1"/>）は、<xref target="RFC7049" section="3.9" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7049#section-3.9" derivedContent="RFC7049"/>で提案された順序（そこでは「Canonical CBOR」と呼ばれる）とは異なる順序でマップキーをソートします。RFC7049で指定された順序と互換性を持つ必要があるプロトコルは、代わりにこの仕様の「長さ優先のコア決定論的エンコーディング要件」で指定できます。</t>
+          <t indent="0" pn="section-4.2.3-2">CBORエンコーディングが「長さ優先のコア決定論的エンコーディング要件」を満たす場合、コア決定論的エンコーディング要件を満たすが、すべてのマップのキーが次のようにソートされている<bcp14>必要があります（MUST）</bcp14>：</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.3-3">
+            <li pn="section-4.2.3-3.1" derivedCounter="1.">2つのキーの長さが異なる場合、短い方が先にソートされます。</li>
+            <li pn="section-4.2.3-3.2" derivedCounter="2.">2つのキーの長さが同じ場合、（バイト単位の）レキシコグラフィック順序で値が低い方が先にソートされます。</li>
           </ol>
-          <t indent="0" pn="section-4.2.3-4">For example, under the length-first core deterministic encoding
-requirements, the following keys are sorted correctly:</t>
-          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.3-5"><li pn="section-4.2.3-5.1" derivedCounter="1.">10, encoded as 0x0a.</li>
-            <li pn="section-4.2.3-5.2" derivedCounter="2.">-1, encoded as 0x20.</li>
-            <li pn="section-4.2.3-5.3" derivedCounter="3.">false, encoded as 0xf4.</li>
-            <li pn="section-4.2.3-5.4" derivedCounter="4.">100, encoded as 0x1864.</li>
-            <li pn="section-4.2.3-5.5" derivedCounter="5.">"z", encoded as 0x617a.</li>
-            <li pn="section-4.2.3-5.6" derivedCounter="6.">[-1], encoded as 0x8120.</li>
-            <li pn="section-4.2.3-5.7" derivedCounter="7.">"aa", encoded as 0x626161.</li>
-            <li pn="section-4.2.3-5.8" derivedCounter="8.">[100], encoded as 0x811864.</li>
+          <t indent="0" pn="section-4.2.3-4">たとえば、長さ優先のコア決定論的エンコーディング要件の下では、次のキーが正しくソートされます。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.3-5">
+            <li pn="section-4.2.3-5.1" derivedCounter="1.">10は、0x0aとしてエンコードされます。</li>
+            <li pn="section-4.2.3-5.2" derivedCounter="2.">-1は、0x20としてエンコードされます。</li>
+            <li pn="section-4.2.3-5.3" derivedCounter="3.">falseは、0xf4としてエンコードされます。</li>
+            <li pn="section-4.2.3-5.4" derivedCounter="4.">100は、0x1864としてエンコードされます。</li>
+            <li pn="section-4.2.3-5.5" derivedCounter="5.">"z"は、0x617aとしてエンコードされます。</li>
+            <li pn="section-4.2.3-5.6" derivedCounter="6.">[-1]は、0x8120としてエンコードされます。</li>
+            <li pn="section-4.2.3-5.7" derivedCounter="7.">"aa"は、0x626161としてエンコードされます。</li>
+            <li pn="section-4.2.3-5.8" derivedCounter="8.">[100]は、0x811864としてエンコードされます。</li>
           </ol>
           <aside pn="section-4.2.3-6">
-            <t indent="0" pn="section-4.2.3-6.1">Although <xref target="RFC7049" format="default" sectionFormat="of" derivedContent="RFC7049"/> used the term "Canonical CBOR" for its form of
-requirements on deterministic encoding, this document avoids this term
-because "canonicalization" is often associated with specific uses of deterministic
-encoding only.  The terms are essentially interchangeable, however, and
-the set of core requirements in this document could also be
-called "Canonical CBOR", while the length-first-ordered version of that
-could be called "Old Canonical CBOR".</t>
+            <t indent="0" pn="section-4.2.3-6.1">RFC7049では、決定論的エンコーディングの要件に対して「Canonical CBOR」という用語が使用されていますが、この仕様書では、この用語を避けています。なぜなら、「正準化」という用語は、決定論的エンコーディングの特定の用途にのみ関連していることが多いからです。ただし、これらの用語は本質的には同義であり、この仕様書のコア要件のセットは「Canonical CBOR」と呼ばれることができます。一方、その長さ優先順序版は「Old Canonical CBOR」と呼ばれることができます。</t>
           </aside>
         </section>
       </section>
     </section>
     <section anchor="creating-cbor-based-protocols" toc="include" numbered="true" removeInRFC="false" pn="section-5">
       <name slugifiedName="name-creating-cbor-based-protoco">Creating CBOR-Based Protocols</name>
-      <t indent="0" pn="section-5-1">Data formats such as CBOR are often used in environments where there
-is no format negotiation. A specific design goal of CBOR is to not
-need any included or assumed schema: a decoder can take a CBOR item
-and decode it with no other knowledge.</t>
-      <t indent="0" pn="section-5-2">Of course, in real-world implementations, the encoder and the decoder
-will have a shared view of what should be in a CBOR data item.  For
-example, an agreed-to format might be "the item is an array whose
-first value is a UTF-8 string, second value is an integer, and
-subsequent values are zero or more floating-point numbers" or "the
-item is a map that has byte strings for keys and contains a
-pair whose key is 0xab01".</t>
-      <t indent="0" pn="section-5-3">CBOR-based protocols <bcp14>MUST</bcp14> specify how their decoders handle
-invalid and other unexpected data.  CBOR-based protocols
-<bcp14>MAY</bcp14> specify that they treat arbitrary valid data as unexpected.
-Encoders for CBOR-based protocols <bcp14>MUST</bcp14> produce only valid items, that
-is, the protocol cannot be designed to make use of invalid items.  An
-encoder can be capable of encoding as many or as few types of values
-as is required by the protocol in which it is used; a decoder can be
-capable of understanding as many or as few types of values as is
-required by the protocols in which it is used. This lack of
-restrictions allows CBOR to be used in extremely constrained
-environments.</t>
-      <t indent="0" pn="section-5-4">The rest of this section discusses some considerations in creating CBOR-based
-protocols.  With few exceptions, it is advisory only and explicitly excludes any language
-from BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/> other than words that could be interpreted as "<bcp14>MAY</bcp14>" in
-the sense of BCP 14.  The exceptions aim at facilitating
-interoperability of CBOR-based protocols while making use of a wide variety of
-both generic and application-specific encoders and decoders.</t>
+      <t indent="0" pn="section-5-1">CBORのようなデータフォーマットは、フォーマットのネゴシエーションがない環境でしばしば使用されます。CBORの特定の設計目標は、含まれるまたは想定されるスキーマが必要ないことです。つまり、デコーダーはCBORアイテムを取得し、他に何も知らなくてもデコードできます。</t>
+      <t indent="0" pn="section-5-2">実際の実装では、エンコーダーとデコーダーはCBORデータアイテムに何が含まれるべきかについて共有の見解を持っています。たとえば、合意されたフォーマットは「アイテムはUTF-8文字列が最初の値であり、2番目の値は整数であり、その後の値は0個以上の浮動小数点数である配列である」または「アイテムは、キーにバイト文字列を持ち、キーが0xab01であるペアを含むマップである」といったものがあります。</t>
+      <t indent="0" pn="section-5-3">CBORベースのプロトコルは、そのデコーダーが無効なデータやその他の予期しないデータをどのように処理するかを指定<bcp14>しなければなりません（MUST）</bcp14>。CBORベースのプロトコルは、任意の有効なデータを予期しないデータとして扱うことを<bcp14>MAY</bcp14>指定することができます。CBORベースのプロトコルのエンコーダーは、無効なアイテムを使用することができないため、常に有効なアイテムのみを生成<bcp14>しなければなりません（MUST）</bcp14>。エンコーダーは、使用されるプロトコルで必要な種類の値を多くまたは少なくエンコードできます。デコーダーは、使用されるプロトコルで必要な種類の値を多くまたは少なく理解できます。これらの制限がないため、CBORは非常に制限された環境で使用できます。</t>
+      <t indent="0" pn="section-5-4">このセクションの残りの部分では、CBORベースのプロトコルを作成する際の考慮事項について説明します。ほとんどの場合、これはアドバイザリーであり、BCP 14の言語を除いて、明示的に「<bcp14>MAY</bcp14>」と解釈できる言葉を使用します。例外は、一般的なものとアプリケーション固有のエンコーダーとデコーダーの両方を使用することを目的として、CBORベースのプロトコルの相互運用性を容易にすることを目的としています。</t>
       <section anchor="cbor-in-streaming-applications" toc="include" numbered="true" removeInRFC="false" pn="section-5.1">
         <name slugifiedName="name-cbor-in-streaming-applicati">CBOR in Streaming Applications</name>
-        <t indent="0" pn="section-5.1-1">In a streaming application, a data stream may be composed of a
-sequence of CBOR data items concatenated back-to-back. In such an
-environment, the decoder immediately begins decoding a new data item
-if data is found after the end of a previous data item.</t>
-        <t indent="0" pn="section-5.1-2">Not all of the bytes making up a data item may be immediately
-available to the decoder; some decoders will buffer additional data
-until a complete data item can be presented to the application.  Other
-decoders can present partial information about a top-level data item
-to an application, such as the nested data items that could already be
-decoded, or even parts of a byte string that hasn't completely arrived
-yet.
-Such an application also <bcp14>MUST</bcp14> have a matching streaming security mechanism, where
-the desired protection is available for incremental data presented to the
-application.</t>
-        <t indent="0" pn="section-5.1-3">Note that some applications and protocols will not want to use
-indefinite-length encoding.  Using indefinite-length encoding allows
-an encoder to not need to marshal all the data for counting, but it
-requires a decoder to allocate increasing amounts of memory while
-waiting for the end of the item. This might be fine for some
-applications but not others.</t>
+        <t indent="0" pn="section-5.1-1">ストリーミングアプリケーションでは、データストリームは連結されたCBORデータアイテムのシーケンスで構成される場合があります。このような環境では、デコーダーは前のデータアイテムの終わりの後にデータが見つかった場合、すぐに新しいデータアイテムのデコードを開始します。</t>
+        <t indent="0" pn="section-5.1-2">データアイテムを構成するバイトのすべてがデコーダーにすぐに利用可能であるとは限りません。一部のデコーダーは、完全なデータアイテムがアプリケーションに提供されるまで、追加のデータをバッファリングします。他のデコーダーは、すでにデコードされたネストされたデータアイテムや、まだ完全に到着していないバイト文字列の一部など、トップレベルのデータアイテムに関する部分的な情報をアプリケーションに提供できます。
+        このようなアプリケーションは、ストリーミングセキュリティメカニズムを持つ必要があります。この場合、アプリケーションに提供されるインクリメンタルデータに対して、必要な保護が利用可能である<bcp14>必要があります（MUST）</bcp14></t>
+        <t indent="0" pn="section-5.1-3">一部のアプリケーションやプロトコルでは、不定長エンコーディングを使用したくない場合があります。不定長エンコーディングを使用すると、エンコーダーはすべてのデータをカウントするためにマーシャリングする必要がなくなりますが、デコーダーはアイテムの終わりを待ちながら増加する量のメモリを割り当てる必要があります。これは、一部のアプリケーションにとっては問題ないかもしれませんが、他のアプリケーションには適していない場合があります。</t>
       </section>
       <section anchor="generic" toc="include" numbered="true" removeInRFC="false" pn="section-5.2">
         <name slugifiedName="name-generic-encoders-and-decode">Generic Encoders and Decoders</name>
-        <t indent="0" pn="section-5.2-1">A generic CBOR decoder can decode all well-formed encoded CBOR data items and
-present the data items to an application.  See <xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Appendix C"/>.
-(The diagnostic notation, <xref target="diagnostic-notation" format="default" sectionFormat="of" derivedContent="Section 8"/>, may be used to
-present well-formed CBOR values to humans.)</t>
-        <t indent="0" pn="section-5.2-2">Generic CBOR encoders provide an application interface that allows the
-application to specify any well-formed value to be encoded as a CBOR
-data item, including simple values and tags unknown to the encoder.</t>
-        <t indent="0" pn="section-5.2-3">Even though CBOR attempts to minimize these cases, not all well-formed
-CBOR data is valid: for example, the encoded text string <tt>0x62c0ae</tt>
-does not contain valid UTF-8 (because <xref target="RFC3629" format="default" sectionFormat="of" derivedContent="RFC3629"/> requires always using the shortest
-form) and so is not a valid CBOR item.
-Also, specific tags may
-make semantic constraints that may be violated, for instance, by a bignum tag
-enclosing another tag or by an instance of tag number 0 containing a byte
-string or containing a text string with contents that do not match the 
-<tt>date-time</tt> production of <xref target="RFC3339" format="default" sectionFormat="of" derivedContent="RFC3339"/>.  There is
-no requirement that generic encoders and decoders make unnatural
-choices for their application interface to enable the processing of
-invalid data.  Generic encoders and decoders are expected to forward
-simple values and tags even if their specific codepoints are not
-registered at the time the encoder/decoder is written
-(<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>).</t>
+        <t indent="0" pn="section-5.2-1">一般的なCBORデコーダーは、すべての形式が正しいエンコードされたCBORデータアイテムをデコードし、アプリケーションにデータアイテムを提供できます。詳細は、<xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Appendix C"/>を参照してください。
+        （診断表記法である<xref target="diagnostic-notation" format="default" sectionFormat="of" derivedContent="Section 8"/>は、形式が正しいCBOR値を人間に提示するために使用できます。）</t>
+        <t indent="0" pn="section-5.2-2">一般的なCBORエンコーダーは、アプリケーションがエンコーダーに未知の単純な値やタグを含む、任意の形式が正しい値をCBORデータアイテムとしてエンコードするよう指定できるアプリケーションインタフェースを提供します。</t>
+        <t indent="0" pn="section-5.2-3">CBORはこれらのケースを最小限に抑えようとしますが、すべての形式が正しいCBORデータが有効であるわけではありません。たとえば、エンコードされたテキスト文字列<tt>0x62c0ae</tt>は有効なUTF-8を含んでいないため（<xref target="RFC3629" format="default" sectionFormat="of" derivedContent="RFC3629"/>は常に最短の形式を使用することを要求するため）、有効なCBORアイテムではありません。
+        また、特定のタグは、別のタグを囲む大きな数値タグや、バイト文字列を含むタグ番号0のインスタンス、または内容が<xref target="RFC3339" format="default" sectionFormat="of" derivedContent="RFC3339"/>の<tt>date-time</tt>プロダクションに一致しないテキスト文字列を含むテキスト文字列など、違反する可能性がある意味の制約を設ける場合があります。一般的なエンコーダーとデコーダーが、無効なデータの処理を可能にするために、アプリケーションインタフェースで不自然な選択をする必要はありません。一般的なエンコーダーとデコーダーは、特定のコードポイントがエンコーダー/デコーダーが書かれた時点で登録されていなくても、単純な値とタグを転送することが期待されます（<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>）。</t>
       </section>
       <section anchor="semantic-errors" toc="include" numbered="true" removeInRFC="false" pn="section-5.3">
         <name slugifiedName="name-validity-of-items">Validity of Items</name>
-        <t indent="0" pn="section-5.3-1">A well-formed but invalid CBOR data item (<xref target="terminology" format="default" sectionFormat="of" derivedContent="Section 1.2"/>) presents a problem with
-interpreting the data encoded in it in the CBOR data model.  A
-CBOR-based protocol could be specified in several layers, in which the
-lower layers don't process the semantics of some of the CBOR data they
-forward.  These layers can't notice any validity errors in data they don't
-process and <bcp14>MUST</bcp14> forward that data as-is.  The first layer that does
-process the semantics of an invalid CBOR item <bcp14>MUST</bcp14> pick one of two
-choices:</t>
-        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-5.3-2"><li pn="section-5.3-2.1" derivedCounter="1.">Replace the problematic item with an error marker and continue with
-the next item, or</li>
-          <li pn="section-5.3-2.2" derivedCounter="2.">Issue an error and stop processing altogether.</li>
-        </ol>
-        <t indent="0" pn="section-5.3-3">A CBOR-based protocol <bcp14>MUST</bcp14> specify which of these options its decoders
-take for each kind of invalid item they might encounter.</t>
-        <t indent="0" pn="section-5.3-4">Such problems might occur at the basic validity level of CBOR or in
-the context of tags (tag validity).</t>
+        <t indent="0" pn="section-5.3-1">形式が正しいが無効なCBORデータアイテム（<xref target="terminology" format="default" sectionFormat="of" derivedContent="Section 1.2"/>）は、CBORデータモデルでエンコードされたデータを解釈する際に問題が発生します。CBORベースのプロトコルは、下位レイヤーが転送するCBORデータの意味を処理しない場合があります。これらのレイヤーは、処理しないデータの妥当性エラーに気付くことができず、そのデータをそのまま転送<bcp14>しなければなりません（MUST）</bcp14>。無効なCBORアイテムの意味を処理する最初のレイヤーは、次の2つの選択肢のいずれかを選択<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-5.3-2"><li pn="section-5.3-2.1" derivedCounter="1.">問題のあるアイテムをエラーマーカーで置き換え、次のアイテムを続けるか、</li>
+                  <li pn="section-5.3-2.2" derivedCounter="2.">エラーを発行して処理を完全に停止するかのいずれかを行います。</li>
+                </ol>
+        <t indent="0" pn="section-5.3-3">CBORベースのプロトコルは、デコーダーが遭遇する可能性のある無効なアイテムの種類ごとに、どちらのオプションを取るかを指定<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-4">このような問題は、CBORの基本的な妥当性レベルやタグの文脈（タグの妥当性）で発生する可能性があります。</t>
         <section anchor="basic-validity" toc="include" numbered="true" removeInRFC="false" pn="section-5.3.1">
           <name slugifiedName="name-basic-validity">Basic validity</name>
-          <t indent="0" pn="section-5.3.1-1">Two kinds of validity errors can occur in the basic generic data model:</t>
+          <t indent="0" pn="section-5.3.1-1">基本的な汎用データモデルには、2種類の妥当性エラーが発生する可能性があります。</t>
           <dl newline="false" spacing="normal" indent="3" pn="section-5.3.1-2">
-            <dt pn="section-5.3.1-2.1">Duplicate keys in a map:</dt>
-            <dd pn="section-5.3.1-2.2">
-  Generic decoders (<xref target="generic" format="default" sectionFormat="of" derivedContent="Section 5.2"/>) make data available to applications
-using the native CBOR data model.  That data model includes maps
-(key-value mappings with unique keys), not multimaps (key-value
-mappings where multiple entries can have the same key).  Thus, a
-generic decoder that gets a CBOR map item that has duplicate keys
-will decode to a map with only one instance of that key, or it might
-stop processing altogether.  On the other hand, a "streaming
-decoder" may not even be able to notice.  See <xref target="map-keys" format="default" sectionFormat="of" derivedContent="Section 5.6"/> for more
-discussion of keys in maps.</dd>
-            <dt pn="section-5.3.1-2.3">Invalid UTF-8 string:</dt>
-            <dd pn="section-5.3.1-2.4">
-  A decoder might or might not want to verify that the sequence of
-bytes in a UTF-8 string (major type 3) is actually valid UTF-8 and
-react appropriately.</dd>
-          </dl>
+                <dt pn="section-5.3.1-2.1">マップ内の重複するキー：</dt>
+                <dd pn="section-5.3.1-2.2">
+            汎用デコーダー（<xref target="generic" format="default" sectionFormat="of" derivedContent="Section 5.2"/>）は、ネイティブのCBORデータモデルを使用してアプリケーションにデータを提供します。このデータモデルには、ユニークなキーを持つマップ（キーと値のマッピング）が含まれていますが、複数のエントリが同じキーを持つマルチマップ（キーと値のマッピング）は含まれていません。したがって、重複するキーを持つCBORマップアイテムを取得する汎用デコーダーは、そのキーの1つのインスタンスを持つマップにデコードするか、処理を停止するかもしれません。一方、「ストリーミングデコーダー」は、それを気づくことさえできない場合があります。マップ内のキーについての詳細については、<xref target="map-keys" format="default" sectionFormat="of" derivedContent="Section 5.6"/>を参照してください。</dd>
+                <dt pn="section-5.3.1-2.3">無効なUTF-8文字列：</dt>
+                <dd pn="section-5.3.1-2.4">
+            デコーダーは、UTF-8文字列（メジャータイプ3）のバイトシーケンスが実際に有効なUTF-8であるかどうかを検証し、適切に反応するかどうかは、デコーダーによって異なります。</dd>
+              </dl>
         </section>
         <section anchor="tag-validity" toc="include" numbered="true" removeInRFC="false" pn="section-5.3.2">
           <name slugifiedName="name-tag-validity">Tag validity</name>
-          <t indent="0" pn="section-5.3.2-1">Two additional kinds of validity errors are introduced by adding tags
-to the basic generic data model:</t>
+          <t indent="0" pn="section-5.3.2-1">基本的な汎用データモデルにタグを追加することで、2種類の追加の妥当性エラーが導入されます。</t>
           <dl newline="false" spacing="normal" indent="3" pn="section-5.3.2-2">
-            <dt pn="section-5.3.2-2.1">Inadmissible type for tag content:</dt>
-            <dd pn="section-5.3.2-2.2">
-  Tag numbers (<xref target="tags" format="default" sectionFormat="of" derivedContent="Section 3.4"/>) specify what type of data item is supposed to be
-used as their tag content; for example, the tag numbers for unsigned or negative bignums are
-supposed to be put on byte strings. A decoder that decodes the
-tagged data item into a native representation (a native big integer
-in this example) is expected to check the type of the data item
-being tagged.  Even decoders that don't have such native
-representations available in their environment may perform the check
-on those tags known to them and react appropriately.</dd>
-            <dt pn="section-5.3.2-2.3">Inadmissible value for tag content:</dt>
-            <dd pn="section-5.3.2-2.4">
-  The type of data item may be admissible for a tag's content, but the
-specific value may not be; e.g., a value of "yesterday" is not
-acceptable for the content of tag 0, even though it properly is a
-text string.  A decoder that normally ingests such tags into
-equivalent platform types might present this tag to the application
-in a similar way to how it would present a tag with an unknown tag
-number (<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>).</dd>
-          </dl>
+                <dt pn="section-5.3.2-2.1">タグの内容に不適切なタイプ：</dt>
+                <dd pn="section-5.3.2-2.2">
+            タグ番号（<xref target="tags" format="default" sectionFormat="of" derivedContent="Section 3.4"/>）は、タグの内容として使用されるデータアイテムのタイプを指定します。たとえば、符号なしまたは負のビッグナンのタグ番号は、バイト文字列に配置する必要があります。ネイティブ表現（この例ではネイティブビッグ整数）にタグ付けされたデータアイテムをデコードするデコーダーは、タグ付けされたデータアイテムのタイプをチェックすることが期待されます。環境にネイティブ表現がないデコーダーでも、彼らに知られているこれらのタグに対してチェックを実行し、適切に反応することができます。</dd>
+                <dt pn="section-5.3.2-2.3">タグの内容に不適切な値：</dt>
+                <dd pn="section-5.3.2-2.4">
+            データアイテムのタイプは、タグの内容に適している場合がありますが、特定の値はそうではない場合があります。たとえば、「昨日」という値は、適切にテキスト文字列であるにもかかわらず、タグ0の内容としては受け入れられません。通常、このようなタグを同等のプラットフォームタイプに取り込むデコーダーは、タグ番号が不明なタグと同様に、このタグをアプリケーションに提示することができます（<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>）。</dd>
+              </dl>
         </section>
       </section>
       <section anchor="validity-checking" toc="include" numbered="true" removeInRFC="false" pn="section-5.4">
         <name slugifiedName="name-validity-and-evolution">Validity and Evolution</name>
-        <t indent="0" pn="section-5.4-1">A decoder with validity checking will expend the effort to reliably
-detect data items with validity errors. For example, such a
-decoder needs to have an API that reports an error (and does not
-return data) for a CBOR data item that contains any of the validity
-errors listed in the previous subsection.</t>
-        <t indent="0" pn="section-5.4-2">The set of tags defined in the "Concise Binary Object
-        Representation (CBOR) Tags" registry (<xref target="ianatags" format="default" sectionFormat="of" derivedContent="Section 9.2"/>), as well as the set of simple values defined in
-        the "Concise Binary Object Representation (CBOR) Simple Values"
-        registry (<xref target="ianasimple" format="default" sectionFormat="of" derivedContent="Section 9.1"/>), can grow at
-        any time beyond the set understood by a generic decoder.  A
-        validity-checking decoder can do one of two things when it encounters
-        such a case that it does not recognize:</t>
+        <t indent="0" pn="section-5.4-1">妥当性チェックを行うデコーダーは、妥当性エラーを含むデータアイテムを信頼性高く検出するための努力を払います。たとえば、このようなデコーダーは、前のサブセクションにリストされている妥当性エラーのいずれかを含むCBORデータアイテムに対してエラーを報告するAPIを持つ必要があります（データを返さない）。</t>
+        <t indent="0" pn="section-5.4-2">「簡潔なバイナリオブジェクト表現（CBOR）タグ」レジストリ（<xref target="ianatags" format="default" sectionFormat="of" derivedContent="Section 9.2"/>）で定義されたタグのセット、および「簡潔なバイナリオブジェクト表現（CBOR）シンプルバリュー」レジストリ（<xref target="ianasimple" format="default" sectionFormat="of" derivedContent="Section 9.1"/>）で定義されたシンプルバリューのセットは、汎用デコーダーが理解するセットを超えていつでも成長する可能性があります。妥当性チェックを行うデコーダーは、認識できない場合に2つのことを行うことができます。</t>
         <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.4-3">
-          <li pn="section-5.4-3.1">It can report an error (and not return data).
-Note that treating this case as an error can cause ossification and is
-thus not encouraged. This error
-is not a validity error, per se.  This kind of error is more likely
-to be raised by a decoder that would be performing validity checking
-if this were a known case.</li>
-          <li pn="section-5.4-3.2">It can emit the unknown item (type, value, and, for tags, the
-decoded tagged data item) to the application calling the decoder,
-and then give the application
-an indication that the decoder did not recognize that tag
-number or simple value.</li>
-        </ul>
-        <t indent="0" pn="section-5.4-4">The latter approach, which is also appropriate for decoders that do
-not support validity checking, provides forward compatibility with
-newly registered tags and simple values without the requirement to
-update the encoder at the same time as the calling application.  (For
-this, the decoder's API needs the ability to mark unknown
-items so that the calling application can handle them in a manner
-appropriate for the program.)</t>
-        <t indent="0" pn="section-5.4-5">Since some of the processing needed for validity checking may have an
-appreciable cost (in particular with duplicate detection for maps),
-support of validity checking is not a requirement placed on all CBOR
-decoders.</t>
-        <t indent="0" pn="section-5.4-6">Some encoders will rely on their applications to provide input data in
-such a way that valid CBOR results from the encoder.  A generic
-encoder may also want to provide a validity-checking mode where it
-reliably limits its output to valid CBOR, independent of whether or
-not its application is indeed providing API-conformant data.</t>
+                  <li pn="section-5.4-3.1">デコーダーはエラーを報告することができます（データを返さない）。
+        この場合をエラーとして扱うことは、硬直化を引き起こす可能性があるため、推奨されません。このエラーは、本質的に妥当性エラーではありません。このようなエラーは、既知の場合に妥当性チェックを実行しているデコーダーによってより頻繁に発生する可能性があります。</li>
+                  <li pn="section-5.4-3.2">デコーダーが認識できないタグ番号またはシンプルバリューがある場合、デコーダーは、未知のアイテム（タイプ、値、およびタグの場合はデコードされたタグ付きデータアイテム）を呼び出し元のアプリケーションに出力し、デコーダーがそのタグ番号またはシンプルバリューを認識できなかったことを示す指示をアプリケーションに与えることができます。</li>
+                </ul>
+        <t indent="0" pn="section-5.4-4">後者のアプローチは、妥当性チェックをサポートしていないデコーダーにも適しており、エンコーダーを呼び出すアプリケーションと同時に更新する必要がないまま、新しく登録されたタグやシンプルバリューとの前方互換性を提供します。 （これには、デコーダーのAPIが未知のアイテムをマークする機能が必要であり、呼び出し元のアプリケーションが適切な方法でそれらを処理できるようにする必要があります。）</t>
+        <t indent="0" pn="section-5.4-5">妥当性チェックに必要な処理の一部は、マップの重複検出に特にコストがかかる場合があるため、妥当性チェックのサポートはすべてのCBORデコーダーに要求される必要はありません。</t>
+        <t indent="0" pn="section-5.4-6">一部のエンコーダーは、アプリケーションがエンコーダーから有効なCBORを生成するように入力データを提供することを期待しています。汎用エンコーダーは、API準拠のデータを提供しているかどうかに関係なく、その出力を有効なCBORに限定する妥当性チェックモードを提供することも望むかもしれません。</t>
       </section>
       <section anchor="numbers" toc="include" numbered="true" removeInRFC="false" pn="section-5.5">
         <name slugifiedName="name-numbers">Numbers</name>
-        <t indent="0" pn="section-5.5-1">CBOR-based protocols should take into account that different language
-environments pose different restrictions on the range and precision of
-numbers that are representable.  For example, the basic JavaScript number
-system treats all numbers as floating-point values, which may result in
-the silent loss of precision in decoding integers with more than 53
-significant bits.
-Another example is that, since CBOR keeps the sign bit for its integer
-representation in the major type, it has one bit more for signed
-numbers of a certain length (e.g., -2<sup>64</sup>..2<sup>64</sup>-1 for 1+8-byte
-integers) than the typical platform signed integer representation of
-the same length (-2<sup>63</sup>..2<sup>63</sup>-1 for 8-byte int64_t).
-A protocol that uses numbers should define its
-expectations on the handling of nontrivial numbers in decoders and
-receiving applications.</t>
-        <t indent="0" pn="section-5.5-2">A CBOR-based protocol that includes floating-point numbers can
-restrict which of the three formats (half-precision, single-precision,
-and double-precision) are to be supported.  For an integer-only
-application, a protocol may want to completely exclude the use of
-floating-point values.</t>
-        <t indent="0" pn="section-5.5-3">A CBOR-based protocol designed for compactness may want to exclude
-specific integer encodings that are longer than necessary for the
-application, such as to save the need to implement 64-bit integers.
-There is an expectation that encoders will use the most compact
-integer representation that can represent a given value.  However, a
-compact application that does not require deterministic encoding
-should accept values that use a longer-than-needed
-encoding (such as encoding "0" as 0b000_11001 followed by two bytes of
-0x00) as long as the application can decode an integer of the given
-size.
-Similar considerations apply to floating-point values; decoding both
-preferred serializations and longer-than-needed ones is recommended.</t>
-        <t indent="0" pn="section-5.5-4">CBOR-based protocols for constrained applications that provide a
-choice between representing a specific number as an integer and
-as a decimal fraction or bigfloat (such as when the exponent is small
-and nonnegative) might express a quality-of-implementation expectation
-that the integer representation is used directly.</t>
+        <t indent="0" pn="section-5.5-1">CBORベースのプロトコルは、異なる言語環境が表現可能な数値の範囲と精度に異なる制限を課すことを考慮する必要があります。たとえば、基本的なJavaScript数値システムは、すべての数値を浮動小数点値として扱うため、53ビット以上の有意なビットを持つ整数をデコードする際に精度の損失が発生する可能性があります。
+        また、CBORは、整数表現の符号ビットをメジャータイプに保持するため、同じ長さの典型的なプラットフォーム符号付き整数表現（8バイトint64_tの場合は-2<sup>63</sup>..2<sup>63</sup>-1）よりも、特定の長さの符号付き数値（たとえば、1 + 8バイト整数の場合は-2<sup>64</sup>..2<sup>64</sup>-1）に1ビット多くのビットがあります。
+        数値を使用するプロトコルは、デコーダーと受信アプリケーションで非自明な数値の処理に関する期待を定義する必要があります。</t>
+        <t indent="0" pn="section-5.5-2">浮動小数点数を含むCBORベースのプロトコルは、サポートするフォーマット（ハーフプレシジョン、シングルプレシジョン、ダブルプレシジョン）のうちどれを制限するかを制限することができます。整数のみのアプリケーションの場合、プロトコルは浮動小数点値の使用を完全に除外することができます。</t>
+        <t indent="0" pn="section-5.5-3">コンパクト性を重視したCBORベースのプロトコルは、64ビット整数を実装する必要を省くために、アプリケーションに必要以上に長い特定の整数エンコーディングを除外することができます。エンコーダーは、特定の値を表現できる最もコンパクトな整数表現を使用することが期待されています。ただし、決定論的エンコーディングを必要としないコンパクトなアプリケーションは、アプリケーションが指定されたサイズの整数をデコードできる限り、必要以上に長いエンコーディング（たとえば、「0」を0b000_11001にエンコードして、2バイトの0x00が続くようにエンコードする）を使用する値を受け入れる必要があります。
+        浮動小数点値にも同様の考慮事項が適用されます。推奨されるのは、最適なシリアル化と必要以上に長いシリアル化の両方をデコードすることです。</t>
+        <t indent="0" pn="section-5.5-4">指数が小さく非負である場合など、特定の数を整数として表現するか、小数点以下の数値またはbigfloatとして表現することを選択できる制約されたアプリケーションのCBORベースのプロトコルは、整数表現が直接使用されることを期待する実装品質の期待値を表現する場合があります。</t>
       </section>
       <section anchor="map-keys" toc="include" numbered="true" removeInRFC="false" pn="section-5.6">
         <name slugifiedName="name-specifying-keys-for-maps">Specifying Keys for Maps</name>
-        <t indent="0" pn="section-5.6-1">The encoding and decoding applications need to agree on what types of
-keys are going to be used in maps.  In applications that need to
-interwork with JSON-based applications, conversion is simplified by
-limiting keys to text strings only; otherwise, there has to be a specified
-mapping from the other CBOR types to text strings, and this
-often leads to implementation errors.  In applications where keys are
-numeric in nature, and numeric ordering of keys is important to the
-application, directly using the numbers for the keys is useful.</t>
-        <t indent="0" pn="section-5.6-2">If multiple types of keys are to be used, consideration should be
-given to how these types would be represented in the specific
-programming environments that are to be used.  For example, in
-JavaScript Maps <xref target="ECMA262" format="default" sectionFormat="of" derivedContent="ECMA262"/>, a key of integer 1 cannot be
-distinguished from a key of floating-point 1.0. This means that, if integer
-keys are used, the protocol needs to avoid the use of
-floating-point keys the values of which happen to be integer numbers in the same map.</t>
-        <t indent="0" pn="section-5.6-3">Decoders that deliver data items nested within a CBOR data item
-immediately on decoding them ("streaming decoders") often do not keep
-the state that is necessary to ascertain uniqueness of a key in a map.
-Similarly, an encoder that can start encoding data items before the
-enclosing data item is completely available ("streaming encoder") may
-want to reduce its overhead significantly by relying on its data
-source to maintain uniqueness.</t>
-        <t indent="0" pn="section-5.6-4">A CBOR-based protocol <bcp14>MUST</bcp14> define what
-to do when a receiving application sees multiple identical keys in
-a map.  The resulting rule in the protocol <bcp14>MUST</bcp14> respect the CBOR
-data model: it cannot prescribe a specific handling of the entries
-with the identical keys, except that it might have a rule that having
-identical keys in a map indicates a malformed map and that the decoder
-has to stop with an error.
-When processing maps that exhibit entries with duplicate keys, a generic
-decoder might do one of the following:</t>
+        <t indent="0" pn="section-5.6-1">エンコードおよびデコードアプリケーションは、マップで使用されるキーのタイプについて合意する必要があります。JSONベースのアプリケーションと相互運用する必要があるアプリケーションでは、キーをテキスト文字列に限定することで変換が簡素化されます。それ以外の場合、他のCBORタイプからテキスト文字列への指定されたマッピングが必要であり、これにより実装エラーが発生することがよくあります。キーが数値的な性質を持ち、キーの数値的な順序がアプリケーションにとって重要な場合、キーとして直接数値を使用することが有用です。</t>
+        <t indent="0" pn="section-5.6-2">複数の種類のキーを使用する場合、これらの種類が使用される特定のプログラミング環境でどのように表現されるかを考慮する必要があります。たとえば、JavaScript Maps <xref target="ECMA262" format="default" sectionFormat="of" derivedContent="ECMA262"/>では、整数1のキーは浮動小数点1.0のキーと区別できません。これは、整数キーが使用される場合、プロトコルが同じマップ内の整数値である浮動小数点キーの使用を避ける必要があることを意味します。</t>
+        <t indent="0" pn="section-5.6-3">CBORデータアイテム内にネストされたデータアイテムをデコードするとすぐに（「ストリーミングデコーダー」）、マップ内のキーの一意性を確認するために必要な状態を保持しないことがよくあります。同様に、データアイテムを完全に利用可能にする前にデータアイテムのエンコードを開始できるエンコーダー（「ストリーミングエンコーダー」）は、データソースが一意性を維持することに依存して、オーバーヘッドを大幅に削減できます。</t>
+        <t indent="0" pn="section-5.6-4">CBORベースのプロトコルは、マップ内で複数の同じキーを持つエントリが見つかった場合に受信アプリケーションが何をするかを定義<bcp14>しなければなりません（MUST）</bcp14>。プロトコルによる結果のルールは、CBORデータモデルに準拠する必要があります。つまり、同じキーを持つエントリの処理方法を指定することはできず、ただし、マップ内に同じキーがある場合は、マップが不正なものであることを示すルールがある可能性があり、デコーダーがエラーで停止する必要があります。
+        重複するキーを持つエントリを含むマップを処理する場合、汎用デコーダーは次のいずれかを行うことがあります。</t>
         <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.6-5">
-          <li pn="section-5.6-5.1">Not accept maps with duplicate keys (that is, enforce validity for maps,
-see also <xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>).  These generic decoders are
-universally useful.  An application may still need to perform its
-own duplicate checking based on application rules (for instance, if
-the application equates integers and floating-point values in map
-key positions for specific maps).</li>
-          <li pn="section-5.6-5.2">Pass all map entries to the application, including ones with
-duplicate keys.  This requires that the application handle (check
-against) duplicate keys, even if the application rules are identical
-to the generic data model rules.</li>
-          <li pn="section-5.6-5.3">Lose some entries with duplicate keys, e.g., deliver only the
-final (or first) entry out of the entries with the same key.  With
-such a generic decoder, applications may get different results for a
-specific key on different runs, and with different generic decoders,
-which value is returned is based on generic decoder
-implementation and the actual order of keys in the map.  In
-particular, applications cannot validate key uniqueness on their own
-as they do not necessarily see all entries; they may not be able to
-use such a generic decoder if they need to validate key
-uniqueness.  These generic decoders can only be used in situations
-where the data source and transfer always
-provide valid maps; this is not possible if the data source and transfer can be attacked.</li>
+          <li pn="section-5.6-5.1">マップ内に重複するキーがある場合は受け入れない（つまり、マップの妥当性を強制する。詳細は<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>を参照）。これらの汎用デコーダーは普遍的に有用です。アプリケーションは、特定のマップにおいて整数と浮動小数点値をマップキーの位置で同等と見なす場合など、アプリケーションルールに基づいた重複チェックを自己実行する必要がある場合があります。</li>
+          <li pn="section-5.6-5.2">重複するキーを含むすべてのマップエントリをアプリケーションに渡す。これには、アプリケーションが重複するキーを処理する（チェックする）必要があるため、アプリケーションルールが汎用データモデルルールと同一である場合でも、重複するキーを処理する必要があります。</li>
+          <li pn="section-5.6-5.3">重複するキーを持つエントリのうち、最後のエントリ（または最初のエントリ）のみを配信するなど、一部のエントリを失う。このような汎用デコーダーを使用する場合、アプリケーションは、異なる実行や異なる汎用デコーダーを使用する場合に、特定のキーに対して異なる結果を得る可能性があります。どの値が返されるかは、汎用デコーダーの実装とマップ内のキーの実際の順序に基づいています。特に、アプリケーションは、すべてのエントリを見るわけではないため、自分自身でキーの一意性を検証することができないため、重複チェックを自己実行する必要がある場合があります。これらの汎用デコーダーは、データソースと転送が常に有効なマップを提供する場合にのみ使用できます。データソースと転送が攻撃される可能性がある場合、これは不可能です。</li>
         </ul>
-        <t indent="0" pn="section-5.6-6">Generic decoders need to document which of these three approaches they
-implement.</t>
-        <t indent="0" pn="section-5.6-7">The CBOR data model for maps does not allow ascribing semantics to the
-order of the key/value pairs in the map representation.  Thus, a
-CBOR-based protocol <bcp14>MUST NOT</bcp14> specify that changing the key/value pair
-order in a map changes the semantics, except to specify that some
-orders are disallowed, for example, where they would not meet the
-requirements of a deterministic
-encoding (<xref target="det-enc" format="default" sectionFormat="of" derivedContent="Section 4.2"/>).
-(Any secondary effects of map ordering such as on timing, cache usage,
-and other potential side channels are not considered part of the
-semantics but may be enough reason on their own for a protocol to require a
-deterministic encoding format.)</t>
-        <t indent="0" pn="section-5.6-8">Applications for constrained devices should consider using small 
-   integers as keys if they have maps with a small number of frequently 
-   used keys; for instance, a set of 24 or fewer
-   keys can be encoded in a single byte as unsigned integers, up to 
-   48 if negative integers are also used.  Less frequently
-   occurring keys can then use integers with longer encodings.</t>
+        <t indent="0" pn="section-5.6-6">汎用デコーダーは、これら3つのアプローチのうちどれを実装するかを文書化する必要があります。</t>
+        <t indent="0" pn="section-5.6-7">マップのCBORデータモデルでは、マップ表現内のキー/値ペアの順序に意味を付与することはできません。したがって、CBORベースのプロトコルは、マップ内のキー/値ペアの順序を変更することが意味を変えることを指定してはなりません<bcp14>（ただし、決定論的エンコーディングの要件を満たさない場合など、一部の順序が許可されないことを指定することはできます。詳細は<xref target="det-enc" format="default" sectionFormat="of" derivedContent="Section 4.2"/>を参照）</bcp14>。（タイミング、キャッシュ使用、その他の潜在的なサイドチャネルなど、マップの順序による二次的な影響は意味の一部ではありませんが、プロトコルが決定論的エンコーディング形式を要求する理由となる可能性があります。）</t>
+        <t indent="0" pn="section-5.6-8">制約されたデバイス向けのアプリケーションでは、頻繁に使用されるキーの数が少ないマップがある場合は、小さな整数をキーとして使用することを検討する必要があります。たとえば、24個以下のキーのセットは、符号なし整数として1バイトでエンコードでき、負の整数も使用する場合は48個までエンコードできます。出現頻度の低いキーは、より長いエンコーディングを持つ整数を使用できます。</t>
         <section anchor="equivalence-of-keys" toc="include" numbered="true" removeInRFC="false" pn="section-5.6.1">
           <name slugifiedName="name-equivalence-of-keys">Equivalence of Keys</name>
-          <t indent="0" pn="section-5.6.1-1">The specific data model that applies to a CBOR data item is used to
-determine whether keys occurring in maps are duplicates or distinct.</t>
-          <t indent="0" pn="section-5.6.1-2">At the generic data model level, numerically equivalent integer and
-floating-point values are distinct from each other, as they are from
-the various big numbers (Tags 2 to 5).  Similarly, text strings are
-distinct from byte strings, even if composed of the same bytes.  A
-tagged value is distinct from an untagged value or from a value tagged
-with a different tag number.</t>
-          <t indent="0" pn="section-5.6.1-3">Within each of these groups, numeric values are distinct unless they
-are numerically equal (specifically, -0.0 is equal to 0.0); for the
-purpose of map key equivalence, NaN 
-values are equivalent if they have the same significand after
-zero-extending both significands at the right to 64 bits.</t>
-          <t indent="0" pn="section-5.6.1-4">Both byte strings and text strings are compared 
-byte by byte, arrays are compared element by element, and are equal if they have 
-the same number of bytes/elements and the same values at the same 
-positions.  Two maps are equal if they have the same set of pairs regardless of
-their order; pairs are equal if both the key and value are equal.</t>
-          <t indent="0" pn="section-5.6.1-5">Tagged values are equal if both the tag number and the tag content are equal.
-(Note that a generic decoder that provides processing for a specific
-tag may not be able to distinguish some semantically equivalent
-values, e.g., if leading zeroes occur in the content of tag 2 or tag 3
-(<xref target="bignums" format="default" sectionFormat="of" derivedContent="Section 3.4.3"/>).)
-Simple values are equal if they simply have the same value.
-Nothing else is equal in the generic data model; a simple value 2 is
-not equivalent to an integer 2, and an array is never equivalent to a map.</t>
-          <t indent="0" pn="section-5.6.1-6">As discussed in <xref target="specific-data-models" format="default" sectionFormat="of" derivedContent="Section 2.2"/>, specific data models can
-make values equivalent for the purpose of comparing map keys that are
-distinct in the generic data model.  Note that this implies that a
-generic decoder may deliver a decoded map to an application that needs
-to be checked for duplicate map keys by that application
-(alternatively, the decoder may provide a programming interface to
-perform this service for the application).  Specific data models
-are not able to distinguish values for map keys that are equal for this purpose
-at the generic data model level.</t>
+          <t indent="0" pn="section-5.6.1-1">CBORデータアイテムに適用される特定のデータモデルは、マップ内に出現するキーが重複しているかどうかを判断するために使用されます。</t>
+          <t indent="0" pn="section-5.6.1-2">汎用データモデルレベルでは、数値的に等しい整数と浮動小数点値は互いに異なり、さまざまなビッグナンバー（タグ2から5）とも異なります。同様に、同じバイトから構成されていても、テキスト文字列はバイト文字列とは異なります。タグ付きの値は、タグのない値または異なるタグ番号でタグ付きの値とも異なります。</t>
+          <t indent="0" pn="section-5.6.1-3">これらのグループ内では、数値的に等しい場合を除いて、数値値は異なります（具体的には、-0.0は0.0と等しいです）。マップキーの同等性の目的のために、NaN値は、両方の有効桁を右側に64ビットまでゼロ拡張した後、有効桁が同じ場合に等価です。</t>
+          <t indent="0" pn="section-5.6.1-4">バイト文字列とテキスト文字列は、バイトごとに比較され、配列は要素ごとに比較され、同じバイト/要素数と同じ位置に同じ値がある場合に等しいと見なされます。2つのマップは、順序に関係なく同じペアのセットを持つ場合に等しいと見なされます。ペアは、キーと値の両方が等しい場合に等しいと見なされます。</t>
+          <t indent="0" pn="section-5.6.1-5">タグ付きの値は、タグ番号とタグの内容が等しい場合に等しいです。
+          （特定のタグの処理を提供する汎用デコーダーは、タグ2またはタグ3の内容に先行するゼロが含まれる場合など、意味的に等価な値を区別できない場合があることに注意してください（<xref target="bignums" format="default" sectionFormat="of" derivedContent="Section 3.4.3"/>）。）
+          シンプルな値は、単に同じ値を持つ場合に等しいです。
+          汎用データモデルでは、それ以外のものは等しくありません。シンプルな値2は整数2と等価ではなく、配列はマップと等価ではありません。</t>
+          <t indent="0" pn="section-5.6.1-6">特定のデータモデルでは、汎用データモデルで異なるマップキーを比較するために等価な値を作成できます（<xref target="specific-data-models" format="default" sectionFormat="of" derivedContent="Section 2.2"/>で説明されています）。これは、汎用デコーダーが、重複するマップキーをチェックする必要があるアプリケーションにデコードされたマップを提供する可能性があることを意味します（代わりに、デコーダーはアプリケーションのためにこのサービスを実行するプログラミングインターフェースを提供することができます）。特定のデータモデルは、汎用データモデルレベルでこの目的のために等しいマップキーの値を区別することができません。</t>
         </section>
       </section>
       <section anchor="undefined-values" toc="include" numbered="true" removeInRFC="false" pn="section-5.7">
         <name slugifiedName="name-undefined-values">Undefined Values</name>
-        <t indent="0" pn="section-5.7-1">In some CBOR-based protocols, the simple value (<xref target="fpnocont" format="default" sectionFormat="of" derivedContent="Section 3.3"/>) of
-<tt>undefined</tt> might be used by an encoder as a substitute for a data item
-with an encoding problem, in order to allow the rest of the enclosing
-data items to be encoded without harm.</t>
+        <t indent="0" pn="section-5.7-1">いくつかのCBORベースのプロトコルでは、エンコーダーがエンコーディングの問題を代替するために<tt>undefined</tt>のシンプルな値（<xref target="fpnocont" format="default" sectionFormat="of" derivedContent="Section 3.3"/>）を使用する場合があります。これにより、他の囲むデータアイテムを危険にさらすことなく、残りのデータアイテムをエンコードできるようになります。</t>
       </section>
     </section>
     <section anchor="converting-data-between-cbor-and-json" toc="include" numbered="true" removeInRFC="false" pn="section-6">
       <name slugifiedName="name-converting-data-between-cbo">Converting Data between CBOR and JSON</name>
-      <t indent="0" pn="section-6-1">This section gives non-normative advice about converting between CBOR
-and JSON. Implementations of converters <bcp14>MAY</bcp14> use whichever
-advice here they want.</t>
-      <t indent="0" pn="section-6-2">It is worth noting that a JSON text is a sequence of characters, not
-an encoded sequence of bytes, while a CBOR data item consists of
-bytes, not characters.</t>
+      <t indent="0" pn="section-6-1">このセクションでは、CBORとJSONの変換に関する非規範的なアドバイスを提供します。変換プログラムの実装は、ここで提供されるアドバイスのうち、どちらを使用してもかまいません<bcp14>。</bcp14></t>
+      <t indent="0" pn="section-6-2">JSONテキストは文字のシーケンスであり、エンコードされたバイトのシーケンスではないことに注意する価値があります。一方、CBORデータアイテムは文字ではなくバイトで構成されています。</t>
       <section anchor="converting-from-cbor-to-json" toc="include" numbered="true" removeInRFC="false" pn="section-6.1">
         <name slugifiedName="name-converting-from-cbor-to-jso">Converting from CBOR to JSON</name>
-        <t indent="0" pn="section-6.1-1">Most of the types in CBOR have direct analogs in JSON. However, some
-do not, and someone implementing a CBOR-to-JSON converter has to
-consider what to do in those cases. The following non-normative advice
-deals with these by converting them to a single substitute value, such
-as a JSON null.</t>
+        <t indent="0" pn="section-6.1-1">CBORのほとんどのタイプには、JSONに直接対応するものがあります。ただし、一部には対応するものがないものもあり、CBORからJSONへの変換プログラムを実装する場合は、これらの場合にどのように対処するかを考慮する必要があります。次の非規範的なアドバイスは、これらを単一の代替値（JSON nullなど）に変換することで対処します。</t>
         <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-6.1-2">
-          <li pn="section-6.1-2.1">An integer (major type 0 or 1) becomes a JSON number.</li>
-          <li pn="section-6.1-2.2">A byte string (major type 2) that is not embedded in a tag that
-specifies a proposed encoding is encoded in base64url without
-padding and becomes a JSON string.</li>
-          <li pn="section-6.1-2.3">A UTF-8 string (major type 3) becomes a JSON string.  Note that JSON
-requires escaping certain characters (<xref target="RFC8259" section="7" sectionFormat="comma" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8259#section-7" derivedContent="RFC8259"/>):
-quotation mark (U+0022), reverse solidus (U+005C), and the "C0
-control characters" (U+0000 through U+001F).  All other characters
-are copied unchanged into the JSON UTF-8 string.</li>
-          <li pn="section-6.1-2.4">An array (major type 4) becomes a JSON array.</li>
-          <li pn="section-6.1-2.5">A map (major type 5) becomes a JSON object.  This is possible
-directly only if all keys are UTF-8 strings.  A converter might also
-convert other keys into UTF-8 strings (such as by converting
-integers into strings containing their decimal representation);
-however, doing so introduces a danger of key collision.
-Note also that, if tags on UTF-8 strings are ignored as proposed
-below, this will cause a key
-collision if the tags are different but the strings are the same.</li>
-          <li pn="section-6.1-2.6">False (major type 7, additional information 20) becomes a JSON
-false.</li>
-          <li pn="section-6.1-2.7">True (major type 7, additional information 21) becomes a JSON true.</li>
-          <li pn="section-6.1-2.8">Null (major type 7, additional information 22) becomes a JSON null.</li>
-          <li pn="section-6.1-2.9">A floating-point value (major type 7, additional information 25
-through 27) becomes a JSON number if it is finite (that is, it can
-be represented in a JSON number); if the value is non-finite (NaN,
-or positive or negative Infinity), it is represented by the
-substitute value.</li>
-          <li pn="section-6.1-2.10">Any other simple value (major type 7, any additional information
-value not yet discussed) is represented by the substitute value.</li>
-          <li pn="section-6.1-2.11">A bignum (major type 6, tag number 2 or 3) is represented by encoding
-its byte string in base64url without padding and becomes a JSON
-string.  For tag number 3 (negative bignum), a "~" (ASCII tilde) is
-inserted before the base-encoded value. (The conversion to a binary
-blob instead of a number is to prevent a likely numeric overflow for
-the JSON decoder.)</li>
-          <li pn="section-6.1-2.12">A byte string with an encoding hint (major type 6, tag number 21
-through 23) is encoded as described by the hint and becomes a JSON string.</li>
-          <li pn="section-6.1-2.13">For all other tags (major type 6, any other tag number), the tag
-content is represented as a JSON value; the tag number is ignored.</li>
-          <li pn="section-6.1-2.14">Indefinite-length items are made definite before conversion.</li>
+          <li pn="section-6.1-2.1">整数（メジャータイプ0または1）はJSON数値になります。</li>
+          <li pn="section-6.1-2.2">提案されたエンコーディングを指定するタグに埋め込まれていないバイト文字列（メジャータイプ2）は、パディングのないbase64urlでエンコードされ、JSON文字列になります。</li>
+          <li pn="section-6.1-2.3">UTF-8文字列（メジャータイプ3）はJSON文字列になります。ただし、JSONでは特定の文字（<xref target="RFC8259" section="7" sectionFormat="comma" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8259#section-7" derivedContent="RFC8259"/>）をエスケープする必要があります。これらの文字は、引用符（U+0022）、逆ソリッドスラッシュ（U+005C）、および「C0制御文字」（U+0000からU+001F）です。その他の文字は、JSON UTF-8文字列にそのままコピーされます。</li>
+          <li pn="section-6.1-2.4">配列（メジャータイプ4）はJSON配列になります。</li>
+          <li pn="section-6.1-2.5">マップ（メジャータイプ5）はJSONオブジェクトになります。これは、すべてのキーがUTF-8文字列である場合にのみ直接可能です。コンバータは、他のキーをUTF-8文字列に変換することもできます（たとえば、整数を10進表記を含む文字列に変換することによって）。ただし、これを行うと、キーの衝突の危険性が生じます。また、UTF-8文字列のタグを以下で提案されるように無視する場合、タグが異なるが文字列が同じ場合にキーの衝突が発生することに注意してください。</li>
+          <li pn="section-6.1-2.6">False（メジャータイプ7、追加情報20）はJSON falseになります。</li>
+          <li pn="section-6.1-2.7">True（メジャータイプ7、追加情報21）はJSON trueになります。</li>
+          <li pn="section-6.1-2.8">Null（メジャータイプ7、追加情報22）はJSON nullになります。</li>
+          <li pn="section-6.1-2.9">浮動小数点値（メジャータイプ7、追加情報25から27）は、有限である場合（つまり、JSON数値で表現できる場合）、JSON数値になります。値が有限でない場合（NaN、正のまたは負のInfinity）、代替値で表されます。</li>
+          <li pn="section-6.1-2.10">その他のシンプルな値（メジャータイプ7、まだ議論されていない任意の追加情報値）は、代替値で表されます。</li>
+          <li pn="section-6.1-2.11">バイト文字列をbase64urlでパディングなしでエンコードすることにより、ビッグナンバー（メジャータイプ6、タグ番号2または3）はエンコードされ、JSON文字列になります。タグ番号3（負のビッグナンバー）の場合、ベースエンコードされた値の前に"~"（ASCIIチルダ）が挿入されます（JSONデコーダーの数値オーバーフローを防ぐために、数値ではなくバイナリブロブに変換されます）。</li>
+          <li pn="section-6.1-2.12">エンコーディングヒントを持つバイト文字列（メジャータイプ6、タグ番号21から23）は、ヒントに記載されているようにエンコードされ、JSON文字列になります。</li>
+          <li pn="section-6.1-2.13">その他のタグ（メジャータイプ6、その他のタグ番号）の場合、タグの内容はJSON値として表されます。タグ番号は無視されます。</li>
+          <li pn="section-6.1-2.14">変換前に、不定長アイテムは定長に変換されます。</li>
         </ul>
-        <t indent="0" pn="section-6.1-3">A CBOR-to-JSON converter may want to keep to the JSON profile I-JSON
-<xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>, to maximize interoperability and increase confidence
-that the JSON output can be processed with predictable results.  For
-example, this has implications on the range of integers that can be
-represented reliably, as well as on the top-level items that may be
-supported by older JSON implementations.</t>
+        <t indent="0" pn="section-6.1-3">CBORからJSONへの変換プログラムは、相互運用性を最大化し、JSON出力が予測可能な結果で処理できることを保証するために、JSONプロファイルI-JSON<xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>に従うことが望ましい場合があります。たとえば、これには、信頼性の高い整数の範囲に関する影響があります。また、古いJSON実装でサポートされる可能性のあるトップレベルアイテムにも影響があります。</t>
       </section>
       <section anchor="converting-from-json" toc="include" numbered="true" removeInRFC="false" pn="section-6.2">
         <name slugifiedName="name-converting-from-json-to-cbo">Converting from JSON to CBOR</name>
-        <t indent="0" pn="section-6.2-1">All JSON values, once decoded, directly map into one or more CBOR
-values.  As with any kind of CBOR generation, decisions have to be
-made with respect to number representation.  In a suggested
-conversion:</t>
+        <t indent="0" pn="section-6.2-1">JSON値はすべて、デコードされた後、1つ以上のCBOR値に直接マップされます。CBORの生成に関しては、数値表現に関する決定を行う必要があります。提案される変換では、次のようになります。</t>
         <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-6.2-2">
-          <li pn="section-6.2-2.1">JSON numbers without fractional parts (integer numbers) are
-represented as integers (major types 0 and 1, possibly major type 6,
-tag number 2 and 3), choosing the shortest form; integers longer than
-an implementation-defined threshold may instead be represented as
-floating-point values.  The
-default range that is represented as integer is
--2<sup>53</sup>+1..2<sup>53</sup>-1 (fully exploiting the range for exact integers
-in the binary64 representation often used for decoding JSON <xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>).
-A CBOR-based protocol, or a generic converter implementation,
-may choose -2<sup>32</sup>..2<sup>32</sup>-1 or -2<sup>64</sup>..2<sup>64</sup>-1 (fully
-using the integer ranges available in CBOR with uint32_t or
-uint64_t, respectively) or even -2<sup>31</sup>..2<sup>31</sup>-1 or
--2<sup>63</sup>..2<sup>63</sup>-1 (using popular ranges for two's complement
-signed integers).
-(If
-the JSON was generated from a JavaScript implementation, its
-precision is already limited to 53 bits maximum.)</li>
-          <li pn="section-6.2-2.2">Numbers with fractional parts are represented as floating-point
-values, performing the decimal-to-binary conversion based on the
-precision provided by IEEE 754 binary64.
-The mathematical value of the JSON number is converted to binary64
-using the roundTiesToEven procedure in Section 4.3.1 of <xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>.
-Then, when encoding in
-CBOR, the preferred serialization uses the shortest floating-point
-representation exactly representing this conversion result; for
-instance, 1.5 is represented in a 16-bit floating-point value (not
-all implementations will be capable of efficiently finding the
-minimum form, though).  Instead of using the default binary64
-precision, there may be an implementation-defined limit to the
-precision of the conversion that will affect the precision of the
-represented values. Decimal representation should only be used on
-the CBOR side if that is specified in a protocol.</li>
+          <li pn="section-6.2-2.1">小数部を持たないJSON数値（整数）は、整数（メジャータイプ0および1、おそらくメジャータイプ6、タグ番号2および3）として表され、最短の形式が選択されます。実装定義の閾値よりも長い整数は、代わりに浮動小数点値として表される場合があります。整数として表されるデフォルトの範囲は、-2<sup>53</sup>+1..2<sup>53</sup>-1であり、（JSONデコードによく使用されるbinary64表現で正確な整数の範囲を完全に活用する）。
+          CBORベースのプロトコルまたは汎用コンバータ実装では、uint32_tまたはuint64_tで利用可能な整数範囲を完全に使用するために、-2<sup>32</sup>..2<sup>32</sup>-1または-2<sup>64</sup>..2<sup>64</sup>-1を選択することができます。また、2の補数符号付き整数の人気のある範囲である-2<sup>31</sup>..2<sup>31</sup>-1または-2<sup>63</sup>..2<sup>63</sup>-1を使用することもできます。
+          （JSONがJavaScript実装から生成された場合、その精度は既に最大53ビットに制限されています。）</li>
+          <li pn="section-6.2-2.2">小数部を持つ数値は、IEEE 754 binary64によって提供される精度に基づいて、浮動小数点値として表されます。JSON数値の数学的な値は、<xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>のセクション4.3.1のroundTiesToEven手順を使用して、binary64に変換されます。その後、CBORでエンコードする際に、最短の浮動小数点表現が使用され、この変換結果を正確に表します。たとえば、1.5は16ビットの浮動小数点値で表されます（すべての実装が最小形式を効率的に見つけることができるわけではありません）。デフォルトのbinary64精度を使用する代わりに、変換の精度に影響を与える実装定義の精度制限がある場合があります。10進表記は、プロトコルで指定されている場合を除き、CBOR側でのみ使用する必要があります。</li>
         </ul>
-        <t indent="0" pn="section-6.2-3">CBOR has been designed to generally provide a more compact encoding
-than JSON.  One implementation strategy that might come to mind is to
-perform a JSON-to-CBOR encoding in place in a single buffer.  This
-strategy would need to carefully consider a number of pathological
-cases, such as that some strings represented with no or very few
-escapes and longer (or much longer) than 255 bytes may expand when
-encoded as UTF-8 strings in CBOR.  Similarly, a few of the binary
-floating-point representations might cause expansion from some short
-decimal representations (1.1, 1e9) in JSON.  This may be hard to get
-right, and any ensuing vulnerabilities may be exploited by an
-attacker.</t>
+        <t indent="0" pn="section-6.2-3">CBORは、一般的にJSONよりもコンパクトなエンコーディングを提供するように設計されています。1つの実装戦略は、JSON-to-CBORエンコーディングを単一のバッファ内で実行することです。この戦略では、いくつかの病的なケースを注意深く考慮する必要があります。たとえば、255バイトよりも長く（またははるかに長く）エスケープがない文字列がいくつかあり、CBORでUTF-8文字列としてエンコードされると拡張される可能性があります。同様に、一部のバイナリ浮動小数点表現は、JSONの短い10進表記（1.1、1e9）から拡張される可能性があります。これを正しく行うことは難しい場合があり、その後の脆弱性は攻撃者によって悪用される可能性があります。</t>
       </section>
     </section>
     <section anchor="future-evolution-of-cbor" toc="include" numbered="true" removeInRFC="false" pn="section-7">
       <name slugifiedName="name-future-evolution-of-cbor">Future Evolution of CBOR</name>
-      <t indent="0" pn="section-7-1">Successful protocols evolve over time.  New ideas appear,
-implementation platforms improve, related protocols are developed and
-evolve, and new requirements from applications and protocols are
-added.  Facilitating protocol evolution is therefore an important
-design consideration for any protocol development.</t>
-      <t indent="0" pn="section-7-2">For protocols that will use CBOR, CBOR provides some useful mechanisms
-to facilitate their evolution.  Best practices for this are well
-known, particularly from JSON format development of JSON-based
-protocols.  Therefore, such best practices are outside the scope of
-this specification.</t>
-      <t indent="0" pn="section-7-3">However, facilitating the evolution of CBOR itself is very well within
-its scope.  CBOR is designed to both provide a stable basis for
-development of CBOR-based protocols and to be able to evolve.  Since a
-successful protocol may live for decades, CBOR needs to be designed
-for decades of use and evolution.  This section provides some guidance
-for the evolution of CBOR.  It is necessarily more subjective than
-other parts of this document.  It is also necessarily incomplete, lest
-it turn into a textbook on protocol development.</t>
+      <t indent="0" pn="section-7-1">成功したプロトコルは時間とともに進化します。新しいアイデアが現れ、実装プラットフォームが改善され、関連するプロトコルが開発および進化し、アプリケーションおよびプロトコルからの新しい要件が追加されます。そのため、プロトコルの進化を促進することは、プロトコル開発において重要な設計上の考慮事項です。</t>
+      <t indent="0" pn="section-7-2">CBORを使用するプロトコルに対して、CBORはその進化を容易にするための有用なメカニズムを提供します。このため、JSONベースのプロトコルのJSON形式開発から、そのようなベストプラクティスがよく知られています。そのため、この仕様の範囲外で、そのようなベストプラクティスについては言及しません。</t>
+      <t indent="0" pn="section-7-3">ただし、CBOR自体の進化を容易にすることは、その範囲内で非常にうまくいきます。CBORは、CBORベースのプロトコルの開発の安定した基盤を提供すると同時に、進化できるように設計されています。成功したプロトコルは数十年間生き残る可能性があるため、CBORは数十年間の使用と進化を考慮して設計する必要があります。このセクションでは、CBORの進化に関するいくつかのガイダンスを提供します。これは、このドキュメントの他の部分よりも主観的である必要があります。また、プロトコル開発の教科書にならないように、必然的に不完全である必要があります。</t>
       <section anchor="extension-points" toc="include" numbered="true" removeInRFC="false" pn="section-7.1">
         <name slugifiedName="name-extension-points">Extension Points</name>
-        <t indent="0" pn="section-7.1-1">In a protocol design, opportunities for evolution are often included
-in the form of extension points.  For example, there may be a
-codepoint space that is not fully allocated from the outset, and the
-protocol is designed to tolerate and embrace implementations that
-start using more codepoints than initially allocated.</t>
-        <t indent="0" pn="section-7.1-2">Sizing the codepoint space may be difficult because the range required
-may be hard to predict.  Protocol designs should attempt to make the
-codepoint space large enough so that it can slowly be filled over the
-intended lifetime of the protocol.</t>
+        <t indent="0" pn="section-7.1-1">プロトコル設計において、進化の機会はしばしば拡張ポイントの形で含まれます。たとえば、最初から完全に割り当てられていないコードポイントスペースがある場合があり、プロトコルは、最初に割り当てられたコードポイントよりも多くのコードポイントを使用し始める実装を許容し、受け入れるように設計されています。</t>
+        <t indent="0" pn="section-7.1-2">コードポイントスペースのサイズを決定することは困難な場合があります。必要な範囲を予測することが難しいためです。プロトコル設計では、コードポイントスペースが十分に大きくなるように設計する必要があります。これにより、プロトコルの寿命中にゆっくりと埋められるようになります。</t>
         <t indent="0" pn="section-7.1-3">CBOR has three major extension points:</t>
         <dl spacing="normal" indent="3" newline="false" pn="section-7.1-4">
-          <dt pn="section-7.1-4.1">the "simple" space (values in major type 7):</dt>
-          <dd pn="section-7.1-4.2">Of the 24 efficient
-(and 224 slightly less efficient) values, only a small number have
-been allocated.  Implementations receiving an unknown simple data
-item may easily be able to process it as such, given that the structure of
-the value is indeed simple. The IANA registry in
-<xref target="ianasimple" format="default" sectionFormat="of" derivedContent="Section 9.1"/> is the appropriate way to address the
-extensibility of this codepoint space.</dd>
-          <dt pn="section-7.1-4.3">the "tag" space (values in major type 6):</dt>
-          <dd pn="section-7.1-4.4"> The total codepoint space
-is abundant; only a tiny part of it has
-been allocated.  However, not all of these codepoints are equally
-efficient: the first 24 only consume a single ("1+0") byte, and
-half of them have already been allocated. The next 232 values only
-consume two ("1+1") bytes, with nearly a quarter already allocated.
-These subspaces need some curation to last for a few more decades.
-Implementations receiving an unknown tag number can choose to
-process just the enclosed tag content or, preferably, to
-process the tag as an unknown tag number wrapping the
-tag content. The IANA registry in <xref target="ianatags" format="default" sectionFormat="of" derivedContent="Section 9.2"/> is the appropriate way to
-address the extensibility of this codepoint space.</dd>
-          <dt pn="section-7.1-4.5">the "additional information" space:</dt>
-          <dd pn="section-7.1-4.6">An implementation receiving an
-unknown additional information value has no way to continue decoding,
-so allocating codepoints in this space is a major step beyond just
-exercising an extension point.  There are
-also very few codepoints left.  See also <xref target="curating" format="default" sectionFormat="of" derivedContent="Section 7.2"/>.</dd>
+          <dt pn="section-7.1-4.1">「simple」スペース（メジャータイプ7の値）：</dt>
+          <dd pn="section-7.1-4.2">24の効率的な値（および224のやや効率的である値）のうち、ごくわずかしか割り当てられていません。不明なシンプルデータアイテムを受信した実装は、値の構造が実際にシンプルである場合、それを処理することができる場合があります。IANAレジストリは、このコードポイントスペースの拡張性をアドレスするための適切な方法です。<xref target="ianasimple" format="default" sectionFormat="of" derivedContent="Section 9.1"/>。</dd>
+          <dt pn="section-7.1-4.3">「tag」スペース（メジャータイプ6の値）：</dt>
+          <dd pn="section-7.1-4.4">総コードポイントスペースは豊富ですが、そのうちごく一部しか割り当てられていません。ただし、これらのコードポイントがすべて同じ効率であるわけではありません。最初の24個は1つの（「1 + 0」）バイトしか消費せず、そのうちの半分がすでに割り当てられています。次の232個の値は2つの（「1 + 1」）バイトしか消費せず、そのうちの約4分の1がすでに割り当てられています。これらのサブスペースは、数十年間持続するためにいくつかの手入れが必要です。不明なタグ番号を受信した実装は、包含されたタグコンテンツだけを処理するか、好ましくは、タグコンテンツを包む不明なタグ番号としてタグを処理することができます。IANAレジストリは、このコードポイントスペースの拡張性をアドレスするための適切な方法です。<xref target="ianatags" format="default" sectionFormat="of" derivedContent="Section 9.2"/>。</dd>
+          <dt pn="section-7.1-4.5">「additional information」スペース：</dt>
+          <dd pn="section-7.1-4.6">不明な追加情報値を受信した実装は、デコードを続行する方法がありません。したがって、このスペースにコードポイントを割り当てることは、拡張ポイントを実行する以上の大きなステップです。残りのコードポイントも非常に少ないです。詳細については、<xref target="curating" format="default" sectionFormat="of" derivedContent="Section 7.2"/>も参照してください。</dd>
         </dl>
       </section>
       <section anchor="curating" toc="include" numbered="true" removeInRFC="false" pn="section-7.2">
         <name slugifiedName="name-curating-the-additional-inf">Curating the Additional Information Space</name>
-        <t indent="0" pn="section-7.2-1">The human mind is sometimes drawn to filling in little perceived gaps
-to make something neat.  We expect the remaining gaps in the codepoint
-space for the additional information values to be an attractor for new
-ideas, just because they are there.</t>
-        <t indent="0" pn="section-7.2-2">The present specification does not manage the additional information
-codepoint space by an IANA registry.  Instead, allocations out of this
-space can only be done by updating this specification.</t>
-        <t indent="0" pn="section-7.2-3">For an additional information value of n &gt;= 24, the size of the
-additional data typically is 2<sup>n-24</sup> bytes.  Therefore, additional
-information values 28 and 29 should be viewed as candidates for
-128-bit and 256-bit quantities, in case a need arises to add them to
-the protocol.  Additional information value 30 is then the only
-additional information value available for general allocation, and
-there should be a very good reason for allocating it before assigning
-it through an update of the present specification.</t>
+        <t indent="0" pn="section-7.2-1">人間の心は、何かを整然とさせるために、時には小さな認識された隙間を埋めることに引き寄せられることがあります。追加情報値のコードポイントスペースの残りの隙間が、新しいアイデアの引き寄せ子になることを期待しています。それらがあるからです。</t>
+        <t indent="0" pn="section-7.2-2">現在の仕様では、追加情報のコードポイントスペースはIANAレジストリによって管理されていません。このスペースからの割り当ては、この仕様を更新することによってのみ行うことができます。</t>
+        <t indent="0" pn="section-7.2-3">追加情報値n（n≥24）の場合、追加データのサイズは通常2<sup>n-24</sup>バイトです。したがって、追加情報値28および29は、プロトコルに追加する必要がある場合に128ビットおよび256ビットの数量の候補として見なす必要があります。追加情報値30は、一般的な割り当て用に利用可能な唯一の追加情報値であり、現在の仕様の更新を介して割り当てる前に非常に良い理由がある必要があります。</t>
       </section>
     </section>
     <section anchor="diagnostic-notation" toc="include" numbered="true" removeInRFC="false" pn="section-8">
       <name slugifiedName="name-diagnostic-notation">Diagnostic Notation</name>
-      <t indent="0" pn="section-8-1">CBOR is a binary interchange format.  To facilitate documentation and
-debugging, and in particular to facilitate communication between
-entities cooperating in debugging, this section defines a simple
-human-readable diagnostic notation.  All actual interchange always
-happens in the binary format.</t>
-      <t indent="0" pn="section-8-2">Note that this truly is a diagnostic format; it is not meant to be
-parsed.  Therefore, no formal definition (as in ABNF) is given in this
-document.  (Implementers looking for a text-based format for
-representing CBOR data items in configuration files may also want to
-consider YAML <xref target="YAML" format="default" sectionFormat="of" derivedContent="YAML"/>.)</t>
-      <t indent="0" pn="section-8-3">The diagnostic notation is loosely based on JSON as it is defined in
-RFC 8259, extending it where needed.</t>
-      <t indent="0" pn="section-8-4">The notation borrows the JSON syntax for numbers (integer and
-floating-point), True (&gt;true&lt;), False (&gt;false&lt;), Null (&gt;null&lt;), UTF-8
-strings, arrays, and maps (maps are called objects in JSON; the
-diagnostic notation extends JSON here by allowing any data item in the
-key position).  Undefined is written &gt;undefined&lt; as in JavaScript.
-The non-finite floating-point numbers Infinity, -Infinity, and NaN are
-written exactly as in this sentence (this is also a way they can be
-written in JavaScript, although JSON does not allow them).  A tag is
-written as an integer number for the tag number, followed by the tag content
-in parentheses; for instance, a date in the format specified by RFC 3339 (ISO 8601) could be
-notated as:</t>
+      <t indent="0" pn="section-8-1">CBORはバイナリ交換形式です。ドキュメント作成およびデバッグを容易にするため、特にデバッグに協力するエンティティ間の通信を容易にするために、このセクションでは単純な人間が読める診断表記を定義します。実際の交換は常にバイナリ形式で行われます。</t>
+      <t indent="0" pn="section-8-2">これは本当に診断用のフォーマットであることに注意してください。解析することを意図していません。そのため、このドキュメントでは、ABNFのような形式的な定義は与えられていません。（構成ファイルでCBORデータアイテムを表現するためのテキストベースのフォーマットを探している実装者は、YAML <xref target="YAML" format="default" sectionFormat="of" derivedContent="YAML"/>を検討することもできます。）</t>
+      <t indent="0" pn="section-8-3">診断表記は、必要に応じて拡張されたRFC 8259で定義されているJSONに緩く基づいています。</t>
+      <t indent="0" pn="section-8-4">この表記法は、JSONの数値（整数および浮動小数点）、True（&gt;true&lt;）、False（&gt;false&lt;）、Null（&gt;null&lt;）、UTF-8文字列、配列、およびマップ（JSONではマップはオブジェクトと呼ばれます。診断表記法は、キーの位置に任意のデータアイテムを許可することでJSONを拡張しています）。UndefinedはJavaScriptと同様に&gt;undefined&lt;と書かれます。非有限浮動小数点数のInfinity、-Infinity、およびNaNは、この文で書かれているように正確に書かれます（これはJavaScriptで書かれる方法でもありますが、JSONでは許可されていません）。タグは、タグ番号の整数値で書かれ、その後にタグコンテンツが括弧で囲まれて続きます。たとえば、RFC 3339（ISO 8601）で指定された形式の日付は、次のように表記されます。</t>
       <t indent="5" pn="section-8-5">0("2013-03-21T20:04:00Z")</t>
-      <t indent="0" pn="section-8-6">or the equivalent relative time as the following:</t>
+      <t indent="0" pn="section-8-6">または、次のような相対時間として表現されます。</t>
       <t indent="5" pn="section-8-7">1(1363896240)</t>
-      <t indent="0" pn="section-8-8">Byte strings are notated in one of the base encodings, without
-padding, enclosed in single quotes, prefixed by &gt;h&lt; for base16,
-&gt;b32&lt; for base32, &gt;h32&lt; for base32hex, &gt;b64&lt; for base64 or
-base64url (the actual encodings do not overlap, so the string remains
-unambiguous).  For example, the byte string 0x12345678 could be
-written h'12345678', b32'CI2FM6A', or b64'EjRWeA'.</t>
-      <t indent="0" pn="section-8-9">Unassigned simple values are given as "simple()" with the appropriate
-integer in the parentheses. For example, "simple(42)" indicates major
-type 7, value 42.</t>
-      <t indent="0" pn="section-8-10">A number of useful extensions to the diagnostic notation defined here are
-provided in <xref target="RFC8610" section="G" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8610#appendix-G" derivedContent="RFC8610"/>, "Extended Diagnostic Notation" (EDN).
-   Similarly, this notation could be extended in a separate document to 
-   provide documentation for NaN payloads, which are not covered in this document.  </t>
+      <t indent="0" pn="section-8-8">バイト文字列は、パディングなしで、シングルクォートで囲まれ、ベースエンコーディングの1つで表記されます。ベース16の場合は、&gt;h&lt;、ベース32の場合は&gt;b32&lt;、ベース32hexの場合は&gt;h32&lt;、ベース64またはベース64urlの場合は&gt;b64&lt;で接頭辞が付きます（実際のエンコーディングは重複しないため、文字列は曖昧ではありません）。たとえば、バイト文字列0x12345678は、h'12345678'、b32'CI2FM6A'、またはb64'EjRWeA'として書くことができます。</t>
+      <t indent="0" pn="section-8-9">未割り当てのシンプル値は、括弧内の適切な整数を伴う"simple()"として与えられます。たとえば、"simple(42)"は、メジャータイプ7、値42を示します。</t>
+      <t indent="0" pn="section-8-10">ここで定義された診断表記法には、<xref target="RFC8610" section="G" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8610#appendix-G" derivedContent="RFC8610"/>で提供される「拡張診断表記法」（EDN）による診断表記法の有用な拡張がいくつかあります。
+        同様に、この表記法は、この文書ではカバーされていないNaNペイロードのドキュメントを提供するために、別の文書で拡張できます。</t>
       <section anchor="encoding-indicators" toc="include" numbered="true" removeInRFC="false" pn="section-8.1">
         <name slugifiedName="name-encoding-indicators">Encoding Indicators</name>
-        <t indent="0" pn="section-8.1-1">Sometimes it is useful to indicate in the diagnostic notation which of
-several alternative representations were actually used; for example, a
-data item written &gt;1.5&lt; by a diagnostic decoder might have been
-encoded as a half-, single-, or double-precision float.</t>
-        <t indent="0" pn="section-8.1-2">The convention for encoding indicators is that anything starting with
-an underscore and all following characters that are alphanumeric or
-underscore is an encoding indicator, and can be ignored by anyone not
-interested in this information.  For example, <tt>_</tt> or <tt>_3</tt>.
-Encoding indicators are always
-optional.</t>
-        <t indent="0" pn="section-8.1-3">A single underscore can be written after the opening brace of a map or
-the opening bracket of an array to indicate that the data item was
-represented in indefinite-length format.  For example, [_ 1, 2]
-contains an indicator that an indefinite-length representation was
-used to represent the data item [1, 2].</t>
-        <t indent="0" pn="section-8.1-4">An underscore followed by a decimal digit n indicates that the
-preceding item (or, for arrays and maps, the item starting with the
-preceding bracket or brace) was encoded with an additional information
-value of 24+n.  For example, 1.5_1 is a half-precision floating-point
-number, while 1.5_3 is encoded as double precision.  This encoding
-indicator is not shown in <xref target="examples" format="default" sectionFormat="of" derivedContent="Appendix A"/>.  (Note that the encoding
-indicator "_" is thus an abbreviation of the full form "_7", which is
-not used.)</t>
-        <t indent="0" pn="section-8.1-5">The detailed chunk structure of byte and text strings of indefinite
-length can be
-notated in the form (_ h'0123', h'4567') and (_ "foo", "bar").
-However, for an indefinite-length string with no chunks inside, (_ )
-would be ambiguous as to whether a byte string (0x5fff) or a text string
-(0x7fff) is meant and is therefore not used.
-The basic forms ''_ and ""_ can be used instead and are reserved for
-the case of no chunks only -- not as short forms for the (permitted,
-but not really useful) encodings with only empty chunks, which 
-need to be notated as (_ ''), (_ ""), etc.,
-to preserve the chunk structure.</t>
+        <t indent="0" pn="section-8.1-1">診断表記法では、実際に使用された複数の代替表現のうち、どれが使用されたかを示すことがあると便利な場合があります。たとえば、診断デコーダーによって&gt;1.5&lt;と書かれたデータアイテムは、ハーフ、シングル、またはダブル精度の浮動小数点数としてエンコードされている可能性があります。</t>
+        <t indent="0" pn="section-8.1-2">エンコーディングインジケータの規約は、アンダースコアで始まり、その後のすべての英数字またはアンダースコアがエンコーディングインジケータであることであり、この情報に関心のない人は無視できます。たとえば、<tt>_</tt>または<tt>_3</tt>。エンコーディングインジケータは常にオプションです。</t>
+        <t indent="0" pn="section-8.1-3">マップの開始括弧の後または配列の開始括弧の後に単一のアンダースコアを書くことで、データアイテムが不定長形式で表現されたことを示すことができます。たとえば、[_ 1, 2]には、データアイテム[1, 2]が不定長形式で表現されたことを示すインジケータが含まれています。</t>
+        <t indent="0" pn="section-8.1-4">アンダースコアの後に10進数の数字nが続く場合、前のアイテム（または配列やマップの場合は、前の括弧またはブレースで始まるアイテム）が、追加情報値24+nでエンコードされたことを示します。たとえば、1.5_1は半精度浮動小数点数であり、1.5_3は倍精度でエンコードされます。このエンコーディングインジケータは<xref target="examples" format="default" sectionFormat="of" derivedContent="Appendix A"/>には表示されません。（エンコーディングインジケータ"_"は、使用されない完全な形式"_7"の略語であることに注意してください。）</t>
+        <t indent="0" pn="section-8.1-5">不定長のバイト文字列とテキスト文字列の詳細なチャンク構造は、(_ h'0123', h'4567')および(_ "foo", "bar")の形式で表記できます。ただし、内部にチャンクがない不定長文字列の場合、(_ )はバイト文字列（0x5fff）またはテキスト文字列（0x7fff）のどちらを意味するか不明確であり、使用されません。
+        基本形式''_および""_は、チャンクがない場合にのみ使用でき、空のチャンクのみを持つ（許可されていますが、実際にはあまり有用ではない）エンコーディングは(_ '')、(_ "")などと表記する必要があります。チャンク構造を保持するために。</t>
       </section>
     </section>
     <section anchor="ianacons" toc="include" numbered="true" removeInRFC="false" pn="section-9">

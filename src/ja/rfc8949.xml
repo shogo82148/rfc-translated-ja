@@ -1484,117 +1484,24 @@ base64urlとbase64の両方の場合、パディングビットはゼロに設�
     </section>
     <section anchor="securitycons" toc="include" numbered="true" removeInRFC="false" pn="section-10">
       <name slugifiedName="name-security-considerations">Security Considerations</name>
-      <t indent="0" pn="section-10-1">A network-facing application can exhibit vulnerabilities in its
-processing logic for incoming data. Complex parsers are well known as
-a likely source of such vulnerabilities, such as the ability to
-remotely crash a node, or even remotely execute arbitrary code on it.
-CBOR attempts to narrow the opportunities for introducing such
-vulnerabilities by reducing parser complexity, by giving the entire
-range of encodable values a meaning where possible.</t>
-      <t indent="0" pn="section-10-2">Because CBOR decoders are often used as a first step in processing
-unvalidated input, they need to be fully prepared for all types of
-hostile input that may be designed to corrupt, overrun, or achieve control
-of the system decoding the CBOR data item. A CBOR decoder needs to
-assume that all input may be hostile even if it has been checked by a
-firewall, has come over a secure channel such as TLS, is encrypted or
-signed,
-or has come from some other source that is presumed trusted.</t>
-      <t indent="0" pn="section-10-3"><xref target="preferred" format="default" sectionFormat="of" derivedContent="Section 4.1"/> gives examples of limitations in interoperability when using a
-constrained CBOR decoder with input from a CBOR encoder that uses a
-non-preferred serialization. When a single data item is consumed both by such a
-constrained decoder and a full decoder, it can lead to security issues that can
-be exploited by an attacker who can inject or manipulate content.</t>
-      <t indent="0" pn="section-10-4">As discussed throughout this document, there are many values that can be
-considered "equivalent" in some circumstances and "not equivalent" in others. As
-just one example, the numeric value for the number "one" might be expressed as
-an integer or a bignum. A system interpreting CBOR input might accept either
-form for the number "one", or might reject one (or both) forms. Such acceptance
-or rejection can have security implications in the program that is using the
-interpreted input.</t>
-      <t indent="0" pn="section-10-5">Hostile input may be constructed to overrun buffers, to overflow or
-underflow integer arithmetic, or to cause other decoding disruption.  CBOR
-data items might have lengths or sizes that are intentionally
-extremely large or too short.
-Resource exhaustion attacks might attempt to lure a decoder into
-allocating very big data items (strings, arrays, maps, or even
-arbitrary precision numbers) or exhaust the
-stack depth by setting up deeply nested items.  Decoders need to have
-appropriate resource management to mitigate these attacks.  (Items for
-which very large sizes are given can also attempt to exploit integer
-overflow vulnerabilities.)</t>
-      <t indent="0" pn="section-10-6">A CBOR decoder, by definition, only accepts well-formed CBOR; this is
-the first step to its robustness.  Input that is not well-formed CBOR
-causes no further processing from the point where the lack of
-well-formedness was detected.  If possible, any data decoded up to
-this point should have no impact on the application using the CBOR
-decoder.</t>
-      <t indent="0" pn="section-10-7">In addition to ascertaining well-formedness, a CBOR decoder might also
-perform validity checks on the CBOR data.  Alternatively, it can leave
-those checks to the application using the decoder.  This choice needs
-to be clearly documented in the decoder.  Beyond the validity at the CBOR level, an
-application also needs to ascertain that the input is in alignment
-with the application protocol that is serialized in CBOR.</t>
-      <t indent="0" pn="section-10-8">The input check itself may consume resources.  This is usually linear
-in the size of the input, which means that an attacker has to spend
-resources that are commensurate to the resources spent by the defender
-on input validation.
-However, an attacker might be able to craft inputs that will take longer for a
-target decoder to process than for the attacker to produce.
-Processing for arbitrary-precision numbers may
-exceed linear effort.  Also, some hash-table implementations that are
-used by decoders to build in-memory representations of maps can be
-attacked to spend quadratic effort, unless a secret key
-(see Section 7 of <xref target="SIPHASH_LNCS" format="default" sectionFormat="of" derivedContent="SIPHASH_LNCS"/>, also <xref target="SIPHASH_OPEN" format="default" sectionFormat="of" derivedContent="SIPHASH_OPEN"/>) or some other mitigation is employed.
-Such superlinear efforts can be
-exploited by an attacker to exhaust resources at or before the input
-validator; they therefore need to be avoided in a CBOR decoder
-implementation.  Note that tag number definitions and their implementations
-can add security considerations of this kind; this should then be
-discussed in the security considerations of the tag number definition.</t>
-      <t indent="0" pn="section-10-9">CBOR encoders do not receive input directly from the network and are
-thus not directly attackable in the same way as CBOR decoders.
-However, CBOR encoders often have an API that
-takes input from another level in the implementation and can be
-attacked through that API. The design and implementation of that API
-should assume the behavior of its caller may be based on hostile input
-or on coding mistakes. It should check inputs for buffer overruns,
-overflow and underflow of integer arithmetic, and other such errors
-that are aimed to disrupt the encoder.</t>
-      <t indent="0" pn="section-10-10">Protocols should be defined in
-such a way that potential multiple interpretations are reliably
-reduced to a single interpretation.  For example, an attacker could make use of
-invalid input such as duplicate keys in maps, or exploit different
-precision in processing numbers to make one application base its
-decisions on a different interpretation than the one that will be used
-by a second application.  To facilitate consistent interpretation,
-encoder and decoder implementations should
-provide a validity-checking mode of operation
-(<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>).  Note, however, that a generic decoder cannot
-know about all requirements that an application poses on its input
-data; it is therefore not relieving the application from performing its
-own input checking.  Also, since the set of defined tag numbers
-evolves, the application may employ a tag number that is not yet
-supported for validity checking by the generic decoder it uses.  Generic
-decoders therefore need to document which tag numbers
-they support and what validity checking they provide for those 
-tag numbers as well as for basic CBOR (UTF-8 checking, duplicate map
-key checking).</t>
-      <t indent="0" pn="section-10-11"><xref target="bignums" format="default" sectionFormat="of" derivedContent="Section 3.4.3"/> notes that using the non-preferred choice of a bignum
-representation instead of a basic integer for encoding a number is not intended
-to have application semantics, but it can have such semantics if an application
-receiving CBOR data is using a decoder in the basic generic data model. This
-disparity causes a security issue if the two sets of semantics differ. Thus,
-applications using CBOR need to specify the data model that they are using for
-each use of CBOR data.</t>
-      <t indent="0" pn="section-10-12">It is common to convert CBOR data to other formats. In many cases, CBOR has more
-expressive types than other formats; this is particularly true for the
-common conversion to JSON. The loss of type information can cause security
-issues for the systems that are processing the less-expressive data.</t>
-      <t indent="0" pn="section-10-13"><xref target="converting-from-json" format="default" sectionFormat="of" derivedContent="Section 6.2"/> describes a possibly common usage scenario of
-converting between CBOR and JSON that could allow an attack if the attacker knows
-that the application is performing the conversion.</t>
-      <t indent="0" pn="section-10-14">Security considerations for the use of base16 and base64 from <xref target="RFC4648" format="default" sectionFormat="of" derivedContent="RFC4648"/>, and the use
-of UTF-8 from <xref target="RFC3629" format="default" sectionFormat="of" derivedContent="RFC3629"/>, are relevant to CBOR as well.</t>
+      <t indent="0" pn="section-10-1">ネットワークに面したアプリケーションは、受信データの処理ロジックに脆弱性を示すことがあります。複雑なパーサは、ノードをリモートでクラッシュさせたり、さらにはリモートで任意のコードを実行することができる可能性があるとして、そのような脆弱性の発生源としてよく知られています。CBORは、可能な限りエンコード可能な値の範囲に意味を与えることにより、パーサの複雑さを減らすことで、そのような脆弱性を導入する機会を狭めることを試みています。</t>
+      <t indent="0" pn="section-10-2">CBORデコーダは、検証されていない入力を処理する最初のステップとしてしばしば使用されるため、CBORデータアイテムのデコードを行うシステムを破壊、オーバーラン、または制御するために設計されたあらゆる種類の攻撃的な入力に完全に対応する必要があります。CBORデコーダは、ファイアウォールによってチェックされた、TLSのような安全なチャネルを介して送信された、暗号化または署名された、または信頼されると想定される他のソースから来た入力であっても、すべての入力が攻撃的であると想定する必要があります。</t>
+      <t indent="0" pn="section-10-3"><xref target="preferred" format="default" sectionFormat="of" derivedContent="Section 4.1"/>は、制限されたCBORデコーダを使用して、非推奨のシリアライゼーションを使用するCBORエンコーダからの入力を処理する場合の相互運用性の制限の例を示しています。制限されたデコーダと完全なデコーダの両方によって単一のデータアイテムが消費される場合、攻撃者がコンテンツを注入または操作できるセキュリティ問題が発生する可能性があります。</t>
+      <t indent="0" pn="section-10-4">本文書全体で議論されているように、ある状況では「同等」と見なされる値が、他の状況では「非同等」と見なされることがあります。たとえば、数字の「1」の数値値は、整数またはビッグナンバーとして表現される可能性があります。CBOR入力を解釈するシステムは、「1」の数値に対してどちらの形式でも受け入れることができるか、またはどちらか（または両方）の形式を拒否することができます。そのような受け入れまたは拒否は、解釈された入力を使用しているプログラムにセキュリティ上の影響を与える可能性があります。</t>
+      <t indent="0" pn="section-10-5">敵対的な入力は、バッファをオーバーランしたり、整数演算をオーバーフローまたはアンダーフローさせたり、または他のデコードの妨害を引き起こすために構築される可能性があります。CBORデータアイテムには、意図的に非常に大きな長さやサイズがある場合があります。
+      リソース枯渇攻撃は、非常に大きなデータアイテム（文字列、配列、マップ、または任意の精度の数値）を割り当てさせたり、深くネストされたアイテムを設定することでスタックの深さを枯渇させたりすることを試みる場合があります。デコーダは、これらの攻撃を緩和するために適切なリソース管理を持つ必要があります。 （非常に大きなサイズが指定されたアイテムは、整数オーバーフローの脆弱性を悪用することも試みることができます。）</t>
+      <t indent="0" pn="section-10-6">CBORデコーダは、定義により、正しく形成されたCBORのみを受け入れます。これは、その堅牢性にとって最初のステップです。正しく形成されていないCBORの入力は、形成不良が検出された時点からの処理を引き起こしません。可能であれば、この時点までにデコードされたデータは、CBORデコーダを使用するアプリケーションに影響を与えないようにする必要があります。</t>
+      <t indent="0" pn="section-10-7">CBORデコーダは、形成の正当性を確認するだけでなく、CBORデータに対して妥当性チェックを実行することもできます。また、それらのチェックをデコーダを使用するアプリケーションに任せることもできます。この選択は、デコーダで明確に文書化する必要があります。CBORレベルでの妥当性に加えて、アプリケーションは、CBORでシリアル化されたアプリケーションプロトコルと整合していることを確認する必要があります。</t>
+      <t indent="0" pn="section-10-8">入力チェック自体がリソースを消費する可能性があります。これは通常、入力のサイズに比例して線形になるため、攻撃者は防御側が入力検証に費やすリソースに相当するリソースを費やす必要があります。
+      ただし、攻撃者は、ターゲットデコーダが処理するのに攻撃者が生成するよりも長い時間がかかる入力を作成できる場合があります。
+      任意精度の数値の処理は、線形努力を超える場合があります。また、デコーダがマップのインメモリ表現を構築するために使用するハッシュテーブルの実装には、秘密鍵（<xref target="SIPHASH_LNCS" format="default" sectionFormat="of" derivedContent="SIPHASH_LNCS"/>のセクション7も参照してください。また、<xref target="SIPHASH_OPEN" format="default" sectionFormat="of" derivedContent="SIPHASH_OPEN"/>）または他の緩和策が採用されていない限り、二次努力を費やす攻撃ができます。
+      このような超線形の努力は、入力検証前または入力検証時にリソースを枯渇させるため、攻撃者によって悪用される可能性があるため、CBORデコーダの実装では避ける必要があります。タグ番号の定義とその実装は、このようなセキュリティ上の考慮事項を追加する可能性があります。その場合は、タグ番号の定義のセキュリティ上の考慮事項で議論する必要があります。</t>
+      <t indent="0" pn="section-10-9">CBORエンコーダは、ネットワークから直接入力を受け取らず、CBORデコーダと同じ方法で直接攻撃されることはありません。ただし、CBORエンコーダには、実装の別のレベルから入力を受け取るAPIがしばしばあり、そのAPIを介して攻撃される可能性があります。そのAPIの設計と実装は、呼び出し元の動作が攻撃的な入力またはコーディングのミスに基づく可能性があることを前提とする必要があります。バッファオーバーラン、整数演算のオーバーフローおよびアンダーフロー、およびその他のエラーなど、エンコーダを妨害することを目的としたエラーをチェックする必要があります。</t>
+      <t indent="0" pn="section-10-10">プロトコルは、潜在的な複数の解釈が確実に単一の解釈に減少するように定義する必要があります。たとえば、攻撃者は、マップ内の重複したキーなどの無効な入力を利用したり、数値の処理における異なる精度を悪用したりして、1つのアプリケーションが2番目のアプリケーションで使用される解釈とは異なる解釈に基づいて決定を下すようにすることができます。一貫した解釈を容易にするために、エンコーダとデコーダの実装は、動作モードでの妥当性チェックを提供する必要があります（<xref target="validity-checking" format="default" sectionFormat="of" derivedContent="Section 5.4"/>）。ただし、一般的なデコーダは、アプリケーションが入力データに対して要求するすべての要件を知ることができないため、アプリケーションが独自の入力チェックを実行することから解放されるわけではありません。また、定義されたタグ番号のセットが進化するため、アプリケーションは、使用する一般的なデコーダでまだ妥当性チェックがサポートされていないタグ番号を使用する場合があります。一般的なデコーダは、サポートするタグ番号と、それらのタグ番号に対して提供する妥当性チェック、および基本的なCBOR（UTF-8チェック、重複マップキーのチェック）に対して提供する妥当性チェックを文書化する必要があります。</t>
+      <t indent="0" pn="section-10-11"><xref target="bignums" format="default" sectionFormat="of" derivedContent="Section 3.4.3"/>は、数値をエンコードするために基本的な整数の代わりにビッグナンバー表現を使用することは、アプリケーションの意味論を持つことを意図していないことを示していますが、CBORデータを受信するアプリケーションが基本的な汎用データモデルのデコーダを使用している場合、そのような意味論を持つことがあります。この不一致は、2つの意味論が異なる場合にセキュリティ上の問題を引き起こす可能性があります。したがって、CBORを使用するアプリケーションは、CBORデータの各使用について使用しているデータモデルを指定する必要があります。</t>
+      <t indent="0" pn="section-10-12">CBORデータを他の形式に変換することは一般的です。多くの場合、CBORには他の形式よりも表現力の高い型があります。これは、JSONへの一般的な変換に特に当てはまります。型情報の欠落は、表現力の低いデータを処理しているシステムにセキュリティ上の問題を引き起こす可能性があります。</t>
+      <t indent="0" pn="section-10-13"><xref target="converting-from-json" format="default" sectionFormat="of" derivedContent="Section 6.2"/>は、CBORとJSONの間で変換する可能性のある一般的な使用シナリオを説明しており、攻撃者がアプリケーションが変換を実行していることを知っている場合、攻撃を許可する可能性があります。</t>
+      <t indent="0" pn="section-10-14">CBORに関しては、<xref target="RFC4648" format="default" sectionFormat="of" derivedContent="RFC4648"/>で定義されたbase16およびbase64の使用、および<xref target="RFC3629" format="default" sectionFormat="of" derivedContent="RFC3629"/>で定義されたUTF-8の使用に関するセキュリティ上の考慮事項が関連しています。</t>
     </section>
   </middle>
   <back>

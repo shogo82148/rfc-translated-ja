@@ -3,6 +3,7 @@ all: \
 	docs/rfc9401.html \
 	docs/rfc9226.html \
 	docs/rfc9225.html \
+	docs/rfc9164.html \
 	docs/rfc8949.html \
 	docs/rfc8941.html \
 	docs/rfc8725.html \
@@ -27,6 +28,10 @@ src/en/rfc9226.xml: src/rfcs/rfc9226.xml
 docs/rfc9225.html: src/en/rfc9225.xml src/ja/rfc9225.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9225
 src/en/rfc9225.xml: src/rfcs/rfc9225.xml
+	cp $< $@
+docs/rfc9164.html: src/en/rfc9164.xml src/ja/rfc9164.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9164
+src/en/rfc9164.xml: src/rfcs/rfc9164.xml
 	cp $< $@
 docs/rfc8949.html: src/en/rfc8949.xml src/ja/rfc8949.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 8949

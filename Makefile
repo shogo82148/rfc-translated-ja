@@ -1,8 +1,10 @@
+.PHONY: all
 all: \
 	docs/rfc9405.html \
 	docs/rfc9401.html \
 	docs/rfc9226.html \
 	docs/rfc9225.html \
+	docs/rfc9164.html \
 	docs/rfc8949.html \
 	docs/rfc8941.html \
 	docs/rfc8725.html \
@@ -27,6 +29,10 @@ src/en/rfc9226.xml: src/rfcs/rfc9226.xml
 docs/rfc9225.html: src/en/rfc9225.xml src/ja/rfc9225.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9225
 src/en/rfc9225.xml: src/rfcs/rfc9225.xml
+	cp $< $@
+docs/rfc9164.html: src/en/rfc9164.xml src/ja/rfc9164.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9164
+src/en/rfc9164.xml: src/rfcs/rfc9164.xml
 	cp $< $@
 docs/rfc8949.html: src/en/rfc8949.xml src/ja/rfc8949.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 8949
@@ -61,9 +67,14 @@ docs/rfc2119.html: src/en/rfc2119.xml src/ja/rfc2119.xml scripts/xml2html.py dat
 src/en/rfc2119.xml: src/rfcs/rfc2119.txt scripts/txt2xml.pl
 	scripts/txt2xml.pl 2119 > $@
 
+.PHONY: update-english
 update-english:
 	scripts/txt2xml.pl 8174 > src/ja/rfc8174.xml
 	scripts/txt2xml.pl 7518 > src/ja/rfc7518.xml
 	scripts/txt2xml.pl 7515 > src/ja/rfc7515.xml
 	scripts/txt2xml.pl 6750 > src/ja/rfc6750.xml
 	scripts/txt2xml.pl 2119 > src/ja/rfc2119.xml
+
+.PHONY: update-toc
+update-toc:
+	scripts/update-toc.pl

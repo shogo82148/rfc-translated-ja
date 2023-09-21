@@ -6,6 +6,7 @@ use JSON qw(decode_json);
 
 sub generate_makefile(@rfc_numbers) {
     open my $fh, ">", "Makefile" or die "failed to open: %!";
+    say $fh ".PHONY: all";
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";
 
@@ -24,10 +25,16 @@ sub generate_makefile(@rfc_numbers) {
     }
 
     say $fh "";
+    say $fh ".PHONY: update-english";
     say $fh "update-english:";
     for my $number(@txt2xml_rfcs) {
         say $fh "\tscripts/txt2xml.pl $number > src/ja/rfc$number.xml";
     }
+
+    say $fh "";
+    say $fh ".PHONY: update-toc";
+    say $fh "update-toc:";
+    say $fh "\tscripts/update-toc.pl";
     close($fh);
 }
 

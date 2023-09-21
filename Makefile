@@ -1,3 +1,4 @@
+.PHONY: all
 all: \
 	docs/rfc9405.html \
 	docs/rfc9401.html \
@@ -66,9 +67,14 @@ docs/rfc2119.html: src/en/rfc2119.xml src/ja/rfc2119.xml scripts/xml2html.py dat
 src/en/rfc2119.xml: src/rfcs/rfc2119.txt scripts/txt2xml.pl
 	scripts/txt2xml.pl 2119 > $@
 
+.PHONY: update-english
 update-english:
 	scripts/txt2xml.pl 8174 > src/ja/rfc8174.xml
 	scripts/txt2xml.pl 7518 > src/ja/rfc7518.xml
 	scripts/txt2xml.pl 7515 > src/ja/rfc7515.xml
 	scripts/txt2xml.pl 6750 > src/ja/rfc6750.xml
 	scripts/txt2xml.pl 2119 > src/ja/rfc2119.xml
+
+.PHONY: update-toc
+update-toc:
+	scripts/update-toc.pl

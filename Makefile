@@ -11,6 +11,7 @@ all: \
 	docs/rfc8174.html \
 	docs/rfc8152.html \
 	docs/rfc7520.html \
+	docs/rfc7519.html \
 	docs/rfc7518.html \
 	docs/rfc7515.html \
 	docs/rfc6750.html \
@@ -60,6 +61,10 @@ docs/rfc7520.html: src/en/rfc7520.xml src/ja/rfc7520.xml scripts/xml2html.py dat
 	scripts/xml2html.py 7520
 src/en/rfc7520.xml: src/rfcs/rfc7520.txt scripts/txt2xml.pl
 	scripts/txt2xml.pl 7520 > $@
+docs/rfc7519.html: src/en/rfc7519.xml src/ja/rfc7519.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 7519
+src/en/rfc7519.xml: src/rfcs/rfc7519.txt scripts/txt2xml.pl
+	scripts/txt2xml.pl 7519 > $@
 docs/rfc7518.html: src/en/rfc7518.xml src/ja/rfc7518.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 7518
 src/en/rfc7518.xml: src/rfcs/rfc7518.txt scripts/txt2xml.pl
@@ -82,6 +87,7 @@ update-english:
 	scripts/txt2xml.pl 8174 > src/ja/rfc8174.xml
 	scripts/txt2xml.pl 8152 > src/ja/rfc8152.xml
 	scripts/txt2xml.pl 7520 > src/ja/rfc7520.xml
+	scripts/txt2xml.pl 7519 > src/ja/rfc7519.xml
 	scripts/txt2xml.pl 7518 > src/ja/rfc7518.xml
 	scripts/txt2xml.pl 7515 > src/ja/rfc7515.xml
 	scripts/txt2xml.pl 6750 > src/ja/rfc6750.xml

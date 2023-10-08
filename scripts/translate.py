@@ -28,7 +28,7 @@ def translate(text):
     translated_text = response['choices'][0]['message']['content']
     print("Output:", translated_text)
     print()
-    return text
+    return translated_text
 
 def stringify_children(node):
     from lxml.etree import tostring
@@ -36,12 +36,16 @@ def stringify_children(node):
 
 def translate_node(x):
     s = stringify_children(x)
-    s = translate(s)
 
-    y = lxml.etree.parse(StringIO('<%s>%s</%s>'%(x.tag,s,x.tag))).getroot()
-    for (key, value) in x.items():
-        y.set(key, value)
-    x.getparent().replace(x, y)
+    try:
+        s = translate(s)
+        y = lxml.etree.parse(StringIO('<%s>%s</%s>'%(x.tag,s,x.tag))).getroot()
+        for (key, value) in x.items():
+            y.set(key, value)
+        x.getparent().replace(x, y)
+    except:
+        print("Error:", s)
+        return
 
 def walk(x):
     if x.tag == 't':
@@ -49,6 +53,8 @@ def walk(x):
         return
     elif x.tag == 'li':
         translate_node(x)
+        return
+    elif x.tag == 'references':
         return
 
     for c in x:

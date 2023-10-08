@@ -3,17 +3,26 @@
 import xml2rfc
 import lxml
 import re
-import deepl
+import openai
 from io import StringIO
 import os
 import sys
 
-auth_key = os.environ['DEEPL_API_KEY']
-translator = deepl.Translator(auth_key)
+api_key = os.environ.get('CHAT_GPT_KEY')
+openai.api_key = api_key
 
 def translate(text):
-    result = translator.translate_text(text, source_lang="EN", target_lang="JA", tag_handling="xml")
-    return result.text
+    print("Input:", text)
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+                {"role": "user", "content": "Translate the following English text to Japanese. Note that the input and output are XML texts:\n\n" + text},
+            ]
+    )
+    translated_text = response['choices'][0]['message']['content']
+    print("Output:", translated_text)
+    print()
+    return translated_text
 
 def stringify_children(node):
     from lxml.etree import tostring

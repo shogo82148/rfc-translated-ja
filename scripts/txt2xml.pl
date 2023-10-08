@@ -375,7 +375,7 @@ sub handle_references($references) {
 
 my $patches = {
     "7519" => <<'EOF',
-@@ -675,17 +675,15 @@ between the inputs and outputs of the steps.</t>
+@@ -675,17 +675,15 @@
      encoding.</t>
          <t indent="0" pn="section-7.1-5">4.  Depending upon whether the JWT is a JWS or JWE, there are two
      cases:</t>
@@ -395,7 +395,7 @@ my $patches = {
  </t>
          <t indent="0" pn="section-7.1-8">5.  If a nested signing or encryption operation will be performed,
      let the Message be the JWS or JWE, and return to Step 3, using a
-@@ -718,17 +716,15 @@ treated by the application as an invalid input.</t>
+@@ -718,17 +716,15 @@
       methods described in Section 9 of <xref target="JWE" format="default" sectionFormat="of" derivedContent="JWE"/>.</t>
          <t indent="0" pn="section-7.2-8">7.   Depending upon whether the JWT is a JWS or JWE, there are two
       cases:</t>
@@ -415,6 +415,19 @@ my $patches = {
  </t>
          <t indent="0" pn="section-7.2-11">8.   If the JOSE Header contains a &quot;cty&quot; (content type) value of
       &quot;JWT&quot;, then the Message is a JWT that was the subject of nested
+@@ -920,11 +916,7 @@
+         </section>
+       </section>
+       <section anchor="sub-namespace-registration-of" numbered="true" removeInRFC="false" toc="include" pn="section-10.2">
+-        <name slugifiedName="name-sub-namespace-registration-of">Sub-Namespace Registration of</name>
+-        <t indent="0" pn="section-10.2-1"><artwork name="" type="" align="left" alt=""><![CDATA[
+-  urn:ietf:params:oauth:token-type:jwt
+-]]></artwork>
+-</t>
++        <name slugifiedName="name-sub-namespace-registration-of">Sub-Namespace Registration of urn:ietf:params:oauth:token-type:jwt</name>
+         <section anchor="registry-contents" numbered="true" removeInRFC="false" toc="include" pn="section-10.2.1">
+           <name slugifiedName="name-registry-contents">Registry Contents</name>
+           <t indent="0" pn="section-10.2.1-1">This section registers the value &quot;token-type:jwt&quot; in the IANA &quot;OAuth
 EOF
 };
 
@@ -732,8 +745,10 @@ say $buf "</rfc>";
 
 close $buf;
 
-if (my $diff = $patches->{$number}) {
-    $output = patch($output, $diff, { STYLE => 'Unified' });
+unless ($ENV{RFC_NO_PATCH}) {
+    if (my $diff = $patches->{$number}) {
+        $output = patch($output, $diff, { STYLE => 'Unified' });
+    }
 }
 
 print $output;

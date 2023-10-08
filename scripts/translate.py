@@ -32,7 +32,19 @@ def translate(text):
 
 def stringify_children(node):
     from lxml.etree import tostring
-    return tostring(node, encoding=str, with_tail=False)
+    from itertools import chain
+    parts = []
+    if node.text:
+        text = node.text
+        text = re.sub('[ \n\r]+', ' ', text)
+        parts.append(text)
+    for c in node:
+        parts.append(tostring(c, encoding=str, with_tail=False))
+        if c.tail:
+            text = c.tail
+            text = re.sub('\s+', ' ', text)
+            parts.append(text)
+    return ''.join(parts)
 
 def translate_node(x):
     s = stringify_children(x)

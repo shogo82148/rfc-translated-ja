@@ -1,1 +1,0 @@
-requires "Text::Patch";

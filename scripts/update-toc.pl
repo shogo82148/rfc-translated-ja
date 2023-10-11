@@ -24,7 +24,7 @@ sub update($file) {
 
     for my $slug(keys %slugs) {
         my $name = $slugs{$slug};
-        $content =~ s(<xref(\s+([^>]*\s+)?)target="$slug">[^<]*</xref>)(<xref${1}target="$slug">$name</xref>)g;
+        $content =~ s(<xref(\s+([^>]*\s+)?)target="\Q$slug\E">[^<]*</xref>)(<xref${1}target="$slug">$name</xref>)g;
     }
     write_file($file, $content);
 }

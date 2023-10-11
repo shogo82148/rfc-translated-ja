@@ -32,6 +32,13 @@ sub generate_makefile(@rfc_numbers) {
     }
 
     say $fh "";
+    say $fh ".PHONY: update-english-raw";
+    say $fh "update-english-raw:";
+    for my $number(@txt2xml_rfcs) {
+        say $fh "\tRFC_NO_PATCH=1 scripts/txt2xml.pl $number > src/en-raw/rfc$number.xml";
+    }
+
+    say $fh "";
     say $fh ".PHONY: update-toc";
     say $fh "update-toc:";
     say $fh "\tscripts/update-toc.pl";

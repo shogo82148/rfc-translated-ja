@@ -99,6 +99,18 @@ update-english:
 	scripts/txt2xml.pl 6750 > src/ja/rfc6750.xml
 	scripts/txt2xml.pl 2119 > src/ja/rfc2119.xml
 
+.PHONY: update-english-raw
+update-english-raw:
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 8174 > src/en-raw/rfc8174.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 8152 > src/en-raw/rfc8152.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 7797 > src/en-raw/rfc7797.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 7520 > src/en-raw/rfc7520.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 7519 > src/en-raw/rfc7519.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 7518 > src/en-raw/rfc7518.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 7515 > src/en-raw/rfc7515.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 6750 > src/en-raw/rfc6750.xml
+	RFC_NO_PATCH=1 scripts/txt2xml.pl 2119 > src/en-raw/rfc2119.xml
+
 .PHONY: update-toc
 update-toc:
 	scripts/update-toc.pl

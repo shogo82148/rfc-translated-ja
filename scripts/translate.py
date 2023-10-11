@@ -66,12 +66,7 @@ def walk(x):
     elif x.tag == 'li':
         translate_node(x)
         return
-    elif x.tag == 'name':
-        translate_node(x)
-        return
     elif x.tag == 'references':
-        return
-    elif x.tag == 'toc':
         return
 
     for c in x:

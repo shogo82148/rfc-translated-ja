@@ -3,7 +3,7 @@
 use v5.38;
 use utf8;
 use JSON qw(decode_json);
-use Text::Patch;
+use Encode qw(encode_utf8 decode_utf8);
 
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
@@ -16,7 +16,18 @@ sub slurp($file) {
     open my $fh, "<", $file or die "failed to open: $!";
     my $content = do { local $/; <$fh> };
     close $fh;
-    return $content;
+    return decode_utf8($content);
+}
+
+sub patch($input, $patch_file) {
+    use File::Temp qw/ tempfile tempdir /;
+    my $dir = tempdir( CLEANUP => 1 );
+    my ($fh, $filename) = tempfile( DIR => $dir );
+    print $fh encode_utf8($input);
+    close($fh);
+
+    system("patch -i $patch_file $filename > /dev/null 2>&1");
+    return slurp($filename);
 }
 
 sub escape($s) {
@@ -373,64 +384,6 @@ sub handle_references($references) {
     print $buf "</references>\n";
 }
 
-my $patches = {
-    "7519" => <<'EOF',
-@@ -675,17 +675,15 @@
-     encoding.</t>
-         <t indent="0" pn="section-7.1-5">4.  Depending upon whether the JWT is a JWS or JWE, there are two
-     cases:</t>
--        <t indent="0" pn="section-7.1-6"><artwork name="" type="" align="left" alt=""><![CDATA[
-+        <t indent="0" pn="section-7.1-6">
-     *  If the JWT is a JWS, create a JWS using the Message as the JWS
-        Payload; all steps specified in [JWS] for creating a JWS MUST
-        be followed.
--]]></artwork>
- </t>
--        <t indent="0" pn="section-7.1-7"><artwork name="" type="" align="left" alt=""><![CDATA[
-+        <t indent="0" pn="section-7.1-7">
-     *  Else, if the JWT is a JWE, create a JWE using the Message as
-        the plaintext for the JWE; all steps specified in [JWE] for
-        creating a JWE MUST be followed.
--]]></artwork>
- </t>
-         <t indent="0" pn="section-7.1-8">5.  If a nested signing or encryption operation will be performed,
-     let the Message be the JWS or JWE, and return to Step 3, using a
-@@ -718,17 +716,15 @@
-      methods described in Section 9 of <xref target="JWE" format="default" sectionFormat="of" derivedContent="JWE"/>.</t>
-         <t indent="0" pn="section-7.2-8">7.   Depending upon whether the JWT is a JWS or JWE, there are two
-      cases:</t>
--        <t indent="0" pn="section-7.2-9"><artwork name="" type="" align="left" alt=""><![CDATA[
-+        <t indent="0" pn="section-7.2-9">
-      *  If the JWT is a JWS, follow the steps specified in [JWS] for
-         validating a JWS.  Let the Message be the result of base64url
-         decoding the JWS Payload.
--]]></artwork>
- </t>
--        <t indent="0" pn="section-7.2-10"><artwork name="" type="" align="left" alt=""><![CDATA[
-+        <t indent="0" pn="section-7.2-10">
-      *  Else, if the JWT is a JWE, follow the steps specified in
-         [JWE] for validating a JWE.  Let the Message be the resulting
-         plaintext.
--]]></artwork>
- </t>
-         <t indent="0" pn="section-7.2-11">8.   If the JOSE Header contains a &quot;cty&quot; (content type) value of
-      &quot;JWT&quot;, then the Message is a JWT that was the subject of nested
-@@ -920,11 +916,7 @@
-         </section>
-       </section>
-       <section anchor="sub-namespace-registration-of" numbered="true" removeInRFC="false" toc="include" pn="section-10.2">
--        <name slugifiedName="name-sub-namespace-registration-of">Sub-Namespace Registration of</name>
--        <t indent="0" pn="section-10.2-1"><artwork name="" type="" align="left" alt=""><![CDATA[
--  urn:ietf:params:oauth:token-type:jwt
--]]></artwork>
--</t>
-+        <name slugifiedName="name-sub-namespace-registration-of">Sub-Namespace Registration of urn:ietf:params:oauth:token-type:jwt</name>
-         <section anchor="registry-contents" numbered="true" removeInRFC="false" toc="include" pn="section-10.2.1">
-           <name slugifiedName="name-registry-contents">Registry Contents</name>
-           <t indent="0" pn="section-10.2.1-1">This section registers the value &quot;token-type:jwt&quot; in the IANA &quot;OAuth
-EOF
-};
-
 my $content = slurp("src/rfcs/rfc$number.txt");
 my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 
@@ -746,8 +699,9 @@ say $buf "</rfc>";
 close $buf;
 
 unless ($ENV{RFC_NO_PATCH}) {
-    if (my $diff = $patches->{$number}) {
-        $output = patch($output, $diff, { STYLE => 'Unified' });
+    my $patch_file = "src/patches/rfc$number.patch";
+    if (-f $patch_file) {
+        $output = patch($output, $patch_file)
     }
 }
 

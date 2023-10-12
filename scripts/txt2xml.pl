@@ -140,7 +140,7 @@ sub parseT($s) {
         # 整形済みテキスト
         my $ret = '';
 
-        if ($s =~ s/^\s*Figure\s+(\d+):(.*)//) {
+        if ($s =~ s/^\s*Figure\s+(\d+):\s*(.*)//) {
             # キャプションがあれば反映
             my $no = $1;
             my $caption = $2;

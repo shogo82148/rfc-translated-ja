@@ -7,5 +7,5 @@ my @rfc_numbers = map { m(/rfc([0-9]+)\.xml\z); $1 } @rfc_list;
 @rfc_numbers = sort { $b <=> $a } @rfc_numbers;
 
 for my $number(@rfc_numbers) {
-    system("diff -u ./src/en-raw/rfc$number.xml ./src/ja/rfc$number.xml > ./src/patches/rfc$number.patch");
+    system("diff -u --label '' --label '' ./src/en-raw/rfc$number.xml ./src/ja/rfc$number.xml > ./src/patches/rfc$number.patch");
 }

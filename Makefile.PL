@@ -18,7 +18,7 @@ sub generate_makefile(@rfc_numbers) {
             say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.xml";
             say $fh "\tcp \$< \$\@";
         } else {
-            say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.txt scripts/txt2xml.pl";
+            say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.txt scripts/txt2xml.pl src/patches/rfc$number.patch";
             say $fh "\tscripts/txt2xml.pl $number > \$\@";
             push @txt2xml_rfcs, $number;
         }

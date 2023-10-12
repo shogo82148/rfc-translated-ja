@@ -138,9 +138,23 @@ sub parse_content($s) {
 sub parseT($s) {
     if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{2,}/) {
         # 整形済みテキスト
-        my $ret = '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
-        $ret .= "$s\n";
-        $ret .= ']]></artwork>' . "\n";
+        my $ret = '';
+
+        if ($s =~ s/^\s*Figure\s+(\d+):(.*)//) {
+            # キャプションがあれば反映
+            my $no = $1;
+            my $caption = $2;
+            $ret .= '<figure anchor="fig-'. $no . '" align="left" suppress-title="false" pn="figure-'. $no . '">' . "\n";
+            $ret .= '<name slugifiedName="name-figure-' . $no . '">' . $caption .  "</name>\n";
+            $ret .= '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
+            $ret .= "$s\n";
+            $ret .= ']]></artwork>' . "\n";
+            $ret .= '</figure>' . "\n";
+        } else {
+            $ret .= '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
+            $ret .= "$s\n";
+            $ret .= ']]></artwork>' . "\n";
+        }
         return $ret;
     }
 

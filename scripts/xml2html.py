@@ -960,10 +960,28 @@ class HtmlWriter:
         return div
 
     def render1_figure(self, h, x):
+        name = x.find('name')
+        name_slug = None
+        if name != None:
+            name_slug = name.get('slugifiedName')
+
         figure = build('figure')
         h.append(figure)
         for c in x:
             self.render1(figure, c)
+
+        # キャプション
+        caption = build('figcaption')
+        figure.append(caption)
+        pn = x.get('pn')
+        a1 = build('span')
+        a1.text = pn.replace('-', ' ', 1).title()
+        caption.append(a1)
+        if name != None:
+            a1.tail = ':\n'
+            a2 = build('span')
+            caption.append(a2)
+            self.inline_text_renderer(a2, name)
         return figure
 
     # 引用

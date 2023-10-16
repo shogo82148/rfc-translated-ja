@@ -5,6 +5,9 @@ all: \
 	docs/rfc9226.html \
 	docs/rfc9225.html \
 	docs/rfc9164.html \
+	docs/rfc9054.html \
+	docs/rfc9053.html \
+	docs/rfc9052.html \
 	docs/rfc8949.html \
 	docs/rfc8941.html \
 	docs/rfc8725.html \
@@ -37,6 +40,18 @@ src/en/rfc9225.xml: src/rfcs/rfc9225.xml
 docs/rfc9164.html: src/en/rfc9164.xml src/ja/rfc9164.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9164
 src/en/rfc9164.xml: src/rfcs/rfc9164.xml
+	cp $< $@
+docs/rfc9054.html: src/en/rfc9054.xml src/ja/rfc9054.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9054
+src/en/rfc9054.xml: src/rfcs/rfc9054.xml
+	cp $< $@
+docs/rfc9053.html: src/en/rfc9053.xml src/ja/rfc9053.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9053
+src/en/rfc9053.xml: src/rfcs/rfc9053.xml
+	cp $< $@
+docs/rfc9052.html: src/en/rfc9052.xml src/ja/rfc9052.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9052
+src/en/rfc9052.xml: src/rfcs/rfc9052.xml
 	cp $< $@
 docs/rfc8949.html: src/en/rfc8949.xml src/ja/rfc8949.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 8949

@@ -151,6 +151,32 @@ class HtmlWriter:
             dd.text = status
             external_updates.append(dd)
 
+        # 更新
+        updates = self.metadata.get('updates')
+        if updates and len(updates) > 0:
+            dt = build('dt')
+            dt.text = '更新:'
+            external_updates.append(dt)
+            dd = build('dd')
+            for u in updates:
+                a = build('span')
+                a.text = u
+                dd.append(a)
+            external_updates.append(dd)
+
+        # 廃止
+        obsoletes = self.metadata.get('obsoletes')
+        if obsoletes and len(obsoletes) > 0:
+            dt = build('dt')
+            dt.text = '廃止:'
+            external_updates.append(dt)
+            dd = build('dd')
+            for o in obsoletes:
+                a = build('span')
+                a.text = o
+                dd.append(a)
+            external_updates.append(dd)
+
         # 原文へのリンク
         dt = build('dt')
         dt.text = '原文:'
@@ -174,6 +200,19 @@ class HtmlWriter:
         a.text = "Info page"
         dd.append(a)
         external_updates.append(dd)
+
+        # 廃止されたRFCへのリンク
+        obsoleted_by = self.metadata.get('obsoleted_by')
+        if obsoleted_by and len(obsoleted_by) > 0:
+            div = build('div', id='obsoleted-by')
+            div.text = 'このRFCは廃止されました。後継は'
+            for o in obsoleted_by:
+                a = build('span')
+                a.text = o
+                a.tail = ', '
+                div.append(a)
+            a.tail = 'です。'
+            external_updates.append(div)
 
         return external_metadata
 

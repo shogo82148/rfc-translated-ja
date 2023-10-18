@@ -214,6 +214,19 @@ class HtmlWriter:
             a.tail = 'です。'
             external_updates.append(div)
 
+        # 更新されたRFCへのリンク
+        updated_by = self.metadata.get('updated_by')
+        if updated_by and len(updated_by) > 0:
+            div = build('div', id='updated-by')
+            div.text = 'このRFCは更新されました。更新内容は'
+            for u in updated_by:
+                a = build('span')
+                a.text = u
+                a.tail = ', '
+                div.append(a)
+            a.tail = 'です。'
+            external_updates.append(div)
+
         return external_metadata
 
 

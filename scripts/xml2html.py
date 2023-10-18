@@ -2,6 +2,7 @@
 # based on https://github.com/ietf-tools/xml2rfc
 
 import calendar
+import json
 import os
 import re
 import sys
@@ -102,9 +103,10 @@ def id_for_pn(pn):
     return pn
 
 class HtmlWriter:
-    def __init__(self, xmlrfcEN, xmlrfcJA):
+    def __init__(self, xmlrfcEN, xmlrfcJA, metadata):
         self.root_en = xmlrfcEN.getroot()
         self.root_ja = xmlrfcJA.getroot()
+        self.metadata = metadata
         self.refname_mapping = self.get_refname_mapping()
 
     # 参考文献リスト
@@ -132,6 +134,101 @@ class HtmlWriter:
         with open("docs/rfc%s.html" % (rfc_number,), 'w', encoding='utf-8') as file:
             text = self.html(html_tree)
             file.write(text)
+
+    def metadata_to_html(self):
+        external_metadata = build('div', id='external-metadata')
+
+        external_updates = build('dl', id='external-updates')
+        external_metadata.append(external_updates)
+
+        # ステータス
+        status = self.metadata.get('status')
+        if status:
+            dt = build('dt')
+            dt.text = 'ステータス:'
+            external_updates.append(dt)
+            dd = build('dd')
+            dd.text = status
+            external_updates.append(dd)
+
+        # 更新
+        updates = self.metadata.get('updates')
+        if updates and len(updates) > 0:
+            dt = build('dt')
+            dt.text = '更新:'
+            external_updates.append(dt)
+            dd = build('dd')
+            for u in updates:
+                a = build('span')
+                a.text = u
+                dd.append(a)
+            external_updates.append(dd)
+
+        # 廃止
+        obsoletes = self.metadata.get('obsoletes')
+        if obsoletes and len(obsoletes) > 0:
+            dt = build('dt')
+            dt.text = '廃止:'
+            external_updates.append(dt)
+            dd = build('dd')
+            for o in obsoletes:
+                a = build('span')
+                a.text = o
+                dd.append(a)
+            external_updates.append(dd)
+
+        # 原文へのリンク
+        dt = build('dt')
+        dt.text = '原文:'
+        external_updates.append(dt)
+        dd = build('dd')
+        a = build('a', href='https://www.rfc-editor.org/rfc/rfc%s.html' % (self.root_en.get('number'),))
+        a.text = "RFC %s" % (self.root_en.get('number'),)
+        dd.append(a)
+        external_updates.append(dd)
+
+        # Datatrackerへのリンク
+        dt = build('dt')
+        dt.text = 'その他の情報:'
+        external_updates.append(dt)
+        dd = build('dd')
+        a = build('a', href='https://datatracker.ietf.org/doc/rfc%s' % (self.root_en.get('number'),))
+        a.text = "Datatracker"
+        a.tail = '|'
+        dd.append(a)
+        a = build('a', href='https://www.rfc-editor.org/info/rfc%s' % (self.root_en.get('number'),))
+        a.text = "Info page"
+        dd.append(a)
+        external_updates.append(dd)
+
+        # 廃止されたRFCへのリンク
+        obsoleted_by = self.metadata.get('obsoleted_by')
+        if obsoleted_by and len(obsoleted_by) > 0:
+            div = build('div', id='obsoleted-by')
+            div.text = 'このRFCは廃止されました。後継は'
+            for o in obsoleted_by:
+                a = build('span')
+                a.text = o
+                a.tail = ', '
+                div.append(a)
+            a.tail = 'です。'
+            external_updates.append(div)
+
+        # 更新されたRFCへのリンク
+        updated_by = self.metadata.get('updated_by')
+        if updated_by and len(updated_by) > 0:
+            div = build('div', id='updated-by')
+            div.text = 'このRFCは更新されました。更新内容は'
+            for u in updated_by:
+                a = build('span')
+                a.text = u
+                a.tail = ', '
+                div.append(a)
+            a.tail = 'です。'
+            external_updates.append(div)
+
+        return external_metadata
+
 
     def render(self, h, en, ja):
         res = None
@@ -210,7 +307,10 @@ class HtmlWriter:
         body = build('body')
         html.append(body)
 
-        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+        # メタデータのレンダリング
+        metadata = self.metadata_to_html()
+        if metadata != None:
+            body.append(metadata)        
 
         contents = zip(
             [ en.find('front'), en.find('middle'), en.find('back') ],
@@ -1237,7 +1337,11 @@ def main():
     parserJA = xml2rfc.XmlRfcParser("src/ja/rfc%s.xml" % (rfc_number,))
     rfcJA = parserJA.parse()
 
-    writer = HtmlWriter(rfcEN, rfcJA)
+    # メタデーターを取得
+    with open("src/rfcs/rfc%s.json" % (rfc_number,), 'r') as file:
+        metadata = json.load(file)
+
+    writer = HtmlWriter(rfcEN, rfcJA, metadata)
     writer.write(rfc_number)
 
 if __name__ == "__main__":

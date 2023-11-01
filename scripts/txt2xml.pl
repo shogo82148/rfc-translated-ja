@@ -1,19 +1,33 @@
 #!/usr/bin/env perl
 
-use v5.36;
+use v5.38;
 use utf8;
 use JSON qw(decode_json);
+use Encode qw(encode_utf8 decode_utf8);
 
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
 
 my $number = $ARGV[0];
 
+open my $buf, ">", \my $output or die "failed to open: $!";
+
 sub slurp($file) {
     open my $fh, "<", $file or die "failed to open: $!";
     my $content = do { local $/; <$fh> };
     close $fh;
-    return $content;
+    return decode_utf8($content);
+}
+
+sub patch($input, $patch_file) {
+    use File::Temp qw/ tempfile tempdir /;
+    my $dir = tempdir( CLEANUP => 1 );
+    my ($fh, $filename) = tempfile( DIR => $dir );
+    print $fh encode_utf8($input);
+    close($fh);
+
+    system("patch -i $patch_file $filename > /dev/null 2>&1");
+    return slurp($filename);
 }
 
 sub escape($s) {
@@ -124,9 +138,23 @@ sub parse_content($s) {
 sub parseT($s) {
     if ($s !~ /^\s*\+(?:-{3,}\+)+\s*$/m && $s =~ /^\s{2,}/) {
         # 整形済みテキスト
-        my $ret = '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
-        $ret .= "$s\n";
-        $ret .= ']]></artwork>' . "\n";
+        my $ret = '';
+
+        if ($s =~ s/^\s*Figure\s+(\d+):\s*(.*)//) {
+            # キャプションがあれば反映
+            my $no = $1;
+            my $caption = $2;
+            $ret .= '<figure anchor="fig-'. $no . '" align="left" suppress-title="false" pn="figure-'. $no . '">' . "\n";
+            $ret .= '<name slugifiedName="name-figure-' . $no . '">' . $caption .  "</name>\n";
+            $ret .= '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
+            $ret .= "$s\n";
+            $ret .= ']]></artwork>' . "\n";
+            $ret .= '</figure>' . "\n";
+        } else {
+            $ret .= '<artwork name="" type="" align="left" alt=""><![CDATA[' . "\n";
+            $ret .= "$s\n";
+            $ret .= ']]></artwork>' . "\n";
+        }
         return $ret;
     }
 
@@ -233,132 +261,132 @@ sub format_reference($section_of, $ref, $section_comma) {
 sub handle_section_toc($section) {
     my $title = $section->{title};
     my $level = $title->{level};
-    print '  ' x ($level+4);
-    print '<li pn="section-toc.1-1.' . $title->{number} . '">' . "\n";
+    print $buf '  ' x ($level+4);
+    print $buf '<li pn="section-toc.1-1.' . $title->{number} . '">' . "\n";
 
-    print '  ' x ($level+5);
-    print '<t indent="0" keepWithNext="true" pn="section-toc.1-1.' . $title->{number} . '.1">';
-    print '<xref derivedContent="' . $title->{number} . '" format="counter" sectionFormat="of" target="'. $title->{pn} .'"/>';
-    print '.  ';
-    print '<xref derivedContent="" format="title" sectionFormat="of" target="' . escape($title->{slugified_name}) .'">';
-    print escape($title->{name});
-    print '</xref>';
-    print "</t>\n";
+    print $buf '  ' x ($level+5);
+    print $buf '<t indent="0" keepWithNext="true" pn="section-toc.1-1.' . $title->{number} . '.1">';
+    print $buf '<xref derivedContent="' . $title->{number} . '" format="counter" sectionFormat="of" target="'. $title->{pn} .'"/>';
+    print $buf '.  ';
+    print $buf '<xref derivedContent="" format="title" sectionFormat="of" target="' . escape($title->{slugified_name}) .'">';
+    print $buf escape($title->{name});
+    print $buf '</xref>';
+    print $buf "</t>\n";
 
     if (my @subsections = grep {$_->{type} =~ /^(?:section|appendix|references)$/} @{$section->{contents}}) {
-        print '  ' x ($level+5);
-        print '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
-        print "\n";
+        print $buf '  ' x ($level+5);
+        print $buf '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
+        print $buf "\n";
         for my $subsection(@subsections) {
             handle_section_toc($subsection);
         }
-        print '  ' x ($level+5);
-        print "</ul>\n";
+        print $buf '  ' x ($level+5);
+        print $buf "</ul>\n";
     }
 
-    print '  ' x ($level+4);
-    print "</li>\n";
+    print $buf '  ' x ($level+4);
+    print $buf "</li>\n";
 }
 
 # セクションを表示
 sub handle_section($section) {
     my $title = $section->{title};
     my $level = $title->{level};
-    print '  ' x ($level+1);
-    print '<section';
-    print ' anchor="' . escape($title->{anchor}) . '"';
-    print ' numbered="true" removeInRFC="false" toc="include"';
-    print ' pn="' . escape($title->{pn}) . '"';
-    print ">\n";
+    print $buf '  ' x ($level+1);
+    print $buf '<section';
+    print $buf ' anchor="' . escape($title->{anchor}) . '"';
+    print $buf ' numbered="true" removeInRFC="false" toc="include"';
+    print $buf ' pn="' . escape($title->{pn}) . '"';
+    print $buf ">\n";
 
     # name
-    print '  ' x ($level+2);
-    printf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
-    print "\n";
+    print $buf '  ' x ($level+2);
+    printf $buf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
+    print $buf "\n";
 
     # contents
     my $index = 0;
     for my $content(@{$section->{contents}}) {
         if ($content->{type} eq "t") {
             $index++;
-            print '  ' x ($level+2);
-            print '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
-            print $content->{content};
-            print "</t>\n";
+            print $buf '  ' x ($level+2);
+            print $buf '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
+            print $buf $content->{content};
+            print $buf "</t>\n";
         } elsif ($content->{type} eq "section" || $content->{type} eq "appendix") {
             handle_section($content);
         } elsif ($content->{type} eq "ul") {
             $index++;
-            print '  ' x ($level+2);
-            print '<ul bare="false" empty="false" indent="3" spacing="normal" pn="' . escape("$title->{pn}-$index") . '">' . "\n";
+            print $buf '  ' x ($level+2);
+            print $buf '<ul bare="false" empty="false" indent="3" spacing="normal" pn="' . escape("$title->{pn}-$index") . '">' . "\n";
             my $no = 0;
             for my $item(@{$content->{content}}) {
                 $no++;
-                print '  ' x ($level+3);
-                print '<li pn="' . escape("$title->{pn}-$index.$no") . '">';
-                print $item;
-                print "</li>\n";
+                print $buf '  ' x ($level+3);
+                print $buf '<li pn="' . escape("$title->{pn}-$index.$no") . '">';
+                print $buf $item;
+                print $buf "</li>\n";
             }
-            print '  ' x ($level+2);
-            print "</ul>\n";
+            print $buf '  ' x ($level+2);
+            print $buf "</ul>\n";
         } else {
             die "unknown content type: $content->{type}";
         }
     }
 
-    print '  ' x ($level+1);
-    say '</section>';
+    print $buf '  ' x ($level+1);
+    say $buf '</section>';
 }
 
 sub handle_references($references) {
     my $title = $references->{title};
     my $level = $title->{level};
-    print '  ' x ($level+1);
-    say '<references pn="' . escape($title->{pn}) . '">';
-    print '  ' x ($level+2);
-    printf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
-    print "\n";
+    print $buf '  ' x ($level+1);
+    say $buf '<references pn="' . escape($title->{pn}) . '">';
+    print $buf '  ' x ($level+2);
+    printf $buf '<name slugifiedName="%s">%s</name>', escape($title->{slugified_name}), escape($title->{name});
+    print $buf "\n";
 
     for my $content(@{$references->{contents}}) {
         if ($content->{type} eq 'reference') {
-            print '  ' x ($level+2);
-            print '<reference';
-            print ' anchor="' . escape($content->{anchor}) . '"';
+            print $buf '  ' x ($level+2);
+            print $buf '<reference';
+            print $buf ' anchor="' . escape($content->{anchor}) . '"';
             if ($content->{target}) {
-                print ' target="' . escape($content->{target}) . '"';
+                print $buf ' target="' . escape($content->{target}) . '"';
             }
-            print ' quoteTitle="true"';
-            print ' derivedAnchor="' . escape($content->{anchor}) . '"';
-            print ">\n";
+            print $buf ' quoteTitle="true"';
+            print $buf ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            print $buf ">\n";
 
-            print '  ' x ($level+3);
-            print "<front>\n";
+            print $buf '  ' x ($level+3);
+            print $buf "<front>\n";
 
             # タイトル
-            print '  ' x ($level+4);
-            printf "<title>%s</title>\n", escape($content->{title});
+            print $buf '  ' x ($level+4);
+            printf $buf "<title>%s</title>\n", escape($content->{title});
 
             # 公開日
             if ($content->{year}) {
-                print '  ' x ($level+4);
-                printf "<date year=\"%s\"", escape($content->{year});
+                print $buf '  ' x ($level+4);
+                printf $buf "<date year=\"%s\"", escape($content->{year});
                 if ($content->{month}) {
-                    printf " month=\"%s\"", escape($content->{month});
+                    printf $buf " month=\"%s\"", escape($content->{month});
                 }
-                print "/>\n";
+                print $buf "/>\n";
             }
 
-            print '  ' x ($level+3);
-            print "</front>\n";
+            print $buf '  ' x ($level+3);
+            print $buf "</front>\n";
 
             # series Info
             for my $info(@{$content->{series_info}}) {
-                print '  ' x ($level+3);
-                printf "<seriesInfo name=\"%s\">%s</seriesInfo>\n", escape($info->{name}), escape($info->{value});
+                print $buf '  ' x ($level+3);
+                printf $buf "<seriesInfo name=\"%s\">%s</seriesInfo>\n", escape($info->{name}), escape($info->{value});
             }
 
-            print '  ' x ($level+2);
-            print "</reference>\n";
+            print $buf '  ' x ($level+2);
+            print $buf "</reference>\n";
         } elsif ($content->{type} eq 'references') {
             handle_references($content);
         } else {
@@ -366,8 +394,8 @@ sub handle_references($references) {
         }
     }
 
-    print '  ' x ($level+1);
-    print "</references>\n";
+    print $buf '  ' x ($level+1);
+    print $buf "</references>\n";
 }
 
 my $content = slurp("src/rfcs/rfc$number.txt");
@@ -551,79 +579,79 @@ for my $content(@contents) {
 }
 
 # RFCタグ
-say "<?xml version='1.0' encoding='utf-8'?>";
-print '<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3"';
+say $buf "<?xml version='1.0' encoding='utf-8'?>";
+print $buf '<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3"';
 if ($meta->{draft}) {
-    print ' docName="' . escape($meta->{draft}) . '"';
+    print $buf ' docName="' . escape($meta->{draft}) . '"';
 }
-print ' indexInclude="true"';
-print ' number="' . ($meta->{doc_id} =~ s/^RFC//r) . '"';
-say ' symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">';
+print $buf ' indexInclude="true"';
+print $buf ' number="' . ($meta->{doc_id} =~ s/^RFC//r) . '"';
+say $buf ' symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">';
 
 # LINKタグ
 if ($meta->{draft}) {
-    print '  <link href="https://datatracker.ietf.org/doc/';
-    print escape($meta->{draft});
-    say '" rel="prev"/>';
+    print $buf '  <link href="https://datatracker.ietf.org/doc/';
+    print $buf escape($meta->{draft});
+    say $buf '" rel="prev"/>';
 }
 if ($meta->{doi}) {
-    print '<link href="https://dx.doi.org/';
-    print escape(lc($meta->{doi}));
-    say '" rel="alternate"/>';
+    print $buf '<link href="https://dx.doi.org/';
+    print $buf escape(lc($meta->{doi}));
+    say $buf '" rel="alternate"/>';
 }
 
 # FRONT
-say "  <front>";
-say "    <title>" . escape($meta->{title}) . "</title>";
-say '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="IETF"/>';
+say $buf "  <front>";
+say $buf "    <title>" . escape($meta->{title}) . "</title>";
+say $buf '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="IETF"/>';
 
 if ($meta->{pub_date} && $meta->{pub_date} =~ /(?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+)/) {
     my $month = $1;
     my $year = $2;
-    print '    <date year="' . $year . '"';
+    print $buf '    <date year="' . $year . '"';
     if ($month) {
-        print ' month="' . $month . '"';
+        print $buf ' month="' . $month . '"';
     }
-    print "/>\n";
+    print $buf "/>\n";
 }
 
 # Abstract
-say '    <abstract pn="section-abstract">';
+say $buf '    <abstract pn="section-abstract">';
 for my $i(0..$#abstract) {
-    say '      <t indent="0" pn="section-abstract-' . ($i + 1) . '">' . escape($abstract[$i]) . '</t>';
+    say $buf '      <t indent="0" pn="section-abstract-' . ($i + 1) . '">' . escape($abstract[$i]) . '</t>';
 }
-say '    </abstract>';
+say $buf '    </abstract>';
 
 # boilerplate
-say "    <boilerplate>";
+say $buf "    <boilerplate>";
 
 # Status of This Memo
 if (@status_of_this_memo) {
-    say '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
-    say '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
+    say $buf '      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">';
+    say $buf '        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>';
     for my $i(0..$#status_of_this_memo) {
-        say '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $status_of_this_memo[$i] . '</t>';
+        say $buf '        <t indent="0" pn="section-boilerplate.1.' . ($i + 1) . '">' . $status_of_this_memo[$i] . '</t>';
     }
-    say '      </section>';
+    say $buf '      </section>';
 }
 
 # Copyright
 if (@copyright_notice) {
-    say '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
-    say '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
+    say $buf '      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">';
+    say $buf '        <name slugifiedName="name-copyright-notice">Copyright Notice</name>';
     for my $i(0..$#copyright_notice) {
-        say '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyright_notice[$i] . '</t>';
+        say $buf '        <t indent="0" pn="section-boilerplate.2-' . ($i + 1) . '">' . $copyright_notice[$i] . '</t>';
     }
-    say '      </section>';
+    say $buf '      </section>';
 }
-say "    </boilerplate>";
+say $buf "    </boilerplate>";
 
 # 目次
 if (@table_of_contents) {
-    say '    <toc>';
-    say '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
-    say '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
-    say '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
+    say $buf '    <toc>';
+    say $buf '      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">';
+    say $buf '        <name slugifiedName="name-table-of-contents">Table of Contents</name>';
+    say $buf '        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">';
     for my $section(@{$root->{contents}}) {
         handle_section_toc($section);
     }
@@ -635,27 +663,27 @@ if (@table_of_contents) {
     }
     if (@acknowledgements) {
         my $num = appendix_number(scalar(@{$appendix_root->{contents}}));
-        say '          <li pn="section-toc.1-1.' . $num . '">';
-        say '            <t indent="0" pn="section-toc.1-1.' . $num . '.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.' . $num . '"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
-        say '          </li>';
+        say $buf '          <li pn="section-toc.1-1.' . $num . '">';
+        say $buf '            <t indent="0" pn="section-toc.1-1.' . $num . '.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.' . $num . '"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
+        say $buf '          </li>';
     }
-    say '      </ul>';
-    say '      </section>';
-    say '    </toc>';
+    say $buf '      </ul>';
+    say $buf '      </section>';
+    say $buf '    </toc>';
 }
 
 # End of Front
-say "  </front>";
+say $buf "  </front>";
 
 # MIDDLE
-say '  <middle>';
+say $buf '  <middle>';
 for my $section(@{$root->{contents}}) {
     handle_section($section);
 }
-say '  </middle>';
+say $buf '  </middle>';
 
 # BACK
-say '  <back>';
+say $buf '  <back>';
 # References
 for my $references(@{$references_root->{contents}}) {
     handle_references($references);
@@ -669,17 +697,26 @@ for my $appendix(@{$appendix_root->{contents}}) {
 # Acknowledgements
 if (@acknowledgements) {
     my $num = appendix_number(scalar(@{$appendix_root->{contents}}));
-    print '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.' . $num . '">' . "\n";
-    print '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
+    print $buf '    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.' . $num . '">' . "\n";
+    print $buf '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
     for my $i(0..$#acknowledgements) {
-        say '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
+        say $buf '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
     }
-    say '      </section>';
+    say $buf '      </section>';
 }
 
-say '  </back>';
+say $buf '  </back>';
 
 # end of RFC
-say "</rfc>";
+say $buf "</rfc>";
 
-1;
+close $buf;
+
+unless ($ENV{RFC_NO_PATCH}) {
+    my $patch_file = "src/patches/rfc$number.patch";
+    if (-f $patch_file) {
+        $output = patch($output, $patch_file)
+    }
+}
+
+print $output;

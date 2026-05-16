@@ -448,6 +448,31 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 著者情報（Authors' Addresses など）
+    def render_author(self, h, en, ja):
+        # front の author はこのスクリプトでは個別表示しないため、空行生成を避ける
+        if self.part == 'front':
+            return h
+
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
     def render_table(self, h, en, ja):
         parent = build('div')
         h.append(parent)
@@ -1156,8 +1181,35 @@ class HtmlWriter:
         if self.part == 'front':
             pass # TODO
         elif self.part == 'back' or p.tag == 'section':
-            # このドキュメントの著者
-            pass
+            # このドキュメントの著者（Authors' Addresses）
+            card = build('address')
+            h.append(card)
+
+            # 氏名
+            name, ascii = full_author_name_set(x)
+            role = short_author_role(x)
+            card.append(wrap_ascii('div', name, ascii, role, classes='author-name'))
+
+            # 所属
+            org = full_org_name(x)
+            if org:
+                org_div = build('div')
+                org_div.set('class', 'author-org')
+                org_div.text = org
+                card.append(org_div)
+
+            # メールアドレス（複数可）
+            for email in x.findall('.//email'):
+                if email.text and email.text.strip():
+                    email_div = build('div')
+                    email_div.set('class', 'author-email')
+                    a = build('a', href='mailto:%s' % email.text.strip())
+                    a.text = email.text.strip()
+                    email_div.append(a)
+                    card.append(email_div)
+
+            card.tail = x.tail
+            return card
         elif self.part == 'references':
             # 参考文献の著者
             prev  = x.getprevious()

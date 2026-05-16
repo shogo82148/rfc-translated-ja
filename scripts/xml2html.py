@@ -412,15 +412,19 @@ class HtmlWriter:
         section = build('section')
         h.append(section)
 
-        # アンカー
-        anchor = en.get('anchor') or en.get('pn')
-        if anchor:
+        # セクション番号ベースのアンカー（互換性維持）
+        pn = en.get('pn')
+        section_id = id_for_pn(pn) if pn else None
+        if section_id:
+            section.append(build('span', id=section_id))
+
+        # anchor ベースのアンカー（slug/xref 向け）
+        anchor = en.get('anchor')
+        if anchor and anchor != section_id:
             id_en = self.unique_id('%s-en' % anchor)
-            span_en = build('span', id=id_en)
-            section.append(span_en)
+            section.append(build('span', id=id_en))
             id_ja = self.unique_id('%s-ja' % anchor)
-            span_ja = build('span', id=id_ja)
-            section.append(span_ja)
+            section.append(build('span', id=id_ja))
 
         for (c0, c1) in zip(en, ja):
             self.render(section, c0, c1)
@@ -717,7 +721,7 @@ class HtmlWriter:
             if self.is_appendix(pn) and self.is_top_level_section(num):
                 num = 'Appendix %s' % num
             section_id = '%s-%s' % (id_for_pn(pn), self.lang)
-            a_number = build('a', href='#%s'%section_id)
+            a_number = build('a', id=section_id, href='#%s'%section_id)
             a_number.set('class', 'section-number selfRef')
             a_number.text = num.title()
             a_number.tail = ' '

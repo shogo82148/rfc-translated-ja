@@ -450,6 +450,10 @@ class HtmlWriter:
 
     # 著者情報（Authors' Addresses など）
     def render_author(self, h, en, ja):
+        # front の author はこのスクリプトでは個別表示しないため、空行生成を避ける
+        if self.part == 'front':
+            return h
+
         parent = build('div')
         h.append(parent)
         parent.set('class', 'row')

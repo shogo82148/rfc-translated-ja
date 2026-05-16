@@ -108,6 +108,20 @@ class HtmlWriter:
         self.root_ja = xmlrfcJA.getroot()
         self.metadata = metadata
         self.refname_mapping = self.get_refname_mapping()
+        self.id_counts = {}
+
+    def unique_id(self, value):
+        if value is None:
+            return None
+        key = str(value)
+        if len(key) == 0:
+            return None
+
+        count = self.id_counts.get(key, 0)
+        self.id_counts[key] = count + 1
+        if count == 0:
+            return key
+        return '%s-%d' % (key, count)
 
     # 参考文献リスト
     def get_refname_mapping(self):
@@ -399,10 +413,14 @@ class HtmlWriter:
         h.append(section)
 
         # アンカー
-        span_en = build('span', id='%s-en'%en.get('anchor'))
-        section.append(span_en)
-        span_ja = build('span', id='%s-ja'%en.get('anchor'))
-        section.append(span_ja)
+        anchor = en.get('anchor') or en.get('pn')
+        if anchor:
+            id_en = self.unique_id('%s-en' % anchor)
+            span_en = build('span', id=id_en)
+            section.append(span_en)
+            id_ja = self.unique_id('%s-ja' % anchor)
+            span_ja = build('span', id=id_ja)
+            section.append(span_ja)
 
         for (c0, c1) in zip(en, ja):
             self.render(section, c0, c1)
@@ -678,8 +696,10 @@ class HtmlWriter:
 
         # アンカー設定
         name_slug = x.get('slugifiedName') or None
+        unique_name_slug = None
         if name_slug:
             name_slug += '-' + self.lang
+            unique_name_slug = self.unique_id(name_slug)
 
         # 見出しレベル設定
         pn = p.get('pn')
@@ -688,7 +708,7 @@ class HtmlWriter:
         level = min([6, self.level_of_section_num(num) + 1])
         tag = 'h%d' % level
 
-        header = build(tag, id=name_slug, lang=self.lang)
+        header = build(tag, id=unique_name_slug, lang=self.lang)
         h.append(header)
 
         # セクション番号
@@ -696,14 +716,15 @@ class HtmlWriter:
         if num and numbered:
             if self.is_appendix(pn) and self.is_top_level_section(num):
                 num = 'Appendix %s' % num
-            a_number = build('a', id=id_for_pn(pn), href='#%s'%id_for_pn(pn))
+            section_id = '%s-%s' % (id_for_pn(pn), self.lang)
+            a_number = build('a', href='#%s'%section_id)
             a_number.set('class', 'section-number selfRef')
             a_number.text = num.title()
             a_number.tail = ' '
             header.append(a_number)
 
-        if name_slug:
-            a_title = build('a', href='#%s'%name_slug)
+        if unique_name_slug:
+            a_title = build('a', href='#%s'%unique_name_slug)
             a_title.set('class', 'section-name selfRef')
         else:
             a_title = build('span')
@@ -1302,10 +1323,10 @@ class HtmlWriter:
             return span
         else:
             rfc_number = self.root_en.get('number')
-            h1 = build('h1', id='rfcnum')
+            h1 = build('h1', id='rfcnum-%s' % self.lang)
             h1.text = 'RFC %s' % rfc_number
             h.append(h1)
-            h1 = build('h1', id='title')
+            h1 = build('h1', id='title-%s' % self.lang)
             h1.text = title
             h.append(h1)
             return h1

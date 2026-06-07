@@ -12,7 +12,7 @@ sub generate_makefile(@rfc_numbers) {
 
     my @txt2xml_rfcs = ();
     for my $number(@rfc_numbers) {
-        say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
+        say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/rfcs/rfc$number.json src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
         say $fh "\tscripts/xml2html.py $number";
         if (-f "src/rfcs/rfc$number.xml") {
             say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.xml";

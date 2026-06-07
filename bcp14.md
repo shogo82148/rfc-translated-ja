@@ -27,4 +27,16 @@
 <bcp14>場合があります（MAY）</bcp14>
 ```
 
+## 例
+
+```xml
+英語: When an AKP algorithm requires or encourages that a key be validated before being used, all algorithm-related key parameters <bcp14>MUST</bcp14> be validated.
+日本語訳: AKP アルゴリズムが、使用前の鍵検証を要求または推奨する場合、アルゴリズム関連のすべての鍵パラメーターを検証<bcp14>しなければなりません（MUST）</bcp14>。
+```
+
+```xml
+英語: The ctx parameter <bcp14>MUST</bcp14> be the empty string for ML-DSA-44, ML-DSA-65, and ML-DSA-87.
+日本語訳: ctx パラメーターは、ML-DSA-44、ML-DSA-65、および ML-DSA-87 では空文字である<bcp14>必要があります（MUST）</bcp14>。
+```
+
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

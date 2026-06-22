@@ -53,6 +53,8 @@ export default function (context) {
         case "しなければならない（MUST）":
         case "なりません（MUST NOT）":
         case "べきです（SHOULD）":
+        case "べきではありません（SHOULD NOT）":
+        case "選択可能な（OPTIONAL）":
           return;
       }
       report(node, new RuleError(`Invalid BCP 14 key word: '${text}'`, {}));

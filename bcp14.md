@@ -24,7 +24,9 @@
 <bcp14>しなければならない（MUST）</bcp14>
 <bcp14>なりません（MUST NOT）</bcp14>
 <bcp14>べきです（SHOULD）</bcp14>
+<bcp14>べきではありません（SHOULD NOT）</bcp14>
 <bcp14>場合があります（MAY）</bcp14>
+<bcp14>選択可能な（OPTIONAL）</bcp14>
 ```
 
 ## 例

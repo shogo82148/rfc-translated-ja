@@ -1100,7 +1100,15 @@ class HtmlWriter:
 
         div = build('div', lang='')
         h.append(div)
-        if type not in ['svg', 'binary-art']:
+        if type == 'svg':
+            # Extract and append SVG elements
+            for child in x:
+                if child.tag.endswith('svg') or 'svg' in child.tag:
+                    # Deep copy the SVG element to preserve all attributes and content
+                    import copy
+                    svg_copy = copy.deepcopy(child)
+                    div.append(svg_copy)
+        elif type not in ['binary-art']:
             text = x.text + ''.join(c.tail for c in x)
             text = text.expandtabs()
             text = '\n'.join(l.rstrip() for l in text.split('\n'))
@@ -1108,6 +1116,12 @@ class HtmlWriter:
             pre.text = text
             div.append(pre)
         return div
+
+    def render1_artset(self, h, x):
+        # artset is a container for artwork elements, just render its children
+        for c in x:
+            self.render1(h, c)
+        return None
 
     def render1_figure(self, h, x):
         name = x.find('name')

@@ -1118,9 +1118,25 @@ class HtmlWriter:
         return div
 
     def render1_artset(self, h, x):
-        # artset is a container for artwork elements, just render its children
+        # artset contains alternative representations of the same content
+        # Prefer SVG if available, otherwise use first non-SVG artwork
+        svg_artwork = None
+        other_artwork = []
+        
         for c in x:
-            self.render1(h, c)
+            if c.tag.endswith('artwork'):
+                artwork_type = c.get('type')
+                if artwork_type == 'svg':
+                    svg_artwork = c
+                else:
+                    other_artwork.append(c)
+        
+        # Render SVG if available, otherwise render first alternative
+        if svg_artwork is not None:
+            self.render1(h, svg_artwork)
+        elif other_artwork:
+            self.render1(h, other_artwork[0])
+        
         return None
 
     def render1_figure(self, h, x):

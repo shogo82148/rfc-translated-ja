@@ -1103,7 +1103,7 @@ class HtmlWriter:
         if type == 'svg':
             # Extract and append SVG elements
             for child in x:
-                if child.tag.endswith('svg') or 'svg' in child.tag:
+                if isinstance(child.tag, str) and 'svg' in child.tag:
                     # Deep copy the SVG element to preserve all attributes and content
                     import copy
                     svg_copy = copy.deepcopy(child)

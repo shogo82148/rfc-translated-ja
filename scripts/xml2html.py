@@ -1124,7 +1124,7 @@ class HtmlWriter:
         other_artwork = []
         
         for c in x:
-            if c.tag.endswith('artwork'):
+            if isinstance(c.tag, str) and c.tag.endswith('artwork'):
                 artwork_type = c.get('type')
                 if artwork_type == 'svg':
                     svg_artwork = c

@@ -41,4 +41,9 @@
 日本語訳: ctx パラメーターは、ML-DSA-44、ML-DSA-65、および ML-DSA-87 では空文字である<bcp14>必要があります（MUST）</bcp14>。
 ```
 
+```xml
+英語: To improve cache efficiency, caches <bcp14>MAY<bcp14> remove semantically insignificant differences from request content and related metadata first.
+日本語訳: キャッシュ効率を向上させるために、キャッシュはまずリクエストコンテンツおよび関連するメタデータから意味的に重要でない差異を除去<bcp14>してもよいです（MAY）</bcp14>。
+```
+
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

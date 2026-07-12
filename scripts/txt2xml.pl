@@ -88,10 +88,18 @@ sub parse_appendix_name($s) {
 }
 
 sub parse_reference($s) {
-    $s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")();
-    my $anchor = $1;
-    my $authors = $2;
-    my $title = $3;
+    my $anchor;
+    my $authors;
+    my $title;
+
+    if ($s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")()) {
+        $anchor = $1;
+        $authors = $2;
+        $title = $3;
+    } elsif ($s =~ s(^\[([A-Z][^\]\s]*)\]\s+((?:RFC Errata, Erratum ID \d+)))()) {
+        $anchor = $1;
+        $title = $2;
+    }
 
     $s =~ s((?:, (?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+))?(?:, <([^>]*)>)?[.]$)();
     my $month = $1;

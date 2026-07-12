@@ -4,6 +4,7 @@ use v5.38;
 use utf8;
 use JSON qw(decode_json);
 use Encode qw(encode_utf8 decode_utf8);
+use Carp qw(croak);
 
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
@@ -31,6 +32,7 @@ sub patch($input, $patch_file) {
 }
 
 sub escape($s) {
+    croak "undefined string" unless defined $s;
     $s =~ s/&/&amp;/g;
     $s =~ s/</&lt;/g;
     $s =~ s/>/&gt;/g;
@@ -351,12 +353,16 @@ sub handle_references($references) {
         if ($content->{type} eq 'reference') {
             print $buf '  ' x ($level+2);
             print $buf '<reference';
-            print $buf ' anchor="' . escape($content->{anchor}) . '"';
+            if ($content->{anchor}) {
+                print $buf ' anchor="' . escape($content->{anchor}) . '"';
+            }
             if ($content->{target}) {
                 print $buf ' target="' . escape($content->{target}) . '"';
             }
             print $buf ' quoteTitle="true"';
-            print $buf ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            if ($content->{anchor}) {
+                print $buf ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            }
             print $buf ">\n";
 
             print $buf '  ' x ($level+3);
@@ -364,7 +370,7 @@ sub handle_references($references) {
 
             # タイトル
             print $buf '  ' x ($level+4);
-            printf $buf "<title>%s</title>\n", escape($content->{title});
+            printf $buf "<title>%s</title>\n", escape($content->{title} // '');
 
             # 公開日
             if ($content->{year}) {

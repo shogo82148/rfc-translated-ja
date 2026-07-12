@@ -91,14 +91,16 @@ sub parse_reference($s) {
     my $anchor;
     my $authors;
     my $title;
+    my $refcontent;
 
     if ($s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")()) {
         $anchor = $1;
         $authors = $2;
         $title = $3;
-    } elsif ($s =~ s(^\[([A-Z][^\]\s]*)\]\s+((?:RFC Errata, Erratum ID \d+)))()) {
+    } elsif ($s =~ s(^\[([A-Z][^\]\s]*)\]\s+((?:RFC Errata, Erratum ID \d+))(?:, (RFC \d+))?)()) {
         $anchor = $1;
         $title = $2;
+        $refcontent = $3;
     }
 
     $s =~ s((?:, (?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+))?(?:, <([^>]*)>)?[.]$)();
@@ -122,6 +124,7 @@ sub parse_reference($s) {
         type => "reference",
         anchor => $anchor,
         title => $title,
+        refcontent => $refcontent,
         month => $month,
         year => $year,
         target => $target,
@@ -392,6 +395,11 @@ sub handle_references($references) {
 
             print $buf '  ' x ($level+3);
             print $buf "</front>\n";
+
+            if ($content->{refcontent}) {
+                print $buf '  ' x ($level+3);
+                printf $buf "<refcontent>%s</refcontent>\n", escape($content->{refcontent});
+            }
 
             # series Info
             for my $info(@{$content->{series_info}}) {

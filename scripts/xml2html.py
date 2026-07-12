@@ -1369,6 +1369,7 @@ class HtmlWriter:
         span = build('span')
         h.append(span)
         span.set('class', 'refContent')
+        span.text = x.text
         for c in x:
             self.render(span, c)
 

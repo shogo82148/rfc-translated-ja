@@ -4,6 +4,7 @@ use v5.38;
 use utf8;
 use JSON qw(decode_json);
 use Encode qw(encode_utf8 decode_utf8);
+use Carp qw(croak);
 
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
@@ -31,6 +32,7 @@ sub patch($input, $patch_file) {
 }
 
 sub escape($s) {
+    croak "undefined string" unless defined $s;
     $s =~ s/&/&amp;/g;
     $s =~ s/</&lt;/g;
     $s =~ s/>/&gt;/g;
@@ -86,10 +88,20 @@ sub parse_appendix_name($s) {
 }
 
 sub parse_reference($s) {
-    $s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")();
-    my $anchor = $1;
-    my $authors = $2;
-    my $title = $3;
+    my $anchor;
+    my $authors;
+    my $title;
+    my $refcontent;
+
+    if ($s =~ s(^\[([A-Z][^\]\s]*)\] ([^"]*)"([^"]+)")()) {
+        $anchor = $1;
+        $authors = $2;
+        $title = $3;
+    } elsif ($s =~ s(^\[([A-Z][^\]\s]*)\]\s+((?:RFC Errata, Erratum ID \d+))(?:, (RFC \d+))?)()) {
+        $anchor = $1;
+        $title = $2;
+        $refcontent = $3;
+    }
 
     $s =~ s((?:, (?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+))?(?:, <([^>]*)>)?[.]$)();
     my $month = $1;
@@ -112,6 +124,7 @@ sub parse_reference($s) {
         type => "reference",
         anchor => $anchor,
         title => $title,
+        refcontent => $refcontent,
         month => $month,
         year => $year,
         target => $target,
@@ -351,12 +364,16 @@ sub handle_references($references) {
         if ($content->{type} eq 'reference') {
             print $buf '  ' x ($level+2);
             print $buf '<reference';
-            print $buf ' anchor="' . escape($content->{anchor}) . '"';
+            if ($content->{anchor}) {
+                print $buf ' anchor="' . escape($content->{anchor}) . '"';
+            }
             if ($content->{target}) {
                 print $buf ' target="' . escape($content->{target}) . '"';
             }
             print $buf ' quoteTitle="true"';
-            print $buf ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            if ($content->{anchor}) {
+                print $buf ' derivedAnchor="' . escape($content->{anchor}) . '"';
+            }
             print $buf ">\n";
 
             print $buf '  ' x ($level+3);
@@ -364,7 +381,7 @@ sub handle_references($references) {
 
             # タイトル
             print $buf '  ' x ($level+4);
-            printf $buf "<title>%s</title>\n", escape($content->{title});
+            printf $buf "<title>%s</title>\n", escape($content->{title} // '');
 
             # 公開日
             if ($content->{year}) {
@@ -378,6 +395,11 @@ sub handle_references($references) {
 
             print $buf '  ' x ($level+3);
             print $buf "</front>\n";
+
+            if ($content->{refcontent}) {
+                print $buf '  ' x ($level+3);
+                printf $buf "<refcontent>%s</refcontent>\n", escape($content->{refcontent});
+            }
 
             # series Info
             for my $info(@{$content->{series_info}}) {

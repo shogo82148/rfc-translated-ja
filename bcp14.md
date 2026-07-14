@@ -22,6 +22,7 @@
 ```xml
 <bcp14>必要があります（MUST）</bcp14>
 <bcp14>しなければならない（MUST）</bcp14>
+<bcp14>なければなりません（MUST）</bcp14>
 <bcp14>なりません（MUST NOT）</bcp14>
 <bcp14>べきです（SHOULD）</bcp14>
 <bcp14>べきではありません（SHOULD NOT）</bcp14>
@@ -44,6 +45,16 @@
 ```xml
 英語: To improve cache efficiency, caches <bcp14>MAY<bcp14> remove semantically insignificant differences from request content and related metadata first.
 日本語訳: キャッシュ効率を向上させるために、キャッシュはまずリクエストコンテンツおよび関連するメタデータから意味的に重要でない差異を除去<bcp14>してもよいです（MAY）</bcp14>。
+```
+
+```xml
+英語: The literal names <bcp14>MUST</bcp14> be lowercase.
+日本語訳: リテラル名は小文字で<bcp14>なければなりません（MUST）</bcp14>。
+```
+
+```xml
+英語: The names within an object <bcp14>SHOULD</bcp14> be unique.
+日本語訳: オブジェクト内の名前は一意である<bcp14>べきです（SHOULD）</bcp14>。
 ```
 
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

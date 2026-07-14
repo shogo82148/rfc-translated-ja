@@ -21,6 +21,7 @@ all: \
 	docs/rfc8725.html \
 	docs/rfc8682.html \
 	docs/rfc8610.html \
+	docs/rfc8259.html \
 	docs/rfc8174.html \
 	docs/rfc8152.html \
 	docs/rfc7797.html \
@@ -116,6 +117,10 @@ docs/rfc8610.html: src/en/rfc8610.xml src/rfcs/rfc8610.json src/ja/rfc8610.xml s
 	scripts/xml2html.py 8610
 src/en/rfc8610.xml: src/rfcs/rfc8610.txt scripts/txt2xml.pl src/patches/rfc8610.patch
 	scripts/txt2xml.pl 8610 > $@
+docs/rfc8259.html: src/en/rfc8259.xml src/rfcs/rfc8259.json src/ja/rfc8259.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 8259
+src/en/rfc8259.xml: src/rfcs/rfc8259.txt scripts/txt2xml.pl src/patches/rfc8259.patch
+	scripts/txt2xml.pl 8259 > $@
 docs/rfc8174.html: src/en/rfc8174.xml src/rfcs/rfc8174.json src/ja/rfc8174.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 8174
 src/en/rfc8174.xml: src/rfcs/rfc8174.txt scripts/txt2xml.pl src/patches/rfc8174.patch
@@ -160,6 +165,7 @@ src/en/rfc2119.xml: src/rfcs/rfc2119.txt scripts/txt2xml.pl src/patches/rfc2119.
 .PHONY: update-english
 update-english:
 	scripts/txt2xml.pl 8610 > src/ja/rfc8610.xml
+	scripts/txt2xml.pl 8259 > src/ja/rfc8259.xml
 	scripts/txt2xml.pl 8174 > src/ja/rfc8174.xml
 	scripts/txt2xml.pl 8152 > src/ja/rfc8152.xml
 	scripts/txt2xml.pl 7797 > src/ja/rfc7797.xml

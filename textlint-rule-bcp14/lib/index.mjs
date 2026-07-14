@@ -51,6 +51,7 @@ export default function (context) {
         case "選択できます（OPTIONAL）":
         case "必要があります（MUST）":
         case "しなければならない（MUST）":
+        case "なければなりません（MUST）":
         case "なりません（MUST NOT）":
         case "べきです（SHOULD）":
         case "べきではありません（SHOULD NOT）":

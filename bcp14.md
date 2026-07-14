@@ -52,4 +52,9 @@
 日本語訳: リテラル名は小文字で<bcp14>なければなりません（MUST）</bcp14>。
 ```
 
+```xml
+英語: The names within an object <bcp14>SHOULD</bcp14> be unique.
+日本語訳: オブジェクト内の名前は一意である<bcp14>べきです（SHOULD）</bcp14>。
+```
+
 [RFC 2119]: https://shogo82148.github.io/rfc-translated-ja/rfc2119.html

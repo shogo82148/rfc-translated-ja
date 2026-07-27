@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use v5.38;
+use v5.44;
 use utf8;
 use JSON qw(decode_json);
 use Encode qw(encode_utf8 decode_utf8);

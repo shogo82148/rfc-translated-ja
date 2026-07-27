@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use v5.36;
+use v5.44;
 
 use JSON qw(decode_json);
 

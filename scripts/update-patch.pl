@@ -12,6 +12,11 @@ my @rfc_numbers = map { m(/rfc([0-9]+)\.patch\z); $1 } @patch_list;
 for my $number(@rfc_numbers) {
     local $ENV{RFC_NO_PATCH} = 1;
     say "Generating patch for RFC $number...";
-    system("./scripts/txt2xml.pl $number > $dir/rfc$number.xml");
-    system("diff -u --label '' --label '' $dir/rfc$number.xml ./src/en/rfc$number.xml > ./src/patches/rfc$number.patch");
+    if (system("./scripts/txt2xml.pl $number > $dir/rfc$number.xml") != 0) {
+        die "Failed to generate patch for RFC $number: $?";
+    }
+    my $status = system("diff -u --label '' --label '' $dir/rfc$number.xml ./src/en/rfc$number.xml > ./src/patches/rfc$number.patch");
+    if ($status == -1 || ($status >> 8) > 1) {
+        die "Failed to generate patch for RFC $number: $?";
+    }
 }

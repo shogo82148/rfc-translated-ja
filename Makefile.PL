@@ -2,7 +2,6 @@
 
 use v5.44;
 use utf8;
-use Encode qw(encode_utf8 decode_utf8);
 
 use JSON qw(decode_json);
 
@@ -41,7 +40,7 @@ sub generate_makefile(@rfc_numbers) {
 }
 
 sub get_en_title($number) {
-    open my $fh, "<:encoding(utf8)", "src/rfcs/rfc$number.json" or die "failed to open: $!";
+    open my $fh, "<", "src/rfcs/rfc$number.json" or die "failed to open: $!";
     my $content = do { local $/; <$fh> };
     close($fh);
 

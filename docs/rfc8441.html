@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8441: Bootstrapping WebSockets with HTTP/2（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>PROPOSED STANDARD</dd>
+<dt>更新:</dt>
+<dd><span>RFC6455</span></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8441.html">RFC 8441</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8441">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8441">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8441</h1>
+<h1 id="title-en">Bootstrapping WebSockets with HTTP/2</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8441</h1>
+<h1 id="title-ja">Bootstrapping WebSockets with HTTP/2</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p>This document defines a mechanism for running the WebSocket Protocol
+(RFC 6455) over a single stream of an HTTP/2 connection.</p></div>
+<div lang="ja" class="col"><p>This document defines a mechanism for running the WebSocket Protocol
+(RFC 6455) over a single stream of an HTTP/2 connection.</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<a href="#name-status-of-this-memo-ja" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This is an Internet Standards Track document.</p></div>
+<div lang="ja" class="col"><p>This is an Internet Standards Track document.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p>This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+https://www.rfc-editor.org/info/rfc8441.</p></div>
+<div lang="ja" class="col"><p>Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+https://www.rfc-editor.org/info/rfc8441.</p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<a href="#name-copyright-notice-ja" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p>Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(https://trustee.ietf.org/license-info) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</p></div>
+<div lang="ja" class="col"><p>This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(https://trustee.ietf.org/license-info) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<a href="#name-table-of-contents-ja" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li>
+            <p><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li>
+            <p><a href="#section-2-en">2</a>.  <a href="#name-terminology-en">Terminology</a></p>
+</li>
+          <li>
+            <p><a href="#section-3-en">3</a>.  <a href="#name-the-settings_enable_connect_protocol-settings-parameter-en">The SETTINGS_ENABLE_CONNECT_PROTOCOL SETTINGS Parameter</a></p>
+</li>
+          <li>
+            <p><a href="#section-4-en">4</a>.  <a href="#name-the-extended-connect-method-en">The Extended CONNECT Method</a></p>
+</li>
+          <li>
+            <p><a href="#section-5-en">5</a>.  <a href="#name-using-extended-connect-to-bootstrap-the-websocket-protocol-en">Using Extended CONNECT to Bootstrap the WebSocket Protocol</a></p>
+<ul>
+<li>
+              <p><a href="#section-5.1-en">5.1</a>.  <a href="#name-example-en">Example</a></p>
+</li>
+            </ul>
+</li>
+          <li>
+            <p><a href="#section-6-en">6</a>.  <a href="#name-design-considerations-en">Design Considerations</a></p>
+</li>
+          <li>
+            <p><a href="#section-7-en">7</a>.  <a href="#name-about-intermediaries-en">About Intermediaries</a></p>
+</li>
+          <li>
+            <p><a href="#section-8-en">8</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li>
+            <p><a href="#section-9-en">9</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+<ul>
+<li>
+              <p><a href="#section-9.1-en">9.1</a>.  <a href="#name-a-new-http/2-setting-en">A New HTTP/2 Setting</a></p>
+</li>
+            <li>
+              <p><a href="#section-9.2-en">9.2</a>.  <a href="#name-a-new-http-upgrade-token-en">A New HTTP Upgrade Token</a></p>
+</li>
+            </ul>
+</li>
+          <li>
+            <p><a href="#section-10-en">10</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li>
+            <p><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">Introduction</a></p>
+</li>
+          <li>
+            <p><a href="#section-2-ja">2</a>.  <a href="#name-terminology-ja">Terminology</a></p>
+</li>
+          <li>
+            <p><a href="#section-3-ja">3</a>.  <a href="#name-the-settings_enable_connect_protocol-settings-parameter-ja">The SETTINGS_ENABLE_CONNECT_PROTOCOL SETTINGS Parameter</a></p>
+</li>
+          <li>
+            <p><a href="#section-4-ja">4</a>.  <a href="#name-the-extended-connect-method-ja">The Extended CONNECT Method</a></p>
+</li>
+          <li>
+            <p><a href="#section-5-ja">5</a>.  <a href="#name-using-extended-connect-to-bootstrap-the-websocket-protocol-ja">Using Extended CONNECT to Bootstrap the WebSocket Protocol</a></p>
+<ul>
+<li>
+              <p><a href="#section-5.1-ja">5.1</a>.  <a href="#name-example-ja">Example</a></p>
+</li>
+            </ul>
+</li>
+          <li>
+            <p><a href="#section-6-ja">6</a>.  <a href="#name-design-considerations-ja">Design Considerations</a></p>
+</li>
+          <li>
+            <p><a href="#section-7-ja">7</a>.  <a href="#name-about-intermediaries-ja">About Intermediaries</a></p>
+</li>
+          <li>
+            <p><a href="#section-8-ja">8</a>.  <a href="#name-security-considerations-ja">Security Considerations</a></p>
+</li>
+          <li>
+            <p><a href="#section-9-ja">9</a>.  <a href="#name-iana-considerations-ja">IANA Considerations</a></p>
+<ul>
+<li>
+              <p><a href="#section-9.1-ja">9.1</a>.  <a href="#name-a-new-http/2-setting-ja">A New HTTP/2 Setting</a></p>
+</li>
+            <li>
+              <p><a href="#section-9.2-ja">9.2</a>.  <a href="#name-a-new-http-upgrade-token-ja">A New HTTP Upgrade Token</a></p>
+</li>
+            </ul>
+</li>
+          <li>
+            <p><a href="#section-10-ja">10</a>.  <a href="#name-normative-references-ja">Normative References</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">Introduction</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The Hypertext Transfer Protocol (HTTP) <span>[<a href="#RFC7230-en">RFC7230</a>]</span> provides compatible
+resource-level semantics across different versions, but it does not
+offer compatibility at the connection-management level.  Other
+protocols that rely on connection-management details of HTTP, such as
+WebSockets, must be updated for new versions of HTTP.</p></div>
+<div lang="ja" class="col"><p>The Hypertext Transfer Protocol (HTTP) <span>[<a href="#RFC7230-ja">RFC7230</a>]</span> provides compatible
+resource-level semantics across different versions, but it does not
+offer compatibility at the connection-management level.  Other
+protocols that rely on connection-management details of HTTP, such as
+WebSockets, must be updated for new versions of HTTP.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The WebSocket Protocol <span>[<a href="#RFC6455-en">RFC6455</a>]</span> uses the HTTP/1.1 Upgrade mechanism
+(<span><a href="https://www.rfc-editor.org/rfc/rfc7230#section-6.7">Section 6.7</a> of [<a href="#RFC7230-en">RFC7230</a>]</span>) to transition a TCP connection from HTTP
+into a WebSocket connection.  A different approach must be taken with
+HTTP/2 <span>[<a href="#RFC7540-en">RFC7540</a>]</span>.  Due to its multiplexing nature, HTTP/2 does not
+allow connection-wide header fields or status codes, such as the
+Upgrade and Connection request-header fields or the 101 (Switching
+Protocols) response code.  These are all required by the <span>[<a href="#RFC6455-en">RFC6455</a>]</span>
+opening handshake.</p></div>
+<div lang="ja" class="col"><p>The WebSocket Protocol <span>[<a href="#RFC6455-ja">RFC6455</a>]</span> uses the HTTP/1.1 Upgrade mechanism
+(<span>[<a href="#RFC7230-ja">RFC7230</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7230#section-6.7">Section 6.7</a></span>) to transition a TCP connection from HTTP
+into a WebSocket connection.  A different approach must be taken with
+HTTP/2 <span>[<a href="#RFC7540-ja">RFC7540</a>]</span>.  Due to its multiplexing nature, HTTP/2 does not
+allow connection-wide header fields or status codes, such as the
+Upgrade and Connection request-header fields or the 101 (Switching
+Protocols) response code.  These are all required by the <span>[<a href="#RFC6455-ja">RFC6455</a>]</span>
+opening handshake.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Being able to bootstrap WebSockets from HTTP/2 allows one TCP
+connection to be shared by both protocols and extends HTTP/2's more
+efficient use of the network to WebSockets.</p></div>
+<div lang="ja" class="col"><p>Being able to bootstrap WebSockets from HTTP/2 allows one TCP
+connection to be shared by both protocols and extends HTTP/2's more
+efficient use of the network to WebSockets.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document extends the HTTP CONNECT method, as specified for
+HTTP/2 in <span><a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.3">Section 8.3</a> of [<a href="#RFC7540-en">RFC7540</a>]</span>.  The extension allows the
+substitution of a new protocol name to connect to rather than the
+external host normally used by CONNECT.  The result is a tunnel on a
+single HTTP/2 stream that can carry data for WebSockets (or any other
+protocol).  The other streams on the connection may carry more
+extended CONNECT tunnels, traditional HTTP/2 data, or a mixture of
+both.</p></div>
+<div lang="ja" class="col"><p>This document extends the HTTP CONNECT method, as specified for
+HTTP/2 in <span>[<a href="#RFC7540-ja">RFC7540</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.3">Section 8.3</a></span>.  The extension allows the
+substitution of a new protocol name to connect to rather than the
+external host normally used by CONNECT.  The result is a tunnel on a
+single HTTP/2 stream that can carry data for WebSockets (or any other
+protocol).  The other streams on the connection may carry more
+extended CONNECT tunnels, traditional HTTP/2 data, or a mixture of
+both.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This tunneled stream will be multiplexed with other regular streams
+on the connection and enjoys the normal priority, cancellation, and
+flow-control features of HTTP/2.</p></div>
+<div lang="ja" class="col"><p>This tunneled stream will be multiplexed with other regular streams
+on the connection and enjoys the normal priority, cancellation, and
+flow-control features of HTTP/2.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Streams that successfully establish a WebSocket connection using a
+tunneled stream and the modifications to the opening handshake
+defined in this document then use the traditional WebSocket Protocol,
+treating the stream as if it were the TCP connection in that
+specification.</p></div>
+<div lang="ja" class="col"><p>Streams that successfully establish a WebSocket connection using a
+tunneled stream and the modifications to the opening handshake
+defined in this document then use the traditional WebSocket Protocol,
+treating the stream as if it were the TCP connection in that
+specification.</p></div>
+</div></section><section><span id="section-2"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-terminology-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-terminology-en" class="section-name selfRef">Terminology</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-terminology-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-terminology-ja" class="section-name selfRef">Terminology</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in
+BCP 14 <span>[<a href="#RFC2119-en">RFC2119</a>]</span> <span>[<a href="#RFC8174-en">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+<div lang="ja" class="col"><p>The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in
+BCP 14 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span> <span>[<a href="#RFC8174-ja">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+</div></section><section><span id="section-3"></span><span id="the-settings_enable_connect_protocol-settings-parameter-en"></span><span id="the-settings_enable_connect_protocol-settings-parameter-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-settings_enable_connect_protocol-settings-parameter-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-the-settings_enable_connect_protocol-settings-parameter-en" class="section-name selfRef">The SETTINGS_ENABLE_CONNECT_PROTOCOL SETTINGS Parameter</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-settings_enable_connect_protocol-settings-parameter-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-the-settings_enable_connect_protocol-settings-parameter-ja" class="section-name selfRef">The SETTINGS_ENABLE_CONNECT_PROTOCOL SETTINGS Parameter</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document adds a new SETTINGS parameter to those defined by
+<span>[<a href="#RFC7540-en">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.5.2.</p></div>
+<div lang="ja" class="col"><p>This document adds a new SETTINGS parameter to those defined by
+<span>[<a href="#RFC7540-ja">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.5.2.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The new parameter name is SETTINGS_ENABLE_CONNECT_PROTOCOL.  The
+value of the parameter <span class="bcp14">MUST</span> be 0 or 1.</p></div>
+<div lang="ja" class="col"><p>The new parameter name is SETTINGS_ENABLE_CONNECT_PROTOCOL.  The
+value of the parameter <span class="bcp14">MUST</span> be 0 or 1.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Upon receipt of SETTINGS_ENABLE_CONNECT_PROTOCOL with a value of 1, a
+client <span class="bcp14">MAY</span> use the Extended CONNECT as defined in this document when
+creating new streams.  Receipt of this parameter by a server does not
+have any impact.</p></div>
+<div lang="ja" class="col"><p>Upon receipt of SETTINGS_ENABLE_CONNECT_PROTOCOL with a value of 1, a
+client <span class="bcp14">MAY</span> use the Extended CONNECT as defined in this document when
+creating new streams.  Receipt of this parameter by a server does not
+have any impact.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>A sender <span class="bcp14">MUST NOT</span> send a SETTINGS_ENABLE_CONNECT_PROTOCOL parameter
+with the value of 0 after previously sending a value of 1.</p></div>
+<div lang="ja" class="col"><p>A sender <span class="bcp14">MUST NOT</span> send a SETTINGS_ENABLE_CONNECT_PROTOCOL parameter
+with the value of 0 after previously sending a value of 1.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Using a SETTINGS parameter to opt into an otherwise incompatible
+protocol change is a use of "Extending HTTP/2" defined by <span><a href="https://www.rfc-editor.org/rfc/rfc7540#section-5.5">Section 5.5</a> of [<a href="#RFC7540-en">RFC7540</a>]</span>.  Specifically, the addition a new pseudo-header field,
+":protocol", and the change in meaning of the :authority pseudo-
+header field in Section 4 require opt-in negotiation.  If a client
+were to use the provisions of the extended CONNECT method defined in
+this document without first receiving a
+SETTINGS_ENABLE_CONNECT_PROTOCOL parameter, a non-supporting peer
+would detect a malformed request and generate a stream error
+(<span><a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.1.2.6">Section 8.1.2.6</a> of [<a href="#RFC7540-en">RFC7540</a>]</span>).</p></div>
+<div lang="ja" class="col"><p>Using a SETTINGS parameter to opt into an otherwise incompatible
+protocol change is a use of "Extending HTTP/2" defined by <span>[<a href="#RFC7540-ja">RFC7540</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7540#section-5.5">Section 5.5</a></span>.  Specifically, the addition a new pseudo-header field,
+":protocol", and the change in meaning of the :authority pseudo-
+header field in Section 4 require opt-in negotiation.  If a client
+were to use the provisions of the extended CONNECT method defined in
+this document without first receiving a
+SETTINGS_ENABLE_CONNECT_PROTOCOL parameter, a non-supporting peer
+would detect a malformed request and generate a stream error
+(<span>[<a href="#RFC7540-ja">RFC7540</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.1.2.6">Section 8.1.2.6</a></span>).</p></div>
+</div></section><section><span id="section-4"></span><span id="the-extended-connect-method-en"></span><span id="the-extended-connect-method-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-extended-connect-method-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-the-extended-connect-method-en" class="section-name selfRef">The Extended CONNECT Method</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-extended-connect-method-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-the-extended-connect-method-ja" class="section-name selfRef">The Extended CONNECT Method</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Usage of the CONNECT method in HTTP/2 is defined by <span><a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.3">Section 8.3</a> of [<a href="#RFC7540-en">RFC7540</a>]</span>.  This extension modifies the method in the following ways:</p></div>
+<div lang="ja" class="col"><p>Usage of the CONNECT method in HTTP/2 is defined by <span>[<a href="#RFC7540-ja">RFC7540</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7540#section-8.3">Section 8.3</a></span>.  This extension modifies the method in the following ways:</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li> A new pseudo-header field :protocol MAY be included on request
+   HEADERS indicating the desired protocol to be spoken on the tunnel
+   created by CONNECT.  The pseudo-header field is single valued and
+   contains a value from the "Hypertext Transfer Protocol (HTTP)
+   Upgrade Token Registry" located at
+   &lt;https://www.iana.org/assignments/http-upgrade-tokens/&gt;</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li> A new pseudo-header field :protocol MAY be included on request
+   HEADERS indicating the desired protocol to be spoken on the tunnel
+   created by CONNECT.  The pseudo-header field is single valued and
+   contains a value from the "Hypertext Transfer Protocol (HTTP)
+   Upgrade Token Registry" located at
+   &lt;https://www.iana.org/assignments/http-upgrade-tokens/&gt;</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li> On requests that contain the :protocol pseudo-header field, the
+   :scheme and :path pseudo-header fields of the target URI (see
+   Section 5) MUST also be included.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li> On requests that contain the :protocol pseudo-header field, the
+   :scheme and :path pseudo-header fields of the target URI (see
+   Section 5) MUST also be included.</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li> On requests bearing the :protocol pseudo-header field, the
+   :authority pseudo-header field is interpreted according to
+   Section 8.1.2.3 of [RFC7540] instead of Section 8.3 of that
+   document.  In particular, the server MUST NOT create a tunnel to
+   the host indicated by the :authority as it would with a CONNECT
+   method request that was not modified by this extension.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li> On requests bearing the :protocol pseudo-header field, the
+   :authority pseudo-header field is interpreted according to
+   Section 8.1.2.3 of [RFC7540] instead of Section 8.3 of that
+   document.  In particular, the server MUST NOT create a tunnel to
+   the host indicated by the :authority as it would with a CONNECT
+   method request that was not modified by this extension.</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Upon receiving a CONNECT request bearing the :protocol pseudo-header
+field, the server establishes a tunnel to another service of the
+protocol type indicated by the pseudo-header field.  This service may
+or may not be co-located with the server.</p></div>
+<div lang="ja" class="col"><p>Upon receiving a CONNECT request bearing the :protocol pseudo-header
+field, the server establishes a tunnel to another service of the
+protocol type indicated by the pseudo-header field.  This service may
+or may not be co-located with the server.</p></div>
+</div></section><section><span id="section-5"></span><span id="using-extended-connect-to-bootstrap-the-websocket-protocol-en"></span><span id="using-extended-connect-to-bootstrap-the-websocket-protocol-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-using-extended-connect-to-bootstrap-the-websocket-protocol-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-using-extended-connect-to-bootstrap-the-websocket-protocol-en" class="section-name selfRef">Using Extended CONNECT to Bootstrap the WebSocket Protocol</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-using-extended-connect-to-bootstrap-the-websocket-protocol-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-using-extended-connect-to-bootstrap-the-websocket-protocol-ja" class="section-name selfRef">Using Extended CONNECT to Bootstrap the WebSocket Protocol</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The :protocol pseudo-header field <span class="bcp14">MUST</span> be included in the CONNECT
+request, and it <span class="bcp14">MUST</span> have a value of "websocket" to initiate a
+WebSocket connection on an HTTP/2 stream.  Other HTTP request and
+response-header fields, such as those for manipulating cookies, may
+be included in the HEADERS with the CONNECT method as usual.  This
+request replaces the GET-based request in <span>[<a href="#RFC6455-en">RFC6455</a>]</span> and is used to
+process the WebSockets opening handshake.</p></div>
+<div lang="ja" class="col"><p>The :protocol pseudo-header field <span class="bcp14">MUST</span> be included in the CONNECT
+request, and it <span class="bcp14">MUST</span> have a value of "websocket" to initiate a
+WebSocket connection on an HTTP/2 stream.  Other HTTP request and
+response-header fields, such as those for manipulating cookies, may
+be included in the HEADERS with the CONNECT method as usual.  This
+request replaces the GET-based request in <span>[<a href="#RFC6455-ja">RFC6455</a>]</span> and is used to
+process the WebSockets opening handshake.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The scheme of the target URI (<span><a href="https://www.rfc-editor.org/rfc/rfc7230#section-5.1">Section 5.1</a> of [<a href="#RFC7230-en">RFC7230</a>]</span>) <span class="bcp14">MUST</span> be
+"https" for "wss"-schemed WebSockets and "http" for "ws"-schemed
+WebSockets.  The remainder of the target URI is the same as the
+WebSocket URI.  The WebSocket URI is still used for proxy
+autoconfiguration.  The security requirements for the HTTP/2
+connection used by this specification are established by <span>[<a href="#RFC7540-en">RFC7540</a>]</span>
+for https requests and <span>[<a href="#RFC8164-en">RFC8164</a>]</span> for http requests.</p></div>
+<div lang="ja" class="col"><p>The scheme of the target URI (<span>[<a href="#RFC7230-ja">RFC7230</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7230#section-5.1">Section 5.1</a></span>) <span class="bcp14">MUST</span> be
+"https" for "wss"-schemed WebSockets and "http" for "ws"-schemed
+WebSockets.  The remainder of the target URI is the same as the
+WebSocket URI.  The WebSocket URI is still used for proxy
+autoconfiguration.  The security requirements for the HTTP/2
+connection used by this specification are established by <span>[<a href="#RFC7540-ja">RFC7540</a>]</span>
+for https requests and <span>[<a href="#RFC8164-ja">RFC8164</a>]</span> for http requests.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p><span>[<a href="#RFC6455-en">RFC6455</a>]</span> requires the use of Connection and Upgrade header fields
+that are not part of HTTP/2.  They <span class="bcp14">MUST NOT</span> be included in the
+CONNECT request defined here.</p></div>
+<div lang="ja" class="col"><p><span>[<a href="#RFC6455-ja">RFC6455</a>]</span> requires the use of Connection and Upgrade header fields
+that are not part of HTTP/2.  They <span class="bcp14">MUST NOT</span> be included in the
+CONNECT request defined here.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p><span>[<a href="#RFC6455-en">RFC6455</a>]</span> requires the use of a Host header field that is also not
+part of HTTP/2.  The Host information is conveyed as part of the
+:authority pseudo-header field, which is required on every HTTP/2
+transaction.</p></div>
+<div lang="ja" class="col"><p><span>[<a href="#RFC6455-ja">RFC6455</a>]</span> requires the use of a Host header field that is also not
+part of HTTP/2.  The Host information is conveyed as part of the
+:authority pseudo-header field, which is required on every HTTP/2
+transaction.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>Implementations using this extended CONNECT to bootstrap WebSockets
+do not do the processing of the Sec-WebSocket-Key and Sec-WebSocket-
+Accept header fields of <span>[<a href="#RFC6455-en">RFC6455</a>]</span> as that functionality has been
+superseded by the :protocol pseudo-header field.</p></div>
+<div lang="ja" class="col"><p>Implementations using this extended CONNECT to bootstrap WebSockets
+do not do the processing of the Sec-WebSocket-Key and Sec-WebSocket-
+Accept header fields of <span>[<a href="#RFC6455-ja">RFC6455</a>]</span> as that functionality has been
+superseded by the :protocol pseudo-header field.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The Origin <span>[<a href="#RFC6454-en">RFC6454</a>]</span>, Sec-WebSocket-Version, Sec-WebSocket-Protocol,
+and Sec-WebSocket-Extensions header fields are used in the CONNECT
+request and response-header fields as defined in <span>[<a href="#RFC6455-en">RFC6455</a>]</span>.  Note
+that HTTP/1 header field names were case insensitive, whereas HTTP/2
+requires they be encoded as lowercase.</p></div>
+<div lang="ja" class="col"><p>The Origin <span>[<a href="#RFC6454-ja">RFC6454</a>]</span>, Sec-WebSocket-Version, Sec-WebSocket-Protocol,
+and Sec-WebSocket-Extensions header fields are used in the CONNECT
+request and response-header fields as defined in <span>[<a href="#RFC6455-ja">RFC6455</a>]</span>.  Note
+that HTTP/1 header field names were case insensitive, whereas HTTP/2
+requires they be encoded as lowercase.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>After successfully processing the opening handshake, the peers should
+proceed with the WebSocket Protocol <span>[<a href="#RFC6455-en">RFC6455</a>]</span> using the HTTP/2 stream
+from the CONNECT transaction as if it were the TCP connection
+referred to in <span>[<a href="#RFC6455-en">RFC6455</a>]</span>.  The state of the WebSocket connection at
+this point is OPEN, as defined by <span>[<a href="#RFC6455-en">RFC6455</a>], <a href="https://www.rfc-editor.org/rfc/rfc6455#section-4">Section 4</a></span>.1.</p></div>
+<div lang="ja" class="col"><p>After successfully processing the opening handshake, the peers should
+proceed with the WebSocket Protocol <span>[<a href="#RFC6455-ja">RFC6455</a>]</span> using the HTTP/2 stream
+from the CONNECT transaction as if it were the TCP connection
+referred to in <span>[<a href="#RFC6455-ja">RFC6455</a>]</span>.  The state of the WebSocket connection at
+this point is OPEN, as defined by <span>[<a href="#RFC6455-ja">RFC6455</a>], <a href="https://www.rfc-editor.org/rfc/rfc6455#section-4">Section 4</a></span>.1.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The HTTP/2 stream closure is also analogous to the TCP connection
+closure of <span>[<a href="#RFC6455-en">RFC6455</a>]</span>.  Orderly TCP-level closures are represented as
+END_STREAM flags (<span>[<a href="#RFC7540-en">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.1).  RST exceptions are
+represented with the RST_STREAM frame (<span>[<a href="#RFC7540-en">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.4) with
+the CANCEL error code (<span>[<a href="#RFC7540-en">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-7">Section 7</a></span>).</p></div>
+<div lang="ja" class="col"><p>The HTTP/2 stream closure is also analogous to the TCP connection
+closure of <span>[<a href="#RFC6455-ja">RFC6455</a>]</span>.  Orderly TCP-level closures are represented as
+END_STREAM flags (<span>[<a href="#RFC7540-ja">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.1).  RST exceptions are
+represented with the RST_STREAM frame (<span>[<a href="#RFC7540-ja">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-6">Section 6</a></span>.4) with
+the CANCEL error code (<span>[<a href="#RFC7540-ja">RFC7540</a>], <a href="https://www.rfc-editor.org/rfc/rfc7540#section-7">Section 7</a></span>).</p></div>
+</div>
+<section><span id="section-5.1"></span><span id="example-en"></span><span id="example-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-example-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-example-en" class="section-name selfRef">Example</a>
+      </h3></div>
+<div lang="ja" class="col"><h3 id="name-example-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-example-ja" class="section-name selfRef">Example</a>
+      </h3></div>
+</div></section></section><section><span id="section-6"></span><span id="design-considerations-en"></span><span id="design-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-design-considerations-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-design-considerations-en" class="section-name selfRef">Design Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-design-considerations-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-design-considerations-ja" class="section-name selfRef">Design Considerations</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>A more native integration with HTTP/2 is certainly possible with
+larger additions to HTTP/2.  This design was selected to minimize the
+solution complexity while still addressing the primary concern of
+running HTTP/2 and WebSockets concurrently.</p></div>
+<div lang="ja" class="col"><p>A more native integration with HTTP/2 is certainly possible with
+larger additions to HTTP/2.  This design was selected to minimize the
+solution complexity while still addressing the primary concern of
+running HTTP/2 and WebSockets concurrently.</p></div>
+</div></section><section><span id="section-7"></span><span id="about-intermediaries-en"></span><span id="about-intermediaries-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-about-intermediaries-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-about-intermediaries-en" class="section-name selfRef">About Intermediaries</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-about-intermediaries-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-about-intermediaries-ja" class="section-name selfRef">About Intermediaries</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document does not change how WebSockets interacts with HTTP
+forward proxies.  If a client wishing to speak WebSockets connects
+via HTTP/2 to an HTTP proxy, it should continue to use a traditional
+CONNECT (i.e., not with a :protocol pseudo-header field) to tunnel
+through that proxy to the WebSocket server via HTTP.</p></div>
+<div lang="ja" class="col"><p>This document does not change how WebSockets interacts with HTTP
+forward proxies.  If a client wishing to speak WebSockets connects
+via HTTP/2 to an HTTP proxy, it should continue to use a traditional
+CONNECT (i.e., not with a :protocol pseudo-header field) to tunnel
+through that proxy to the WebSocket server via HTTP.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The resulting version of HTTP on that tunnel determines whether
+WebSockets is initiated directly or via a modified CONNECT request
+described in this document.</p></div>
+<div lang="ja" class="col"><p>The resulting version of HTTP on that tunnel determines whether
+WebSockets is initiated directly or via a modified CONNECT request
+described in this document.</p></div>
+</div></section><section><span id="section-8"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p><span>[<a href="#RFC6455-en">RFC6455</a>]</span> ensures that non-WebSockets clients, especially
+XMLHttpRequest-based clients, cannot make a WebSocket connection.
+Its primary mechanism for doing that is the use of Sec-prefixed
+request-header fields that cannot be created by XMLHttpRequest-based
+clients.  This specification addresses that concern in two ways:</p></div>
+<div lang="ja" class="col"><p><span>[<a href="#RFC6455-ja">RFC6455</a>]</span> ensures that non-WebSockets clients, especially
+XMLHttpRequest-based clients, cannot make a WebSocket connection.
+Its primary mechanism for doing that is the use of Sec-prefixed
+request-header fields that cannot be created by XMLHttpRequest-based
+clients.  This specification addresses that concern in two ways:</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li> XMLHttpRequest also prohibits use of the CONNECT method in
+   addition to Sec-prefixed request-header fields.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li> XMLHttpRequest also prohibits use of the CONNECT method in
+   addition to Sec-prefixed request-header fields.</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul>
+<li> The use of a pseudo-header field is something that is connection
+   specific, and HTTP/2 never allows a pseudo-header to be created
+   outside of the protocol stack.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul>
+<li> The use of a pseudo-header field is something that is connection
+   specific, and HTTP/2 never allows a pseudo-header to be created
+   outside of the protocol stack.</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>The security considerations of <span>[<a href="#RFC6455-en">RFC6455</a>], <a href="https://www.rfc-editor.org/rfc/rfc6455#section-1">Section 1</a></span>0 continue to
+apply to the use of the WebSocket Protocol when using this
+specification, with the exception of 10.8.  That section is not
+relevant, because it is specific to the bootstrapping handshake that
+is changed in this document.</p></div>
+<div lang="ja" class="col"><p>The security considerations of <span>[<a href="#RFC6455-ja">RFC6455</a>], <a href="https://www.rfc-editor.org/rfc/rfc6455#section-1">Section 1</a></span>0 continue to
+apply to the use of the WebSocket Protocol when using this
+specification, with the exception of 10.8.  That section is not
+relevant, because it is specific to the bootstrapping handshake that
+is changed in this document.</p></div>
+</div></section><section><span id="section-9"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+</div>
+<section><span id="section-9.1"></span><span id="a-new-http/2-setting-en"></span><span id="a-new-http/2-setting-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-a-new-http/2-setting-en" lang="en">
+<a id="section-9.1-en" href="#section-9.1-en" class="section-number selfRef">9.1.</a> <a href="#name-a-new-http/2-setting-en" class="section-name selfRef">A New HTTP/2 Setting</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-a-new-http/2-setting-ja" lang="ja">
+<a id="section-9.1-ja" href="#section-9.1-ja" class="section-number selfRef">9.1.</a> <a href="#name-a-new-http/2-setting-ja" class="section-name selfRef">A New HTTP/2 Setting</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document registers an entry in the "HTTP/2 Settings" registry
+that was established by <span><a href="https://www.rfc-editor.org/rfc/rfc7540#section-11.3">Section 11.3</a> of [<a href="#RFC7540-en">RFC7540</a>]</span>.</p></div>
+<div lang="ja" class="col"><p>This document registers an entry in the "HTTP/2 Settings" registry
+that was established by <span>[<a href="#RFC7540-ja">RFC7540</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7540#section-11.3">Section 11.3</a></span>.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p><div lang=""><pre>
+   Code: 0x8
+   Name: SETTINGS_ENABLE_CONNECT_PROTOCOL
+   Initial Value: 0
+   Specification: This document
+</pre></div></p></div>
+<div lang="ja" class="col"><p><div lang=""><pre>
+   Code: 0x8
+   Name: SETTINGS_ENABLE_CONNECT_PROTOCOL
+   Initial Value: 0
+   Specification: This document
+</pre></div></p></div>
+</div></section><section><span id="section-9.2"></span><span id="a-new-http-upgrade-token-en"></span><span id="a-new-http-upgrade-token-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-a-new-http-upgrade-token-en" lang="en">
+<a id="section-9.2-en" href="#section-9.2-en" class="section-number selfRef">9.2.</a> <a href="#name-a-new-http-upgrade-token-en" class="section-name selfRef">A New HTTP Upgrade Token</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-a-new-http-upgrade-token-ja" lang="ja">
+<a id="section-9.2-ja" href="#section-9.2-ja" class="section-number selfRef">9.2.</a> <a href="#name-a-new-http-upgrade-token-ja" class="section-name selfRef">A New HTTP Upgrade Token</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p>This document registers an entry in the "HTTP Upgrade Tokens"
+registry that was established by <span>[<a href="#RFC7230-en">RFC7230</a>]</span>.</p></div>
+<div lang="ja" class="col"><p>This document registers an entry in the "HTTP Upgrade Tokens"
+registry that was established by <span>[<a href="#RFC7230-ja">RFC7230</a>]</span>.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p><div lang=""><pre>
+   Value: websocket
+   Description: The Web Socket Protocol
+   Expected Version Tokens:
+   References: [RFC6455] [RFC8441]
+</pre></div></p></div>
+<div lang="ja" class="col"><p><div lang=""><pre>
+   Value: websocket
+   Description: The Web Socket Protocol
+   Expected Version Tokens:
+   References: [RFC6455] [RFC8441]
+</pre></div></p></div>
+</div></section></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-normative-references-en" lang="en">
+<a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP None</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC6454-en">[RFC6454]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"The Web Origin Concept"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2011-12" class="refDate">December 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6454">https://www.rfc-editor.org/info/rfc6454</a>&gt;</span>
+</dd>
+<dt id="RFC6455-en">[RFC6455]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"The WebSocket Protocol"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2011-12" class="refDate">December 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6455">https://www.rfc-editor.org/info/rfc6455</a>&gt;</span>
+</dd>
+<dt id="RFC7230-en">[RFC7230]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7230">https://www.rfc-editor.org/info/rfc7230</a>&gt;</span>
+</dd>
+<dt id="RFC7540-en">[RFC7540]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Hypertext Transfer Protocol Version 2 (HTTP/2)"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7540">https://www.rfc-editor.org/info/rfc7540</a>&gt;</span>
+</dd>
+<dt id="RFC8164-en">[RFC8164]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Opportunistic Security for HTTP/2"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8164">https://www.rfc-editor.org/info/rfc8164</a>&gt;</span>
+</dd>
+<dt id="RFC8174-en">[RFC8174]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP None</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section></div>
+<div lang="ja" class="col"><section><h2 id="name-normative-references-ja" lang="ja">
+<a href="#name-normative-references-ja" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP None</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC6454-ja">[RFC6454]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"The Web Origin Concept"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2011-12" class="refDate">December 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6454">https://www.rfc-editor.org/info/rfc6454</a>&gt;</span>
+</dd>
+<dt id="RFC6455-ja">[RFC6455]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"The WebSocket Protocol"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2011-12" class="refDate">December 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6455">https://www.rfc-editor.org/info/rfc6455</a>&gt;</span>
+</dd>
+<dt id="RFC7230-ja">[RFC7230]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7230">https://www.rfc-editor.org/info/rfc7230</a>&gt;</span>
+</dd>
+<dt id="RFC7540-ja">[RFC7540]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Hypertext Transfer Protocol Version 2 (HTTP/2)"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7540">https://www.rfc-editor.org/info/rfc7540</a>&gt;</span>
+</dd>
+<dt id="RFC8164-ja">[RFC8164]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Opportunistic Security for HTTP/2"</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8164">https://www.rfc-editor.org/info/rfc8164</a>&gt;</span>
+</dd>
+<dt id="RFC8174-ja">[RFC8174]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP None</span>, <span class="seriesInfo">RFC None</span>, <span class="seriesInfo">DOI None</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section></div>
+</div>
+</body>
+</html>

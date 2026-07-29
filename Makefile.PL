@@ -1,11 +1,13 @@
 #!/usr/bin/env perl
 
 use v5.44;
+use utf8;
+use Encode qw(encode_utf8 decode_utf8);
 
 use JSON qw(decode_json);
 
 sub generate_makefile(@rfc_numbers) {
-    open my $fh, ">", "Makefile" or die "failed to open: %!";
+    open my $fh, ">:encoding(utf8)", "Makefile" or die "failed to open: %!";
     say $fh ".PHONY: all";
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";
@@ -39,7 +41,7 @@ sub generate_makefile(@rfc_numbers) {
 }
 
 sub get_en_title($number) {
-    open my $fh, "<", "src/rfcs/rfc$number.json" or die "failed to open: $!";
+    open my $fh, "<:encoding(utf8)", "src/rfcs/rfc$number.json" or die "failed to open: $!";
     my $content = do { local $/; <$fh> };
     close($fh);
 
@@ -50,7 +52,7 @@ sub get_en_title($number) {
 }
 
 sub get_ja_title($number) {
-    open my $fh, "<", "src/ja/rfc$number.xml" or die "failed to open: $!";
+    open my $fh, "<:encoding(utf8)", "src/ja/rfc$number.xml" or die "failed to open: $!";
     my $title = "";
     while(<$fh>) {
         if (m(<title[^>]*>([^<]+)</title>)) {
@@ -63,7 +65,7 @@ sub get_ja_title($number) {
 }
 
 sub generate_index(@rfc_numbers) {
-    open my $fh, ">", "docs/index.html" or die "failed to open: %!";
+    open my $fh, ">:encoding(utf8)", "docs/index.html" or die "failed to open: %!";
     print $fh <<__EOF__;
 <!DOCTYPE html>
 <html>

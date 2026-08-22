@@ -50,6 +50,7 @@ export default function (context) {
         case "場合があります（MAY）":
         case "選択できます（OPTIONAL）":
         case "必要があります（MUST）":
+        case "必要がある（MUST）":
         case "しなければならない（MUST）":
         case "なければなりません（MUST）":
         case "なりません（MUST NOT）":

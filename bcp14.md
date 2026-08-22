@@ -27,6 +27,7 @@
 <bcp14>べきです（SHOULD）</bcp14>
 <bcp14>べきではありません（SHOULD NOT）</bcp14>
 <bcp14>場合があります（MAY）</bcp14>
+<bcp14>よいです（MAY）</bcp14>
 <bcp14>選択可能な（OPTIONAL）</bcp14>
 ```
 

@@ -48,8 +48,10 @@ export default function (context) {
         case "推奨されません（NOT RECOMMENDED）":
         case "してもよいです（MAY）":
         case "場合があります（MAY）":
+        case "よいです（MAY）":
         case "選択できます（OPTIONAL）":
         case "必要があります（MUST）":
+        case "必要がある（MUST）":
         case "しなければならない（MUST）":
         case "なければなりません（MUST）":
         case "なりません（MUST NOT）":

@@ -1,6 +1,41 @@
 // LICENSE : MIT
 "use strict";
 import { RuleHelper } from "textlint-rule-helper";
+
+const ENGLISH_KEYWORDS = new Set([
+  "MUST",
+  "MUST NOT",
+  "REQUIRED",
+  "SHALL",
+  "SHALL NOT",
+  "SHOULD",
+  "SHOULD NOT",
+  "RECOMMENDED",
+  "NOT RECOMMENDED",
+  "MAY",
+  "OPTIONAL",
+]);
+
+// pairs of opening and closing quotes that mark a mention of a key word
+const QUOTES = [
+  ["「", "」"],
+  ["“", "”"],
+  ["&quot;", "&quot;"],
+  ['"', '"'],
+];
+
+/**
+ * Reports whether the <bcp14> element around range is enclosed in quotes.
+ * @param {string} source whole source text
+ * @param {[number, number]} range range of the text inside the element
+ */
+function isQuoted(source, range) {
+  const before = source.slice(0, range[0]).replace(/<bcp14[^>]*>$/, "");
+  const after = source.slice(range[1]).replace(/^<\/bcp14>/, "");
+  return QUOTES.some(
+    ([open, close]) => before.endsWith(open) && after.startsWith(close),
+  );
+}
 /**
  * @param {RuleContext} context
  */
@@ -59,6 +94,12 @@ export default function (context) {
         case "べきではありません（SHOULD NOT）":
         case "選択可能な（OPTIONAL）":
           return;
+      }
+
+      // Allow a bare English key word when the text mentions the word itself
+      // rather than stating a requirement, e.g. 「<bcp14>SHOULD</bcp14>」.
+      if (ENGLISH_KEYWORDS.has(text) && isQuoted(getSource(), node.range)) {
+        return;
       }
       report(node, new RuleError(`Invalid BCP 14 key word: '${text}'`, {}));
     },

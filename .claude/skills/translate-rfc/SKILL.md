@@ -89,7 +89,7 @@ argument-hint: <rfc-number>
 次のコマンドを順に実行し、エラーがなくなるまで修正してください。
 Python のコマンドは `venv` があれば `venv/bin/python` を使ってください。
 
-1. `scripts/check-translation.py N` — XML 構造が英語版と一致しているか確認します（構造エラーは必ず修正）。`UNTRANSLATED` と出た箇所は訳し漏れでないか確認し、レジストリー値や固有名詞など英語のままでよいもの以外は翻訳してください。
+1. `scripts/check-translation.py N` — XML 構造と、要素ごとの BCP14 キーワード（`<bcp14>` タグ）が英語版と一致しているか確認します（構造エラーと `bcp14 mismatch` は必ず修正）。`UNTRANSLATED` と出た箇所は訳し漏れでないか確認し、レジストリー値や固有名詞など英語のままでよいもの以外は翻訳してください。
 2. `scripts/update-toc.pl` — 目次の `<xref>` のテキストを翻訳済みの見出しに合わせます。
 3. `npx textlint src/ja/rfcN.xml` — lint エラーを修正します。
 4. `scripts/register-rfc.py N` — `Makefile` と `docs/index.html` に登録します。

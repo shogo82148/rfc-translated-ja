@@ -1,0 +1,156 @@
+name: translate
+
+on:
+  schedule:
+    # 毎日 03:00 JST
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      rfc:
+        description: "翻訳する RFC 番号（空なら未翻訳の RFC から自動で選ぶ）"
+        required: false
+        default: ""
+      order:
+        description: "自動で選ぶときの順番（size: 小さい順, desc: 新しい順, asc: 古い順）"
+        required: false
+        default: "size"
+        type: choice
+        options:
+          - size
+          - desc
+          - asc
+      max-bytes:
+        description: "自動で選ぶときの XML の最大サイズ（バイト, 0 で無制限）"
+        required: false
+        default: "100000"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: translate
+  cancel-in-progress: false
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          cache: "pip"
+      - uses: shogo82148/actions-setup-perl@8b574cdc2dffdae49f803204a4f2b716a2fa1db7 # v1.44.2
+        with:
+          perl-version: "5.44"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".node-version"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          cpanm --installdeps --notest .
+          npm ci
+
+      - name: Pick an RFC
+        id: pick
+        env:
+          INPUT_RFC: ${{ inputs.rfc }}
+          INPUT_ORDER: ${{ inputs.order || 'size' }}
+          INPUT_MAX_BYTES: ${{ inputs.max-bytes || '100000' }}
+        run: |
+          if [ -n "$INPUT_RFC" ]; then
+            number="$INPUT_RFC"
+            if [ -e "src/ja/rfc$number.xml" ]; then
+              echo "RFC $number is already translated."
+              exit 0
+            fi
+          else
+            # 翻訳中（PR がオープン中）の RFC は除外する
+            mapfile -t in_progress < <(gh pr list --state open --limit 200 --json headRefName \
+              --jq '.[].headRefName | capture("^translate-rfc(?<n>[0-9]+)-").n')
+            number=$(scripts/list-untranslated.py --order "$INPUT_ORDER" --max-bytes "$INPUT_MAX_BYTES" \
+              --exclude "${in_progress[@]}" --limit 1)
+          fi
+          if [ -z "$number" ]; then
+            echo "No RFC to translate."
+            exit 0
+          fi
+          if [ ! -e "src/rfcs/rfc$number.xml" ]; then
+            echo "::error::src/rfcs/rfc$number.xml does not exist."
+            exit 1
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "branch=translate-rfc$number-$(TZ=Asia/Tokyo date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "Selected RFC $number"
+
+      - name: Translate
+        if: steps.pick.outputs.number
+        uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            translate-rfc スキル（.claude/skills/translate-rfc/SKILL.md）の手順に従って、
+            RFC ${{ steps.pick.outputs.number }} を日本語に翻訳してください。
+            コミットやプッシュはしないでください。
+          claude_args: |
+            --max-turns 1000
+            --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash(cp src/rfcs/*),Bash(scripts/*),Bash(python scripts/*),Bash(npx textlint *),Bash(npm run textlint*),Bash(make *),Bash(git diff*),Bash(git status*)"
+
+      - name: Verify
+        id: verify
+        if: steps.pick.outputs.number
+        continue-on-error: true
+        env:
+          NUMBER: ${{ steps.pick.outputs.number }}
+        run: |
+          scripts/check-translation.py "$NUMBER"
+          scripts/update-toc.pl
+          npx textlint "src/ja/rfc$NUMBER.xml"
+          scripts/register-rfc.py "$NUMBER"
+          perl Makefile.PL
+          make "docs/rfc$NUMBER.html"
+
+      - name: Create a pull request
+        if: steps.pick.outputs.number
+        env:
+          NUMBER: ${{ steps.pick.outputs.number }}
+          BRANCH: ${{ steps.pick.outputs.branch }}
+          VERIFY: ${{ steps.verify.outcome }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add Makefile docs/index.html src/ja/
+          if [ -e "docs/rfc$NUMBER.html" ]; then git add "docs/rfc$NUMBER.html"; fi
+          git commit -m "RFC $NUMBER: 翻訳"
+          git push origin "$BRANCH"
+          report=$(scripts/check-translation.py "$NUMBER" | tail -n 50 || true)
+          draft=()
+          if [ "$VERIFY" != "success" ]; then
+            # 検証に失敗した場合も翻訳結果を残すため、ドラフト PR にする
+            draft=(--draft)
+          fi
+          gh pr create "${draft[@]}" --base main --head "$BRANCH" --title "RFC $NUMBER: 翻訳" --body "$(cat <<EOF
+          RFC $NUMBER を日本語に翻訳しました（GitHub Actions の translate ワークフローによる自動翻訳）。
+          検証ステップの結果: $VERIFY
+
+          - 原文: https://www.rfc-editor.org/rfc/rfc$NUMBER
+
+          ## scripts/check-translation.py の結果
+
+          \`\`\`
+          $report
+          \`\`\`
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )"

@@ -25,6 +25,10 @@
 - 日本語 XML を lint: `npm run textlint`
 - 日本語 XML 内の TOC メタデータを更新: `scripts/update-toc.pl`
 - JA と EN-raw のパッチを再生成: `scripts/update-patch.pl`
+- 未翻訳の RFC を一覧: `scripts/list-untranslated.py [--order size|asc|desc] [--max-bytes N]`
+- 翻訳の XML 構造チェック: `scripts/check-translation.py [--strict] <rfc-number>`
+- 翻訳済み RFC を `Makefile` と `docs/index.html` に登録: `scripts/register-rfc.py <rfc-number>`
+- RFC を 1 件翻訳する手順: `.claude/skills/translate-rfc/SKILL.md`（GitHub Actions の `translate` ワークフローからも使用）
 
 ## 正本データと編集境界
 

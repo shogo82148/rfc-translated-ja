@@ -26,6 +26,11 @@ argument-hint: <rfc-number>
 - `<front>` の `<title>`（`abbrev` 属性はそのまま）、`<abstract>`、`<note>`
 - `<boilerplate>`（「このメモのステータス」と「著作権表示」の定型文は、自分で訳さずに `src/ja/rfc9457.xml` の `<boilerplate>` から写してください。
   RFC 番号・発行年・文書の種類（標準化過程、BCP、Informational など）に応じた箇所だけを書き換えます。
+  「このメモのステータス」の 1 文目は、文書の種類に応じて次のとおりにしてください。
+  - Standards Track: 「これはインターネット標準化過程（Internet Standards Track）の文書です。」
+  - Best Current Practice: 「このメモは、インターネットのベストカレントプラクティス（Best Current Practice）を記述したものです。」
+  - Informational: 「この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。」
+  - Experimental: 「この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。」
   `Copyright (c) ...` の行、「Trust Legal Provisions」「Revised BSD License」は英語のまま残します。[boilerplate.md](../../../boilerplate.md) も参照）
 - 本文の `<name>`（セクション見出し、図表のタイトル）、`<t>`、`<li>`、`<dt>`、`<dd>`、`<td>`、`<th>`、`<blockquote>`、`<aside>`、`<preamble>`、`<postamble>`
 - `<references>` 自体の `<name>`（例: 「引用規格」「参考文献」）
@@ -62,6 +67,8 @@ argument-hint: <rfc-number>
 | Examples | 例 |
 
 「This document has no IANA actions.」は「この文書にはIANAアクションはありません。」と訳します。
+
+「RFC Editor」は「RFCエディター」と訳します（「RFC Editor Model」は「RFCエディターモデル」）。ただし、原文の語句をそのまま引用している箇所は英語のままにします。
 
 ### 表記規約
 

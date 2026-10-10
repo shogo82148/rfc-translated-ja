@@ -24,7 +24,9 @@ argument-hint: <rfc-number>
 ### 翻訳するもの
 
 - `<front>` の `<title>`（`abbrev` 属性はそのまま）、`<abstract>`、`<note>`
-- `<boilerplate>`（[boilerplate.md](../../../boilerplate.md) と既存訳の定型文に合わせる。`Copyright (c) ...` の行は英語のまま）
+- `<boilerplate>`（「このメモのステータス」と「著作権表示」の定型文は、自分で訳さずに `src/ja/rfc9457.xml` の `<boilerplate>` から写してください。
+  RFC 番号・発行年・文書の種類（標準化過程、BCP、Informational など）に応じた箇所だけを書き換えます。
+  `Copyright (c) ...` の行、「Trust Legal Provisions」「Revised BSD License」は英語のまま残します。[boilerplate.md](../../../boilerplate.md) も参照）
 - 本文の `<name>`（セクション見出し、図表のタイトル）、`<t>`、`<li>`、`<dt>`、`<dd>`、`<td>`、`<th>`、`<blockquote>`、`<aside>`、`<preamble>`、`<postamble>`
 - `<references>` 自体の `<name>`（例: 「引用規格」「参考文献」）
 
@@ -35,6 +37,31 @@ argument-hint: <rfc-number>
 - `<reference>` の中身（参考文献のタイトルやアブストラクトは英語のまま）
 - 著者情報（`<author>`、`<address>`）
 - `<xref>`、`<eref>` などのインライン要素は残し、日本語の語順に合わせて文中の位置を移動してください（要素を消したり増やしたりしない）
+
+### 定番の見出し
+
+既存訳との統一のため、次の見出しはこの訳語を使ってください。
+
+| 英語 | 日本語 |
+|---|---|
+| Status of This Memo | このメモのステータス |
+| Copyright Notice | 著作権表示 |
+| Table of Contents | 目次 |
+| Introduction | はじめに |
+| Terminology | 用語 |
+| Notational Conventions | 表記上の規則 |
+| Requirements Language | 要件言語 |
+| IANA Considerations | IANAに関する考慮事項 |
+| Security Considerations | セキュリティーに関する考慮事項 |
+| Privacy Considerations | プライバシーに関する考慮事項 |
+| References | 参考文献 |
+| Normative References | 引用規格 |
+| Informative References | 参考文献 |
+| Acknowledgements / Acknowledgments | 謝辞 |
+| Author's Address / Authors' Addresses | 著者の連絡先 |
+| Examples | 例 |
+
+「This document has no IANA actions.」は「この文書にはIANAアクションはありません。」と訳します。
 
 ### 表記規約
 

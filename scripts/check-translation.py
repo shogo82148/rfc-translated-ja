@@ -56,7 +56,11 @@ def bcp14_keywords(el):
         if tag == 'bcp14':
             text = ' '.join(''.join(c.itertext()).split())
             m = BCP14_KEYWORD.search(text)
-            keywords.append(m.group(1) if m else text)
+            keyword = m.group(1) if m else text
+            # some sources write <bcp14>SHALL</bcp14> NOT, leaving "NOT" outside the element
+            if keyword in ('MUST', 'SHALL', 'SHOULD') and re.match(r'\s*NOT\b', c.tail or ''):
+                keyword += ' NOT'
+            keywords.append(keyword)
         elif tag in INLINE_TAGS:
             keywords.extend(bcp14_keywords(c))
     return sorted(keywords)

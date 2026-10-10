@@ -66,16 +66,23 @@ jobs:
           INPUT_ORDER: ${{ inputs.order || 'size' }}
           INPUT_MAX_BYTES: ${{ inputs.max-bytes || '100000' }}
         run: |
+          # 翻訳中（PR がオープン中）の RFC
+          mapfile -t in_progress < <(gh pr list --state open --limit 200 --json headRefName \
+            --jq '.[].headRefName | capture("^translate-rfc(?<n>[0-9]+)-").n')
           if [ -n "$INPUT_RFC" ]; then
             number="$INPUT_RFC"
             if [ -e "src/ja/rfc$number.xml" ]; then
               echo "RFC $number is already translated."
               exit 0
             fi
+            for n in "${in_progress[@]}"; do
+              if [ "$n" = "$number" ]; then
+                echo "RFC $number already has an open pull request."
+                exit 0
+              fi
+            done
           else
-            # 翻訳中（PR がオープン中）の RFC は除外する
-            mapfile -t in_progress < <(gh pr list --state open --limit 200 --json headRefName \
-              --jq '.[].headRefName | capture("^translate-rfc(?<n>[0-9]+)-").n')
+            # 翻訳中の RFC は除外する
             number=$(scripts/list-untranslated.py --order "$INPUT_ORDER" --max-bytes "$INPUT_MAX_BYTES" \
               --exclude "${in_progress[@]}" --limit 1)
           fi
@@ -87,8 +94,14 @@ jobs:
             echo "::error::src/rfcs/rfc$number.xml does not exist."
             exit 1
           fi
+          branch="translate-rfc$number-$(TZ=Asia/Tokyo date +%Y-%m-%d)"
+          if [ -n "$(git ls-remote --heads origin "$branch")" ]; then
+            # PR を閉じた後などでブランチだけが残っている場合
+            echo "::error::Branch $branch already exists. Delete it or try again tomorrow."
+            exit 1
+          fi
           echo "number=$number" >> "$GITHUB_OUTPUT"
-          echo "branch=translate-rfc$number-$(TZ=Asia/Tokyo date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "Selected RFC $number"
 
       - name: Translate

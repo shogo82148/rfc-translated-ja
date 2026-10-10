@@ -40,6 +40,11 @@ sub escape($s) {
     return $s;
 }
 
+sub tag_bcp14($s) {
+    $s =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
+    return $s;
+}
+
 sub appendix_number($n) {
     my $a = "a";
     $a++ for 1..$n;
@@ -139,7 +144,7 @@ sub parse_content($s) {
         shift @items; # 先頭は空文字列
         return {
             type => "ul",
-            content => [map {escape($_ =~ s/\s*$//r)} @items],
+            content => [map {tag_bcp14(escape($_ =~ s/\s*$//r))} @items],
         };
     }
 
@@ -171,8 +176,7 @@ sub parseT($s) {
         return $ret;
     }
 
-    $s = escape($s);
-    $s =~ s(((:?MUST|SHALL|SHOULD)(:?\sNOT)?|REQUIRED|(:?NOT\s)?RECOMMENDED|MAY|OPTIONAL))(<bcp14>$1</bcp14>)g;
+    $s = tag_bcp14(escape($s));
 
     if ($s =~ /^\s*\+(?:-{3,}\+)+\s*$/m) {
         # 表のパース

@@ -22,7 +22,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | implementer | 実装者 | |
 | reference | 参照 | |
 | example | 例 | |
-| note (aside の先頭) | 注： | 注意：、注記： も既存訳にあり |
+| note（「Note:」で始まる注記） | 注： | 注記：、注意：（Caution は「注意：」） |
 | for example | たとえば | 例えば |
 | therefore | したがって | 「従って」は「〜に従って（follow）」の意味でのみ使う |
 | out of scope | 範囲外 | 対象外 |
@@ -157,7 +157,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | claim | クレーム | |
 | issuer | 発行者 | |
 | header parameter | ヘッダーパラメーター | |
-| compact serialization | コンパクトシリアライゼーション | |
+| compact serialization | コンパクトシリアル化 | コンパクトシリアライゼーション |
 | JSON Web Token | JSON Web Token（JWT） | 英語のまま |
 
 ## 暗号・セキュリティー
@@ -166,11 +166,14 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 |---|---|---|
 | security | セキュリティー | |
 | privacy | プライバシー | |
-| key (暗号鍵) | 鍵 | キー（既存訳で揺れが大きい。下の「既存訳の揺れ」を参照） |
-| public key / private key | 公開鍵 / 秘密鍵 | 公開キー、プライベートキー |
+| key（暗号鍵） | 鍵 | キー。暗号以外のキー（キャッシュキー、マップや辞書のキー、データベースのキー、JSON のキー）は「キー」 |
+| public key / private key | 公開鍵 / 秘密鍵 | 公開キー、プライベートキー、秘密キー |
 | symmetric key | 対称鍵 | 対称キー、共通鍵 |
 | key agreement | 鍵合意 | キー合意、鍵共有 |
 | key management | 鍵管理 | |
+| key type / key wrap | 鍵タイプ / 鍵ラップ | キータイプ、キーラップ |
+| content encryption key (CEK) | コンテンツ暗号化鍵 | コンテンツ暗号化キー |
+| key derivation function (KDF) | 鍵導出関数 | |
 | signature / sign | 署名 / 署名する | |
 | encrypt / encryption | 暗号化する / 暗号化 | |
 | decrypt / decryption | 復号する / 復号 | 復号化 |
@@ -212,7 +215,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | binary | バイナリー | バイナリ |
 | encoding / encode / decode | エンコーディング / エンコードする / デコードする | 符号化（暗号の文脈の decode は「復号」ではない） |
 | deterministic encoding | 決定論的エンコーディング | |
-| serialization | シリアライゼーション | シリアル化、直列化 |
+| serialization | シリアル化 | シリアライゼーション、直列化 |
 | parse / parser | 解析する（パースする）/ パーサー | パーサ |
 | whitespace | 空白 | ホワイトスペース |
 | escape | エスケープ | |
@@ -237,15 +240,5 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 
 ## 既存訳の揺れ
 
-既存訳の中で訳語がそろっていないものです。新しい訳では上の表の訳語を使ってください。
-長音の有無など機械的に統一できるものは既存訳を修正し、textlint の辞書にも追加しました。
-以下は文脈によって訳し分けが必要なため、まだ統一していないものです（数字は「出現回数 / ファイル数」）。
-
-| 英語 | 既存訳の表記 |
-|---|---|
-| key（暗号鍵） | 鍵 1139/18、キー 約1650/29（JOSE・COSE 系の RFC で混在。キャッシュキーや辞書のキーなど暗号以外のキーも含む） |
-| key type | 鍵タイプ 37/4、キータイプ 71/5 |
-| key wrap | キーラップ 67/4、鍵ラップ 4/2 |
-| content encryption key | コンテンツ暗号化キー 18/3、コンテンツ暗号化鍵 5/2 |
-| serialization | シリアル化 118/7、シリアライゼーション 92/7、直列化 7/5 |
-| note（aside の先頭） | 注記： 52/4、注意： 15/5、注： 14/7 |
+既存訳で訳語がそろっていなかったものは統一し、機械的に検出できる表記は textlint の辞書に追加しました。
+暗号の key（鍵／キー）のように文脈で訳し分ける語は lint で検出できないので、上の表に従って訳してください。

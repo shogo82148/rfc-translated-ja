@@ -24,7 +24,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | example | 例 | |
 | note (aside の先頭) | 注： | 注意：、注記： も既存訳にあり |
 | for example | たとえば | 例えば |
-| therefore | したがって | 従って |
+| therefore | したがって | 「従って」は「〜に従って（follow）」の意味でのみ使う |
 | out of scope | 範囲外 | 対象外 |
 | deprecated | 非推奨 | |
 | obsolete | 廃止 | |
@@ -147,7 +147,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 
 | 英語 | 訳語 | 避ける表記・備考 |
 |---|---|---|
-| opening handshake | オープニングハンドシェイク | 開始ハンドシェイク |
+| opening handshake | 開始ハンドシェイク | オープニングハンドシェイク |
 | closing handshake | 終了ハンドシェイク | |
 | masking | マスキング | |
 | subprotocol | サブプロトコル | |
@@ -173,7 +173,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | key management | 鍵管理 | |
 | signature / sign | 署名 / 署名する | |
 | encrypt / encryption | 暗号化する / 暗号化 | |
-| decrypt / decryption | 復号する / 復号 | 復号化も既存訳にあり |
+| decrypt / decryption | 復号する / 復号 | 復号化 |
 | plaintext / ciphertext | 平文 / 暗号文 | |
 | nonce / salt | ノンス / ソルト | |
 | hash / digest | ハッシュ / ダイジェスト | |
@@ -238,7 +238,8 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 ## 既存訳の揺れ
 
 既存訳の中で訳語がそろっていないものです。新しい訳では上の表の訳語を使ってください。
-既存訳を直すかどうかは別途判断します（数字は「出現回数 / ファイル数」）。
+長音の有無など機械的に統一できるものは既存訳を修正し、textlint の辞書にも追加しました。
+以下は文脈によって訳し分けが必要なため、まだ統一していないものです（数字は「出現回数 / ファイル数」）。
 
 | 英語 | 既存訳の表記 |
 |---|---|
@@ -246,17 +247,5 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | key type | 鍵タイプ 37/4、キータイプ 71/5 |
 | key wrap | キーラップ 67/4、鍵ラップ 4/2 |
 | content encryption key | コンテンツ暗号化キー 18/3、コンテンツ暗号化鍵 5/2 |
-| decrypt | 復号化 57/7、復号 37/6 |
-| for example | たとえば 578/35、例えば 101/17 |
-| therefore | したがって 199/34、従って 111/27 |
-| proxy | プロキシー 226/8、プロキシ 122/6（rfc6455、rfc6750、rfc7239、rfc8152、rfc8441、rfc9052） |
-| query | クエリー 28/8、クエリ 57/4（rfc6750、rfc7515、rfc7519、rfc10008） |
-| server | サーバー 1658/22、サーバ 17/2（rfc9401、rfc10008） |
-| library | ライブラリ 37/10、ライブラリー 12/6 |
-| memory | メモリー 37/8、メモリ 13/6 |
-| browser | ブラウザー 46/8、ブラウザ 5/2（rfc6750、rfc7239） |
-| parameter | パラメーター 1369/31、パラメータ 6/3（rfc7520、rfc8949、rfc9052） |
 | serialization | シリアル化 118/7、シリアライゼーション 92/7、直列化 7/5 |
 | note（aside の先頭） | 注記： 52/4、注意： 15/5、注： 14/7 |
-| opening handshake | オープニングハンドシェイク 33/3、開始ハンドシェイク 17/1 |
-| inner list | インナーリスト 49/2、内部リスト 6/2 |

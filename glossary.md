@@ -1,6 +1,6 @@
 # 翻訳メモリー（用語集）
 
-`src/ja/*.xml` の既存訳（50 件）から、よく出てくる単語や用語の英和訳をまとめたものです。
+`src/ja/*.xml` の既存訳（54 件）から、よく出てくる単語や用語の英和訳をまとめたものです。
 新しい RFC を翻訳するときは、ここにある訳語を優先して使ってください。
 BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](boilerplate.md)、カタカナの長音などの機械的な規則は [.textlintrc.json](.textlintrc.json) を参照してください。
 
@@ -142,6 +142,54 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | Required Insert Count, Known Received Count, Base | 英語のまま | |
 | never-indexed literal | インデックス化されないリテラル | |
 | Huffman encoding | ハフマンエンコーディング | |
+
+## NFS（RFC 8881）
+
+| 英語 | 訳語 | 避ける表記・備考 |
+|---|---|---|
+| filehandle / current filehandle / saved filehandle | ファイルハンドル / 現在のファイルハンドル / 保存されたファイルハンドル | |
+| stateid | 英語のまま | 「オープンstateid」「レイアウトstateid」のように使う |
+| client ID / client owner / server owner | クライアントID / クライアントオーナー / サーバーオーナー | |
+| server scope | サーバースコープ | |
+| open-owner / lock-owner / state-owner | 英語のまま | |
+| session / slot / sequence ID | セッション / スロット / シーケンスID | |
+| reply cache | リプライキャッシュ | 応答キャッシュ |
+| requester / replier | リクエスター / リプライアー | |
+| fore channel / backchannel | フォアチャネル / バックチャネル | |
+| exactly once semantics (EOS) | 厳密に1回のセマンティクス（EOS） | |
+| put filehandle operation | ファイルハンドル設定操作 | |
+| delegation / recall / revoke | 委任 / リコール / 取り消す | |
+| lease / grace period | リース / 猶予期間 | |
+| reclaim | 再取得 | |
+| share reservation | 共有予約 | |
+| byte-range lock | バイト範囲ロック | |
+| mandatory / advisory lock | 強制 / 助言的なロック | |
+| named attribute / named attribute directory | 名前付き属性 / 名前付き属性ディレクトリー | |
+| REQUIRED / RECOMMENDED attributes | 「<bcp14>要求されています（REQUIRED）</bcp14>」属性 / 「<bcp14>推奨されます（RECOMMENDED）</bcp14>」属性 | lint が形容詞形を許さないため、この書き方にする |
+| trunking / trunking detection / trunking discovery | トランキング / トランキング検出 / トランキング発見 | |
+| server-trunkable / session-trunkable | サーバートランキング可能 / セッショントランキング可能 | |
+| referral / replica / replication / migration | リファラル / レプリカ / 複製 / 移行 | |
+| Transparent State Migration | 透過的な状態移行 | |
+| file system location / location entry / fs name | ファイルシステムの場所 / ファイルシステムの場所のエントリー / fs名 | |
+| absent / present file system | 不在の / 存在するファイルシステム | |
+| file system transition | ファイルシステムの遷移 | |
+| transition recovery / migration recovery / migration discovery | 遷移回復 / 移行回復 / 移行発見 | |
+| source / destination server | 移行元 / 移行先サーバー | |
+| layout / layout type / iomode | レイアウト / レイアウトタイプ / iomode | |
+| metadata server / data server / storage device | メタデータサーバー / データサーバー / ストレージデバイス | |
+| storage protocol / control protocol | ストレージプロトコル / 制御プロトコル | |
+| stripe / stripe unit / striping pattern | ストライプ / ストライプユニット / ストライピングパターン | |
+| sparse / dense packing | スパース / デンスパッキング | |
+| fencing / fence | フェンシング / フェンスする | |
+| forgetful model | 忘却モデル | |
+| want (delegation want) | 要望 | |
+| stable storage | 安定ストレージ | |
+| write verifier | 書き込みベリファイアー | |
+| incarnation | インカーネーション | |
+| personality（データサーバーの人格） | 人格 | |
+| ARGUMENTS / RESULTS / DESCRIPTION / IMPLEMENTATION / ERRORS（操作の小見出し） | 引数 / 結果 / 説明 / 実装 / エラー | |
+| Operation N: NAME - Title | 操作N：NAME - 訳した題名 | 例: 操作3：ACCESS - アクセス権のチェック |
+| NAME (Error Code N) | NAME（エラーコードN） | |
 
 ## WebSocket・OAuth・JOSE
 

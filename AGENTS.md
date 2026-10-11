@@ -50,6 +50,7 @@
 
 - BCP14 用語: [bcp14.md](bcp14.md)
 - ボイラープレート文: [boilerplate.md](boilerplate.md)
+- 頻出用語の英和訳（翻訳メモリー）: [glossary.md](glossary.md)
 - lint ルールと用語統一: [.textlintrc.json](.textlintrc.json)
 
 ### 日本語文の統一

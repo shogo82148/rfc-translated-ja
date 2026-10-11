@@ -1,0 +1,2410 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-quic-qpack-21" indexInclude="true" ipr="trust200902" number="9204" prepTime="2022-06-06T12:07:43" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://dx.doi.org/10.17487/rfc9204" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-quic-qpack-latest" rel="prev"/>
+  <front>
+    <title abbrev="QPACK">QPACK: HTTP/3のためのフィールド圧縮</title>
+    <seriesInfo name="RFC" value="9204" stream="IETF"/>
+    <author initials="C." surname="Krasic" fullname="Charles 'Buck' Krasic">
+      <organization showOnFrontPage="true"/>
+      <address>
+        <email>krasic@acm.org</email>
+      </address>
+    </author>
+    <author initials="M." surname="Bishop" fullname="Mike Bishop">
+      <organization showOnFrontPage="true">Akamai Technologies</organization>
+      <address>
+        <email>mbishop@evequefou.be</email>
+      </address>
+    </author>
+    <author initials="A." surname="Frindell" fullname="Alan Frindell" role="editor">
+      <organization showOnFrontPage="true">Facebook</organization>
+      <address>
+        <email>afrind@fb.com</email>
+      </address>
+    </author>
+    <date month="06" year="2022"/>
+    <area>Transport</area>
+    <workgroup>QUIC</workgroup>
+    <keyword>compression</keyword>
+    <keyword>HTTP/3</keyword>
+    <keyword>HPACK</keyword>
+    <keyword>header</keyword>
+    <keyword>field</keyword>
+    <keyword>trailer</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この仕様では、HTTP/3で使用される、HTTPフィールドを効率的に表現するための圧縮フォーマットであるQPACKを定義します。
+これは、ヘッドオブラインブロッキングを減らすことを目指したHPACK圧縮の変種です。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9204" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-definitions">表記規則と定義</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-notational-conventions">表記上の規則</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compression-process-overvie">圧縮処理の概要</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoder">エンコーダー</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.1.2">
+                  <li pn="section-toc.1-1.2.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.2.2.1.2.1.1"><xref derivedContent="2.1.1" format="counter" sectionFormat="of" target="section-2.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limits-on-dynamic-table-ins">動的テーブルへの挿入の制限</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.2.2.1.2.2.1"><xref derivedContent="2.1.2" format="counter" sectionFormat="of" target="section-2.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-blocked-streams">ブロックされたストリーム</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.2.2.1.2.3.1"><xref derivedContent="2.1.3" format="counter" sectionFormat="of" target="section-2.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-avoiding-flow-control-deadl">フロー制御によるデッドロックの回避</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.1.2.4">
+                    <t indent="0" pn="section-toc.1-1.2.2.1.2.4.1"><xref derivedContent="2.1.4" format="counter" sectionFormat="of" target="section-2.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-known-received-count">Known Received Count</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-decoder">デコーダー</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.2.2">
+                  <li pn="section-toc.1-1.2.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.2.2.2.2.1.1"><xref derivedContent="2.2.1" format="counter" sectionFormat="of" target="section-2.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-blocked-decoding">ブロックされたデコード</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.2.2.2.2.2.1"><xref derivedContent="2.2.2" format="counter" sectionFormat="of" target="section-2.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-state-synchronization">状態の同期</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.2.2.2.2.3.1"><xref derivedContent="2.2.3" format="counter" sectionFormat="of" target="section-2.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-invalid-references">無効な参照</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reference-tables">参照テーブル</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-static-table">静的テーブル</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dynamic-table">動的テーブル</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2">
+                  <li pn="section-toc.1-1.3.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dynamic-table-size">動的テーブルのサイズ</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.2.1"><xref derivedContent="3.2.2" format="counter" sectionFormat="of" target="section-3.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dynamic-table-capacity-and-">動的テーブルの容量と追い出し</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.3.1"><xref derivedContent="3.2.3" format="counter" sectionFormat="of" target="section-3.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-maximum-dynamic-table-capac">最大動的テーブル容量</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.4.1"><xref derivedContent="3.2.4" format="counter" sectionFormat="of" target="section-3.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-absolute-indexing">絶対インデックス</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.5">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.5.1"><xref derivedContent="3.2.5" format="counter" sectionFormat="of" target="section-3.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relative-indexing">相対インデックス</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.6">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.6.1"><xref derivedContent="3.2.6" format="counter" sectionFormat="of" target="section-3.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-post-base-indexing">post-Baseインデックス</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-wire-format">ワイヤーフォーマット</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-primitives">プリミティブ</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.1.2">
+                  <li pn="section-toc.1-1.4.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-prefixed-integers">プレフィックス付き整数</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.2.1"><xref derivedContent="4.1.2" format="counter" sectionFormat="of" target="section-4.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-string-literals">文字列リテラル</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoder-and-decoder-streams">エンコーダーストリームとデコーダーストリーム</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoder-instructions">エンコーダー命令</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.3.2">
+                  <li pn="section-toc.1-1.4.2.3.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.1.1"><xref derivedContent="4.3.1" format="counter" sectionFormat="of" target="section-4.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-set-dynamic-table-capacity">Set Dynamic Table Capacity</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.2.1"><xref derivedContent="4.3.2" format="counter" sectionFormat="of" target="section-4.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-insert-with-name-reference">Insert with Name Reference</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.3.1"><xref derivedContent="4.3.3" format="counter" sectionFormat="of" target="section-4.3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-insert-with-literal-name">Insert with Literal Name</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.4.1"><xref derivedContent="4.3.4" format="counter" sectionFormat="of" target="section-4.3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-duplicate">Duplicate</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-decoder-instructions">デコーダー命令</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.4.2">
+                  <li pn="section-toc.1-1.4.2.4.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.4.2.1.1"><xref derivedContent="4.4.1" format="counter" sectionFormat="of" target="section-4.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-section-acknowledgment">Section Acknowledgment</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.4.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.4.2.2.1"><xref derivedContent="4.4.2" format="counter" sectionFormat="of" target="section-4.4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-stream-cancellation">Stream Cancellation</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.4.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.4.2.3.1"><xref derivedContent="4.4.3" format="counter" sectionFormat="of" target="section-4.4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-insert-count-increment">Insert Count Increment</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-field-line-representations">フィールド行の表現</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.5.2">
+                  <li pn="section-toc.1-1.4.2.5.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.1.1"><xref derivedContent="4.5.1" format="counter" sectionFormat="of" target="section-4.5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoded-field-section-prefi">エンコードされたフィールドセクションのプレフィックス</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.5.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.2.1"><xref derivedContent="4.5.2" format="counter" sectionFormat="of" target="section-4.5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-indexed-field-line">インデックス付きフィールド行</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.5.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.3.1"><xref derivedContent="4.5.3" format="counter" sectionFormat="of" target="section-4.5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-indexed-field-line-with-pos">post-Baseインデックスを持つインデックス付きフィールド行</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.5.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.4.1"><xref derivedContent="4.5.4" format="counter" sectionFormat="of" target="section-4.5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-literal-field-line-with-nam">名前参照を持つリテラルフィールド行</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.5.2.5">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.5.1"><xref derivedContent="4.5.5" format="counter" sectionFormat="of" target="section-4.5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-literal-field-line-with-pos">post-Base名前参照を持つリテラルフィールド行</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.5.2.6">
+                    <t indent="0" pn="section-toc.1-1.4.2.5.2.6.1"><xref derivedContent="4.5.6" format="counter" sectionFormat="of" target="section-4.5.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-literal-field-line-with-lit">リテラル名を持つリテラルフィールド行</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-configuration">設定</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-error-handling">エラー処理</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probing-dynamic-table-state">動的テーブルの状態の探り出し</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2.1.2">
+                  <li pn="section-toc.1-1.7.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.7.2.1.2.1.1"><xref derivedContent="7.1.1" format="counter" sectionFormat="of" target="section-7.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-applicability-to-qpack-and-">QPACKとHTTPへの適用可能性</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.7.2.1.2.2.1"><xref derivedContent="7.1.2" format="counter" sectionFormat="of" target="section-7.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mitigation">緩和策</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.7.2.1.2.3.1"><xref derivedContent="7.1.3" format="counter" sectionFormat="of" target="section-7.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-never-indexed-literals">インデックス化されないリテラル</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-static-huffman-encoding">静的ハフマンエンコーディング</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-memory-consumption">メモリー消費</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.4">
+                <t indent="0" pn="section-toc.1-1.7.2.4.1"><xref derivedContent="7.4" format="counter" sectionFormat="of" target="section-7.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-limits">実装の制限</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-settings-registration">設定の登録</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-stream-type-registration">ストリームタイプの登録</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.3">
+                <t indent="0" pn="section-toc.1-1.8.2.3.1"><xref derivedContent="8.3" format="counter" sectionFormat="of" target="section-8.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-error-code-registration">エラーコードの登録</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-static-table-2">静的テーブル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="Appendix B" format="default" sectionFormat="of" target="section-appendix.b"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoding-and-decoding-examp">エンコードとデコードの例</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="B.1" format="counter" sectionFormat="of" target="section-appendix.b.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-literal-field-line-with-name-">名前参照を持つリテラルフィールド行</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="B.2" format="counter" sectionFormat="of" target="section-appendix.b.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dynamic-table-2">動的テーブル</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.3">
+                <t indent="0" pn="section-toc.1-1.11.2.3.1"><xref derivedContent="B.3" format="counter" sectionFormat="of" target="section-appendix.b.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-speculative-insert">投機的な挿入</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.4">
+                <t indent="0" pn="section-toc.1-1.11.2.4.1"><xref derivedContent="B.4" format="counter" sectionFormat="of" target="section-appendix.b.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-duplicate-instruction-strea">Duplicate命令、Stream Cancellation</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.5">
+                <t indent="0" pn="section-toc.1-1.11.2.5.1"><xref derivedContent="B.5" format="counter" sectionFormat="of" target="section-appendix.b.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dynamic-table-insert-evicti">動的テーブルへの挿入、追い出し</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="Appendix C" format="default" sectionFormat="of" target="section-appendix.c"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sample-single-pass-encoding">シングルパスのエンコードアルゴリズムの例</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.d"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.e"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">QUICトランスポートプロトコル（<xref target="QUIC-TRANSPORT" format="default" sectionFormat="of" derivedContent="QUIC-TRANSPORT"/>）はHTTPセマンティクスをサポートするように設計されており、その設計はHTTP/2（<xref target="HTTP2" format="default" sectionFormat="of" derivedContent="HTTP/2"/>）の機能の多くを包含しています。
+HTTP/2は、ヘッダーセクションとトレーラーセクションの圧縮にHPACK（<xref target="RFC7541" format="default" sectionFormat="of" derivedContent="RFC7541"/>）を使用します。
+HPACKをHTTP/3（<xref target="HTTP3" format="default" sectionFormat="of" derivedContent="HTTP/3"/>）で使用すると、すべてのストリーム上のフレーム全体にわたる全順序という組み込みの前提のために、フィールドセクションでヘッドオブラインブロッキングが発生してしまいます。</t>
+      <t indent="0" pn="section-1-2">QPACKはHPACKの中核的な概念を再利用していますが、順序どおりでない配送が起こっても正しく動作するように再設計されており、実装がヘッドオブラインブロッキングへの耐性と最適な圧縮率のバランスをとれる柔軟性を持っています。
+設計目標は、同じ損失条件の下でヘッドオブラインブロッキングを大幅に減らしつつ、HPACKの圧縮率に近づけることです。</t>
+      <section anchor="conventions-and-definitions" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-and-definitions">表記規則と定義</name>
+        <t indent="0" pn="section-1.1-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+        <t indent="0" pn="section-1.1-2">この文書では、以下の用語を使用します：</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-1.1-3">
+          <dt pn="section-1.1-3.1">HTTPフィールド（HTTP fields）：</dt>
+          <dd pn="section-1.1-3.2">
+            <t indent="0" pn="section-1.1-3.2.1">HTTPメッセージの一部として送信されるメタデータ。
+この用語は、ヘッダーフィールドとトレーラーフィールドの両方を含みます。
+口語的には、HTTPのヘッダーフィールドとトレーラーフィールドを指すのに「ヘッダー」という用語がよく使われてきましたが、この文書では一般性のために「フィールド」を使用します。</t>
+          </dd>
+          <dt pn="section-1.1-3.3">HTTPフィールド行（HTTP field line）：</dt>
+          <dd pn="section-1.1-3.4">
+            <t indent="0" pn="section-1.1-3.4.1">HTTPフィールドセクションの一部として送信される名前と値のペア。
+<xref target="HTTP" format="default" sectionFormat="of" derivedContent="HTTP"/>のセクション<xref target="HTTP" section="6.3" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-6.3" derivedContent="HTTP"/>と<xref target="HTTP" section="6.5" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-6.5" derivedContent="HTTP"/>を参照してください。</t>
+          </dd>
+          <dt pn="section-1.1-3.5">HTTPフィールド値（HTTP field value）：</dt>
+          <dd pn="section-1.1-3.6">
+            <t indent="0" pn="section-1.1-3.6.1">フィールド名に関連付けられたデータで、そのセクション内でそのフィールド名を持つすべてのフィールド行の値を、カンマ区切りで連結して構成したもの。</t>
+          </dd>
+          <dt pn="section-1.1-3.7">フィールドセクション（Field section）：</dt>
+          <dd pn="section-1.1-3.8">
+            <t indent="0" pn="section-1.1-3.8.1">HTTPメッセージに関連付けられた、HTTPフィールド行の順序付きの集まり。
+フィールドセクションには、同じ名前を持つ複数のフィールド行を含めることができます。
+また、重複したフィールド行を含めることもできます。
+HTTPメッセージには、ヘッダーセクションとトレーラーセクションの両方を含めることができます。</t>
+          </dd>
+          <dt pn="section-1.1-3.9">表現（Representation）：</dt>
+          <dd pn="section-1.1-3.10">
+            <t indent="0" pn="section-1.1-3.10.1">フィールド行を表す命令で、動的テーブルや静的テーブルへの参照によることもあります。</t>
+          </dd>
+          <dt pn="section-1.1-3.11">エンコーダー（Encoder）：</dt>
+          <dd pn="section-1.1-3.12">
+            <t indent="0" pn="section-1.1-3.12.1">フィールドセクションをエンコードする実装。</t>
+          </dd>
+          <dt pn="section-1.1-3.13">デコーダー（Decoder）：</dt>
+          <dd pn="section-1.1-3.14">
+            <t indent="0" pn="section-1.1-3.14.1">エンコードされたフィールドセクションをデコードする実装。</t>
+          </dd>
+          <dt pn="section-1.1-3.15">絶対インデックス（Absolute Index）：</dt>
+          <dd pn="section-1.1-3.16">
+            <t indent="0" pn="section-1.1-3.16.1">動的テーブルの各エントリーに対する一意のインデックス。</t>
+          </dd>
+          <dt pn="section-1.1-3.17">Base：</dt>
+          <dd pn="section-1.1-3.18">
+            <t indent="0" pn="section-1.1-3.18.1">相対インデックスとpost-Baseインデックスの基準点。
+動的テーブルのエントリーを参照する表現は、Baseからの相対で表されます。</t>
+          </dd>
+          <dt pn="section-1.1-3.19">Insert Count：</dt>
+          <dd pn="section-1.1-3.20">
+            <t indent="0" pn="section-1.1-3.20.1">動的テーブルに挿入されたエントリーの総数。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-1.1-4">QPACKは名前であり、略語ではないことに注意してください。</t>
+      </section>
+      <section anchor="notational-conventions" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-notational-conventions">表記上の規則</name>
+        <t indent="0" pn="section-1.2-1">この文書の図は、<xref section="3.1" sectionFormat="of" target="RFC2360" format="default" derivedLink="https://rfc-editor.org/rfc/rfc2360#section-3.1" derivedContent="RFC2360"/>で説明されているフォーマットに、以下の規則を追加して使用します：</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-1.2-2">
+          <dt pn="section-1.2-2.1">x (A)</dt>
+          <dd pn="section-1.2-2.2">
+            <t indent="0" pn="section-1.2-2.2.1">xがAビット長であることを示します。</t>
+          </dd>
+          <dt pn="section-1.2-2.3">x (A+)</dt>
+          <dd pn="section-1.2-2.4">
+            <t indent="0" pn="section-1.2-2.4.1">xが、Aビットのプレフィックスから始まる、<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>で定義されたプレフィックス付き整数エンコーディングを使用することを示します。</t>
+          </dd>
+          <dt pn="section-1.2-2.5">x ...</dt>
+          <dd pn="section-1.2-2.6">
+            <t indent="0" pn="section-1.2-2.6.1">xが可変長であり、領域の終わりまで続くことを示します。</t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="compression-process-overview" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-compression-process-overvie">圧縮処理の概要</name>
+      <t indent="0" pn="section-2-1">HPACKと同様に、QPACKはフィールド行（「ヘッダー」）をインデックスに関連付けるために2つのテーブルを使用します。
+静的テーブル（<xref target="header-table-static" format="default" sectionFormat="of" derivedContent="Section 3.1"/>）はあらかじめ定義されており、一般的なヘッダーフィールド行（その一部は空の値を持ちます）を含みます。
+動的テーブル（<xref target="header-table-dynamic" format="default" sectionFormat="of" derivedContent="Section 3.2"/>）はコネクションの過程で構築され、エンコードされたフィールドセクション内のヘッダーとトレーラーの両方のフィールド行をインデックス化するためにエンコーダーが使用できます。</t>
+      <t indent="0" pn="section-2-2">QPACKは、エンコーダーからデコーダーへ、およびその逆方向に命令を送信するための単方向ストリームを定義しています。</t>
+      <section anchor="encoder" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-encoder">エンコーダー</name>
+        <t indent="0" pn="section-2.1-1">エンコーダーは、リスト内の各フィールド行についてインデックス表現かリテラル表現のいずれかを出力することで、ヘッダーセクションまたはトレーラーセクションを一連の表現に変換します。
+<xref target="field-line-representations" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照してください。
+インデックス表現は、リテラルの名前と、場合によっては値を、静的テーブルまたは動的テーブルへのインデックスで置き換えることにより、高い圧縮を実現します。
+静的テーブルへの参照とリテラル表現は、動的な状態を一切必要とせず、ヘッドオブラインブロッキングのリスクもありません。
+動的テーブルへの参照は、エントリーがデコーダーで利用可能であることを示す確認応答をエンコーダーが受信していない場合、ヘッドオブラインブロッキングのリスクがあります。</t>
+        <t indent="0" pn="section-2.1-2">エンコーダーは、選んだ任意のエントリーを動的テーブルに挿入しても<bcp14>よいです（MAY）</bcp14>。
+圧縮しているフィールド行に限定されません。</t>
+        <t indent="0" pn="section-2.1-3">QPACKは、各フィールドセクション内のフィールド行の順序を保持します。
+エンコーダーは、入力されたフィールドセクションに現れる順序でフィールドの表現を出力し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-4">QPACKは、オプションの状態追跡の負担をエンコーダーに負わせるように設計されており、その結果、デコーダーは比較的単純になります。</t>
+        <section anchor="blocked-insertion" numbered="true" removeInRFC="false" toc="include" pn="section-2.1.1">
+          <name slugifiedName="name-limits-on-dynamic-table-ins">動的テーブルへの挿入の制限</name>
+          <t indent="0" pn="section-2.1.1-1">テーブルに追い出すことのできないエントリーが含まれている場合、動的テーブルにエントリーを挿入できないことがあります。</t>
+          <t indent="0" pn="section-2.1.1-2">動的テーブルのエントリーは、一度も参照されていなくても、挿入直後に追い出すことはできません。
+動的テーブルのエントリーの挿入が確認応答され、確認応答されていない表現の中にそのエントリーへの未処理の参照がなくなると、そのエントリーは追い出し可能になります。
+エンコーダーストリーム上の参照は、エントリーを追い出す命令より前に処理されることが保証されているため、エントリーの追い出しを妨げることはないことに注意してください。</t>
+          <t indent="0" pn="section-2.1.1-3">他のエントリーを追い出さずに新しいエントリーを入れるだけの余地が動的テーブルになく、追い出されることになるエントリーが追い出し可能でない場合、エンコーダーはそのエントリー（既存のエントリーの複製を含みます）を動的テーブルに挿入しては<bcp14>なりません（MUST NOT）</bcp14>。
+これを避けるために、動的テーブルを使用するエンコーダーは、各フィールドセクションが参照する動的テーブルの各エントリーを、それらの表現がデコーダーによって確認応答されるまで追跡しておく必要があります。
+<xref target="header-acknowledgment" format="default" sectionFormat="of" derivedContent="Section 4.4.1"/>を参照してください。</t>
+          <section anchor="avoiding-prohibited-insertions" numbered="true" removeInRFC="false" toc="exclude" pn="section-2.1.1.1">
+            <name slugifiedName="name-avoiding-prohibited-inserti">禁止された挿入の回避</name>
+            <t indent="0" pn="section-2.1.1.1-1">エンコーダーが新しいエントリーを追加できなくなることを防ぐために、エンコーダーは追い出しが近いエントリーへの参照を避けることができます。
+そのようなエントリーを参照する代わりに、エンコーダーはDuplicate命令（<xref target="duplicate" format="default" sectionFormat="of" derivedContent="Section 4.3.4"/>）を出力し、その複製を参照できます。</t>
+            <t indent="0" pn="section-2.1.1.1-2">どのエントリーが参照するには追い出しに近すぎるかを判断するのは、エンコーダーの裁量です。
+1つのヒューリスティックは、動的テーブル内の利用可能な空間、つまり未使用の空間か、ブロックしていないエントリーを追い出すことで回収できる空間を、一定量確保することを目標にすることです。
+これを実現するために、エンコーダーは排出インデックス（draining index）を維持できます。
+これは、エンコーダーが参照を出力する対象となる動的テーブル内の最小の絶対インデックス（<xref target="indexing" format="default" sectionFormat="of" derivedContent="Section 3.2.4"/>）です。
+新しいエントリーが挿入されるにつれて、エンコーダーは排出インデックスを増やし、参照しないテーブルの部分を維持します。
+エンコーダーが排出インデックスより小さい絶対インデックスを持つエントリーへの新しい参照を作成しなければ、それらのエントリーへの確認応答されていない参照の数はやがて0になり、それらを追い出せるようになります。</t>
+            <figure anchor="fig-draining-index" align="left" suppress-title="false" pn="figure-1">
+              <name slugifiedName="name-draining-dynamic-table-entr">動的テーブルのエントリーの排出</name>
+              <artwork type="ascii-art" align="left" pn="section-2.1.1.1-3.1">
+             &lt;-- Newer Entries          Older Entries --&gt;
+               (Larger Indices)       (Smaller Indices)
+   +--------+---------------------------------+----------+
+   | Unused |          Referenceable          | Draining |
+   | Space  |             Entries             | Entries  |
+   +--------+---------------------------------+----------+
+            ^                                 ^          ^
+            |                                 |          |
+      Insertion Point                 Draining Index  Dropping
+                                                       Point
+</artwork>
+            </figure>
+          </section>
+        </section>
+        <section anchor="blocked-streams" numbered="true" removeInRFC="false" toc="include" pn="section-2.1.2">
+          <name slugifiedName="name-blocked-streams">ブロックされたストリーム</name>
+          <t indent="0" pn="section-2.1.2-1">QUICは異なるストリーム上のデータ間の順序を保証しないため、デコーダーは、まだ受信していない動的テーブルのエントリーを参照する表現に遭遇することがあります。</t>
+          <t indent="0" pn="section-2.1.2-2">エンコードされた各フィールドセクションには、Required Insert Count（<xref target="header-prefix" format="default" sectionFormat="of" derivedContent="Section 4.5.1"/>）が含まれています。
+これは、そのフィールドセクションをデコードできるInsert Countの最小値です。
+動的テーブルへの参照を使用してエンコードされたフィールドセクションでは、Required Insert Countは、参照されるすべての動的テーブルのエントリーの絶対インデックスの最大値に1を加えたものです。
+動的テーブルへの参照なしでエンコードされたフィールドセクションでは、Required Insert Countは0です。</t>
+          <t indent="0" pn="section-2.1.2-3">デコーダーが、自身のInsert Countより大きいRequired Insert Countを持つエンコードされたフィールドセクションを受信した場合、そのストリームはすぐには処理できず、「ブロックされた（blocked）」とみなされます。
+<xref target="blocked-decoding" format="default" sectionFormat="of" derivedContent="Section 2.2.1"/>を参照してください。</t>
+          <t indent="0" pn="section-2.1.2-4">デコーダーは、SETTINGS_QPACK_BLOCKED_STREAMS設定を使用して、ブロックされうるストリームの数の上限を指定します。
+<xref target="configuration" format="default" sectionFormat="of" derivedContent="Section 5"/>を参照してください。
+エンコーダーは、ブロックされる可能性のあるストリームの数を、常にSETTINGS_QPACK_BLOCKED_STREAMSの値以下に制限<bcp14>しなければなりません（MUST）</bcp14>。
+デコーダーが、サポートすると約束した数より多くのブロックされたストリームに遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.1.2-5">ブロックされるリスクのあるすべてのストリームで、デコーダーが実際にブロックされるとは限らないことに注意してください。</t>
+          <t indent="0" pn="section-2.1.2-6">エンコーダーは、ストリームがブロックされるリスクを冒すかどうかを決定できます。
+SETTINGS_QPACK_BLOCKED_STREAMSの値で許可されている場合、まだ送信中の動的テーブルのエントリーを参照することで、多くの場合、圧縮効率を改善できますが、損失や順序の入れ替わりがあると、デコーダーでストリームがブロックされる可能性があります。
+エンコーダーは、確認応答された動的テーブルのエントリーだけを参照することでブロックのリスクを避けることができますが、これはリテラルを使用することを意味するかもしれません。
+リテラルはエンコードされたフィールドセクションを大きくするため、その結果、エンコーダーが輻輳やフロー制御の制限によってブロックされることがあります。</t>
+        </section>
+        <section anchor="avoiding-flow-control-deadlocks" numbered="true" removeInRFC="false" toc="include" pn="section-2.1.3">
+          <name slugifiedName="name-avoiding-flow-control-deadl">フロー制御によるデッドロックの回避</name>
+          <t indent="0" pn="section-2.1.3-1">フロー制御によって制限されているストリームに命令を書き込むと、デッドロックが発生することがあります。</t>
+          <t indent="0" pn="section-2.1.3-2">デコーダーは、必要な更新をエンコーダーストリームで受信するまで、エンコードされたフィールドセクションを運ぶストリームでフロー制御クレジットの発行を停止するかもしれません。
+エンコーダーストリーム（またはコネクション全体）でのフロー制御クレジットの付与が、エンコードされたフィールドセクションを運ぶストリーム上のデータの消費と解放に依存している場合、デッドロックが発生する可能性があります。</t>
+          <t indent="0" pn="section-2.1.3-3">より一般的には、命令が完全に受信されるまでデコーダーがフロー制御クレジットを保留すると、大きな命令を含むストリームがデッドロックに陥る可能性があります。</t>
+          <t indent="0" pn="section-2.1.3-4">これらのデッドロックを避けるために、エンコーダーは、命令全体に対して十分なストリームとコネクションのフロー制御クレジットが利用可能でない限り、命令を書き込む<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+        </section>
+        <section anchor="known-received-count" numbered="true" removeInRFC="false" toc="include" pn="section-2.1.4">
+          <name slugifiedName="name-known-received-count">Known Received Count</name>
+          <t indent="0" pn="section-2.1.4-1">Known Received Countは、デコーダーによって確認応答された動的テーブルへの挿入と複製の総数です。
+エンコーダーは、ストリームをブロックする可能性なしにどの動的テーブルのエントリーを参照できるかを特定するために、Known Received Countを追跡します。
+デコーダーは、Insert Count Increment命令を送信できるようにするために、Known Received Countを追跡します。</t>
+          <t indent="0" pn="section-2.1.4-2">Section Acknowledgment命令（<xref target="header-acknowledgment" format="default" sectionFormat="of" derivedContent="Section 4.4.1"/>）は、デコーダーがそのフィールドセクションをデコードするのに必要な動的テーブルの状態をすべて受信したことを意味します。
+確認応答されたフィールドセクションのRequired Insert Countが現在のKnown Received Countより大きい場合、Known Received CountはそのRequired Insert Countの値に更新されます。</t>
+          <t indent="0" pn="section-2.1.4-3">Insert Count Increment命令（<xref target="insert-count-increment" format="default" sectionFormat="of" derivedContent="Section 4.4.3"/>）は、そのIncrementパラメーターの分だけKnown Received Countを増やします。
+ガイダンスについては<xref target="new-table-entries" format="default" sectionFormat="of" derivedContent="Section 2.2.2.3"/>を参照してください。</t>
+        </section>
+      </section>
+      <section anchor="decoder" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-decoder">デコーダー</name>
+        <t indent="0" pn="section-2.2-1">HPACKと同様に、デコーダーは一連の表現を処理し、対応するフィールドセクションを出力します。
+また、エンコーダーストリームで受信した、動的テーブルを変更する命令も処理します。
+エンコードされたフィールドセクションとエンコーダーストリームの命令は、別々のストリームで到着することに注意してください。
+これは、エンコードされたフィールドセクション（ヘッダーブロック）に動的テーブルを変更する命令を含めることができ、HPACKの命令専用のストリームが存在しないHPACKとは異なります。</t>
+        <t indent="0" pn="section-2.2-2">デコーダーは、エンコードされたフィールドセクションに表現が現れる順序でフィールド行を出力し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <section anchor="blocked-decoding" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.1">
+          <name slugifiedName="name-blocked-decoding">ブロックされたデコード</name>
+          <t indent="0" pn="section-2.2.1-1">エンコードされたフィールドセクションを受信すると、デコーダーはRequired Insert Countを調べます。
+Required Insert CountがデコーダーのInsert Count以下の場合、そのフィールドセクションはすぐに処理できます。
+そうでない場合、そのフィールドセクションを受信したストリームはブロックされます。</t>
+          <t indent="0" pn="section-2.2.1-2">ブロックされている間、エンコードされたフィールドセクションのデータは、ブロックされたストリームのフロー制御ウィンドウ内に留まる<bcp14>べきです（SHOULD）</bcp14>。
+このデータはストリームのブロックが解除されるまで使用できず、フロー制御を早まって解放すると、デコーダーがメモリー枯渇攻撃に対して脆弱になります。
+デコーダーがそのストリームから読み取りを開始したすべてのエンコードされたフィールドセクションについて、Insert CountがRequired Insert Count以上になったとき、ストリームのブロックが解除されます。</t>
+          <t indent="0" pn="section-2.2.1-3">エンコードされたフィールドセクションを処理する際、デコーダーは、<xref target="blocked-streams" format="default" sectionFormat="of" derivedContent="Section 2.1.2"/>で規定されているように、Required Insert CountがそのフィールドセクションをデコードできるInsert Countの最小値と等しいことを期待します。
+予想より小さいRequired Insert Countに遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。
+<xref target="invalid-references" format="default" sectionFormat="of" derivedContent="Section 2.2.3"/>を参照してください。
+予想より大きいRequired Insert Countに遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱っても<bcp14>よいです（MAY）</bcp14>。</t>
+        </section>
+        <section anchor="state-synchronization" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.2">
+          <name slugifiedName="name-state-synchronization">状態の同期</name>
+          <t indent="0" pn="section-2.2.2-1">デコーダーは、デコーダーストリーム上でデコーダー命令（<xref target="decoder-instructions" format="default" sectionFormat="of" derivedContent="Section 4.4"/>）を出力することで、以下のイベントを通知します。</t>
+          <section anchor="completed-processing-of-a-field-section" numbered="true" removeInRFC="false" toc="exclude" pn="section-2.2.2.1">
+            <name slugifiedName="name-completed-processing-of-a-f">フィールドセクションの処理の完了</name>
+            <t indent="0" pn="section-2.2.2.1-1">動的テーブルへの参照を含む表現を使用してエンコードされたフィールドセクションのデコードを終えた後、デコーダーはSection Acknowledgment命令（<xref target="header-acknowledgment" format="default" sectionFormat="of" derivedContent="Section 4.4.1"/>）を出力し<bcp14>なければなりません（MUST）</bcp14>。
+中間レスポンス、トレーラー、プッシュされたリクエストの場合、1つのストリームが複数のフィールドセクションを運ぶことがあります。
+エンコーダーは、各Section Acknowledgment命令を、そのストリームで送信された、動的テーブルへの参照を含む確認応答されていないフィールドセクションのうち最も古いものを確認応答するものとして解釈します。</t>
+          </section>
+          <section anchor="abandonment-of-a-stream" numbered="true" removeInRFC="false" toc="exclude" pn="section-2.2.2.2">
+            <name slugifiedName="name-abandonment-of-a-stream">ストリームの放棄</name>
+            <t indent="0" pn="section-2.2.2.2-1">エンドポイントが、ストリームの終わりより前に、またはそのストリーム上のすべてのエンコードされたフィールドセクションが処理される前にストリームのリセットを受信した場合、あるいはストリームの読み取りを放棄した場合、エンドポイントはStream Cancellation命令を生成します。
+<xref target="stream-cancellation" format="default" sectionFormat="of" derivedContent="Section 4.4.2"/>を参照してください。
+これは、そのストリーム上の動的テーブルへのすべての参照がもはや未処理ではないことをエンコーダーに通知します。
+最大動的テーブル容量（<xref target="maximum-dynamic-table-capacity" format="default" sectionFormat="of" derivedContent="Section 3.2.3"/>）が0であるデコーダーは、エンコーダーが動的テーブルへの参照を持ちえないため、Stream Cancellationの送信を省略しても<bcp14>よいです（MAY）</bcp14>。
+エンコーダーは、この命令から動的テーブルへの更新が受信されたことを推測することはできません。</t>
+            <t indent="0" pn="section-2.2.2.2-2">Section Acknowledgment命令とStream Cancellation命令により、エンコーダーは動的テーブル内のエントリーへの参照を取り除くことができます。
+Known Received Countより小さい絶対インデックスを持つエントリーの参照が0になった場合、そのエントリーは追い出し可能とみなされます。
+<xref target="blocked-insertion" format="default" sectionFormat="of" derivedContent="Section 2.1.1"/>を参照してください。</t>
+          </section>
+          <section anchor="new-table-entries" numbered="true" removeInRFC="false" toc="exclude" pn="section-2.2.2.3">
+            <name slugifiedName="name-new-table-entries">新しいテーブルエントリー</name>
+            <t indent="0" pn="section-2.2.2.3-1">エンコーダーストリームで新しいテーブルエントリーを受信した後、デコーダーはいつInsert Count Increment命令を出力するかを選択します。
+<xref target="insert-count-increment" format="default" sectionFormat="of" derivedContent="Section 4.4.3"/>を参照してください。
+新しい動的テーブルのエントリーを追加するたびにこの命令を出力すると、エンコーダーに最も適時なフィードバックを提供できますが、他のデコーダーのフィードバックと冗長になる可能性があります。
+Insert Count Increment命令を遅らせることで、デコーダーは複数のInsert Count Increment命令をまとめたり、それらをSection Acknowledgmentで完全に置き換えたりできるかもしれません。
+<xref target="header-acknowledgment" format="default" sectionFormat="of" derivedContent="Section 4.4.1"/>を参照してください。
+しかし、エンコーダーがエントリーを使用する前にその確認応答を待つ場合、遅らせすぎると圧縮の非効率につながる可能性があります。</t>
+          </section>
+        </section>
+        <section anchor="invalid-references" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.3">
+          <name slugifiedName="name-invalid-references">無効な参照</name>
+          <t indent="0" pn="section-2.2.3-1">デコーダーが、フィールド行の表現の中で、すでに追い出された動的テーブルのエントリー、または宣言されたRequired Insert Count（<xref target="header-prefix" format="default" sectionFormat="of" derivedContent="Section 4.5.1"/>）以上の絶対インデックスを持つ動的テーブルのエントリーへの参照に遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.2.3-2">デコーダーが、エンコーダー命令の中で、すでに追い出された動的テーブルのエントリーへの参照に遭遇した場合、デコーダーはこれをQPACK_ENCODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="reference-tables" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-reference-tables">参照テーブル</name>
+      <t indent="0" pn="section-3-1">HPACKとは異なり、QPACKの静的テーブルと動的テーブルのエントリーは別々にアドレス指定されます。
+以下のセクションでは、各テーブルのエントリーがどのようにアドレス指定されるかを説明します。</t>
+      <section anchor="header-table-static" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-static-table">静的テーブル</name>
+        <t indent="0" pn="section-3.1-1">静的テーブルは、あらかじめ定義されたフィールド行のリストで構成され、それぞれが時間がたっても変わらない固定のインデックスを持ちます。
+そのエントリーは<xref target="static-table" format="default" sectionFormat="of" derivedContent="Appendix A"/>で定義されています。</t>
+        <t indent="0" pn="section-3.1-2">静的テーブルのすべてのエントリーは名前と値を持ちます。
+ただし、値は空（つまり、長さが0）であってもかまいません。
+各エントリーは一意のインデックスで識別されます。</t>
+        <t indent="0" pn="section-3.1-3">QPACKの静的テーブルは0からインデックス付けされるのに対し、HPACKの静的テーブルは1からインデックス付けされることに注意してください。</t>
+        <t indent="0" pn="section-3.1-4">デコーダーがフィールド行の表現の中で無効な静的テーブルのインデックスに遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。
+このインデックスがエンコーダーストリームで受信された場合、これはQPACK_ENCODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="header-table-dynamic" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-dynamic-table">動的テーブル</name>
+        <t indent="0" pn="section-3.2-1">動的テーブルは、先入れ先出しの順序で維持されるフィールド行のリストで構成されます。
+QPACKのエンコーダーとデコーダーは、最初は空の動的テーブルを共有します。
+エンコーダーは動的テーブルにエントリーを追加し、エンコーダーストリーム上の命令を介してそれらをデコーダーに送信します。
+<xref target="encoder-instructions" format="default" sectionFormat="of" derivedContent="Section 4.3"/>を参照してください。</t>
+        <t indent="0" pn="section-3.2-2">動的テーブルには重複したエントリー（つまり、同じ名前と同じ値を持つエントリー）を含めることができます。
+したがって、デコーダーは重複したエントリーをエラーとして扱っては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+        <t indent="0" pn="section-3.2-3">動的テーブルのエントリーは空の値を持つことができます。</t>
+        <section anchor="dynamic-table-size" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.1">
+          <name slugifiedName="name-dynamic-table-size">動的テーブルのサイズ</name>
+          <t indent="0" pn="section-3.2.1-1">動的テーブルのサイズは、そのエントリーのサイズの合計です。</t>
+          <t indent="0" pn="section-3.2.1-2">エントリーのサイズは、その名前のバイト単位の長さ、その値のバイト単位の長さ、および追加の32バイトの合計です。
+エントリーのサイズは、ハフマンエンコーディングを適用していない名前と値の長さを使用して計算されます。</t>
+        </section>
+        <section anchor="eviction" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.2">
+          <name slugifiedName="name-dynamic-table-capacity-and-">動的テーブルの容量と追い出し</name>
+          <t indent="0" pn="section-3.2.2-1">エンコーダーは動的テーブルの容量を設定し、これがそのサイズの上限となります。
+動的テーブルの初期容量は0です。
+エンコーダーは、動的テーブルの使用を開始するために、0でない容量を指定したSet Dynamic Table Capacity命令（<xref target="set-dynamic-capacity" format="default" sectionFormat="of" derivedContent="Section 4.3.1"/>）を送信します。</t>
+          <t indent="0" pn="section-3.2.2-2">新しいエントリーが動的テーブルに追加される前に、動的テーブルのサイズが（テーブル容量 - 新しいエントリーのサイズ）以下になるまで、動的テーブルの末尾からエントリーが追い出されます。
+エンコーダーは、動的テーブルのエントリーが追い出し可能でない限り、そのエントリーを追い出させては<bcp14>なりません（MUST NOT）</bcp14>。
+<xref target="blocked-insertion" format="default" sectionFormat="of" derivedContent="Section 2.1.1"/>を参照してください。
+その後、新しいエントリーがテーブルに追加されます。
+エンコーダーが動的テーブルの容量より大きいエントリーを追加しようとすることはエラーです。
+デコーダーはこれをQPACK_ENCODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-3.2.2-3">新しいエントリーは、この新しいエントリーを動的テーブルに追加する際に追い出されることになる動的テーブル内のエントリーを参照できます。
+新しいエントリーを挿入する前に参照先のエントリーが動的テーブルから追い出される場合、実装は参照された名前や値を削除しないよう注意してください。</t>
+          <t indent="0" pn="section-3.2.2-4">エンコーダーによって動的テーブルの容量が減らされる（<xref target="set-dynamic-capacity" format="default" sectionFormat="of" derivedContent="Section 4.3.1"/>）たびに、動的テーブルのサイズが新しいテーブル容量以下になるまで、動的テーブルの末尾からエントリーが追い出されます。
+このメカニズムを使用して、容量を0に設定することで動的テーブルからエントリーを完全に消去でき、その後で容量を元に戻すことができます。</t>
+        </section>
+        <section anchor="maximum-dynamic-table-capacity" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.3">
+          <name slugifiedName="name-maximum-dynamic-table-capac">最大動的テーブル容量</name>
+          <t indent="0" pn="section-3.2.3-1">デコーダーのメモリー要件に上限を設けるために、デコーダーは、エンコーダーが動的テーブルの容量として設定できる最大値を制限します。
+HTTP/3では、この制限はデコーダーが送信するSETTINGS_QPACK_MAX_TABLE_CAPACITYの値によって決まります。
+<xref target="configuration" format="default" sectionFormat="of" derivedContent="Section 5"/>を参照してください。
+エンコーダーは、この最大値を超える動的テーブルの容量を設定しては<bcp14>なりません（MUST NOT）</bcp14>が、より小さい動的テーブルの容量を使用することを選択できます。
+<xref target="set-dynamic-capacity" format="default" sectionFormat="of" derivedContent="Section 4.3.1"/>を参照してください。</t>
+          <t indent="0" pn="section-3.2.3-2">HTTP/3で0-RTTデータを使用するクライアントにとって、サーバーの最大テーブル容量は、記憶されている設定の値、または以前にその値が送信されていなかった場合は0です。
+クライアントの0-RTTにおけるこのSETTINGの値が0である場合、サーバーはSETTINGSフレームでそれを0でない値に設定しても<bcp14>よいです（MAY）</bcp14>。
+記憶されている値が0でない場合、サーバーはSETTINGSフレームで同じ0でない値を送信<bcp14>しなければなりません（MUST）</bcp14>。
+サーバーがそれ以外の値を指定した場合、またはSETTINGSからSETTINGS_QPACK_MAX_TABLE_CAPACITYを省略した場合、エンコーダーはこれをQPACK_DECODER_STREAM_ERRORタイプのコネクションエラーとして扱う必要があります。</t>
+          <t indent="0" pn="section-3.2.3-3">0-RTTデータを使用しないクライアント（0-RTTが試みられなかったか、拒否されたかにかかわらず）とすべてのHTTP/3サーバーでは、エンコーダーが0でない値のSETTINGS_QPACK_MAX_TABLE_CAPACITYを持つSETTINGSフレームを処理するまで、最大テーブル容量は0です。</t>
+          <t indent="0" pn="section-3.2.3-4">最大テーブル容量が0の場合、エンコーダーは動的テーブルにエントリーを挿入しては<bcp14>なりません（MUST NOT）</bcp14>。
+また、エンコーダーストリームでエンコーダー命令を送信しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+        </section>
+        <section anchor="indexing" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.4">
+          <name slugifiedName="name-absolute-indexing">絶対インデックス</name>
+          <t indent="0" pn="section-3.2.4-1">各エントリーは、そのエントリーのライフタイムの間は固定される絶対インデックスを持ちます。
+最初に挿入されたエントリーは絶対インデックス0を持ち、挿入ごとにインデックスは1ずつ増加します。</t>
+        </section>
+        <section anchor="relative-indexing" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.5">
+          <name slugifiedName="name-relative-indexing">相対インデックス</name>
+          <t indent="0" pn="section-3.2.5-1">相対インデックスは0から始まり、絶対インデックスとは逆の方向に増加します。
+どのエントリーが相対インデックス0を持つかは、参照のコンテキストによって決まります。</t>
+          <t indent="0" pn="section-3.2.5-2">エンコーダー命令（<xref target="encoder-instructions" format="default" sectionFormat="of" derivedContent="Section 4.3"/>）では、相対インデックス0は、動的テーブルに最も最近挿入された値を指します。
+これは、エンコーダーストリーム上の命令を解釈している間に、ある相対インデックスが参照するエントリーが変わることを意味することに注意してください。</t>
+          <figure align="left" suppress-title="false" pn="figure-2">
+            <name slugifiedName="name-example-dynamic-table-index">動的テーブルのインデックス付けの例 - エンコーダーストリーム</name>
+            <artwork type="ascii-art" align="left" pn="section-3.2.5-3.1">
+      +-----+---------------+-------+
+      | n-1 |      ...      |   d   |  Absolute Index
+      + - - +---------------+ - - - +
+      |  0  |      ...      | n-d-1 |  Relative Index
+      +-----+---------------+-------+
+      ^                             |
+      |                             V
+Insertion Point               Dropping Point
+
+n = count of entries inserted
+d = count of entries dropped
+</artwork>
+          </figure>
+          <t indent="0" pn="section-3.2.5-4">エンコーダー命令とは異なり、フィールド行の表現における相対インデックスは、エンコードされたフィールドセクションの先頭にあるBaseからの相対です。
+<xref target="header-prefix" format="default" sectionFormat="of" derivedContent="Section 4.5.1"/>を参照してください。
+これにより、エンコードされたフィールドセクションと動的テーブルの更新が順序どおりに処理されなくても、参照が安定することが保証されます。</t>
+          <t indent="0" pn="section-3.2.5-5">フィールド行の表現では、相対インデックス0は、絶対インデックスがBase - 1に等しいエントリーを指します。</t>
+          <figure align="left" suppress-title="false" pn="figure-3">
+            <name slugifiedName="name-example-dynamic-table-indexi">動的テーブルのインデックス付けの例 - 表現における相対インデックス</name>
+            <artwork type="ascii-art" align="left" pn="section-3.2.5-6.1">
+               Base
+                |
+                V
+    +-----+-----+-----+-----+-------+
+    | n-1 | n-2 | n-3 | ... |   d   |  Absolute Index
+    +-----+-----+  -  +-----+   -   +
+                |  0  | ... | n-d-3 |  Relative Index
+                +-----+-----+-------+
+
+n = count of entries inserted
+d = count of entries dropped
+In this example, Base = n - 2
+</artwork>
+          </figure>
+        </section>
+        <section anchor="post-base" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.6">
+          <name slugifiedName="name-post-base-indexing">post-Baseインデックス</name>
+          <t indent="0" pn="section-3.2.6-1">post-Baseインデックスは、フィールド行の表現において、Base以上の絶対インデックスを持つエントリーに対して使用されます。
+絶対インデックスがBaseに等しいエントリーを0として始まり、絶対インデックスと同じ方向に増加します。</t>
+          <t indent="0" pn="section-3.2.6-2">post-Baseインデックスにより、エンコーダーはフィールドセクションを1回のパスで処理し、このフィールドセクション（または他のフィールドセクション）の処理中に追加されたエントリーへの参照を含めることができます。</t>
+          <figure align="left" suppress-title="false" pn="figure-4">
+            <name slugifiedName="name-example-dynamic-table-indexin">動的テーブルのインデックス付けの例 - 表現におけるpost-Baseインデックス</name>
+            <artwork type="ascii-art" align="left" pn="section-3.2.6-3.1">
+               Base
+                |
+                V
+    +-----+-----+-----+-----+-----+
+    | n-1 | n-2 | n-3 | ... |  d  |  Absolute Index
+    +-----+-----+-----+-----+-----+
+    |  1  |  0  |                    Post-Base Index
+    +-----+-----+
+
+n = count of entries inserted
+d = count of entries dropped
+In this example, Base = n - 2
+</artwork>
+          </figure>
+        </section>
+      </section>
+    </section>
+    <section anchor="wire-format" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-wire-format">ワイヤーフォーマット</name>
+      <section anchor="primitives" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-primitives">プリミティブ</name>
+        <section anchor="prefixed-integers" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.1">
+          <name slugifiedName="name-prefixed-integers">プレフィックス付き整数</name>
+          <t indent="0" pn="section-4.1.1-1"><xref section="5.1" sectionFormat="of" target="RFC7541" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7541#section-5.1" derivedContent="RFC7541"/>のプレフィックス付き整数は、この文書全体で頻繁に使用されます。
+<xref target="RFC7541" format="default" sectionFormat="of" derivedContent="RFC7541"/>のフォーマットは変更せずに使用されます。
+ただし、QPACKは、HPACKでは実際には使われていないプレフィックスのサイズをいくつか使用することに注意してください。</t>
+          <t indent="0" pn="section-4.1.1-2">QPACKの実装は、62ビット長までの整数をデコードでき<bcp14>なければなりません（MUST）</bcp14>。</t>
+        </section>
+        <section anchor="string-literals" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.2">
+          <name slugifiedName="name-string-literals">文字列リテラル</name>
+          <t indent="0" pn="section-4.1.2-1"><xref section="5.2" sectionFormat="of" target="RFC7541" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7541#section-5.2" derivedContent="RFC7541"/>で定義された文字列リテラルも全体で使用されます。
+この文字列フォーマットには、オプションのハフマンエンコーディングが含まれます。</t>
+          <t indent="0" pn="section-4.1.2-2">HPACKでは、文字列リテラルはバイト境界から始まるように定義されています。
+文字列リテラルは、この文書では「H」と表記する1ビットのフラグ（文字列がハフマンエンコードされているかどうかを示します）で始まり、その後に7ビットのプレフィックス整数としてエンコードされた文字列の長さが続き、最後に指定されたバイト数のデータが続きます。
+ハフマンエンコーディングが有効な場合、<xref section="B" sectionFormat="of" target="RFC7541" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7541#appendix-B" derivedContent="RFC7541"/>のハフマンテーブルが変更なしで使用され、指定される長さはエンコード後の文字列のサイズです。</t>
+          <t indent="0" pn="section-4.1.2-3">この文書では、文字列リテラルがバイト境界以外から始まることを許可することで、文字列リテラルの定義を拡張します。
+「Nビットプレフィックス文字列リテラル」はバイトの途中から始まり、最初の(8-N)ビットは前のフィールドに割り当てられます。
+文字列は、ハフマンフラグに1ビットを使用し、その後にエンコードされた文字列の長さを(N-1)ビットのプレフィックス整数として続けます。
+プレフィックスのサイズNは、2以上8以下の値をとることができます。
+文字列リテラルの残りの部分は変更されません。</t>
+          <t indent="0" pn="section-4.1.2-4">プレフィックス長が記されていない文字列リテラルは8ビットプレフィックス文字列リテラルであり、<xref target="RFC7541" format="default" sectionFormat="of" derivedContent="RFC7541"/>の定義に変更なしで従います。</t>
+        </section>
+      </section>
+      <section anchor="enc-dec-stream-def" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-encoder-and-decoder-streams">エンコーダーストリームとデコーダーストリーム</name>
+        <t indent="0" pn="section-4.2-1">QPACKは2つの単方向ストリームタイプを定義しています：</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2-2">
+          <li pn="section-4.2-2.1">エンコーダーストリームは、タイプ0x02の単方向ストリームです。
+エンコーダーからデコーダーへ、フレーム化されていないエンコーダー命令の列を運びます。</li>
+          <li pn="section-4.2-2.2">デコーダーストリームは、タイプ0x03の単方向ストリームです。
+デコーダーからエンコーダーへ、フレーム化されていないデコーダー命令の列を運びます。</li>
+        </ul>
+        <t indent="0" pn="section-4.2-3">HTTP/3のエンドポイントは、QPACKのエンコーダーとデコーダーを含みます。
+各エンドポイントは、エンコーダーストリームを最大1つ、デコーダーストリームを最大1つ開始<bcp14>しなければなりません（MUST）</bcp14>。
+いずれかのストリームタイプの2つ目のインスタンスを受信した場合は、H3_STREAM_CREATION_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-4">送信者はこれらのストリームのいずれも閉じては<bcp14>なりません（MUST NOT）</bcp14>。
+また、受信者は送信者にこれらのストリームのいずれかを閉じるよう要求しては<bcp14>なりません（MUST NOT）</bcp14>。
+いずれかの単方向ストリームタイプのクローズは、H3_CLOSED_CRITICAL_STREAMタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-5">エンドポイントは、エンコーダーストリームを使用しない場合（たとえば、エンコーダーが動的テーブルを使用したくない場合や、ピアが許可する動的テーブルの最大サイズが0の場合）、エンコーダーストリームの作成を避けても<bcp14>よいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-6">エンドポイントは、デコーダーが動的テーブルの最大容量を0に設定している場合、デコーダーストリームの作成を避けても<bcp14>よいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-7">エンドポイントは、コネクションの設定によってそれらの使用が妨げられている場合でも、ピアがエンコーダーストリームとデコーダーストリームを作成することを許可<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="encoder-instructions" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-encoder-instructions">エンコーダー命令</name>
+        <t indent="0" pn="section-4.3-1">エンコーダーは、動的テーブルの容量を設定し、動的テーブルにエントリーを追加するために、エンコーダーストリーム上でエンコーダー命令を送信します。
+テーブルにエントリーを追加する命令は、冗長な情報の送信を避けるために既存のエントリーを使用できます。
+名前は、静的テーブルまたは動的テーブル内の既存のエントリーへの参照として、または文字列リテラルとして送信できます。
+動的テーブルにすでに存在するエントリーについては、エントリー全体を参照によって使用し、重複したエントリーを作成することもできます。</t>
+        <section anchor="set-dynamic-capacity" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.1">
+          <name slugifiedName="name-set-dynamic-table-capacity">Set Dynamic Table Capacity</name>
+          <t indent="0" pn="section-4.3.1-1">エンコーダーは、3ビットのパターン「001」で始まる命令を使用して、動的テーブルの容量の変更をデコーダーに通知します。
+その後に、5ビットのプレフィックスを持つ整数として表された新しい動的テーブルの容量が続きます。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。</t>
+          <figure anchor="fig-set-capacity" align="left" suppress-title="false" pn="figure-5">
+            <name slugifiedName="name-set-dynamic-table-capacity-2">Set Dynamic Table Capacity</name>
+            <artwork type="ascii-art" align="left" pn="section-4.3.1-2.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 0 | 1 |   Capacity (5+)   |
++---+---+---+-------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.3.1-3">新しい容量は、<xref target="maximum-dynamic-table-capacity" format="default" sectionFormat="of" derivedContent="Section 3.2.3"/>で説明されている制限以下で<bcp14>なければなりません（MUST）</bcp14>。
+HTTP/3では、この制限はデコーダーから受信したSETTINGS_QPACK_MAX_TABLE_CAPACITYパラメーター（<xref target="configuration" format="default" sectionFormat="of" derivedContent="Section 5"/>）の値です。
+デコーダーは、この制限を超える新しい動的テーブルの容量の値を、QPACK_ENCODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.1-4">動的テーブルの容量を減らすと、エントリーが追い出されることがあります。
+<xref target="eviction" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>を参照してください。
+これによって、追い出し可能でないエントリーが追い出されては<bcp14>なりません（MUST NOT）</bcp14>。
+<xref target="blocked-insertion" format="default" sectionFormat="of" derivedContent="Section 2.1.1"/>を参照してください。
+この命令はエントリーを挿入しないため、動的テーブルの容量の変更は確認応答されません。</t>
+        </section>
+        <section anchor="insert-with-name-reference" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.2">
+          <name slugifiedName="name-insert-with-name-reference">Insert with Name Reference</name>
+          <t indent="0" pn="section-4.3.2-1">エンコーダーは、1ビットのパターン「1」で始まる命令を使用して、フィールド名が静的テーブルまたは動的テーブルに格納されたエントリーのフィールド名と一致するエントリーを動的テーブルに追加します。
+2番目のビット（「T」）は、参照が静的テーブルと動的テーブルのどちらへのものかを示します。
+それに続く6ビットのプレフィックス整数（<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>）は、フィールド名のテーブルエントリーを特定するために使用されます。
+T=1の場合、この数値は静的テーブルのインデックスを表し、T=0の場合、この数値は動的テーブル内のエントリーの相対インデックスです。</t>
+          <t indent="0" pn="section-4.3.2-2">フィールド名の参照の後には、文字列リテラルとして表されたフィールド値が続きます。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。</t>
+          <figure align="left" suppress-title="false" pn="figure-6">
+            <name slugifiedName="name-insert-field-line-indexed-n">Insert Field Line -- Indexed Name</name>
+            <artwork type="ascii-art" align="left" pn="section-4.3.2-3.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 1 | T |    Name Index (6+)    |
+   +---+---+-----------------------+
+   | H |     Value Length (7+)     |
+   +---+---------------------------+
+   |  Value String (Length bytes)  |
+   +-------------------------------+
+</artwork>
+          </figure>
+        </section>
+        <section anchor="insert-with-literal-name" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.3">
+          <name slugifiedName="name-insert-with-literal-name">Insert with Literal Name</name>
+          <t indent="0" pn="section-4.3.3-1">エンコーダーは、2ビットのパターン「01」で始まる命令を使用して、フィールド名とフィールド値の両方が文字列リテラルとして表されたエントリーを動的テーブルに追加します。</t>
+          <t indent="0" pn="section-4.3.3-2">その後に、6ビットプレフィックス文字列リテラルとして表された名前と、8ビットプレフィックス文字列リテラルとして表された値が続きます。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。</t>
+          <figure align="left" suppress-title="false" pn="figure-7">
+            <name slugifiedName="name-insert-field-line-new-name">Insert Field Line -- New Name</name>
+            <artwork type="ascii-art" align="left" pn="section-4.3.3-3.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 0 | 1 | H | Name Length (5+)  |
+   +---+---+---+-------------------+
+   |  Name String (Length bytes)   |
+   +---+---------------------------+
+   | H |     Value Length (7+)     |
+   +---+---------------------------+
+   |  Value String (Length bytes)  |
+   +-------------------------------+
+</artwork>
+          </figure>
+        </section>
+        <section anchor="duplicate" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.4">
+          <name slugifiedName="name-duplicate">Duplicate</name>
+          <t indent="0" pn="section-4.3.4-1">エンコーダーは、3ビットのパターン「000」で始まる命令を使用して、動的テーブル内の既存のエントリーを複製します。
+その後に、5ビットのプレフィックスを持つ整数として表された既存のエントリーの相対インデックスが続きます。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。</t>
+          <figure anchor="fig-index-with-duplication" align="left" suppress-title="false" pn="figure-8">
+            <name slugifiedName="name-duplicate-2">Duplicate</name>
+            <artwork type="ascii-art" align="left" pn="section-4.3.4-2.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 0 | 0 | 0 |    Index (5+)     |
+   +---+---+---+-------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.3.4-3">既存のエントリーは、名前も値も再送信することなく、動的テーブルに再挿入されます。
+これは、新しいエントリーの挿入をブロックするかもしれない古いエントリーへの参照を追加することを避けるのに役立ちます。</t>
+        </section>
+      </section>
+      <section anchor="decoder-instructions" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-decoder-instructions">デコーダー命令</name>
+        <t indent="0" pn="section-4.4-1">デコーダーは、動的テーブルの一貫性を確保するために、フィールドセクションの処理とテーブルの更新についてエンコーダーに知らせるデコーダー命令を、デコーダーストリーム上で送信します。</t>
+        <section anchor="header-acknowledgment" numbered="true" removeInRFC="false" toc="include" pn="section-4.4.1">
+          <name slugifiedName="name-section-acknowledgment">Section Acknowledgment</name>
+          <t indent="0" pn="section-4.4.1-1">宣言されたRequired Insert Countが0でないエンコードされたフィールドセクションを処理した後、デコーダーはSection Acknowledgment命令を出力します。
+この命令は1ビットのパターン「1」で始まり、その後に7ビットのプレフィックス整数としてエンコードされた、フィールドセクションに関連付けられたストリームIDが続きます。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。</t>
+          <t indent="0" pn="section-4.4.1-2">この命令は、セクション<xref format="counter" target="known-received-count" sectionFormat="of" derivedContent="2.1.4"/>と<xref format="counter" target="state-synchronization" sectionFormat="of" derivedContent="2.2.2"/>で説明されているように使用されます。</t>
+          <figure anchor="fig-header-ack" align="left" suppress-title="false" pn="figure-9">
+            <name slugifiedName="name-section-acknowledgment-2">Section Acknowledgment</name>
+            <artwork type="ascii-art" align="left" pn="section-4.4.1-3.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 1 |      Stream ID (7+)       |
++---+---------------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.4.1-4">0でないRequired Insert Countを持つすべてのエンコードされたフィールドセクションがすでに確認応答されているストリームを参照するSection Acknowledgment命令をエンコーダーが受信した場合、これはQPACK_DECODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.4.1-5">Section Acknowledgment命令は、Known Received Countを増やすことがあります。
+<xref target="known-received-count" format="default" sectionFormat="of" derivedContent="Section 2.1.4"/>を参照してください。</t>
+        </section>
+        <section anchor="stream-cancellation" numbered="true" removeInRFC="false" toc="include" pn="section-4.4.2">
+          <name slugifiedName="name-stream-cancellation">Stream Cancellation</name>
+          <t indent="0" pn="section-4.4.2-1">ストリームがリセットされた場合、または読み取りが放棄された場合、デコーダーはStream Cancellation命令を出力します。
+この命令は2ビットのパターン「01」で始まり、その後に6ビットのプレフィックス整数としてエンコードされた、影響を受けるストリームのストリームIDが続きます。</t>
+          <t indent="0" pn="section-4.4.2-2">この命令は、<xref target="state-synchronization" format="default" sectionFormat="of" derivedContent="Section 2.2.2"/>で説明されているように使用されます。</t>
+          <figure anchor="fig-stream-cancel" align="left" suppress-title="false" pn="figure-10">
+            <name slugifiedName="name-stream-cancellation-2">Stream Cancellation</name>
+            <artwork type="ascii-art" align="left" pn="section-4.4.2-3.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 1 |     Stream ID (6+)    |
++---+---+-----------------------+
+</artwork>
+          </figure>
+        </section>
+        <section anchor="insert-count-increment" numbered="true" removeInRFC="false" toc="include" pn="section-4.4.3">
+          <name slugifiedName="name-insert-count-increment">Insert Count Increment</name>
+          <t indent="0" pn="section-4.4.3-1">Insert Count Increment命令は2ビットのパターン「00」で始まり、その後に6ビットのプレフィックス整数としてエンコードされたIncrementが続きます。
+この命令は、Known Received Count（<xref target="known-received-count" format="default" sectionFormat="of" derivedContent="Section 2.1.4"/>）をIncrementパラメーターの値だけ増やします。
+デコーダーは、Known Received Countをこれまでに処理した動的テーブルへの挿入と複製の総数まで増やすIncrementの値を送信すべきです。</t>
+          <figure anchor="fig-size-sync" align="left" suppress-title="false" pn="figure-11">
+            <name slugifiedName="name-insert-count-increment-2">Insert Count Increment</name>
+            <artwork type="ascii-art" align="left" pn="section-4.4.3-2.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 0 |     Increment (6+)    |
++---+---+-----------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.4.3-3">0に等しいIncrementフィールドを受信した、またはエンコーダーが送信した数を超えてKnown Received Countを増やすIncrementフィールドを受信したエンコーダーは、これをQPACK_DECODER_STREAM_ERRORタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        </section>
+      </section>
+      <section anchor="field-line-representations" numbered="true" removeInRFC="false" toc="include" pn="section-4.5">
+        <name slugifiedName="name-field-line-representations">フィールド行の表現</name>
+        <t indent="0" pn="section-4.5-1">エンコードされたフィールドセクションは、プレフィックスと、このセクションで定義される表現の列（空の場合もあります）から構成されます。
+各表現は1つのフィールド行に対応します。
+これらの表現は、静的テーブルや特定の状態にある動的テーブルを参照しますが、その状態を変更することはありません。</t>
+        <t indent="0" pn="section-4.5-2">エンコードされたフィールドセクションは、それを包含するプロトコルが定義するストリーム上のフレームで運ばれます。</t>
+        <section anchor="header-prefix" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.1">
+          <name slugifiedName="name-encoded-field-section-prefi">エンコードされたフィールドセクションのプレフィックス</name>
+          <t indent="0" pn="section-4.5.1-1">エンコードされた各フィールドセクションには、2つの整数がプレフィックスとして付けられます。
+Required Insert Countは、<xref target="ric" format="default" sectionFormat="of" derivedContent="Section 4.5.1.1"/>で説明されているエンコーディングを使用して、8ビットのプレフィックスを持つ整数としてエンコードされます。
+Baseは、符号ビット（「S」）と、7ビットのプレフィックスを持つDelta Baseの値としてエンコードされます。
+<xref target="base" format="default" sectionFormat="of" derivedContent="Section 4.5.1.2"/>を参照してください。</t>
+          <figure anchor="fig-base-index" align="left" suppress-title="false" pn="figure-12">
+            <name slugifiedName="name-encoded-field-section">エンコードされたフィールドセクション</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.1-2.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+|   Required Insert Count (8+)  |
++---+---------------------------+
+| S |      Delta Base (7+)      |
++---+---------------------------+
+|      Encoded Field Lines    ...
++-------------------------------+
+</artwork>
+          </figure>
+          <section anchor="ric" numbered="true" removeInRFC="false" toc="exclude" pn="section-4.5.1.1">
+            <name slugifiedName="name-required-insert-count">Required Insert Count</name>
+            <t indent="0" pn="section-4.5.1.1-1">Required Insert Countは、エンコードされたフィールドセクションを処理するのに必要な動的テーブルの状態を識別します。
+ブロックするデコーダーは、Required Insert Countを使用して、フィールドセクションの残りを処理しても安全なのがいつかを判断します。</t>
+            <t indent="0" pn="section-4.5.1.1-2">エンコーダーは、エンコードする前にRequired Insert Countを次のように変換します：</t>
+            <sourcecode type="pseudocode" markers="false" pn="section-4.5.1.1-3">
+   if ReqInsertCount == 0:
+      EncInsertCount = 0
+   else:
+      EncInsertCount = (ReqInsertCount mod (2 * MaxEntries)) + 1
+</sourcecode>
+            <t indent="0" pn="section-4.5.1.1-4">ここで、<tt>MaxEntries</tt>は動的テーブルが持つことのできるエントリーの最大数です。
+最小のエントリーは空の名前と値の文字列を持ち、サイズは32です。
+したがって、<tt>MaxEntries</tt>は次のように計算されます：</t>
+            <sourcecode type="pseudocode" markers="false" pn="section-4.5.1.1-5">
+   MaxEntries = floor( MaxTableCapacity / 32 )
+</sourcecode>
+            <t indent="0" pn="section-4.5.1.1-6"><tt>MaxTableCapacity</tt>は、デコーダーによって指定される動的テーブルの最大容量です。
+<xref target="maximum-dynamic-table-capacity" format="default" sectionFormat="of" derivedContent="Section 3.2.3"/>を参照してください。</t>
+            <t indent="0" pn="section-4.5.1.1-7">このエンコーディングは、長期間存続するコネクションにおいてプレフィックスの長さを制限します。</t>
+            <t indent="0" pn="section-4.5.1.1-8">デコーダーは、次のようなアルゴリズムを使用してRequired Insert Countを再構築できます。
+準拠したエンコーダーでは生成されえないEncodedInsertCountの値に遭遇した場合、デコーダーはこれをQPACK_DECOMPRESSION_FAILEDタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.5.1.1-9"><tt>TotalNumberOfInserts</tt>は、デコーダーの動的テーブルへの挿入の総数です。</t>
+            <sourcecode type="pseudocode" markers="false" pn="section-4.5.1.1-10">
+   FullRange = 2 * MaxEntries
+   if EncodedInsertCount == 0:
+      ReqInsertCount = 0
+   else:
+      if EncodedInsertCount &gt; FullRange:
+         Error
+      MaxValue = TotalNumberOfInserts + MaxEntries
+
+      # MaxWrapped is the largest possible value of
+      # ReqInsertCount that is 0 mod 2 * MaxEntries
+      MaxWrapped = floor(MaxValue / FullRange) * FullRange
+      ReqInsertCount = MaxWrapped + EncodedInsertCount - 1
+
+      # If ReqInsertCount exceeds MaxValue, the Encoder's value
+      # must have wrapped one fewer time
+      if ReqInsertCount &gt; MaxValue:
+         if ReqInsertCount &lt;= FullRange:
+            Error
+         ReqInsertCount -= FullRange
+
+      # Value of 0 must be encoded as 0.
+      if ReqInsertCount == 0:
+         Error
+</sourcecode>
+            <t indent="0" pn="section-4.5.1.1-11">たとえば、動的テーブルが100バイトの場合、Required Insert Countは6を法としてエンコードされます。
+デコーダーが10回の挿入を受信している場合、エンコードされた値4は、そのフィールドセクションのRequired Insert Countが9であることを示します。</t>
+          </section>
+          <section anchor="base" numbered="true" removeInRFC="false" toc="exclude" pn="section-4.5.1.2">
+            <name slugifiedName="name-base">Base</name>
+            <t indent="0" pn="section-4.5.1.2-1">Baseは、<xref target="relative-indexing" format="default" sectionFormat="of" derivedContent="Section 3.2.5"/>で説明されているように、動的テーブル内の参照を解決するために使用されます。</t>
+            <t indent="0" pn="section-4.5.1.2-2">空間を節約するために、Baseは、1ビットの符号（<xref target="fig-base-index" format="default" sectionFormat="of" derivedContent="Figure 12"/>の「S」）とDelta Baseの値を使用して、Required Insert Countからの相対でエンコードされます。
+符号ビットが0の場合、BaseがRequired Insert Countの値以上であることを示します。
+デコーダーは、Required Insert CountにDelta Baseの値を加えてBaseの値を求めます。
+符号ビットが1の場合、BaseがRequired Insert Countより小さいことを示します。
+デコーダーは、Required Insert CountからDelta Baseの値を引き、さらに1を引いてBaseの値を求めます。
+つまり、次のとおりです：</t>
+            <sourcecode type="pseudocode" markers="false" pn="section-4.5.1.2-3">
+   if Sign == 0:
+      Base = ReqInsertCount + DeltaBase
+   else:
+      Base = ReqInsertCount - DeltaBase - 1
+</sourcecode>
+            <t indent="0" pn="section-4.5.1.2-4">シングルパスのエンコーダーは、フィールドセクションをエンコードする前にBaseを決定します。
+エンコーダーがフィールドセクションのエンコード中に動的テーブルにエントリーを挿入し、それらを参照している場合、Required Insert CountはBaseより大きくなるため、エンコードされる差は負になり、符号ビットは1に設定されます。
+フィールドセクションが、テーブル内の最新のエントリーを参照する表現を使用せずにエンコードされ、新しいエントリーも挿入しなかった場合、BaseはRequired Insert Countより大きくなるため、エンコードされる差は正になり、符号ビットは0に設定されます。</t>
+            <t indent="0" pn="section-4.5.1.2-5">Baseの値は負であっては<bcp14>なりません（MUST NOT）</bcp14>。
+プロトコルはpost-Baseインデックスを使用することで負のBaseでも正しく動作するかもしれませんが、それは不要で非効率です。
+エンドポイントは、Required Insert Countの値がDelta Baseの値以下である場合、符号ビットが1のフィールドブロックを無効なものとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.5.1.2-6">フィールドセクションをエンコードする前にテーブルの更新を生成するエンコーダーは、BaseをRequired Insert Countの値に設定するかもしれません。
+その場合、符号ビットとDelta Baseはどちらも0に設定されます。</t>
+            <t indent="0" pn="section-4.5.1.2-7">動的テーブルへの参照なしでエンコードされたフィールドセクションは、Baseに任意の値を使用できます。
+Delta Baseを0に設定するのが、最も効率的なエンコーディングの1つです。</t>
+            <t indent="0" pn="section-4.5.1.2-8">たとえば、Required Insert Countが9のとき、デコーダーが符号ビット1とDelta Base 2を受信したとします。
+これによりBaseは6に設定され、3つのエントリーに対してpost-Baseインデックスが使えるようになります。
+この例では、相対インデックス1はテーブルに追加された5番目のエントリーを指し、post-Baseインデックス1は8番目のエントリーを指します。</t>
+          </section>
+        </section>
+        <section anchor="indexed-field-line" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.2">
+          <name slugifiedName="name-indexed-field-line">インデックス付きフィールド行</name>
+          <t indent="0" pn="section-4.5.2-1">インデックス付きフィールド行の表現は、静的テーブルのエントリー、またはBaseの値より小さい絶対インデックスを持つ動的テーブルのエントリーを識別します。</t>
+          <figure align="left" suppress-title="false" pn="figure-13">
+            <name slugifiedName="name-indexed-field-line-2">インデックス付きフィールド行</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.2-2.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 1 | T |      Index (6+)       |
++---+---+-----------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.5.2-3">この表現は1ビットのパターン「1」で始まり、その後に、参照が静的テーブルと動的テーブルのどちらへのものかを示す「T」ビットが続きます。
+それに続く6ビットのプレフィックス整数（<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>）は、フィールド行のテーブルエントリーを特定するために使用されます。
+T=1の場合、この数値は静的テーブルのインデックスを表し、T=0の場合、この数値は動的テーブル内のエントリーの相対インデックスです。</t>
+        </section>
+        <section anchor="indexed-field-line-with-post-base-index" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.3">
+          <name slugifiedName="name-indexed-field-line-with-pos">post-Baseインデックスを持つインデックス付きフィールド行</name>
+          <t indent="0" pn="section-4.5.3-1">post-Baseインデックスを持つインデックス付きフィールド行の表現は、Baseの値以上の絶対インデックスを持つ動的テーブルのエントリーを識別します。</t>
+          <figure align="left" suppress-title="false" pn="figure-14">
+            <name slugifiedName="name-indexed-field-line-with-post">post-Baseインデックスを持つインデックス付きフィールド行</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.3-2.1">
+  0   1   2   3   4   5   6   7
++---+---+---+---+---+---+---+---+
+| 0 | 0 | 0 | 1 |  Index (4+)   |
++---+---+---+---+---------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.5.3-3">この表現は4ビットのパターン「0001」で始まります。
+その後に、4ビットのプレフィックスを持つ整数として表された、一致するフィールド行のpost-Baseインデックス（<xref target="post-base" format="default" sectionFormat="of" derivedContent="Section 3.2.6"/>）が続きます。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。</t>
+        </section>
+        <section anchor="literal-name-reference" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.4">
+          <name slugifiedName="name-literal-field-line-with-nam">名前参照を持つリテラルフィールド行</name>
+          <t indent="0" pn="section-4.5.4-1">名前参照を持つリテラルフィールド行の表現は、フィールド名が、静的テーブルのエントリーのフィールド名、またはBaseの値より小さい絶対インデックスを持つ動的テーブルのエントリーのフィールド名と一致するフィールド行をエンコードします。</t>
+          <figure align="left" suppress-title="false" pn="figure-15">
+            <name slugifiedName="name-literal-field-line-with-name">名前参照を持つリテラルフィールド行</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.4-2.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 0 | 1 | N | T |Name Index (4+)|
+   +---+---+---+---+---------------+
+   | H |     Value Length (7+)     |
+   +---+---------------------------+
+   |  Value String (Length bytes)  |
+   +-------------------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.5.4-3">この表現は2ビットのパターン「01」で始まります。
+次のビット「N」は、仲介者が後続のホップでこのフィールド行を動的テーブルに追加することが許可されているかどうかを示します。
+「N」ビットが設定されている場合、エンコードされたフィールド行は常にリテラル表現でエンコードされ<bcp14>なければなりません（MUST）</bcp14>。
+特に、ピアが「N」ビットが設定されたリテラルフィールド行として表現されて受信したフィールド行を送信する場合、ピアはこのフィールド行を転送するためにリテラル表現を使用<bcp14>しなければなりません（MUST）</bcp14>。
+このビットは、圧縮することでリスクにさらされるべきではないフィールド値を保護することを目的としています。
+詳細については<xref target="probing-dynamic-table-state" format="default" sectionFormat="of" derivedContent="Section 7.1"/>を参照してください。</t>
+          <t indent="0" pn="section-4.5.4-4">4番目のビット（「T」）は、参照が静的テーブルと動的テーブルのどちらへのものかを示します。
+それに続く4ビットのプレフィックス整数（<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>）は、フィールド名のテーブルエントリーを特定するために使用されます。
+T=1の場合、この数値は静的テーブルのインデックスを表し、T=0の場合、この数値は動的テーブル内のエントリーの相対インデックスです。</t>
+          <t indent="0" pn="section-4.5.4-5">動的テーブルのエントリーから取られるのはフィールド名だけです。
+フィールド値は8ビットプレフィックス文字列リテラルとしてエンコードされます。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。</t>
+        </section>
+        <section anchor="literal-field-line-with-post-base-name-reference" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.5">
+          <name slugifiedName="name-literal-field-line-with-pos">post-Base名前参照を持つリテラルフィールド行</name>
+          <t indent="0" pn="section-4.5.5-1">post-Base名前参照を持つリテラルフィールド行の表現は、フィールド名が、Baseの値以上の絶対インデックスを持つ動的テーブルのエントリーのフィールド名と一致するフィールド行をエンコードします。</t>
+          <figure align="left" suppress-title="false" pn="figure-16">
+            <name slugifiedName="name-literal-field-line-with-post">post-Base名前参照を持つリテラルフィールド行</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.5-2.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 0 | 0 | 0 | 0 | N |NameIdx(3+)|
+   +---+---+---+---+---+-----------+
+   | H |     Value Length (7+)     |
+   +---+---------------------------+
+   |  Value String (Length bytes)  |
+   +-------------------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.5.5-3">この表現は4ビットのパターン「0000」で始まります。
+5番目のビットは、<xref target="literal-name-reference" format="default" sectionFormat="of" derivedContent="Section 4.5.4"/>で説明されている「N」ビットです。
+その後に、3ビットのプレフィックスを持つ整数としてエンコードされた、動的テーブルのエントリーのpost-Baseインデックス（<xref target="post-base" format="default" sectionFormat="of" derivedContent="Section 3.2.6"/>）が続きます。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。</t>
+          <t indent="0" pn="section-4.5.5-4">動的テーブルのエントリーから取られるのはフィールド名だけです。
+フィールド値は8ビットプレフィックス文字列リテラルとしてエンコードされます。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。</t>
+        </section>
+        <section anchor="literal-field-line-with-literal-name" numbered="true" removeInRFC="false" toc="include" pn="section-4.5.6">
+          <name slugifiedName="name-literal-field-line-with-lit">リテラル名を持つリテラルフィールド行</name>
+          <t indent="0" pn="section-4.5.6-1">リテラル名を持つリテラルフィールド行の表現は、フィールド名とフィールド値を文字列リテラルとしてエンコードします。</t>
+          <figure align="left" suppress-title="false" pn="figure-17">
+            <name slugifiedName="name-literal-field-line-with-lite">リテラル名を持つリテラルフィールド行</name>
+            <artwork type="ascii-art" align="left" pn="section-4.5.6-2.1">
+     0   1   2   3   4   5   6   7
+   +---+---+---+---+---+---+---+---+
+   | 0 | 0 | 1 | N | H |NameLen(3+)|
+   +---+---+---+---+---+-----------+
+   |  Name String (Length bytes)   |
+   +---+---------------------------+
+   | H |     Value Length (7+)     |
+   +---+---------------------------+
+   |  Value String (Length bytes)  |
+   +-------------------------------+
+</artwork>
+          </figure>
+          <t indent="0" pn="section-4.5.6-3">この表現は3ビットのパターン「001」で始まります。
+4番目のビットは、<xref target="literal-name-reference" format="default" sectionFormat="of" derivedContent="Section 4.5.4"/>で説明されている「N」ビットです。
+その後に、4ビットプレフィックス文字列リテラルとして表された名前が続き、さらに8ビットプレフィックス文字列リテラルとして表された値が続きます。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="configuration" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-configuration">設定</name>
+      <t indent="0" pn="section-5-1">QPACKは、HTTP/3のSETTINGSフレームのために2つの設定を定義しています：</t>
+      <dl indent="3" newline="false" spacing="normal" pn="section-5-2">
+        <dt pn="section-5-2.1">SETTINGS_QPACK_MAX_TABLE_CAPACITY (0x01)：</dt>
+        <dd pn="section-5-2.2">
+          <t indent="0" pn="section-5-2.2.1">デフォルト値は0です。
+使用方法については<xref target="header-table-dynamic" format="default" sectionFormat="of" derivedContent="Section 3.2"/>を参照してください。
+これは、HTTP/2のSETTINGS_HEADER_TABLE_SIZEに相当します。</t>
+        </dd>
+        <dt pn="section-5-2.3">SETTINGS_QPACK_BLOCKED_STREAMS (0x07)：</dt>
+        <dd pn="section-5-2.4">
+          <t indent="0" pn="section-5-2.4.1">デフォルト値は0です。
+<xref target="blocked-streams" format="default" sectionFormat="of" derivedContent="Section 2.1.2"/>を参照してください。</t>
+        </dd>
+      </dl>
+    </section>
+    <section anchor="error-handling" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-error-handling">エラー処理</name>
+      <t indent="0" pn="section-6-1">ストリームやコネクションの継続を妨げるQPACKの失敗を示すために、HTTP/3に対して以下のエラーコードが定義されています：</t>
+      <dl indent="3" newline="false" spacing="normal" pn="section-6-2">
+        <dt pn="section-6-2.1">QPACK_DECOMPRESSION_FAILED (0x0200)：</dt>
+        <dd pn="section-6-2.2">
+          <t indent="0" pn="section-6-2.2.1">デコーダーがエンコードされたフィールドセクションを解釈できず、そのフィールドセクションのデコードを続けることができません。</t>
+        </dd>
+        <dt pn="section-6-2.3">QPACK_ENCODER_STREAM_ERROR (0x0201)：</dt>
+        <dd pn="section-6-2.4">
+          <t indent="0" pn="section-6-2.4.1">デコーダーが、エンコーダーストリームで受信したエンコーダー命令を解釈できませんでした。</t>
+        </dd>
+        <dt pn="section-6-2.5">QPACK_DECODER_STREAM_ERROR (0x0202)：</dt>
+        <dd pn="section-6-2.6">
+          <t indent="0" pn="section-6-2.6.1">エンコーダーが、デコーダーストリームで受信したデコーダー命令を解釈できませんでした。</t>
+        </dd>
+      </dl>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">このセクションでは、QPACKに関してセキュリティー上の懸念がありうる領域について説明します：</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-7-2">
+        <li pn="section-7-2.1">共有された圧縮コンテキストに圧縮される秘密についての推測を検証するための、長さに基づくオラクルとしての圧縮の使用。</li>
+        <li pn="section-7-2.2">デコーダーの処理能力やメモリー容量を枯渇させることによるサービス拒否。</li>
+      </ul>
+      <section anchor="probing-dynamic-table-state" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-probing-dynamic-table-state">動的テーブルの状態の探り出し</name>
+        <t indent="0" pn="section-7.1-1">QPACKは、HTTPのようなプロトコルに内在する冗長性を利用することで、フィールドセクションのエンコード後のサイズを削減します。
+その最終的な目標は、HTTPのリクエストやレスポンスを送信するのに必要なデータの量を減らすことです。</t>
+        <t indent="0" pn="section-7.1-2">ヘッダーフィールドとトレーラーフィールドのエンコードに使用される圧縮コンテキストは、エンコードされて送信されるフィールドを定義することと、エンコード後のそれらのフィールドの長さを観測することの両方ができる攻撃者によって探られる可能性があります。
+攻撃者がその両方を行える場合、動的テーブルの状態についての推測を確認するために、状況に応じてリクエストを変更できます。
+推測がより短い長さに圧縮された場合、攻撃者はエンコード後の長さを観測して、その推測が正しかったと推論できます。</t>
+        <t indent="0" pn="section-7.1-3">TLSとQUICはコンテンツの機密性を保護しますが、そのコンテンツの長さについては限られた保護しか提供しないため、これはTransport Layer Securityプロトコル（<xref target="TLS" format="default" sectionFormat="of" derivedContent="TLS"/>）やQUICトランスポートプロトコル（<xref target="QUIC-TRANSPORT" format="default" sectionFormat="of" derivedContent="QUIC-TRANSPORT"/>）の上でも可能です。</t>
+        <aside pn="section-7.1-4">
+          <t indent="0" pn="section-7.1-4.1">注意：パディング方式は、このような能力を持つ攻撃者に対しては限られた保護しか提供せず、ある推測に関連付けられた長さを知るのに必要な推測の回数を増やさせるだけかもしれません。
+また、パディング方式は送信されるビット数を増やすため、圧縮とは真っ向から相反します。</t>
+        </aside>
+        <t indent="0" pn="section-7.1-5">CRIME（<xref target="CRIME" format="default" sectionFormat="of" derivedContent="CRIME"/>）のような攻撃は、このような一般的な攻撃能力が存在することを実証しました。
+その具体的な攻撃は、DEFLATE（<xref target="RFC1951" format="default" sectionFormat="of" derivedContent="RFC1951"/>）がプレフィックスの一致に基づいて冗長性を取り除くという事実を悪用していました。
+これにより、攻撃者は推測を1文字ずつ確認でき、指数時間の攻撃が線形時間の攻撃にまで縮められました。</t>
+        <section anchor="applicability-to-qpack-and-http" numbered="true" removeInRFC="false" toc="include" pn="section-7.1.1">
+          <name slugifiedName="name-applicability-to-qpack-and-">QPACKとHTTPへの適用可能性</name>
+          <t indent="0" pn="section-7.1.1-1">QPACKは、推測が個々の文字ではなくフィールド行全体と一致することを強制することで、CRIME（<xref target="CRIME" format="default" sectionFormat="of" derivedContent="CRIME"/>）を模した攻撃を緩和しますが、完全に防ぐわけではありません。
+攻撃者は推測が正しいかどうかしか知ることができないため、攻撃者は、あるフィールド名に関連付けられたフィールド値に対する総当たりの推測を強いられます。</t>
+          <t indent="0" pn="section-7.1.1-2">したがって、特定のフィールド値を復元できるかどうかは、値のエントロピーに依存します。
+その結果、エントロピーの高い値は復元に成功する可能性が低くなります。
+しかし、エントロピーの低い値は依然として脆弱です。</t>
+          <t indent="0" pn="section-7.1.1-3">この種の攻撃は、相互に信頼していない2つのエンティティーが、1つのHTTP/3コネクションに載せられるリクエストやレスポンスを制御している場合にはいつでも起こりえます。
+共有されたQPACKの圧縮器が、一方のエンティティーが動的テーブルにエントリーを追加し、もう一方が選択したフィールド行をエンコードする際にそれらのエントリーを参照することを許す場合、攻撃者（2番目のエンティティー）はエンコードされた出力の長さを観測することでテーブルの状態を知ることができます。</t>
+          <t indent="0" pn="section-7.1.1-4">たとえば、相互に信頼していないエンティティーからのリクエストやレスポンスは、仲介者が次のいずれかを行う場合に発生することがあります：</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-7.1.1-5">
+            <li pn="section-7.1.1-5.1">複数のクライアントからのリクエストを、オリジンサーバーへの1つのコネクションで送信する</li>
+            <li pn="section-7.1.1-5.2">複数のオリジンサーバーからのレスポンスを受け取り、クライアントへの共有コネクションに載せる</li>
+          </ul>
+          <t indent="0" pn="section-7.1.1-6">ウェブブラウザーも、異なるウェブオリジン（<xref target="RFC6454" format="default" sectionFormat="of" derivedContent="RFC6454"/>）によって同じコネクション上で行われるリクエストは、相互に信頼していないエンティティーによって行われるものとみなす必要があります。
+相互に信頼していないエンティティーが関わるその他のシナリオもありえます。</t>
+        </section>
+        <section anchor="mitigation" numbered="true" removeInRFC="false" toc="include" pn="section-7.1.2">
+          <name slugifiedName="name-mitigation">緩和策</name>
+          <t indent="0" pn="section-7.1.2-1">ヘッダーフィールドやトレーラーフィールドに機密性を必要とするHTTPの利用者は、推測が不可能になるほど十分なエントロピーを持つ値を使用できます。
+しかし、これはHTTPのすべての利用者に攻撃を緩和するための措置を講じることを強いるため、一般的な解決策としては実用的ではありません。
+それは、HTTPの使われ方に新たな制約を課すことになるでしょう。</t>
+          <t indent="0" pn="section-7.1.2-2">HTTPの利用者に制約を課すのではなく、QPACKの実装は、動的テーブルが探られる可能性を制限するために、圧縮の適用方法を制約できます。</t>
+          <t indent="0" pn="section-7.1.2-3">理想的な解決策は、メッセージを構築しているエンティティーに基づいて、動的テーブルへのアクセスを分離することです。
+テーブルに追加されるフィールド値はエンティティーに帰属し、特定の値を作成したエンティティーだけがその値を取り出せるようにします。</t>
+          <t indent="0" pn="section-7.1.2-4">この選択肢の圧縮性能を改善するために、特定のエントリーに公開であるというタグを付けることができます。
+たとえば、ウェブブラウザーは、Accept-Encodingヘッダーフィールドの値をすべてのリクエストで利用可能にするかもしれません。</t>
+          <t indent="0" pn="section-7.1.2-5">フィールド値の出所をよく知らないエンコーダーは、代わりに、同じフィールド名で異なる値を持つ多数のフィールド行に対してペナルティーを導入できます。
+このペナルティーにより、フィールド値を推測する試みが多数行われた場合に、将来のメッセージでそのフィールドが動的テーブルのエントリーと比較されなくなり、それ以上の推測を事実上防ぐことができます。</t>
+          <t indent="0" pn="section-7.1.2-6">この対応は、フィールド値の長さに反比例させることができます。
+あるフィールド名に対する動的テーブルへのアクセスの無効化は、短い値に対しては、長い値よりも早く、あるいは高い確率で行われるかもしれません。</t>
+          <t indent="0" pn="section-7.1.2-7">この緩和策は、2つのエンドポイント間で最も効果的です。
+どのエンティティーが特定のメッセージを構築したかを知らない仲介者によってメッセージが再エンコードされる場合、仲介者は、元のエンコーダーが意図的に分けていた圧縮コンテキストを不注意にも統合してしまう可能性があります。</t>
+          <aside pn="section-7.1.2-8">
+            <t indent="0" pn="section-7.1.2-8.1">注意：攻撃者が値を再登録させる確実な方法を持っている場合、そのフィールドに対応するエントリーを動的テーブルから単に削除するだけでは効果がないことがあります。
+たとえば、ウェブブラウザーで画像を読み込むリクエストには通常Cookieヘッダーフィールド（この種の攻撃にとって潜在的に非常に価値の高いターゲット）が含まれ、ウェブサイトは簡単に画像を読み込ませることができるため、動的テーブル内のエントリーを更新できてしまいます。</t>
+          </aside>
+        </section>
+        <section anchor="never-indexed-literals" numbered="true" removeInRFC="false" toc="include" pn="section-7.1.3">
+          <name slugifiedName="name-never-indexed-literals">インデックス化されないリテラル</name>
+          <t indent="0" pn="section-7.1.3-1">実装は、機密性の高いフィールドを圧縮せず、代わりにその値をリテラルとしてエンコードすることで保護することも選択できます。</t>
+          <t indent="0" pn="section-7.1.3-2">フィールド行を動的テーブルに挿入することを拒否するのは、すべてのホップでそれが避けられる場合にのみ有効です。
+インデックス化されないリテラルのビット（<xref target="literal-name-reference" format="default" sectionFormat="of" derivedContent="Section 4.5.4"/>を参照）を使用して、特定の値が意図的にリテラルとして送信されたことを仲介者に通知できます。</t>
+          <t indent="0" pn="section-7.1.3-3">仲介者は、「N」ビットが設定されたリテラル表現を使用している値を、それをインデックス化するような別の表現で再エンコードしては<bcp14>なりません（MUST NOT）</bcp14>。
+再エンコードにQPACKを使用する場合は、「N」ビットが設定されたリテラル表現を使用<bcp14>しなければなりません（MUST）</bcp14>。
+再エンコードにHPACKを使用する場合は、インデックス化されないリテラル表現（<xref section="6.2.3" sectionFormat="of" target="RFC7541" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7541#section-6.2.3" derivedContent="RFC7541"/>を参照）を使用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-7.1.3-4">フィールド値を決してインデックス化すべきでないものとしてマークするかどうかの選択は、いくつかの要因に依存します。
+QPACKはフィールド値全体の推測に対しては保護しないため、短い値やエントロピーの低い値は敵対者によってより容易に復元されます。
+したがって、エンコーダーはエントロピーの低い値をインデックス化しないことを選択するかもしれません。</t>
+          <t indent="0" pn="section-7.1.3-5">また、エンコーダーは、CookieヘッダーフィールドやAuthorizationヘッダーフィールドのように、非常に価値が高い、または復元されることに対して機密性が高いとみなされるフィールドの値をインデックス化しないことを選択するかもしれません。</t>
+          <t indent="0" pn="section-7.1.3-6">逆に、エンコーダーは、露出したとしてもほとんど、あるいはまったく価値のないフィールドの値については、インデックス化することを好むかもしれません。
+たとえば、User-Agentヘッダーフィールドは通常リクエスト間で変化せず、どのサーバーにも送信されます。
+その場合、特定のUser-Agentの値が使用されたことが確認されても、ほとんど価値はありません。</t>
+          <t indent="0" pn="section-7.1.3-7">インデックス化されないリテラル表現を使用するかどうかを判断するためのこれらの基準は、新しい攻撃が発見されるにつれて、時間とともに変化していくことに注意してください。</t>
+        </section>
+      </section>
+      <section anchor="static-huffman-encoding" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-static-huffman-encoding">静的ハフマンエンコーディング</name>
+        <t indent="0" pn="section-7.2-1">現在のところ、静的ハフマンエンコーディングに対する既知の攻撃はありません。
+ある研究では、静的ハフマンエンコーディングテーブルを使用すると情報の漏洩が生じることが示されましたが、同じ研究で、攻撃者はこの情報の漏洩を利用して意味のある量の情報を復元することはできないと結論付けられました（<xref target="PETAL" format="default" sectionFormat="of" derivedContent="PETAL"/>を参照）。</t>
+      </section>
+      <section anchor="memory-consumption" numbered="true" removeInRFC="false" toc="include" pn="section-7.3">
+        <name slugifiedName="name-memory-consumption">メモリー消費</name>
+        <t indent="0" pn="section-7.3-1">攻撃者は、エンドポイントのメモリーを枯渇させようとすることがあります。
+QPACKは、エンドポイントによって割り当てられるメモリーのピーク量と定常量の両方を制限するように設計されています。</t>
+        <t indent="0" pn="section-7.3-2">QPACKは、動的テーブルの最大サイズとブロックするストリームの最大数の定義を使用して、エンコーダーがデコーダーに消費させることのできるメモリーの量を制限します。
+HTTP/3では、これらの値は、デコーダーによってそれぞれ設定パラメーターSETTINGS_QPACK_MAX_TABLE_CAPACITYとSETTINGS_QPACK_BLOCKED_STREAMSを通じて制御されます（<xref target="maximum-dynamic-table-capacity" format="default" sectionFormat="of" derivedContent="Section 3.2.3"/>と<xref target="blocked-streams" format="default" sectionFormat="of" derivedContent="Section 2.1.2"/>を参照）。
+動的テーブルのサイズの制限は、動的テーブルに格納されるデータのサイズに、オーバーヘッドのためのわずかな余裕を加えたものを考慮しています。
+ブロックされたストリームの数の制限は、デコーダーが必要とするメモリーの最大量の目安にすぎません。
+実際のメモリーの最大量は、デコーダーがブロックされた各ストリームを追跡するためにどれだけのメモリーを使用するかに依存します。</t>
+        <t indent="0" pn="section-7.3-3">デコーダーは、動的テーブルの最大サイズに適切な値を設定することで、動的テーブルに使用される状態のメモリーの量を制限できます。
+HTTP/3では、これはSETTINGS_QPACK_MAX_TABLE_CAPACITYパラメーターに適切な値を設定することで実現されます。
+エンコーダーは、デコーダーが許可するよりも小さい動的テーブルのサイズを選択し、それをデコーダーに通知することで、自身が使用する状態のメモリーの量を制限できます（<xref target="set-dynamic-capacity" format="default" sectionFormat="of" derivedContent="Section 4.3.1"/>を参照）。</t>
+        <t indent="0" pn="section-7.3-4">デコーダーは、ブロックされたストリームの最大数に適切な値を設定することで、ブロックされたストリームに使用される状態のメモリーの量を制限できます。
+HTTP/3では、これはSETTINGS_QPACK_BLOCKED_STREAMSパラメーターに適切な値を設定することで実現されます。
+ブロックされるリスクのあるストリームは、エンコーダーで追加の状態のメモリーを消費しません。</t>
+        <t indent="0" pn="section-7.3-5">エンコーダーは、確認応答されていないフィールドセクション内の動的テーブルへのすべての参照を追跡するためにメモリーを割り当てます。
+実装は、追跡したいだけの数の動的テーブルへの参照のみを使用することで、状態のメモリーの量を直接制限できます。
+デコーダーへの通知は必要ありません。
+ただし、動的テーブルへの参照を制限すると、圧縮の有効性が低下します。</t>
+        <t indent="0" pn="section-7.3-6">エンコーダーやデコーダーが消費する一時的なメモリーの量は、フィールド行を順番に処理することで制限できます。
+デコーダーの実装は、フィールドセクションをデコードする間、フィールド行の完全なリストを保持する必要はありません。
+エンコーダーの実装は、シングルパスのアルゴリズムを使用している場合、フィールドセクションをエンコードする間、フィールド行の完全なリストを保持する必要はありません。
+ただし、アプリケーションが他の理由でフィールド行の完全なリストを保持する必要があるかもしれないことに注意してください。
+QPACKがそれを強制しなくても、アプリケーションの制約によってそれが必要になることがあります。</t>
+        <t indent="0" pn="section-7.3-7">ネゴシエーションされた動的テーブルのサイズの制限は、QPACKの実装が消費しうるメモリーの大部分を考慮していますが、フロー制御のためにすぐには送信できないデータはこの制限の影響を受けません。
+実装は、未送信のデータのサイズを制限すべきです。
+特に、何を送信するかを選択する柔軟性が限られているデコーダーストリームではそうです。
+未送信のデータが過剰になった場合に考えられる対応としては、ピアが新しいストリームを開く能力を制限すること、エンコーダーストリームからのみ読み取ること、コネクションを閉じることなどがあります。</t>
+      </section>
+      <section anchor="implementation-limits" numbered="true" removeInRFC="false" toc="include" pn="section-7.4">
+        <name slugifiedName="name-implementation-limits">実装の制限</name>
+        <t indent="0" pn="section-7.4-1">QPACKの実装は、整数の大きな値、整数の長いエンコーディング、長い文字列リテラルがセキュリティー上の弱点にならないようにする必要があります。</t>
+        <t indent="0" pn="section-7.4-2">実装は、受け入れる整数の値とそのエンコード後の長さに制限を設定する必要があります。
+<xref target="prefixed-integers" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください。
+同様に、文字列リテラルについて受け入れる長さにも制限を設定する必要があります。
+<xref target="string-literals" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>を参照してください。
+これらの制限は、HTTPの実装が受け入れるように設定できる最大の個々のフィールドを処理できるほど十分に大きい<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-7.4-3">実装がデコードできる値よりも大きい値に遭遇した場合、これはリクエストストリーム上であればQPACK_DECOMPRESSION_FAILEDタイプのストリームエラーとして、エンコーダーストリームまたはデコーダーストリーム上であれば適切なタイプのコネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">この文書では、<xref target="HTTP3" format="default" sectionFormat="of" derivedContent="HTTP/3"/>で定義されたレジストリーに複数の登録を行います。
+この文書によって作成される割り当てには、すべてpermanentのステータスが割り当てられ、変更管理者としてIETFが、連絡先としてHTTPワーキンググループ（ietf-http-wg@w3.org）が記載されます。</t>
+      <section anchor="settings-registration" numbered="true" removeInRFC="false" toc="include" pn="section-8.1">
+        <name slugifiedName="name-settings-registration">設定の登録</name>
+        <t indent="0" pn="section-8.1-1">この文書では2つの設定を規定します。
+以下の表のエントリーは、<xref target="HTTP3" format="default" sectionFormat="of" derivedContent="HTTP/3"/>で確立された「HTTP/3 Settings」レジストリーに登録されます。</t>
+        <table align="center" pn="table-1">
+          <name slugifiedName="name-additions-to-the-http-3-set">「HTTP/3 Settings」レジストリーへの追加</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">Setting Name</th>
+              <th align="center" colspan="1" rowspan="1">Code</th>
+              <th align="left" colspan="1" rowspan="1">Specification</th>
+              <th align="left" colspan="1" rowspan="1">Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK_MAX_TABLE_CAPACITY</td>
+              <td align="center" colspan="1" rowspan="1">0x01</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="configuration" format="default" sectionFormat="of" derivedContent="Section 5"/></td>
+              <td align="left" colspan="1" rowspan="1">0</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK_BLOCKED_STREAMS</td>
+              <td align="center" colspan="1" rowspan="1">0x07</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="configuration" format="default" sectionFormat="of" derivedContent="Section 5"/></td>
+              <td align="left" colspan="1" rowspan="1">0</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-8.1-3">書式上の理由から、ここでの設定名は「SETTINGS_」という接頭辞を取り除いて省略しています。</t>
+      </section>
+      <section anchor="stream-type-registration" numbered="true" removeInRFC="false" toc="include" pn="section-8.2">
+        <name slugifiedName="name-stream-type-registration">ストリームタイプの登録</name>
+        <t indent="0" pn="section-8.2-1">この文書では2つのストリームタイプを規定します。
+以下の表のエントリーは、<xref target="HTTP3" format="default" sectionFormat="of" derivedContent="HTTP/3"/>で確立された「HTTP/3 Stream Types」レジストリーに登録されます。</t>
+        <table align="center" pn="table-2">
+          <name slugifiedName="name-additions-to-the-http-3-str">「HTTP/3 Stream Types」レジストリーへの追加</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">Stream Type</th>
+              <th align="center" colspan="1" rowspan="1">Code</th>
+              <th align="left" colspan="1" rowspan="1">Specification</th>
+              <th align="left" colspan="1" rowspan="1">Sender</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK Encoder Stream</td>
+              <td align="center" colspan="1" rowspan="1">0x02</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="enc-dec-stream-def" format="default" sectionFormat="of" derivedContent="Section 4.2"/></td>
+              <td align="left" colspan="1" rowspan="1">Both</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK Decoder Stream</td>
+              <td align="center" colspan="1" rowspan="1">0x03</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="enc-dec-stream-def" format="default" sectionFormat="of" derivedContent="Section 4.2"/></td>
+              <td align="left" colspan="1" rowspan="1">Both</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="error-code-registration" numbered="true" removeInRFC="false" toc="include" pn="section-8.3">
+        <name slugifiedName="name-error-code-registration">エラーコードの登録</name>
+        <t indent="0" pn="section-8.3-1">この文書では3つのエラーコードを規定します。
+以下の表のエントリーは、<xref target="HTTP3" format="default" sectionFormat="of" derivedContent="HTTP/3"/>で確立された「HTTP/3 Error Codes」レジストリーに登録されます。</t>
+        <table align="center" pn="table-3">
+          <name slugifiedName="name-additions-to-the-http-3-err">「HTTP/3 Error Codes」レジストリーへの追加</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">Name</th>
+              <th align="left" colspan="1" rowspan="1">Code</th>
+              <th align="left" colspan="1" rowspan="1">Description</th>
+              <th align="left" colspan="1" rowspan="1">Specification</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK_DECOMPRESSION_FAILED</td>
+              <td align="left" colspan="1" rowspan="1">0x0200</td>
+              <td align="left" colspan="1" rowspan="1">Decoding of a field section failed</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="error-handling" format="default" sectionFormat="of" derivedContent="Section 6"/></td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK_ENCODER_STREAM_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">0x0201</td>
+              <td align="left" colspan="1" rowspan="1">Error on the encoder stream</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="error-handling" format="default" sectionFormat="of" derivedContent="Section 6"/></td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">QPACK_DECODER_STREAM_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">0x0202</td>
+              <td align="left" colspan="1" rowspan="1">Error on the decoder stream</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="error-handling" format="default" sectionFormat="of" derivedContent="Section 6"/></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="HTTP2" to="HTTP/2"/>
+    <displayreference target="HTTP3" to="HTTP/3"/>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="HTTP" target="https://www.rfc-editor.org/info/rfc9110" quoteTitle="true" derivedAnchor="HTTP">
+          <front>
+            <title>HTTP Semantics</title>
+            <author fullname="Roy T. Fielding" initials="R" surname="Fielding" role="editor">
+              <organization showOnFrontPage="true">Adobe</organization>
+            </author>
+            <author fullname="Mark Nottingham" initials="M" surname="Nottingham" role="editor">
+              <organization showOnFrontPage="true">Fastly</organization>
+            </author>
+            <author fullname="Julian Reschke" initials="J" surname="Reschke" role="editor">
+              <organization showOnFrontPage="true">greenbytes GmbH</organization>
+            </author>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-
+   level protocol for distributed, collaborative, hypertext information
+   systems.  This document describes the overall architecture of HTTP,
+   establishes common terminology, and defines aspects of the protocol
+   that are shared by all versions.  In this definition are core
+   protocol elements, extensibility mechanisms, and the "http" and
+   "https" Uniform Resource Identifier (URI) schemes.
+
+   This document updates RFC 3864 and obsoletes RFCs 2818, 7231, 7232,
+   7233, 7235, 7538, 7615, 7694, and portions of 7230.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="97"/>
+          <seriesInfo name="RFC" value="9110"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9110"/>
+        </reference>
+        <reference anchor="HTTP3" target="https://www.rfc-editor.org/info/rfc9114" quoteTitle="true" derivedAnchor="HTTP/3">
+          <front>
+            <title>HTTP/3</title>
+            <author initials="M." surname="Bishop" fullname="Mike Bishop" role="editor">
+              <organization showOnFrontPage="true">Akamai Technologies</organization>
+            </author>
+            <date year="2022" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="9114"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9114"/>
+        </reference>
+        <reference anchor="QUIC-TRANSPORT" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="QUIC-TRANSPORT">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author fullname="J. Iyengar" initials="J." role="editor" surname="Iyengar">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Thomson" initials="M." role="editor" surname="Thomson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2021"/>
+            <abstract>
+              <t indent="0">This document defines the core of the QUIC transport protocol.  QUIC provides applications with flow-controlled streams for structured communication, low-latency connection establishment, and network path migration. QUIC includes security measures that ensure confidentiality, integrity, and availability in a range of deployment circumstances.  Accompanying documents describe the integration of TLS for key negotiation, loss detection, and an exemplary congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC2360" target="https://www.rfc-editor.org/info/rfc2360" quoteTitle="true" derivedAnchor="RFC2360">
+          <front>
+            <title>Guide for Internet Standards Writers</title>
+            <author fullname="G. Scott" initials="G." surname="Scott">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="June" year="1998"/>
+            <abstract>
+              <t indent="0">This document is a guide for Internet standard writers.  It defines those characteristics that make standards coherent, unambiguous, and easy to interpret.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="22"/>
+          <seriesInfo name="RFC" value="2360"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2360"/>
+        </reference>
+        <reference anchor="RFC7541" target="https://www.rfc-editor.org/info/rfc7541" quoteTitle="true" derivedAnchor="RFC7541">
+          <front>
+            <title>HPACK: Header Compression for HTTP/2</title>
+            <author fullname="R. Peon" initials="R." surname="Peon">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="H. Ruellan" initials="H." surname="Ruellan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2015"/>
+            <abstract>
+              <t indent="0">This specification defines HPACK, a compression format for efficiently representing HTTP header fields, to be used in HTTP/2.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7541"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7541"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="CRIME" target="http://en.wikipedia.org/w/index.php?title=CRIME&amp;oldid=660948120" quoteTitle="true" derivedAnchor="CRIME">
+          <front>
+            <title>CRIME</title>
+            <author>
+              <organization showOnFrontPage="true">Wikipedia</organization>
+            </author>
+            <date year="2015" month="May"/>
+          </front>
+        </reference>
+        <reference anchor="HTTP2" target="https://www.rfc-editor.org/info/rfc9113" quoteTitle="true" derivedAnchor="HTTP/2">
+          <front>
+            <title>HTTP/2</title>
+            <author initials="M." surname="Thomson" fullname="Martin Thomson" role="editor"/>
+            <author initials="C." surname="Benfield" fullname="Cory Benfield" role="editor"/>
+            <date year="2022" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="9113"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9113"/>
+        </reference>
+        <reference anchor="PETAL" target="http://www.pdl.cmu.edu/PDL-FTP/associated/CMU-PDL-13-106.pdf" quoteTitle="true" derivedAnchor="PETAL">
+          <front>
+            <title>PETAL: Preset Encoding Table Information Leakage</title>
+            <author initials="J." surname="Tan" fullname="Jiaqi Tan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Nahata" fullname="Jayvardhan Nahata">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="April"/>
+          </front>
+        </reference>
+        <reference anchor="RFC1951" target="https://www.rfc-editor.org/info/rfc1951" quoteTitle="true" derivedAnchor="RFC1951">
+          <front>
+            <title>DEFLATE Compressed Data Format Specification version 1.3</title>
+            <author fullname="P. Deutsch" initials="P." surname="Deutsch">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="1996"/>
+            <abstract>
+              <t indent="0">This specification defines a lossless compressed data format that compresses data using a combination of the LZ77 algorithm and Huffman coding, with efficiency comparable to the best currently available general-purpose compression methods.  This memo provides information for the Internet community.  This memo does not specify an Internet standard of any kind.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1951"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1951"/>
+        </reference>
+        <reference anchor="RFC6454" target="https://www.rfc-editor.org/info/rfc6454" quoteTitle="true" derivedAnchor="RFC6454">
+          <front>
+            <title>The Web Origin Concept</title>
+            <author fullname="A. Barth" initials="A." surname="Barth">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="December" year="2011"/>
+            <abstract>
+              <t indent="0">This document defines the concept of an "origin", which is often used as the scope of authority or privilege by user agents.  Typically, user agents isolate content retrieved from different origins to prevent malicious web site operators from interfering with the operation of benign web sites.  In addition to outlining the principles that underlie the concept of origin, this document details how to determine the origin of a URI and how to serialize an origin into a string.  It also defines an HTTP header field, named "Origin", that indicates which origins are associated with an HTTP request.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6454"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6454"/>
+        </reference>
+        <reference anchor="TLS" target="https://www.rfc-editor.org/info/rfc8446" quoteTitle="true" derivedAnchor="TLS">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+            <author fullname="E. Rescorla" initials="E." surname="Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="2018"/>
+            <abstract>
+              <t indent="0">This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t>
+              <t indent="0">This document updates RFCs 5705 and 6066, and obsoletes RFCs 5077, 5246, and 6961.  This document also specifies new requirements for TLS 1.2 implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8446"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="static-table" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-static-table-2">静的テーブル</name>
+      <t indent="0" pn="section-appendix.a-1">このテーブルは、2018年の実際のインターネットトラフィックを分析し、サポートされていない値や非標準の値の一部を除外したうえで、最も一般的なヘッダーフィールドを含めることによって生成されました。
+この方法論のため、一部のエントリーは一貫性がなかったり、似ているが同一ではない値で複数回現れたりすることがあります。
+エントリーの順序は、最も一般的なヘッダーフィールドを最小のバイト数でエンコードできるように最適化されています。</t>
+      <table align="center" pn="table-4">
+        <name slugifiedName="name-static-table-3">静的テーブル</name>
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">インデックス</th>
+            <th align="left" colspan="1" rowspan="1">名前</th>
+            <th align="left" colspan="1" rowspan="1">値</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">0</td>
+            <td align="left" colspan="1" rowspan="1">:authority</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">1</td>
+            <td align="left" colspan="1" rowspan="1">:path</td>
+            <td align="left" colspan="1" rowspan="1">/</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">2</td>
+            <td align="left" colspan="1" rowspan="1">age</td>
+            <td align="left" colspan="1" rowspan="1">0</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">3</td>
+            <td align="left" colspan="1" rowspan="1">content-disposition</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">4</td>
+            <td align="left" colspan="1" rowspan="1">content-length</td>
+            <td align="left" colspan="1" rowspan="1">0</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">5</td>
+            <td align="left" colspan="1" rowspan="1">cookie</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">6</td>
+            <td align="left" colspan="1" rowspan="1">date</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">7</td>
+            <td align="left" colspan="1" rowspan="1">etag</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">8</td>
+            <td align="left" colspan="1" rowspan="1">if-modified-since</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">9</td>
+            <td align="left" colspan="1" rowspan="1">if-none-match</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">10</td>
+            <td align="left" colspan="1" rowspan="1">last-modified</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">11</td>
+            <td align="left" colspan="1" rowspan="1">link</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">12</td>
+            <td align="left" colspan="1" rowspan="1">location</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">13</td>
+            <td align="left" colspan="1" rowspan="1">referer</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">14</td>
+            <td align="left" colspan="1" rowspan="1">set-cookie</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">15</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">CONNECT</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">16</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">DELETE</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">17</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">GET</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">18</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">HEAD</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">19</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">OPTIONS</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">20</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">POST</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">21</td>
+            <td align="left" colspan="1" rowspan="1">:method</td>
+            <td align="left" colspan="1" rowspan="1">PUT</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">22</td>
+            <td align="left" colspan="1" rowspan="1">:scheme</td>
+            <td align="left" colspan="1" rowspan="1">http</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">23</td>
+            <td align="left" colspan="1" rowspan="1">:scheme</td>
+            <td align="left" colspan="1" rowspan="1">https</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">24</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">103</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">25</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">200</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">26</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">304</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">27</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">404</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">28</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">503</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">29</td>
+            <td align="left" colspan="1" rowspan="1">accept</td>
+            <td align="left" colspan="1" rowspan="1">*/*</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">30</td>
+            <td align="left" colspan="1" rowspan="1">accept</td>
+            <td align="left" colspan="1" rowspan="1">application/dns-message</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">31</td>
+            <td align="left" colspan="1" rowspan="1">accept-encoding</td>
+            <td align="left" colspan="1" rowspan="1">gzip, deflate, br</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">32</td>
+            <td align="left" colspan="1" rowspan="1">accept-ranges</td>
+            <td align="left" colspan="1" rowspan="1">bytes</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">33</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-headers</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">34</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-headers</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">35</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-origin</td>
+            <td align="left" colspan="1" rowspan="1">*</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">36</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">max-age=0</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">37</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">max-age=2592000</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">38</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">max-age=604800</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">39</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">no-cache</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">40</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">no-store</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">41</td>
+            <td align="left" colspan="1" rowspan="1">cache-control</td>
+            <td align="left" colspan="1" rowspan="1">public, max-age=31536000</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">42</td>
+            <td align="left" colspan="1" rowspan="1">content-encoding</td>
+            <td align="left" colspan="1" rowspan="1">br</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">43</td>
+            <td align="left" colspan="1" rowspan="1">content-encoding</td>
+            <td align="left" colspan="1" rowspan="1">gzip</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">44</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">application/dns-message</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">45</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">application/javascript</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">46</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">application/json</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">47</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">application/x-www-form-urlencoded</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">48</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">image/gif</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">49</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">image/jpeg</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">50</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">image/png</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">51</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">text/css</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">52</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">text/html; charset=utf-8</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">53</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">text/plain</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">54</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+            <td align="left" colspan="1" rowspan="1">text/plain;charset=utf-8</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">55</td>
+            <td align="left" colspan="1" rowspan="1">range</td>
+            <td align="left" colspan="1" rowspan="1">bytes=0-</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">56</td>
+            <td align="left" colspan="1" rowspan="1">strict-transport-security</td>
+            <td align="left" colspan="1" rowspan="1">max-age=31536000</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">57</td>
+            <td align="left" colspan="1" rowspan="1">strict-transport-security</td>
+            <td align="left" colspan="1" rowspan="1">max-age=31536000; includesubdomains</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">58</td>
+            <td align="left" colspan="1" rowspan="1">strict-transport-security</td>
+            <td align="left" colspan="1" rowspan="1">max-age=31536000; includesubdomains; preload</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">59</td>
+            <td align="left" colspan="1" rowspan="1">vary</td>
+            <td align="left" colspan="1" rowspan="1">accept-encoding</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">60</td>
+            <td align="left" colspan="1" rowspan="1">vary</td>
+            <td align="left" colspan="1" rowspan="1">origin</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">61</td>
+            <td align="left" colspan="1" rowspan="1">x-content-type-options</td>
+            <td align="left" colspan="1" rowspan="1">nosniff</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">62</td>
+            <td align="left" colspan="1" rowspan="1">x-xss-protection</td>
+            <td align="left" colspan="1" rowspan="1">1; mode=block</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">63</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">100</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">64</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">204</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">65</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">206</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">66</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">302</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">67</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">400</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">68</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">403</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">69</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">421</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">70</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">425</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">71</td>
+            <td align="left" colspan="1" rowspan="1">:status</td>
+            <td align="left" colspan="1" rowspan="1">500</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">72</td>
+            <td align="left" colspan="1" rowspan="1">accept-language</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">73</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-credentials</td>
+            <td align="left" colspan="1" rowspan="1">FALSE</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">74</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-credentials</td>
+            <td align="left" colspan="1" rowspan="1">TRUE</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">75</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-headers</td>
+            <td align="left" colspan="1" rowspan="1">*</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">76</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-methods</td>
+            <td align="left" colspan="1" rowspan="1">get</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">77</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-methods</td>
+            <td align="left" colspan="1" rowspan="1">get, post, options</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">78</td>
+            <td align="left" colspan="1" rowspan="1">access-control-allow-methods</td>
+            <td align="left" colspan="1" rowspan="1">options</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">79</td>
+            <td align="left" colspan="1" rowspan="1">access-control-expose-headers</td>
+            <td align="left" colspan="1" rowspan="1">content-length</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">80</td>
+            <td align="left" colspan="1" rowspan="1">access-control-request-headers</td>
+            <td align="left" colspan="1" rowspan="1">content-type</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">81</td>
+            <td align="left" colspan="1" rowspan="1">access-control-request-method</td>
+            <td align="left" colspan="1" rowspan="1">get</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">82</td>
+            <td align="left" colspan="1" rowspan="1">access-control-request-method</td>
+            <td align="left" colspan="1" rowspan="1">post</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">83</td>
+            <td align="left" colspan="1" rowspan="1">alt-svc</td>
+            <td align="left" colspan="1" rowspan="1">clear</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">84</td>
+            <td align="left" colspan="1" rowspan="1">authorization</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">85</td>
+            <td align="left" colspan="1" rowspan="1">content-security-policy</td>
+            <td align="left" colspan="1" rowspan="1">script-src 'none'; object-src 'none'; base-uri 'none'</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">86</td>
+            <td align="left" colspan="1" rowspan="1">early-data</td>
+            <td align="left" colspan="1" rowspan="1">1</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">87</td>
+            <td align="left" colspan="1" rowspan="1">expect-ct</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">88</td>
+            <td align="left" colspan="1" rowspan="1">forwarded</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">89</td>
+            <td align="left" colspan="1" rowspan="1">if-range</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">90</td>
+            <td align="left" colspan="1" rowspan="1">origin</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">91</td>
+            <td align="left" colspan="1" rowspan="1">purpose</td>
+            <td align="left" colspan="1" rowspan="1">prefetch</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">92</td>
+            <td align="left" colspan="1" rowspan="1">server</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">93</td>
+            <td align="left" colspan="1" rowspan="1">timing-allow-origin</td>
+            <td align="left" colspan="1" rowspan="1">*</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">94</td>
+            <td align="left" colspan="1" rowspan="1">upgrade-insecure-requests</td>
+            <td align="left" colspan="1" rowspan="1">1</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">95</td>
+            <td align="left" colspan="1" rowspan="1">user-agent</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">96</td>
+            <td align="left" colspan="1" rowspan="1">x-forwarded-for</td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">97</td>
+            <td align="left" colspan="1" rowspan="1">x-frame-options</td>
+            <td align="left" colspan="1" rowspan="1">deny</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">98</td>
+            <td align="left" colspan="1" rowspan="1">x-frame-options</td>
+            <td align="left" colspan="1" rowspan="1">sameorigin</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-appendix.a-3">フィールド名や値の中に現れる改行は、書式によるものです。</t>
+    </section>
+    <section anchor="encoding-and-decoding-examples" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-encoding-and-decoding-examp">エンコードとデコードの例</name>
+      <t indent="0" pn="section-appendix.b-1">以下の例は、エンコーダーとデコーダーの間の一連のやり取りを表しています。
+これらのやり取りは、QPACKのほとんどの命令を試し、潜在的によくあるパターンと、それが動的テーブルの状態に与える影響を明らかにするように設計されています。
+エンコーダーは、それぞれ1つのフィールド行を含む3つのエンコードされたフィールドセクションと、参照されない2つの投機的な挿入を送信します。</t>
+      <t indent="0" pn="section-appendix.b-2">エンコーダーの動的テーブルの状態が、その現在のサイズとともに示されています。
+各エントリーは、エントリーの絶対インデックス（Abs）、そのエントリーへの参照を持つ未処理のエンコードされたフィールドセクションの現在の数（Ref）、および名前と値とともに示されています。
+「acknowledged」の線より上のエントリーは、デコーダーによって確認応答されています。</t>
+      <section anchor="literal-field-line-with-name-reference" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b.1">
+        <name slugifiedName="name-literal-field-line-with-name-">名前参照を持つリテラルフィールド行</name>
+        <t indent="0" pn="section-appendix.b.1-1">エンコーダーは、静的な名前参照を持つフィールドのリテラル表現を含む、エンコードされたフィールドセクションを送信します。</t>
+        <artwork align="left" pn="section-appendix.b.1-2">
+Data                | Interpretation
+                             | Encoder's Dynamic Table
+
+Stream: 0
+0000                | Required Insert Count = 0, Base = 0
+510b 2f69 6e64 6578 | Literal Field Line with Name Reference
+2e68 746d 6c        |  Static Table, Index=1
+                    |  (:path=/index.html)
+
+                              Abs Ref Name        Value
+                              ^-- acknowledged --^
+                              Size=0
+</artwork>
+      </section>
+      <section anchor="dynamic-table" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b.2">
+        <name slugifiedName="name-dynamic-table-2">動的テーブル</name>
+        <t indent="0" pn="section-appendix.b.2-1">エンコーダーは、動的テーブルの容量を設定し、動的な名前参照を持つヘッダーを挿入した後、この新しいエントリーを参照する、ブロックする可能性のあるエンコードされたフィールドセクションを送信します。
+デコーダーは、エンコードされたフィールドセクションの処理を確認応答します。
+これにより、Required Insert Countまでのすべての動的テーブルへの挿入が暗黙的に確認応答されます。</t>
+        <artwork align="left" pn="section-appendix.b.2-2">
+Stream: Encoder
+3fbd01              | Set Dynamic Table Capacity=220
+c00f 7777 772e 6578 | Insert With Name Reference
+616d 706c 652e 636f | Static Table, Index=0
+6d                  |  (:authority=www.example.com)
+c10c 2f73 616d 706c | Insert With Name Reference
+652f 7061 7468      |  Static Table, Index=1
+                    |  (:path=/sample/path)
+
+                              Abs Ref Name        Value
+                              ^-- acknowledged --^
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                              Size=106
+
+Stream: 4
+0381                | Required Insert Count = 2, Base = 0
+10                  | Indexed Field Line With Post-Base Index
+                    |  Absolute Index = Base(0) + Index(0) = 0
+                    |  (:authority=www.example.com)
+11                  | Indexed Field Line With Post-Base Index
+                    |  Absolute Index = Base(0) + Index(1) = 1
+                    |  (:path=/sample/path)
+
+                              Abs Ref Name        Value
+                              ^-- acknowledged --^
+                               0   1  :authority  www.example.com
+                               1   1  :path       /sample/path
+                              Size=106
+
+Stream: Decoder
+84                  | Section Acknowledgment (stream=4)
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                              ^-- acknowledged --^
+                              Size=106
+</artwork>
+      </section>
+      <section anchor="speculative-insert" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b.3">
+        <name slugifiedName="name-speculative-insert">投機的な挿入</name>
+        <t indent="0" pn="section-appendix.b.3-1">エンコーダーは、リテラル名を持つヘッダーを動的テーブルに挿入します。
+デコーダーはそのエントリーの受信を確認応答します。
+エンコーダーは、エンコードされたフィールドセクションを送信しません。</t>
+        <artwork align="left" pn="section-appendix.b.3-2">
+Stream: Encoder
+4a63 7573 746f 6d2d | Insert With Literal Name
+6b65 790c 6375 7374 |  (custom-key=custom-value)
+6f6d 2d76 616c 7565 |
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                              ^-- acknowledged --^
+                               2   0  custom-key  custom-value
+                              Size=160
+
+Stream: Decoder
+01                  | Insert Count Increment (1)
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                               2   0  custom-key  custom-value
+                              ^-- acknowledged --^
+                              Size=160
+
+</artwork>
+      </section>
+      <section anchor="duplicate-instruction-stream-cancellation" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b.4">
+        <name slugifiedName="name-duplicate-instruction-strea">Duplicate命令、Stream Cancellation</name>
+        <t indent="0" pn="section-appendix.b.4-1">エンコーダーは、動的テーブル内の既存のエントリーを複製し、その後、複製されたエントリーを含む動的テーブルのエントリーを参照する、エンコードされたフィールドセクションを送信します。
+エンコーダーストリームのデータを含むパケットは遅延します。
+そのパケットが到着する前に、デコーダーはストリームをキャンセルし、エンコードされたフィールドセクションが処理されなかったことをエンコーダーに通知します。</t>
+        <artwork align="left" pn="section-appendix.b.4-2">
+Stream: Encoder
+02                  | Duplicate (Relative Index = 2)
+                    |  Absolute Index =
+                    |   Insert Count(3) - Index(2) - 1 = 0
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                               2   0  custom-key  custom-value
+                              ^-- acknowledged --^
+                               3   0  :authority  www.example.com
+                              Size=217
+
+Stream: 8
+0500                | Required Insert Count = 4, Base = 4
+80                  | Indexed Field Line, Dynamic Table
+                    |  Absolute Index = Base(4) - Index(0) - 1 = 3
+                    |  (:authority=www.example.com)
+c1                  | Indexed Field Line, Static Table Index = 1
+                    |  (:path=/)
+81                  | Indexed Field Line, Dynamic Table
+                    |  Absolute Index = Base(4) - Index(1) - 1 = 2
+                    |  (custom-key=custom-value)
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                               2   1  custom-key  custom-value
+                              ^-- acknowledged --^
+                               3   1  :authority  www.example.com
+                              Size=217
+
+Stream: Decoder
+48                  | Stream Cancellation (Stream=8)
+
+                              Abs Ref Name        Value
+                               0   0  :authority  www.example.com
+                               1   0  :path       /sample/path
+                               2   0  custom-key  custom-value
+                              ^-- acknowledged --^
+                               3   0  :authority  www.example.com
+                              Size=217
+</artwork>
+      </section>
+      <section anchor="dynamic-table-insert-eviction" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b.5">
+        <name slugifiedName="name-dynamic-table-insert-evicti">動的テーブルへの挿入、追い出し</name>
+        <t indent="0" pn="section-appendix.b.5-1">エンコーダーは、別のヘッダーを動的テーブルに挿入し、それによって最も古いエントリーが追い出されます。
+エンコーダーは、エンコードされたフィールドセクションを送信しません。</t>
+        <artwork align="left" pn="section-appendix.b.5-2">
+Stream: Encoder
+810d 6375 7374 6f6d | Insert With Name Reference
+2d76 616c 7565 32   |  Dynamic Table, Relative Index = 1
+                    |  Absolute Index =
+                    |   Insert Count(4) - Index(1) - 1 = 2
+                    |  (custom-key=custom-value2)
+
+                              Abs Ref Name        Value
+                               1   0  :path       /sample/path
+                               2   0  custom-key  custom-value
+                              ^-- acknowledged --^
+                               3   0  :authority  www.example.com
+                               4   0  custom-key  custom-value2
+                              Size=215
+</artwork>
+      </section>
+    </section>
+    <section anchor="sample-single-pass-encoding-algorithm" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-sample-single-pass-encoding">シングルパスのエンコードアルゴリズムの例</name>
+      <t indent="0" pn="section-appendix.c-1">シングルパスのエンコードの疑似コードです。
+重複の処理、ノンブロッキングモード、利用可能なエンコーダーストリームのフロー制御、参照の追跡は除いています。</t>
+      <sourcecode type="pseudocode" markers="false" pn="section-appendix.c-2">
+# Helper functions:
+# ====
+# Encode an integer with the specified prefix and length
+encodeInteger(buffer, prefix, value, prefixLength)
+
+# Encode a dynamic table insert instruction with optional static
+# or dynamic name index (but not both)
+encodeInsert(buffer, staticNameIndex, dynamicNameIndex, fieldLine)
+
+# Encode a static index reference
+encodeStaticIndexReference(buffer, staticIndex)
+
+# Encode a dynamic index reference relative to Base
+encodeDynamicIndexReference(buffer, dynamicIndex, base)
+
+# Encode a literal with an optional static name index
+encodeLiteral(buffer, staticNameIndex, fieldLine)
+
+# Encode a literal with a dynamic name index relative to Base
+encodeDynamicLiteral(buffer, dynamicNameIndex, base, fieldLine)
+
+# Encoding Algorithm
+# ====
+base = dynamicTable.getInsertCount()
+requiredInsertCount = 0
+for line in fieldLines:
+  staticIndex = staticTable.findIndex(line)
+  if staticIndex is not None:
+    encodeStaticIndexReference(streamBuffer, staticIndex)
+    continue
+
+  dynamicIndex = dynamicTable.findIndex(line)
+  if dynamicIndex is None:
+    # No matching entry.  Either insert+index or encode literal
+    staticNameIndex = staticTable.findName(line.name)
+    if staticNameIndex is None:
+       dynamicNameIndex = dynamicTable.findName(line.name)
+
+    if shouldIndex(line) and dynamicTable.canIndex(line):
+      encodeInsert(encoderBuffer, staticNameIndex,
+                   dynamicNameIndex, line)
+      dynamicIndex = dynamicTable.add(line)
+
+  if dynamicIndex is None:
+    # Could not index it, literal
+    if dynamicNameIndex is not None:
+      # Encode literal with dynamic name, possibly above Base
+      encodeDynamicLiteral(streamBuffer, dynamicNameIndex,
+                           base, line)
+      requiredInsertCount = max(requiredInsertCount,
+                                dynamicNameIndex)
+    else:
+      # Encodes a literal with a static name or literal name
+      encodeLiteral(streamBuffer, staticNameIndex, line)
+  else:
+    # Dynamic index reference
+    assert(dynamicIndex is not None)
+    requiredInsertCount = max(requiredInsertCount, dynamicIndex)
+    # Encode dynamicIndex, possibly above Base
+    encodeDynamicIndexReference(streamBuffer, dynamicIndex, base)
+
+# encode the prefix
+if requiredInsertCount == 0:
+  encodeInteger(prefixBuffer, 0x00, 0, 8)
+  encodeInteger(prefixBuffer, 0x00, 0, 7)
+else:
+  wireRIC = (
+    requiredInsertCount
+    % (2 * getMaxEntries(maxTableCapacity))
+  ) + 1;
+  encodeInteger(prefixBuffer, 0x00, wireRIC, 8)
+  if base &gt;= requiredInsertCount:
+    encodeInteger(prefixBuffer, 0x00,
+                  base - requiredInsertCount, 7)
+  else:
+    encodeInteger(prefixBuffer, 0x80,
+                  requiredInsertCount - base - 1, 7)
+
+return encoderBuffer, prefixBuffer + streamBuffer
+</sourcecode>
+    </section>
+    <section numbered="false" anchor="acknowledgments" removeInRFC="false" toc="include" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.d-1">IETF QUICワーキンググループは、多くの人々から非常に多くの支援を受けました。</t>
+      <t indent="0" pn="section-appendix.d-2">圧縮設計チームは、問題領域の探究に多大な作業を行い、この文書の最初のドラフト版に影響を与えました。
+設計チームのメンバーである<contact fullname="Roberto Peon"/>、<contact fullname="Martin Thomson"/>、<contact fullname="Dmitri Tikhonov"/>の貢献に深く感謝します。</t>
+      <t indent="0" pn="section-appendix.d-3">以下の人々も、この文書に多大な貢献をしました：</t>
+      <ul spacing="compact" bare="false" empty="false" indent="3" pn="section-appendix.d-4">
+        <li pn="section-appendix.d-4.1">
+          <t indent="0" pn="section-appendix.d-4.1.1"><contact fullname="Bence Beky"/></t>
+        </li>
+        <li pn="section-appendix.d-4.2">
+          <t indent="0" pn="section-appendix.d-4.2.1"><contact fullname="Alessandro Ghedini"/></t>
+        </li>
+        <li pn="section-appendix.d-4.3">
+          <t indent="0" pn="section-appendix.d-4.3.1"><contact fullname="Ryan Hamilton"/></t>
+        </li>
+        <li pn="section-appendix.d-4.4">
+          <t indent="0" pn="section-appendix.d-4.4.1"><contact fullname="Robin Marx"/></t>
+        </li>
+        <li pn="section-appendix.d-4.5">
+          <t indent="0" pn="section-appendix.d-4.5.1"><contact fullname="Patrick McManus"/></t>
+        </li>
+        <li pn="section-appendix.d-4.6">
+          <t indent="0" pn="section-appendix.d-4.6.1"><contact asciiFullname="Kazuho Oku" fullname="奥 一穂"/></t>
+        </li>
+        <li pn="section-appendix.d-4.7">
+          <t indent="0" pn="section-appendix.d-4.7.1"><contact fullname="Lucas Pardue"/></t>
+        </li>
+        <li pn="section-appendix.d-4.8">
+          <t indent="0" pn="section-appendix.d-4.8.1"><contact fullname="Biren Roy"/></t>
+        </li>
+        <li pn="section-appendix.d-4.9">
+          <t indent="0" pn="section-appendix.d-4.9.1"><contact fullname="Ian Swett"/></t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-appendix.d-5">この文書は、<xref target="RFC7541" format="default" sectionFormat="of" derivedContent="RFC7541"/>のテキストを大いに参考にしています。
+その著者たちの間接的な貢献にも深く感謝します。</t>
+      <t indent="0" pn="section-appendix.d-6"><contact fullname="Buck Krasic"/>の貢献は、Googleに在籍していた間、同社によって支援されました。</t>
+      <t indent="0" pn="section-appendix.d-7"><contact fullname="Mike Bishop"/>の貢献の一部は、Microsoftに在籍していた間、同社によって支援されました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.e">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="C." surname="Krasic" fullname="Charles 'Buck' Krasic">
+        <organization showOnFrontPage="true"/>
+        <address>
+          <email>krasic@acm.org</email>
+        </address>
+      </author>
+      <author initials="M." surname="Bishop" fullname="Mike Bishop">
+        <organization showOnFrontPage="true">Akamai Technologies</organization>
+        <address>
+          <email>mbishop@evequefou.be</email>
+        </address>
+      </author>
+      <author initials="A." surname="Frindell" fullname="Alan Frindell" role="editor">
+        <organization showOnFrontPage="true">Facebook</organization>
+        <address>
+          <email>afrind@fb.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

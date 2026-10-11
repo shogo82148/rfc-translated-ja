@@ -7,7 +7,7 @@ argument-hint: <rfc-number>
 # RFC の翻訳
 
 引数で指定された RFC 番号（以下 `N`）を翻訳します。
-作業前に [AGENTS.md](../../../AGENTS.md)、[bcp14.md](../../../bcp14.md)、[boilerplate.md](../../../boilerplate.md)、[.textlintrc.json](../../../.textlintrc.json) を読んでください。
+作業前に [AGENTS.md](../../../AGENTS.md)、[bcp14.md](../../../bcp14.md)、[boilerplate.md](../../../boilerplate.md)、[glossary.md](../../../glossary.md)、[.textlintrc.json](../../../.textlintrc.json) を読んでください。
 訳語や文体に迷ったら、既存の訳（例: `src/ja/rfc9457.xml`、`src/ja/rfc9651.xml`）を参考にしてください。
 
 ## 1. 準備
@@ -76,7 +76,7 @@ argument-hint: <rfc-number>
 - 文体は「ですます調」で統一します。
 - BCP14 キーワードは `<bcp14>しなければなりません（MUST）</bcp14>` の形式にします（[bcp14.md](../../../bcp14.md)）。
 - -er、-or、-ar、-y で終わる語のカタカナ表記は長音をつけます（セキュリティー、サーバー、パラメーターなど）。
-- 用語は [.textlintrc.json](../../../.textlintrc.json) の辞書に従います。
+- 用語は [glossary.md](../../../glossary.md)（翻訳メモリー）と [.textlintrc.json](../../../.textlintrc.json) の辞書に従います。
 - 初出の専門用語は必要に応じて「認可サーバー（authorization server）」のように原語を併記します。
 
 ### 進め方

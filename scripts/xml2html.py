@@ -24,15 +24,15 @@ def wrap_ascii(tag, name, ascii, role='', classes=None):
     role = ('','') if role in ['',None] else (', ', role)
     if ascii:
         e = build(tag,
-                build.span(name, classes='non-ascii'),
+                build.span(name, {'class': 'non-ascii'}),
                 ' (',
-                build.span(ascii, classes='ascii'),
+                build.span(ascii, {'class': 'ascii'}),
                 ')',
-                *role,
-                classes=classes
+                *role
             )
     else:
         e = build(tag, name, *role)
+    if classes:
         e.set('class', classes)
     return e
 

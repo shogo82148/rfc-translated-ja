@@ -823,6 +823,10 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
+                if not x.get('derivedContent'):
+                    # <xref>見出し<tt>...</tt></xref> のように子要素を含む場合
+                    for c in x:
+                        self.render1(a, c)
                 a.tail = x.tail
                 h.append(a)
                 return a
@@ -872,9 +876,38 @@ class HtmlWriter:
                 span.tail = x.tail
                 return span
             elif format == 'parens':
-                pass # TODO
+                # e.g. [RFC9999] (Section 2.3)
+                span = build('span')
+                h.append(span)
+                span.text = '%s['%exptext
+                a1 = build('a', href='#%s-%s'%(target, self.lang))
+                a1.text = reftext
+                a1.tail = '] ('
+                span.append(a1)
+                a2 = build('a', href=link)
+                a2.text = '%s %s' % (label, section)
+                a2.tail = ')'
+                span.append(a2)
+                span.tail = x.tail
+                return span
             elif format == 'bare':
-                pass # TODO
+                # e.g. 2.3 (Protocol Overview)
+                a = build('a', href=link)
+                a.text = section
+                if exptext or len(x):
+                    span = build('span')
+                    span.append(a)
+                    a.tail = ' ('
+                    a2 = build('a', href=link)
+                    a2.text = exptext.strip()
+                    for c in x:
+                        self.render1(a2, c)
+                    a2.tail = ')'
+                    span.append(a2)
+                    a = span
+                a.tail = x.tail
+                h.append(a)
+                return a
 
             a = build('a', href='#%s-%s'%(target, self.lang))
             a.text = reftext
@@ -1132,8 +1165,14 @@ class HtmlWriter:
     def render1_li(self, h, x):
         li = build('li')
         h.append(li)
+        anchor = x.get('anchor')
+        if anchor:
+            li.append(build('span', id='%s-%s'%(anchor,self.lang)))
         if x.text:
-            li.text = x.text
+            if len(li):
+                li[-1].tail = x.text
+            else:
+                li.text = x.text
         if x.tail:
             li.tail = x.tail
         for c in x:
@@ -1210,6 +1249,11 @@ class HtmlWriter:
 
         figure = build('figure')
         h.append(figure)
+
+        anchor = x.get('anchor')
+        if anchor:
+            figure.append(build('span', id='%s-%s'%(anchor,self.lang)))
+
         for c in x:
             self.render1(figure, c)
 
@@ -1231,6 +1275,8 @@ class HtmlWriter:
     def render1_blockquote(self, h, x):
         quote = build('blockquote')
         h.append(quote)
+        if x.text:
+            quote.text = x.text
         for c in x:
             self.render1(quote, c)
         return quote
@@ -1256,13 +1302,34 @@ class HtmlWriter:
             self.render1(hh, c)
         return section
 
+    # 参考文献のグループ（BCP など）
+    def render1_referencegroup(self, h, x):
+        dt = build('dt', id='%s-%s'%(x.get('anchor'),self.lang))
+        h.append(dt)
+        dt.text = '[%s]' % x.get('derivedAnchor')
+        dd = build('dd')
+        dd.set('class', 'break')
+        h.append(dd)
+        for c in x:
+            if c.tag == 'reference':
+                self.render1(dd, c)
+        target = x.get('target')
+        if target:
+            div = build('div')
+            dd.append(div)
+            a = build('a', href=target)
+            a.text = target
+            div.text = '<'
+            div.append(a)
+            a.tail = '>'
+        return dt
+
     # 参考文献
     def render1_reference(self, h, x):
         p = x.getparent()
         if p.tag == 'referencegroup':
-            div = build(div, id='%s-%s'%(x.get('anchor'),self.lang))
+            div = build('div', id='%s-%s'%(x.get('anchor'),self.lang))
             h.append(div)
-            div.text = x.div
             outer = div
             inner = div
         else:

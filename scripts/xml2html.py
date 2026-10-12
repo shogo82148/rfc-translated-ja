@@ -823,6 +823,10 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
+                if not x.get('derivedContent'):
+                    # <xref>見出し<tt>...</tt></xref> のように子要素を含む場合
+                    for c in x:
+                        self.render1(a, c)
                 a.tail = x.tail
                 h.append(a)
                 return a

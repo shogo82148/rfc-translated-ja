@@ -194,7 +194,7 @@ sub parseT($s) {
             $row =~ s/\|\s*$//;
             my @cells = split /\s*[|]\s*/, $row;
             if ($is_body) {
-                if ($cells[0]) {
+                if ($cells[0] || !@tbody) {
                     push @tbody, [@cells];
                 } else {
                     # 一列目は見出し列として扱う

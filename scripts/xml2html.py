@@ -36,6 +36,48 @@ def wrap_ascii(tag, name, ascii, role='', classes=None):
         e.set('class', classes)
     return e
 
+def postal_lines(postal):
+    """Build div elements for each line of a <postal> address, similar to xml2rfc's HTML output"""
+    def text_of(e):
+        return clean_text(''.join(e.itertext())).strip() if e is not None else ''
+
+    def span(e, cls):
+        s = build.span(text_of(e))
+        s.set('class', cls)
+        return s
+
+    lines = []
+    postal_line = [ e for e in postal.findall('postalLine') if text_of(e) ]
+    if postal_line:
+        for e in postal_line:
+            lines.append(build.div(span(e, 'extended-address')))
+        return lines
+
+    for tag, cls in (('extaddr', 'extended-address'), ('street', 'street-address'), ('pobox', 'post-office-box')):
+        for e in postal.findall(tag):
+            if text_of(e):
+                lines.append(build.div(span(e, cls)))
+
+    # 市区町村・州・郵便番号は "City, Region Code" の形で 1 行にまとめる
+    parts = []
+    for tag, cls, sep in (('city', 'locality', ''), ('region', 'region', ', '), ('code', 'postal-code', ' ')):
+        e = postal.find(tag)
+        if text_of(e):
+            parts.append((sep if parts else '', span(e, cls)))
+    if parts:
+        div = build.div()
+        for sep, s in parts:
+            if sep:
+                if len(div):
+                    div[-1].tail = sep
+            div.append(s)
+        lines.append(div)
+
+    country = postal.find('country')
+    if text_of(country):
+        lines.append(build.div(span(country, 'country-name')))
+    return lines
+
 def clean_text(s):
     """Replace internal use code points and various other special code points with plain equivalents"""
     # spaces
@@ -1389,6 +1431,31 @@ class HtmlWriter:
                 org_div.set('class', 'author-org')
                 org_div.text = org
                 card.append(org_div)
+
+            # 郵送先住所
+            postal = x.find('address/postal')
+            if postal is not None:
+                for line in postal_lines(postal):
+                    line.set('class', 'author-postal')
+                    card.append(line)
+
+            # 電話番号・FAX 番号
+            for tag, label, cls in (('phone', 'Phone', 'author-phone'), ('facsimile', 'Fax', 'author-fax')):
+                for c in x.findall('address/%s' % tag):
+                    number = clean_text(''.join(c.itertext())).strip()
+                    if not number:
+                        continue
+                    div = build('div')
+                    div.set('class', cls)
+                    span = build('span')
+                    span.text = '%s:' % label
+                    span.tail = ' '
+                    div.append(span)
+                    scheme = 'tel' if tag == 'phone' else 'fax'
+                    a = build('a', href='%s:%s' % (scheme, re.sub(r'[^0-9+]', '', number)))
+                    a.text = number
+                    div.append(a)
+                    card.append(div)
 
             # メールアドレス（複数可）
             for email in x.findall('.//email'):

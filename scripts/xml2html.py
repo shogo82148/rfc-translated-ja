@@ -684,6 +684,27 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 補足（注記など）
+    def render_aside(self, h, en, ja):
+        parent = build('div')
+        h.append(parent)
+        parent.set('class', 'row')
+
+        # 英語
+        div_en = build('div', lang='en')
+        div_en.set('class', 'col')
+        parent.append(div_en)
+        self.lang = 'en'
+        self.render1(div_en, en)
+
+        # 日本語
+        div_ja = build('div', lang='ja')
+        div_ja.set('class', 'col')
+        parent.append(div_ja)
+        self.lang = 'ja'
+        self.render1(div_ja, ja)
+        return h
+
     # 文章の最後
     def render_back(self, h, en, ja):
         for (c0, c1) in zip(en, ja):
@@ -1005,6 +1026,17 @@ class HtmlWriter:
         return code
 
     # 強調
+    def render1_strong(self, h, x):
+        strong = build('strong')
+        h.append(strong)
+        if x.text:
+            strong.text = x.text
+        if x.tail:
+            strong.tail = x.tail
+        for c in x:
+            self.render1(strong, c)
+        return strong
+
     def render1_em(self, h, x):
         em = build('em')
         h.append(em)
@@ -1202,6 +1234,13 @@ class HtmlWriter:
         for c in x:
             self.render1(quote, c)
         return quote
+
+    def render1_aside(self, h, x):
+        aside = build('aside')
+        h.append(aside)
+        for c in x:
+            self.render1(aside, c)
+        return aside
 
     def render1_references(self, h, x):
         self.part = x.tag

@@ -1,6 +1,6 @@
 ---
 name: translate-rfc
-description: src/rfcs/rfc<番号>.xml を日本語に翻訳して src/ja/rfc<番号>.xml を作成し、Makefile と docs/index.html に登録して HTML を生成する。「RFC NNNN を翻訳して」と依頼されたときに使う。
+description: src/rfcs/rfc<番号>.xml（XML がなければ src/rfcs/rfc<番号>.txt）を日本語に翻訳して src/ja/rfc<番号>.xml を作成し、Makefile と docs/index.html に登録して HTML を生成する。「RFC NNNN を翻訳して」と依頼されたときに使う。
 argument-hint: <rfc-number>
 ---
 
@@ -13,8 +13,46 @@ argument-hint: <rfc-number>
 ## 1. 準備
 
 - `src/ja/rfcN.xml` がすでに存在する場合は、何もせずに終了してください。
-- `src/rfcs/rfcN.xml` が存在しない場合はエラーとして終了してください（TXT 形式の RFC はこのスキルの対象外です）。
-- `cp src/rfcs/rfcN.xml src/ja/rfcN.xml` で英語原文をコピーし、このファイルをその場で翻訳します。
+- `src/rfcs/rfcN.xml` が存在する場合は、`cp src/rfcs/rfcN.xml src/ja/rfcN.xml` で英語原文をコピーし、このファイルをその場で翻訳します。
+- `src/rfcs/rfcN.xml` がなく `src/rfcs/rfcN.txt` だけがある場合は、次の「TXT 形式の RFC の場合」の手順で英語 XML を作ってから翻訳します。
+- どちらも存在しない場合はエラーとして終了してください。
+
+### TXT 形式の RFC の場合
+
+古い RFC は TXT 形式の原本しかありません。`scripts/txt2xml.pl` で TXT から英語 XML を生成し、変換の崩れを手で直した差分を `src/patches/rfcN.patch` として保存します（`Makefile` は `txt2xml.pl` の出力にこのパッチを当てて `src/en/rfcN.xml` を作ります）。
+
+1. パッチを当てない素の出力を生成します。
+
+   ```bash
+   RFC_NO_PATCH=1 scripts/txt2xml.pl N > src/en/rfcN.xml
+   ```
+
+   `src/en/` は gitignore されています。比較用に同じ出力をスクラッチパッドにも `rfcN.raw.xml` として保存しておきます。
+2. **生成結果を原文 TXT と必ず突き合わせてください。** `txt2xml.pl` は TXT を完全には再現できません。過去に見つかった崩れの例は次のとおりです。
+   - 本文の欠落: 行頭から始まるラベル（例: `Time:`）以降のブロックが丸ごと抜ける
+   - 見出しの取りこぼし: 付録の見出しが直前のコードブロックに混ざり、節が消える（目次の項目も欠ける）
+   - 節の順序: References が `<back>` に移され、原文の番号順（例: 6 References → 7 Security Considerations）と食い違う。原文の順序に合わせ、後続の節は `<references>` の後ろ（`<back>` 内）に置く
+   - 参考文献: URL が改行で分断されてアンカーやタイトルが空になる、著者が欠ける、xref の `target` の大文字小文字がアンカーと一致しない。`<seriesInfo>` は `value` 属性で書く（テキストで書くと HTML で `None` と表示される）
+   - 要素の種類: 定義リスト・箇条書き・注記が `<artwork>` になる、ABNF やコードが `<t>` になる、箇条書きが項目ごとに別の `<ul>` に分かれる、表がアスキーアートになる
+   - ページ境界: ページ区切りでハイフン分割された語（例: `non-` / `integral`）や、改行で切れた日付・URL
+   - 著者の連絡先が欠落する
+3. `src/en/rfcN.xml` を直します。方針は次のとおりです。
+   - 定義の一覧は `<dl>`、箇条書きは 1 つの `<ul>`、ABNF やコードは `<sourcecode type="abnf">` / `<sourcecode type="c">`、表は `<table>`、引用は `<blockquote>`（中身は `<t>` で包む）にする
+   - 本文中の `[NAME]` 形式の参照は `<xref>`、URL は `<eref>` にする
+   - 目次の付録は `<xref derivedContent="Appendix A" format="default" .../>` の形式にする（既存訳にそろえる）
+   - 著者の連絡先は `<section>` 内に `<author>` 要素で書く
+   - `pn` 属性の採番は既存の XML（例: `src/en/rfc9457.xml`）にそろえる
+4. パッチを作成し、`Makefile` と同じ手順で英語 XML が再現できることを確認します。
+
+   ```bash
+   diff -u --label '' --label '' <scratchpad>/rfcN.raw.xml src/en/rfcN.xml > src/patches/rfcN.patch
+   scripts/txt2xml.pl N | cmp - src/en/rfcN.xml
+   ```
+
+   `scripts/update-patch.pl` は全 RFC のパッチを再生成するので、ここでは使わないでください。
+5. `cp src/en/rfcN.xml src/ja/rfcN.xml` でコピーし、翻訳前に一度 `scripts/xml2html.py N` で HTML を生成して、英語側が正しく描画されることを確認します。英語 XML の構造を後から変えると、日本語訳もやり直しになります。
+
+古い RFC の「このメモのステータス」は現在の定型文と内容が異なるため、`src/ja/rfc9457.xml` から写さずに原文どおりに訳してください（例: 「この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、…」）。`Copyright (C) The Internet Society (...)` の行は英語のまま残します。Full Copyright Statement は、既存の TXT 由来の RFC にそろえて収録しません。
 
 ## 2. 翻訳
 
@@ -92,8 +130,10 @@ Python のコマンドは `venv` があれば `venv/bin/python` を使ってく�
 1. `scripts/check-translation.py N` — XML 構造と、要素ごとの BCP14 キーワード（`<bcp14>` タグ）が英語版と一致しているか確認します（構造エラーと `bcp14 mismatch` は必ず修正）。`UNTRANSLATED` と出た箇所は訳し漏れでないか確認し、レジストリー値や固有名詞など英語のままでよいもの以外は翻訳してください。
 2. `scripts/update-toc.pl` — 目次の `<xref>` のテキストを翻訳済みの見出しに合わせます。
 3. `npx textlint src/ja/rfcN.xml` — lint エラーを修正します。
-4. `scripts/register-rfc.py N` — `Makefile` と `docs/index.html` に登録します。
-5. `make docs/rfcN.html` — HTML を生成します。
+4. `scripts/register-rfc.py N` — `Makefile` と `docs/index.html` に登録します。TXT 形式の RFC では、`txt2xml.pl` のビルドルールと `update-english` ターゲットへの追加も行います。
+5. `make docs/rfcN.html` — HTML を生成します。TXT 形式の RFC では、`src/en/rfcN.xml` を削除してから実行し、TXT → パッチ → HTML の経路で生成できることを確認してください。
 
-`src/rfcs/`、`src/patches/` は編集しないでください。
+最後に、生成した HTML でページ内リンクの切れや、表・定義リスト・引用の描画漏れがないことを確認してください。
+
+`src/rfcs/` は編集しないでください。`src/patches/` は、TXT 形式の RFC で新しく `rfcN.patch` を作る場合を除いて編集しないでください。
 コミットやプッシュは、依頼されたときだけ行ってください。

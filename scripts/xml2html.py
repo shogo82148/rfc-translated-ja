@@ -869,6 +869,7 @@ class HtmlWriter:
         if x.text:
             a = build('a', href=target)
             a.text = x.text
+            a.tail = x.tail
             a.set('class', 'eref')
             h.append(a)
             return a

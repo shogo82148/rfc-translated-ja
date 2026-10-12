@@ -109,6 +109,7 @@ class HtmlWriter:
         self.metadata = metadata
         self.refname_mapping = self.get_refname_mapping()
         self.id_counts = {}
+        self.pn_ids = set()
 
     def unique_id(self, value):
         if value is None:
@@ -280,7 +281,28 @@ class HtmlWriter:
             if func == None:
                 func = self.default_renderer1
             res = func(h, x)
+            self.set_pn_id(res, x)
         return res
+
+    def set_pn_id(self, res, x):
+        """xref の参照先となる pn に対応する ID (pn-lang) を付与する"""
+        pn = x.get('pn')
+        if not pn or x.tag in ('section', 'references', 'table', 'name'):
+            return
+        if not isinstance(res, lxml.etree._Element) or not isinstance(res.tag, str):
+            return
+        pn_id = '%s-%s' % (pn, self.lang)
+        # 原文 XML で pn が重複している場合は最初の要素にのみ付与する
+        if pn_id in self.pn_ids:
+            return
+        self.pn_ids.add(pn_id)
+        if res.get('id') is None:
+            res.set('id', pn_id)
+        elif res.get('id') != pn_id:
+            span = build('span', id=pn_id)
+            span.tail = res.text
+            res.text = None
+            res.insert(0, span)
 
     def default_renderer(self, h, en, ja):
         return h
@@ -715,8 +737,12 @@ class HtmlWriter:
         header = build(tag, id=unique_name_slug, lang=self.lang)
         h.append(header)
 
+        # xref の参照先となる pn ベースのアンカー
+        pn_id = '%s-%s' % (pn, self.lang) if pn else None
+
         # セクション番号
         numbered = p.get('numbered')=='true'
+        section_id = None
         if num and numbered:
             if self.is_appendix(pn) and self.is_top_level_section(num):
                 num = 'Appendix %s' % num
@@ -726,6 +752,10 @@ class HtmlWriter:
             a_number.text = num.title()
             a_number.tail = ' '
             header.append(a_number)
+            self.pn_ids.add(section_id)
+        if pn_id and pn_id not in self.pn_ids:
+            self.pn_ids.add(pn_id)
+            header.insert(0, build('span', id=pn_id))
 
         if unique_name_slug:
             a_title = build('a', href='#%s'%unique_name_slug)

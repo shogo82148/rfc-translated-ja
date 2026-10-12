@@ -1132,8 +1132,14 @@ class HtmlWriter:
     def render1_li(self, h, x):
         li = build('li')
         h.append(li)
+        anchor = x.get('anchor')
+        if anchor:
+            li.append(build('span', id='%s-%s'%(anchor,self.lang)))
         if x.text:
-            li.text = x.text
+            if len(li):
+                li[-1].tail = x.text
+            else:
+                li.text = x.text
         if x.tail:
             li.tail = x.tail
         for c in x:
@@ -1210,6 +1216,11 @@ class HtmlWriter:
 
         figure = build('figure')
         h.append(figure)
+
+        anchor = x.get('anchor')
+        if anchor:
+            figure.append(build('span', id='%s-%s'%(anchor,self.lang)))
+
         for c in x:
             self.render1(figure, c)
 
@@ -1256,13 +1267,34 @@ class HtmlWriter:
             self.render1(hh, c)
         return section
 
+    # 参考文献のグループ（BCP など）
+    def render1_referencegroup(self, h, x):
+        dt = build('dt', id='%s-%s'%(x.get('anchor'),self.lang))
+        h.append(dt)
+        dt.text = '[%s]' % x.get('derivedAnchor')
+        dd = build('dd')
+        dd.set('class', 'break')
+        h.append(dd)
+        for c in x:
+            if c.tag == 'reference':
+                self.render1(dd, c)
+        target = x.get('target')
+        if target:
+            div = build('div')
+            dd.append(div)
+            a = build('a', href=target)
+            a.text = target
+            div.text = '<'
+            div.append(a)
+            a.tail = '>'
+        return dt
+
     # 参考文献
     def render1_reference(self, h, x):
         p = x.getparent()
         if p.tag == 'referencegroup':
-            div = build(div, id='%s-%s'%(x.get('anchor'),self.lang))
+            div = build('div', id='%s-%s'%(x.get('anchor'),self.lang))
             h.append(div)
-            div.text = x.div
             outer = div
             inner = div
         else:

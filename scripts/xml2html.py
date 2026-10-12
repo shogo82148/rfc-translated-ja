@@ -876,9 +876,38 @@ class HtmlWriter:
                 span.tail = x.tail
                 return span
             elif format == 'parens':
-                pass # TODO
+                # e.g. [RFC9999] (Section 2.3)
+                span = build('span')
+                h.append(span)
+                span.text = '%s['%exptext
+                a1 = build('a', href='#%s-%s'%(target, self.lang))
+                a1.text = reftext
+                a1.tail = '] ('
+                span.append(a1)
+                a2 = build('a', href=link)
+                a2.text = '%s %s' % (label, section)
+                a2.tail = ')'
+                span.append(a2)
+                span.tail = x.tail
+                return span
             elif format == 'bare':
-                pass # TODO
+                # e.g. 2.3 (Protocol Overview)
+                a = build('a', href=link)
+                a.text = section
+                if exptext or len(x):
+                    span = build('span')
+                    span.append(a)
+                    a.tail = ' ('
+                    a2 = build('a', href=link)
+                    a2.text = exptext.strip()
+                    for c in x:
+                        self.render1(a2, c)
+                    a2.tail = ')'
+                    span.append(a2)
+                    a = span
+                a.tail = x.tail
+                h.append(a)
+                return a
 
             a = build('a', href='#%s-%s'%(target, self.lang))
             a.text = reftext

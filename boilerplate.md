@@ -191,7 +191,7 @@ RFCエディターによって公開が承認された文書は、いずれの�
 RFC 7841のセクション2を参照してください。
 ```
 
-Experimental の場合は、先頭に「この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。」（This document defines an Experimental Protocol for the Internet community.）を付けます。
+Independent ストリームの Experimental の場合は、上記の和訳の先頭に「この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。」（This document defines an Experimental Protocol for the Internet community.）を付けます。
 
 ### 第3段落: 最新情報
 
@@ -212,7 +212,7 @@ errata, and how to provide feedback on it may be obtained at
 
 ### 古い RFC
 
-RFC 7841 以前（2016年以前）の RFC では、参照先が RFC 5741 になっています。
+RFC 7841 より前に発行された RFC では、参照先が RFC 5741 になっています。
 その場合は上記の和訳の「RFC 7841」を「RFC 5741」に置き換えてください。
 
 ## BCP14(RFC8174)

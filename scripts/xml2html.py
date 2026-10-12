@@ -1242,6 +1242,8 @@ class HtmlWriter:
     def render1_blockquote(self, h, x):
         quote = build('blockquote')
         h.append(quote)
+        if x.text:
+            quote.text = x.text
         for c in x:
             self.render1(quote, c)
         return quote

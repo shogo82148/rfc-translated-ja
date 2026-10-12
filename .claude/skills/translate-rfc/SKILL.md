@@ -39,7 +39,6 @@ argument-hint: <rfc-number>
 3. `src/en/rfcN.xml` を直します。方針は次のとおりです。
    - 定義の一覧は `<dl>`、箇条書きは 1 つの `<ul>`、ABNF やコードは `<sourcecode type="abnf">` / `<sourcecode type="c">`、表は `<table>`、引用は `<blockquote>`（中身は `<t>` で包む）にする
    - 本文中の `[NAME]` 形式の参照は `<xref>`、URL は `<eref>` にする
-   - 注記には `<aside>` を使わず `<t>` にする（`xml2html.py` は `<aside>` を描画しない）
    - 目次の付録は `<xref derivedContent="Appendix A" format="default" .../>` の形式にする（既存訳にそろえる）
    - 著者の連絡先は `<section>` 内に `<author>` 要素で書く
    - `pn` 属性の採番は既存の XML（例: `src/en/rfc9457.xml`）にそろえる

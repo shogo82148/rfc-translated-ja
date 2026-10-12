@@ -889,7 +889,7 @@ class HtmlWriter:
                 a.set('class', 'eref')
                 span = build('span')
                 span.text = '<'
-                span.tail = '>' + x.tail
+                span.tail = '>' + (x.tail or '')
                 span.append(a)
                 h.append(span)
                 return span

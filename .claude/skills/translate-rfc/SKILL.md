@@ -52,7 +52,7 @@ argument-hint: <rfc-number>
    `scripts/update-patch.pl` は全 RFC のパッチを再生成するので、ここでは使わないでください。
 5. `cp src/en/rfcN.xml src/ja/rfcN.xml` でコピーし、翻訳前に一度 `scripts/xml2html.py N` で HTML を生成して、英語側が正しく描画されることを確認します。英語 XML の構造を後から変えると、日本語訳もやり直しになります。
 
-古い RFC の「このメモのステータス」は現在の定型文と内容が異なるため、`src/ja/rfc9457.xml` から写さずに原文どおりに訳してください（例: 「この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、…」）。`Copyright (C) The Internet Society (...)` の行は英語のまま残します。Full Copyright Statement は、既存の TXT 由来の RFC にそろえて収録しません。
+古い RFC の「このメモのステータス」は現在の定型文と内容が異なるため、`src/ja/rfc9457.xml` から写さずに原文どおりに訳してください（例: 「この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、…」）。`Copyright (C) The Internet Society (...)` の行は英語のまま残します。末尾の Full Copyright Statement も削除せずに残し、見出しは「著作権表示全文」、本文は `Copyright (C) ...` の行を除いて訳してください（例: `src/ja/rfc3339.xml`）。`txt2xml.pl` は Full Copyright Statement を `<back>` 末尾の番号なしセクション（`anchor="full-copyright-statement"`）と目次項目として出力します。その後ろに続く RFC Editor の資金提供に関する「Acknowledgement」（単数形）も、目次に載らない番号なしセクション（`anchor="acknowledgement"`）として出力されるので、削除せずに「謝辞」として訳してください。どちらも原文どおり Authors' Addresses の後ろに来るよう、英語 XML を直すときは順序と `pn` の採番を確認してください。
 
 ## 2. 翻訳
 

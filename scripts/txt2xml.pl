@@ -439,7 +439,8 @@ for my $c(@contents) {
     $c =~ s/^\n*//; # 先頭の改行を削除
 
     $c =~ s/^((?:Appendix\s)?[A-Z0-9]+[.](?:[0-9]+[.])*\s\s)/\n$1/; # 章番号の前には改行が必要
-    $c =~ s/^Acknowledgements/\nAcknowledgements/; # 謝辞の前には改行が必要
+    $c =~ s/^(Acknowledgements?)$/\n$1/m; # 謝辞の前には改行が必要
+    $c =~ s/^Full Copyright Statement/\nFull Copyright Statement/; # 著作権表示全文の前には改行が必要
     $c =~ s/^(\s{3}o\s{2,})/\n$1/; # リストの前には改行が必要
     if ($c =~ /^(\s+)/) {
         my $current_indent = length($1);
@@ -473,6 +474,8 @@ my @status_of_this_memo = ();
 my @copyright_notice = ();
 my @table_of_contents = ();
 my @acknowledgements = ();
+my @full_copyright_statement = ();
+my @acknowledgement = (); # RFC Editor の資金提供に関する謝辞
 
 # 参考文献
 my $references_root = {
@@ -592,6 +595,10 @@ for my $content(@contents) {
         push @table_of_contents, $content;
     } elsif ($context eq "Acknowledgements") {
         push @acknowledgements, parseT($content);
+    } elsif ($context eq "Full Copyright Statement") {
+        push @full_copyright_statement, parseT($content);
+    } elsif ($context eq "Acknowledgement") {
+        push @acknowledgement, parseT($content);
     } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
         # 解析が大変なのでギブアップ
     } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
@@ -693,6 +700,12 @@ if (@table_of_contents) {
         say $buf '            <t indent="0" pn="section-toc.1-1.' . $num . '.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.' . $num . '"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>';
         say $buf '          </li>';
     }
+    if (@full_copyright_statement) {
+        my $num = appendix_number(scalar(@{$appendix_root->{contents}}) + (@acknowledgements ? 1 : 0));
+        say $buf '          <li pn="section-toc.1-1.' . $num . '">';
+        say $buf '            <t indent="0" pn="section-toc.1-1.' . $num . '.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.' . $num . '"/><xref derivedContent="" format="title" sectionFormat="of" target="name-full-copyright-statement">Full Copyright Statement</xref></t>';
+        say $buf '          </li>';
+    }
     say $buf '      </ul>';
     say $buf '      </section>';
     say $buf '    </toc>';
@@ -727,6 +740,28 @@ if (@acknowledgements) {
     print $buf '      <name slugifiedName="name-acknowledgements">Acknowledgements</name>'. "\n";
     for my $i(0..$#acknowledgements) {
         say $buf '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $acknowledgements[$i] . '</t>';
+    }
+    say $buf '      </section>';
+}
+
+# Full Copyright Statement
+if (@full_copyright_statement) {
+    my $num = appendix_number(scalar(@{$appendix_root->{contents}}) + (@acknowledgements ? 1 : 0));
+    print $buf '    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.' . $num . '">' . "\n";
+    print $buf '      <name slugifiedName="name-full-copyright-statement">Full Copyright Statement</name>'. "\n";
+    for my $i(0..$#full_copyright_statement) {
+        say $buf '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $full_copyright_statement[$i] . '</t>';
+    }
+    say $buf '      </section>';
+}
+
+# Acknowledgement
+if (@acknowledgement) {
+    my $num = appendix_number(scalar(@{$appendix_root->{contents}}) + (@acknowledgements ? 1 : 0) + (@full_copyright_statement ? 1 : 0));
+    print $buf '    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.' . $num . '">' . "\n";
+    print $buf '      <name slugifiedName="name-acknowledgement">Acknowledgement</name>'. "\n";
+    for my $i(0..$#acknowledgement) {
+        say $buf '        <t indent="0" pn="section-appendix.' . $num . '-' . ($i + 1) . '">' . $acknowledgement[$i] . '</t>';
     }
     say $buf '      </section>';
 }

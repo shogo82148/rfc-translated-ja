@@ -3,10 +3,12 @@
 use v5.44;
 use utf8;
 
-use JSON qw(decode_json);
+use JSON::PP qw(decode_json);
 
 sub generate_makefile(@rfc_numbers) {
     open my $fh, ">:encoding(utf8)", "Makefile" or die "failed to open: %!";
+    say $fh ".DELETE_ON_ERROR:";
+    say $fh "";
     say $fh ".PHONY: all";
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";

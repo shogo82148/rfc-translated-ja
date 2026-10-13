@@ -1,3 +1,5 @@
+.DELETE_ON_ERROR:
+
 .PHONY: all
 all: \
 	docs/rfc10065.html \

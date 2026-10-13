@@ -2,7 +2,7 @@
 
 use v5.44;
 use utf8;
-use JSON qw(decode_json);
+use JSON::PP qw(decode_json);
 use Encode qw(encode_utf8 decode_utf8);
 use Carp qw(croak);
 

@@ -280,12 +280,16 @@ sub handle_section_toc($section) {
     my $title = $section->{title};
     my $level = $title->{level};
     print $buf '  ' x ($level+4);
-    print $buf '<li pn="section-toc.1-1.' . $title->{number} . '">' . "\n";
+    # 番号なしのセクション（例: 古い RFC の References）は見出しごとに異なる識別子を使う
+    my $toc_id = $title->{number} ne q{} ? $title->{number} : $title->{anchor};
+    print $buf '<li pn="section-toc.1-1.' . $toc_id . '">' . "\n";
 
     print $buf '  ' x ($level+5);
-    print $buf '<t indent="0" keepWithNext="true" pn="section-toc.1-1.' . $title->{number} . '.1">';
-    print $buf '<xref derivedContent="' . $title->{number} . '" format="counter" sectionFormat="of" target="'. $title->{pn} .'"/>';
-    print $buf '.  ';
+    print $buf '<t indent="0" keepWithNext="true" pn="section-toc.1-1.' . $toc_id . '.1">';
+    if ($title->{number} ne q{}) {
+        print $buf '<xref derivedContent="' . $title->{number} . '" format="counter" sectionFormat="of" target="'. $title->{pn} .'"/>';
+        print $buf '.  ';
+    }
     print $buf '<xref derivedContent="" format="title" sectionFormat="of" target="' . escape($title->{slugified_name}) .'">';
     print $buf escape($title->{name});
     print $buf '</xref>';
@@ -293,7 +297,7 @@ sub handle_section_toc($section) {
 
     if (my @subsections = grep {$_->{type} =~ /^(?:section|appendix|references)$/} @{$section->{contents}}) {
         print $buf '  ' x ($level+5);
-        print $buf '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $title->{number} . '.2">';
+        print $buf '<ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.' . $toc_id . '.2">';
         print $buf "\n";
         for my $subsection(@subsections) {
             handle_section_toc($subsection);

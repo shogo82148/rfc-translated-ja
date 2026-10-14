@@ -110,6 +110,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 翻訳が途中で終わったときに原因を追えるよう、会話の内容をログに出す
+          show_full_output: true
           prompt: |
             translate-rfc スキル（.claude/skills/translate-rfc/SKILL.md）の手順に従って、
             RFC ${{ steps.pick.outputs.number }} を日本語に翻訳してください。
@@ -117,6 +119,21 @@ jobs:
           claude_args: |
             --max-turns 1000
             --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash(cp src/rfcs/*),Bash(scripts/*),Bash(python scripts/*),Bash(npx textlint *),Bash(npm run textlint*),Bash(make *),Bash(git diff*),Bash(git status*)"
+
+      - name: Check that the RFC is translated
+        if: steps.pick.outputs.number
+        env:
+          NUMBER: ${{ steps.pick.outputs.number }}
+        run: |
+          # 翻訳されていない場合は PR を作らずに失敗させる
+          if [ ! -e "src/ja/rfc$NUMBER.xml" ]; then
+            echo "::error::src/ja/rfc$NUMBER.xml was not created."
+            exit 1
+          fi
+          if cmp -s "src/rfcs/rfc$NUMBER.xml" "src/ja/rfc$NUMBER.xml"; then
+            echo "::error::src/ja/rfc$NUMBER.xml is identical to the English original. Nothing was translated."
+            exit 1
+          fi
 
       - name: Verify
         id: verify

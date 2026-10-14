@@ -101,8 +101,10 @@ all: \
 	docs/rfc6716.html \
 	docs/rfc6455.html \
 	docs/rfc5661.html \
+	docs/rfc5424.html \
 	docs/rfc4949.html \
 	docs/rfc3339.html \
+	docs/rfc3164.html \
 	docs/rfc2230.html \
 	docs/rfc2229.html \
 	docs/rfc2228.html \
@@ -512,6 +514,10 @@ docs/rfc5661.html: src/en/rfc5661.xml src/rfcs/rfc5661.json src/ja/rfc5661.xml s
 	scripts/xml2html.py 5661
 src/en/rfc5661.xml: src/rfcs/rfc5661.txt src/rfcs/rfc5661.json scripts/txt2xml.pl src/patches/rfc5661.patch
 	scripts/txt2xml.pl 5661 > $@
+docs/rfc5424.html: src/en/rfc5424.xml src/rfcs/rfc5424.json src/ja/rfc5424.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 5424
+src/en/rfc5424.xml: src/rfcs/rfc5424.txt scripts/txt2xml.pl src/patches/rfc5424.patch
+	scripts/txt2xml.pl 5424 > $@
 docs/rfc4949.html: src/en/rfc4949.xml src/rfcs/rfc4949.json src/ja/rfc4949.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 4949
 src/en/rfc4949.xml: src/rfcs/rfc4949.txt src/rfcs/rfc4949.json scripts/txt2xml.pl src/patches/rfc4949.patch
@@ -520,6 +526,10 @@ docs/rfc3339.html: src/en/rfc3339.xml src/rfcs/rfc3339.json src/ja/rfc3339.xml s
 	scripts/xml2html.py 3339
 src/en/rfc3339.xml: src/rfcs/rfc3339.txt src/rfcs/rfc3339.json scripts/txt2xml.pl src/patches/rfc3339.patch
 	scripts/txt2xml.pl 3339 > $@
+docs/rfc3164.html: src/en/rfc3164.xml src/rfcs/rfc3164.json src/ja/rfc3164.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 3164
+src/en/rfc3164.xml: src/rfcs/rfc3164.txt scripts/txt2xml.pl src/patches/rfc3164.patch
+	scripts/txt2xml.pl 3164 > $@
 docs/rfc2230.html: src/en/rfc2230.xml src/rfcs/rfc2230.json src/ja/rfc2230.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 2230
 src/en/rfc2230.xml: src/rfcs/rfc2230.txt scripts/txt2xml.pl src/patches/rfc2230.patch
@@ -588,8 +598,10 @@ update-english:
 	scripts/txt2xml.pl 6716 > src/ja/rfc6716.xml
 	scripts/txt2xml.pl 6455 > src/ja/rfc6455.xml
 	scripts/txt2xml.pl 5661 > src/ja/rfc5661.xml
+	scripts/txt2xml.pl 5424 > src/ja/rfc5424.xml
 	scripts/txt2xml.pl 4949 > src/ja/rfc4949.xml
 	scripts/txt2xml.pl 3339 > src/ja/rfc3339.xml
+	scripts/txt2xml.pl 3164 > src/ja/rfc3164.xml
 	scripts/txt2xml.pl 2230 > src/ja/rfc2230.xml
 	scripts/txt2xml.pl 2229 > src/ja/rfc2229.xml
 	scripts/txt2xml.pl 2228 > src/ja/rfc2228.xml

@@ -54,7 +54,7 @@ def update_makefile(number, from_txt):
     # add the build rules before the first RFC with a smaller number
     if from_txt:
         en_rule = (
-            'src/en/rfc{n}.xml: src/rfcs/rfc{n}.txt scripts/txt2xml.pl src/patches/rfc{n}.patch\n'
+            'src/en/rfc{n}.xml: src/rfcs/rfc{n}.txt src/rfcs/rfc{n}.json scripts/txt2xml.pl src/patches/rfc{n}.patch\n'
             '\tscripts/txt2xml.pl {n} > $@\n'
         )
     else:

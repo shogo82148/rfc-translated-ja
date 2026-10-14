@@ -1,0 +1,542 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-cat-ftpsec-09" indexInclude="true" number="2228" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-cat-ftpsec-09" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2228" rel="alternate"/>
+  <front>
+    <title>FTPセキュリティー拡張</title>
+    <seriesInfo name="RFC" value="2228" stream="IETF"/>
+    <date year="1997" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、FTP仕様であるSTD 9、RFC 959「FILE TRANSFER PROTOCOL (FTP)」（1985年10月）に対する拡張を定義します。これらの拡張は、新しい選択可能なコマンド、応答、およびファイル転送エンコーディングを導入することによって、制御チャネルとデータチャネルの両方で、強力な認証、完全性、および機密性を提供します。</t>
+      <t indent="0" pn="section-abstract-2">この仕様では、次の新しい選択可能なコマンドを導入します。</t>
+      <ul bare="false" empty="true" indent="3" spacing="compact" pn="section-abstract-3">
+        <li pn="section-abstract-3.1">AUTH（認証／セキュリティーメカニズム）</li>
+        <li pn="section-abstract-3.2">ADAT（認証／セキュリティーデータ）</li>
+        <li pn="section-abstract-3.3">PROT（データチャネル保護レベル）</li>
+        <li pn="section-abstract-3.4">PBSZ（保護バッファーサイズ）</li>
+        <li pn="section-abstract-3.5">CCC（コマンドチャネルのクリア）</li>
+        <li pn="section-abstract-3.6">MIC（完全性保護されたコマンド）</li>
+        <li pn="section-abstract-3.7">CONF（機密性保護されたコマンド）</li>
+        <li pn="section-abstract-3.8">ENC（プライバシー保護されたコマンド）</li>
+      </ul>
+      <t indent="0" pn="section-abstract-4">また、保護された応答のために、新しい応答タイプのクラス（6yz）も導入します。</t>
+      <t indent="0" pn="section-abstract-5">上記のコマンドはいずれも実装が必須ではありませんが、相互の依存関係があります。これらの依存関係は、各コマンドとともに記述しています。</t>
+      <t indent="0" pn="section-abstract-6">この仕様は、STD 9、RFC 959と互換性があることに注意してください。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (1997).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">現在STD 9、RFC 959で定義され、インターネット上で使われているファイル転送プロトコル（FTP）は、クライアントをサーバーに対して認証するために（USERコマンドとPASSコマンドによって）、平文で渡されるユーザー名とパスワードを使用します。「匿名（anonymous）」FTPアーカイブのようなサービスを除けば、これはローカルネットワークや広域ネットワークの監視によってパスワードが盗まれうるというセキュリティー上のリスクとなります。その結果、パスワードの露出によって潜在的な攻撃者を手助けすることになるか、この本質的なセキュリティーリスクを受け入れられない、または受け入れようとしないFTPサーバーによるファイルへのアクセス可能性が制限されるか、あるいはその両方になります。</t>
+      <t indent="0" pn="section-1-2">ユーザーを安全な方法で認証するという問題のほかに、サーバーの認証、機密性の高いデータの保護、およびその完全性の検証という問題もあります。攻撃者は、ネットワークを監視するだけで価値のあるデータや機密性の高いデータにアクセスできるかもしれませんし、能動的な手段によって転送中のデータを削除または改変し、その完全性を損なえるかもしれません。能動的な攻撃者は、攻撃者が選んだサイトとの間で偽のファイル転送を開始したり、サーバー上でほかのコマンドを実行したりするかもしれません。現在のFTPには、コマンド、応答、または転送されるデータの暗号化や真正性の検証のための規定がまったくありません。これらのセキュリティーサービスは、匿名のファイルアクセスに対しても価値があることに注意してください。</t>
+      <t indent="0" pn="section-1-3">ファイルを安全に送信するための現在の慣行は、一般的に次のいずれかです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-1-4">
+        <li pn="section-1-4.1" derivedCounter="1.">手動で配布された鍵であらかじめ暗号化したファイルをFTPで送る</li>
+        <li pn="section-1-4.2" derivedCounter="2.">手動で配布された鍵で暗号化したファイルをエンコードしたものを含む電子メールで送る</li>
+        <li pn="section-1-4.3" derivedCounter="3.">PEMメッセージで送る</li>
+        <li pn="section-1-4.4" derivedCounter="4.">Kerberosを使うように拡張されたrcpコマンドで送る</li>
+      </ol>
+      <t indent="0" pn="section-1-5">これらの手段はどれも事実上の標準とすら見なせるものではなく、どれも真に対話的ではありません。FTPプロトコル内で一貫した方法でサポートされ、既存のセキュリティー基盤と技術を活用する安全な方法で、FTPを使ってファイルを安全に転送する必要があります。これらのセキュリティーサービスを相互運用可能な方法でプロトコルに導入するためには、FTP仕様に対する拡張が必要です。</t>
+      <t indent="0" pn="section-1-6">FTPの制御コネクションはTelnetプロトコルに従い、Telnetには認証と暗号化のオプション<xref target="TELNET-SEC" format="default" sectionFormat="of" derivedContent="TELNET-SEC"/>が定義されていますが、<xref target="RFC-1123" format="default" sectionFormat="of" derivedContent="RFC-1123"/>は、制御コネクション上でTelnetオプションのネゴシエーションを（SynchとIPを除いて）使用することを明示的に禁止しています。</t>
+      <t indent="0" pn="section-1-7">また、Telnetの認証と暗号化のオプションは、（機密性なしの）完全性保護のみを提供することはできず、データチャネルの保護も扱っていません。</t>
+    </section>
+    <section anchor="ftp-security-overview" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-ftp-security-overview">FTPセキュリティーの概要</name>
+      <t indent="0" pn="section-2-1">最も高いレベルで見ると、FTPセキュリティー拡張は、コネクションを認証および／または認可し、コマンド、応答、データ転送を完全性および／または機密性によって保護するための抽象的なメカニズムを提供しようとするものです。</t>
+      <t indent="0" pn="section-2-2">FTPセキュリティーの文脈では、認証とは、通常は暗号技術を使って、クライアントの身元および／またはサーバーの身元を安全な方法で確立することです。基本的なFTPプロトコルには、認証という概念がありません。</t>
+      <t indent="0" pn="section-2-3">認可とは、ログインのためにユーザーを検証するプロセスです。基本的な認可プロセスには、USER、PASS、ACCTコマンドが関わります。FTPセキュリティー拡張では、セキュリティーメカニズムを使って確立された認証を、認可の判断に使用することもできます。</t>
+      <t indent="0" pn="section-2-4">セキュリティー拡張がない場合、通常理解されている意味でのクライアントの認証はまったく行われません。FTPの認可は、PASSコマンドの引数としてネットワーク上を平文で渡されるパスワードによって行われます。このパスワードの所有者は、USERコマンドで指定されたユーザーとしてファイルを転送することを認可されているとみなされますが、クライアントの身元が安全に確立されることはありません。</t>
+      <t indent="0" pn="section-2-5">FTPセキュリティーのやり取りは、クライアントがAUTHコマンドを使って、どのセキュリティーメカニズムを使いたいかをサーバーに伝えることから始まります。サーバーは、このメカニズムを受け入れるか、このメカニズムを拒否するか、あるいはセキュリティー拡張を実装していないサーバーの場合にはコマンドを完全に拒否します。クライアントは、サーバーが受け入れるメカニズムを要求するまで、複数のセキュリティーメカニズムを試せます。これにより、初歩的な形のネゴシエーションが可能になります。（より複雑なネゴシエーションが望まれる場合は、それをセキュリティーメカニズムとして実装できます。）サーバーの応答は、セキュリティーメカニズムが解釈するための追加データをクライアントが返さなければならないかどうかを示します。追加データが必要ない場合、通常は、そのメカニズムが、トークンやワンタイムパスワードシステムのように、（PASSコマンドで指定される）パスワードを異なる方法で解釈するものであることを意味します。</t>
+      <t indent="0" pn="section-2-6">サーバーが追加のセキュリティー情報を必要とする場合、クライアントとサーバーはセキュリティーデータ交換に入ります。クライアントは、セキュリティーデータの最初のブロックを含むADATコマンドを送信します。サーバーの応答は、データ交換が完了したか、エラーが発生したか、あるいはさらにデータが必要かを示します。サーバーの応答には、必要に応じて、クライアントが解釈するためのセキュリティーデータを含めることができます。さらにデータが必要な場合、クライアントは次のデータブロックを含む別のADATコマンドを送信し、サーバーの応答を待ちます。この交換は必要な回数だけ続けられます。この交換が完了すると、クライアントとサーバーはセキュリティーアソシエーションを確立したことになります。このセキュリティーアソシエーションには、使用しているメカニズムに応じて、認証（クライアント、サーバー、または相互）や、完全性および／または機密性のための鍵情報が含まれる場合があります。</t>
+      <t indent="0" pn="section-2-7">ここでの「セキュリティーデータ」という用語は慎重に選ばれています。セキュリティーデータ交換の目的は、上で説明したように、クライアントとサーバーの間にセキュリティーアソシエーションを確立することであり、そこには実際には認証がまったく含まれない場合もあります。たとえば、Diffie-Hellman交換は秘密鍵を確立しますが、認証は行われません。FTPサーバーがRSA鍵ペアを持っていてクライアントが持っていない場合、クライアントはサーバーを認証できますが、サーバーはクライアントを認証できません。</t>
+      <t indent="0" pn="section-2-8">セキュリティーアソシエーションが確立されると、そのアソシエーションの一部である認証を、ユーザーがサーバーに接続することを認可するために、標準のユーザー名／パスワード交換の代わりに、またはそれに加えて使用できます。サーバー上で使用する身元を指定するために、USERコマンドで指定されるユーザー名は常に必要です。</t>
+      <t indent="0" pn="section-2-9">攻撃者が制御ストリーム上でコマンドを挿入したり削除したりすることを防ぐために、セキュリティーアソシエーションが完全性をサポートしている場合、サーバーとクライアントは、最初にCCCコマンドを送信してこの要件を解除しない限り、制御ストリーム上で完全性保護を使用しなければなりません。完全性保護は、MICコマンドとENCコマンド、および63z応答コードによって行われます。CCCコマンドとその応答は、完全性保護を付けて送信しなければなりません。コマンドと応答を完全性なしで（つまり、平文で、または機密性のみで）送信してよいのは、セキュリティーアソシエーションが確立されていない場合、ネゴシエートされたセキュリティーアソシエーションが完全性をサポートしていない場合、またはCCCコマンドが成功した場合だけです。</t>
+      <t indent="0" pn="section-2-10">クライアントとサーバーが、データチャネル上で保護されたデータをカプセル化するための許容可能なバッファーサイズをPBSZコマンドでネゴシエートすると、セキュリティーメカニズムをデータチャネルの転送の保護にも使用できるようになります。</t>
+      <t indent="0" pn="section-2-11">ポリシーはこの文書では規定しません。特に、クライアントとサーバーの実装は、存在するセキュリティーアソシエーションに応じて、実行できる操作に制限を設けることを選択できます。たとえば、サーバーは、クライアントがパスワードを使うのではなくセキュリティーメカニズムによって認可を受けることを要求したり、クライアントがトークンからのワンタイムパスワードを提供することを要求したり、コマンドチャネル上で少なくとも完全性保護を要求したり、特定のファイルは暗号化してのみ送信することを要求したりできます。匿名FTPクライアントは、ダウンロードしたファイルの有効性を確保するために、完全性保護なしのファイル転送を拒否するかもしれません。</t>
+      <t indent="0" pn="section-2-12">次のセクションで説明する依存関係を除いて、特定の機能セットは必須ではありません。つまり、認証、完全性、機密性のいずれも実装に必須ではありません。ただし、これらのいずれも行わないメカニズムはあまり役に立ちません。たとえば、ポリシーや技術的な考慮事項によってそれが望ましいのであれば、メカニズムが完全性保護のみ、一方向の認証および／または暗号化、認証や完全性保護のない暗号化、またはその他の任意の機能のサブセットを実装することは許容されます。もちろん、一方のピアが、他方のピアが提供できるよりも強力な保護をポリシーとして要求し、完全な相互運用性が妨げられる場合もあります。</t>
+    </section>
+    <section anchor="new-ftp-commands" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-new-ftp-commands">新しいFTPコマンド</name>
+      <t indent="0" pn="section-3-1">以下のコマンドは選択可能ですが、互いに依存しています。これらは、FTPのアクセス制御コマンドに対する拡張です。</t>
+      <t indent="0" pn="section-3-2">ここに記述する応答コードは、一般に、必須ではなく推奨として記述しています。その意図は、成功と失敗のあらゆる場合を表す応答コードが存在するようにしつつ、サーバーがクライアントに提示する情報を制限できるようにすることです。たとえば、サーバーが特定のセキュリティーメカニズムを実装していても、ポリシー上の制限によってその使用を禁止している場合があります。この場合、サーバーは534応答コードで応答すべきですが、許可されていないメカニズムがサポートされていることを明かしたくない場合は、504応答コードで応答してもかまいません。サーバーが推奨されるものとは異なる応答コードを使うことを選んだ場合は、最後の桁だけが異なる応答コードを使うように努めるべきです。いずれの場合も、サーバーは、受信したコマンドから返しうるものとして記述されている応答コードを使用しなければならず、この応答コードは、その状況で推奨される応答コードと同じ桁で始まらなければなりません。</t>
+      <dl newline="true" spacing="normal" indent="3" pn="section-3-3">
+        <dt pn="section-3-3.1">認証／セキュリティーメカニズム（AUTH）</dt>
+        <dd pn="section-3-3.2">
+          <t indent="0" pn="section-3-3.2.1">引数フィールドは、サポートされるメカニズムを識別するTelnet文字列です。この文字列は大文字と小文字を区別しません。値はIANAに登録しなければなりません。ただし、「X-」で始まる値はローカルでの使用のために予約されています。</t>
+          <t indent="0" pn="section-3-3.2.2">サーバーがAUTHコマンドを認識しない場合、応答コード500で応答しなければなりません。これは、セキュリティーを考慮していない、広く展開されている多数のFTPサーバーを包含することを意図したものです。そのようなサーバーは、認識できないあらゆるコマンドに応答コード500で応答します。サーバーがAUTHコマンドを認識するものの、セキュリティー拡張を実装していない場合、応答コード502で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.2.3">サーバーが、指定されたセキュリティーメカニズムを理解しない場合、応答コード504で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.2.4">サーバーが、指定されたセキュリティーメカニズムを受け入れる意思がない場合、応答コード534で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.2.5">必要なリソースが利用できないなどの理由で、サーバーが指定されたセキュリティーメカニズムを受け入れることができない場合、応答コード431で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.2.6">サーバーが、指定されたセキュリティーメカニズムを受け入れる意思があり、セキュリティーデータを必要とする場合、応答コード334で応答しなければなりません。</t>
+          <t indent="0" pn="section-3-3.2.7">サーバーが、指定されたセキュリティーメカニズムを受け入れる意思があり、セキュリティーデータをまったく必要としない場合、応答コード234で応答しなければなりません。</t>
+          <t indent="0" pn="section-3-3.2.8">サーバーが334応答コードで応答する場合、次のセクションで説明するように、セキュリティーデータを含めてもかまいません。</t>
+          <t indent="0" pn="section-3-3.2.9">サーバーによっては、新しい認証を確立するためにAUTHコマンドを再発行することを許可します。AUTHコマンドが受け入れられると、以前のFTPセキュリティーコマンドに関連するすべての状態が削除されます。この場合、サーバーは、ユーザーに再認可（つまり、USER、PASS、ACCTコマンドの一部またはすべての再発行）を要求しなければなりません（この文脈での「認可」の説明はセクション4を参照してください）。</t>
+        </dd>
+        <dt pn="section-3-3.3">認証／セキュリティーデータ（ADAT）</dt>
+        <dd pn="section-3-3.4">
+          <t indent="0" pn="section-3-3.4.1">引数フィールドは、base64エンコードされたセキュリティーデータを表すTelnet文字列です（セクション9「Base 64 Encoding」を参照してください）。成功を示す応答コードを返す場合、サーバーは、セキュリティーデータをクライアントに送り返したいときには、「ADAT=base64data」という形式の文字列を応答のテキスト部分として使用することもできます。</t>
+          <t indent="0" pn="section-3-3.4.2">いずれの場合も、データは、直前のAUTHコマンドで指定されたセキュリティーメカニズムに固有のものです。ADATコマンドとそれに関連する応答により、クライアントとサーバーは任意のセキュリティープロトコルを実行できます。セキュリティーデータ交換には、どの選択可能な機能が利用可能かを両方のピアが把握できるだけの十分な情報を含めなければなりません。たとえば、クライアントがデータの暗号化をサポートしていない場合、サーバーがそれを把握し、暗号化されたコマンドチャネルの応答を送信しないようにしなければなりません。コマンドが削除、並べ替え、またはリプレイされないことを保証するために、セキュリティーメカニズムがコマンドチャネル上で順序付けを提供することを強く推奨します。</t>
+          <t indent="0" pn="section-3-3.4.3">ADATコマンドの前には、成功したAUTHコマンドがなければなりません。また、セキュリティーデータ交換が（成功したか失敗したかにかかわらず）完了した後は、セキュリティー状態をリセットするためのAUTHコマンドが先行しない限り、ADATコマンドを発行することはできません。</t>
+          <t indent="0" pn="section-3-3.4.4">サーバーがまだAUTHコマンドを受信していない場合、または以前のセキュリティーデータ交換が完了しているにもかかわらずセキュリティー状態がAUTHコマンドでリセットされていない場合、サーバーは応答コード503で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.4.5">サーバーが引数をbase64デコードできない場合、応答コード501で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.4.6">サーバーがセキュリティーデータを拒否する場合（たとえば、チェックサムが一致しない場合）、応答コード535で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.4.7">サーバーがセキュリティーデータを受け入れ、さらに追加のデータを必要とする場合、応答コード335で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.4.8">サーバーがセキュリティーデータを受け入れ、追加のデータを必要としない（つまり、セキュリティーデータ交換が正常に完了した）場合、応答コード235で応答しなければなりません。</t>
+          <t indent="0" pn="section-3-3.4.9">サーバーが235または335応答コードで応答する場合、上で規定したように、応答のテキスト部分にセキュリティーデータを含めてもかまいません。</t>
+          <t indent="0" pn="section-3-3.4.10">ADATコマンドがエラーを返した場合、セキュリティーデータ交換は失敗し、クライアントは内部のセキュリティー状態をリセットしなければなりません。クライアントがサーバーと同期しなくなった場合（たとえば、サーバーがAUTHコマンドに対して234応答コードを送信したが、クライアントにはまだ送信すべきデータがある場合）、クライアントはサーバーのセキュリティー状態をリセットしなければなりません。</t>
+        </dd>
+        <dt pn="section-3-3.5">保護バッファーサイズ（PBSZ）</dt>
+        <dd pn="section-3-3.6">
+          <t indent="0" pn="section-3-3.6.1">引数は、ファイル転送中に送受信されるエンコードされたデータブロックの最大サイズをバイト単位で表す10進整数です。この数値は、32ビット符号なし整数で表現できる値を超えてはなりません。</t>
+          <t indent="0" pn="section-3-3.6.2">このコマンドにより、FTPクライアントとサーバーは、そのコネクションで使用する保護されたバッファーの最大サイズをネゴシエートできます。デフォルトのサイズはありません。クライアントは、最初のPROTコマンドを発行する前にPBSZコマンドを発行しなければなりません。</t>
+          <t indent="0" pn="section-3-3.6.3">PBSZコマンドの前には、成功したセキュリティーデータ交換がなければなりません。</t>
+          <t indent="0" pn="section-3-3.6.4">サーバーが引数を解析できない場合、または引数が32ビットに収まらない場合、501応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.6.5">サーバーがクライアントとのセキュリティーデータ交換を完了していない場合、503応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.6.6">それ以外の場合、サーバーは200応答コードで応答しなければなりません。クライアントが提示したサイズがサーバーにとって大きすぎる場合、サーバーは、より小さいバッファーサイズを示すために、応答のテキスト部分で「PBSZ=number」という形式の文字列を使用しなければなりません。両方のバッファーサイズが指定された場合、クライアントとサーバーは、2つのバッファーサイズのうち小さいほうを使用しなければなりません。</t>
+        </dd>
+        <dt pn="section-3-3.7">データチャネル保護レベル（PROT）</dt>
+        <dd pn="section-3-3.8">
+          <t indent="0" pn="section-3-3.8.1">引数は、データチャネルの保護レベルを指定する単一のTelnet文字コードです。</t>
+          <t indent="0" pn="section-3-3.8.2">このコマンドは、クライアントとサーバーがどの種類のデータチャネル保護を使用するかをサーバーに示します。次のコードが割り当てられています。</t>
+          <dl newline="false" spacing="compact" indent="3" pn="section-3-3.8.3">
+            <dt pn="section-3-3.8.3.1">C -</dt>
+            <dd pn="section-3-3.8.3.2">Clear（クリア）</dd>
+            <dt pn="section-3-3.8.3.3">S -</dt>
+            <dd pn="section-3-3.8.3.4">Safe（安全）</dd>
+            <dt pn="section-3-3.8.3.5">E -</dt>
+            <dd pn="section-3-3.8.3.6">Confidential（機密）</dd>
+            <dt pn="section-3-3.8.3.7">P -</dt>
+            <dd pn="section-3-3.8.3.8">Private（プライベート）</dd>
+          </dl>
+          <t indent="0" pn="section-3-3.8.4">ほかのレベルが指定されていない場合のデフォルトの保護レベルはClearです。Clear保護レベルは、データチャネルが、セキュリティーを何も適用せずにファイル転送の生データを運ぶことを示します。Safe保護レベルは、データが完全性保護されることを示します。Confidential保護レベルは、データが機密性保護されることを示します。Private保護レベルは、データが完全性保護と機密性保護の両方をされることを示します。</t>
+          <t indent="0" pn="section-3-3.8.5">セキュリティーメカニズムがすべてのデータチャネル保護レベルを提供しないことは妥当です。また、メカニズムがあるレベルで要求されるよりも多くの保護を提供することも妥当です（たとえば、APIやその他の考慮事項のために、メカニズムがConfidential保護を提供しつつ、そのエンコーディングに完全性保護も含める場合があります）。</t>
+          <t indent="0" pn="section-3-3.8.6">PROTコマンドの前には、成功した保護バッファーサイズのネゴシエーションがなければなりません。</t>
+          <t indent="0" pn="section-3-3.8.7">サーバーが、指定された保護レベルを理解しない場合、応答コード504で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.8">現在のセキュリティーメカニズムが、指定された保護レベルをサポートしていない場合、サーバーは応答コード536で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.9">サーバーがクライアントとの保護バッファーサイズのネゴシエーションを完了していない場合、503応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.10">以前にPBSZコマンドが発行されていない場合、PROTコマンドは拒否され、サーバーは503で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.11">サーバーが、指定された保護レベルを受け入れる意思がない場合、応答コード534で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.12">必要なリソースが利用できないなどの理由で、サーバーが指定された保護レベルを受け入れることができない場合、応答コード431で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.8.13">それ以外の場合、サーバーは、指定された保護レベルが受け入れられたことを示すために、200応答コードで応答しなければなりません。</t>
+        </dd>
+        <dt pn="section-3-3.9">コマンドチャネルのクリア（CCC）</dt>
+        <dd pn="section-3-3.10">
+          <t indent="0" pn="section-3-3.10.1">このコマンドは引数を取りません。</t>
+          <t indent="0" pn="section-3-3.10.2">環境によっては、セキュリティーメカニズムを使ってクライアントとサーバーを認証および／または認可するものの、その後のコマンドについては完全性チェックを行わないことが望ましい場合があります。これは、IPセキュリティーが導入されていて、ホストが認証され、TCPストリームが改ざんされないことが保証されているものの、ユーザー認証が望まれる環境で使用されるかもしれません。</t>
+          <t indent="0" pn="section-3-3.10.3">いずれかのコネクションで保護されていないコマンドが許可されている場合、攻撃者は制御ストリームにコマンドを挿入でき、サーバーにはそのコマンドが不正なものであることを知る手段がありません。このような攻撃を防ぐために、セキュリティーデータ交換が正常に完了した後は、セキュリティーメカニズムが完全性をサポートしているならば、完全性保護されていない制御チャネルメッセージを有効にするためにCCCコマンドが発行されるまで、（MICコマンドまたはENCコマンド、および631応答または632応答による）完全性を使用しなければなりません。CCCコマンド自体は完全性保護されていなければなりません。</t>
+          <t indent="0" pn="section-3-3.10.4">CCCコマンドが正常に完了した後は、コマンドが保護されていない場合、そのコマンドに対する応答も保護してはなりません。これは、CCCコマンドが発行された後は保護をサポートしないクライアントとの相互運用性をサポートするためです。</t>
+          <t indent="0" pn="section-3-3.10.5">このコマンドの前には、成功したセキュリティーデータ交換がなければなりません。</t>
+          <t indent="0" pn="section-3-3.10.6">コマンドが完全性保護されていない場合、サーバーは533応答コードで応答しなければなりません。</t>
+          <t indent="0" pn="section-3-3.10.7">サーバーが完全性の要件を解除する意思がない場合、534応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.10.8">それ以外の場合、サーバーは、保護されていないコマンドと応答をこれ以降コマンドチャネル上で使用できることを示すために、200応答コードで応答しなければなりません。</t>
+        </dd>
+        <dt pn="section-3-3.11">完全性保護されたコマンド（MIC）、機密性保護されたコマンド（CONF）、およびプライバシー保護されたコマンド（ENC）</dt>
+        <dd pn="section-3-3.12">
+          <t indent="0" pn="section-3-3.12.1">MICの引数フィールドは、セキュリティーメカニズム固有のメッセージ完全性手順によって生成された「safe」メッセージをbase64エンコードしたものからなるTelnet文字列です。CONFの引数フィールドは、セキュリティーメカニズム固有の機密性手順によって生成された「confidential」メッセージをbase64エンコードしたものからなるTelnet文字列です。ENCの引数フィールドは、セキュリティーメカニズム固有のメッセージ完全性および機密性手順によって生成された「private」メッセージをbase64エンコードしたものからなるTelnet文字列です。</t>
+          <t indent="0" pn="section-3-3.12.2">サーバーは、エンコードされたメッセージをデコードおよび／または検証します。</t>
+          <t indent="0" pn="section-3-3.12.3">このコマンドの前には、成功したセキュリティーデータ交換がなければなりません。</t>
+          <t indent="0" pn="section-3-3.12.4">サーバーは、セキュリティーデータ交換が成功した後の最初のコマンドがCCCであることを要求し、保護コマンドをまったく実装しないこともできます。この場合、サーバーは502応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.5">サーバーが引数をbase64デコードできない場合、501応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.6">サーバーがクライアントとのセキュリティーデータ交換を完了していない場合、503応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.7">サーバーが、完全性をサポートするメカニズムを使ってクライアントとのセキュリティーデータ交換を完了しており、ポリシーまたは実装上の制限のためにCCCコマンドを要求する場合、503応答コードで応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.8">現在のセキュリティーメカニズムでサポートされていないためにサーバーがコマンドを拒否する場合、サーバーは応答コード537で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.9">サーバーがコマンドを拒否する場合（たとえば、チェックサムが一致しない場合）、応答コード535で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.10">サーバーがコマンドを受け入れる意思がない場合（たとえば、ポリシーによってプライバシーが要求されている場合や、CCCコマンドの前にCONFコマンドを受信した場合）、応答コード533で応答すべきです。</t>
+          <t indent="0" pn="section-3-3.12.11">それ以外の場合、そのコマンドはFTPコマンドとして解釈されます。行末コードを含める必要はありませんが、含める場合は、ローカルの行末コードではなくTelnetの行末コードでなければなりません。</t>
+          <t indent="0" pn="section-3-3.12.12">サーバーは、一部またはすべての状況において、すべてのコマンドが保護されていることを要求してもかまいません。この場合、サーバーはMIC、CONF、ENC以外のコマンドに対して533応答を返すべきです。</t>
+        </dd>
+      </dl>
+    </section>
+    <section anchor="login-authorization" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-login-authorization">ログインの認可</name>
+      <t indent="0" pn="section-4-1">セキュリティーデータ交換は、とりわけ、クライアントの身元をサーバーに対して安全な方法で確立する場合があります。この身元は、ログインの認可プロセスへの入力の1つとして使用できます。</t>
+      <t indent="0" pn="section-4-2">FTPのログインコマンド（AUTH、PASS、ACCT）に対する応答として、サーバーは、RFC 959で規定されているコマンドと応答の順序を次のように変更することを選択できます。また、いくつかの新しい応答も利用できます。</t>
+      <t indent="0" pn="section-4-3">サーバーが、セキュリティーデータ交換によって確立された身元に基づいて、USERコマンドで指定されたユーザーのログインを許可する意思がある場合、応答コード232で応答すべきです。</t>
+      <t indent="0" pn="section-4-4">セキュリティーメカニズムがチャレンジ／レスポンス方式のパスワードを必要とする場合、サーバーはUSERコマンドに応答コード336で応答すべきです。応答のテキスト部分にはチャレンジを含めるべきです。この場合、クライアントは、パスワードの入力を促す前にチャレンジをユーザーに表示しなければなりません。これは、ダイアログボックスやその他のモーダルな入力を提供する、より高度なクライアントやグラフィカルユーザーインターフェイスに特に関係します。ユーザーが有効なパスワードを作成するために336応答のチャレンジを必要とする場合に備えて、そのようなクライアントは、ユーザー名をサーバーに送信する前にパスワードの入力を促さないよう注意すべきです。</t>
+    </section>
+    <section anchor="new-ftp-replies" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-new-ftp-replies">新しいFTP応答</name>
+      <t indent="0" pn="section-5-1">新しい応答コードは2つのクラスに分けられます。1つ目のクラスは、新しいFTPセキュリティーコマンドによって必要になった新しい応答です。2つ目のクラスは、保護された応答を示す新しい応答タイプです。</t>
+      <section anchor="new-individual-reply-codes" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-new-individual-reply-codes">新しい個別の応答コード</name>
+        <dl newline="false" spacing="compact" indent="6" pn="section-5.1-1">
+          <dt pn="section-5.1-1.1">232</dt>
+          <dd pn="section-5.1-1.2">ユーザーがログインしました。セキュリティーデータ交換によって認可されました。</dd>
+          <dt pn="section-5.1-1.3">234</dt>
+          <dd pn="section-5.1-1.4">セキュリティーデータ交換が完了しました。</dd>
+          <dt pn="section-5.1-1.5">235</dt>
+          <dd pn="section-5.1-1.6">
+            <t indent="0" pn="section-5.1-1.6.1">[ADAT=base64data]</t>
+            <t indent="0" pn="section-5.1-1.6.2">この応答は、セキュリティーデータ交換が正常に完了したことを示します。角括弧は応答に含めるものではなく、応答内のセキュリティーデータが省略可能であることを示します。</t>
+          </dd>
+          <dt pn="section-5.1-1.7">334</dt>
+          <dd pn="section-5.1-1.8">
+            <t indent="0" pn="section-5.1-1.8.1">[ADAT=base64data]</t>
+            <t indent="0" pn="section-5.1-1.8.2">この応答は、要求されたセキュリティーメカニズムが問題ないことを示し、クライアントが次のコマンドを構築するために使用するセキュリティーデータを含みます。角括弧は応答に含めるものではなく、応答内のセキュリティーデータが省略可能であることを示します。</t>
+          </dd>
+          <dt pn="section-5.1-1.9">335</dt>
+          <dd pn="section-5.1-1.10">
+            <t indent="0" pn="section-5.1-1.10.1">[ADAT=base64data]</t>
+            <t indent="0" pn="section-5.1-1.10.2">この応答は、セキュリティーデータが受け入れ可能であり、セキュリティーデータ交換を完了するためにさらにデータが必要であることを示します。角括弧は応答に含めるものではなく、応答内のセキュリティーデータが省略可能であることを示します。</t>
+          </dd>
+          <dt pn="section-5.1-1.11">336</dt>
+          <dd pn="section-5.1-1.12">
+            <t indent="0" pn="section-5.1-1.12.1">ユーザー名は問題ありません。パスワードが必要です。チャレンジは「....」です。</t>
+            <t indent="0" pn="section-5.1-1.12.2">チャレンジの正確な表現は、システムの人間のユーザーにとってわかりやすいものになるよう、メカニズムが選択すべきです。</t>
+          </dd>
+          <dt pn="section-5.1-1.13">431</dt>
+          <dd pn="section-5.1-1.14">セキュリティーを処理するために必要なリソースが利用できません。</dd>
+          <dt pn="section-5.1-1.15">533</dt>
+          <dd pn="section-5.1-1.16">ポリシー上の理由により、コマンドの保護レベルが拒否されました。</dd>
+          <dt pn="section-5.1-1.17">534</dt>
+          <dd pn="section-5.1-1.18">ポリシー上の理由により、リクエストが拒否されました。</dd>
+          <dt pn="section-5.1-1.19">535</dt>
+          <dd pn="section-5.1-1.20">セキュリティーチェック（ハッシュ、シーケンスなど）に失敗しました。</dd>
+          <dt pn="section-5.1-1.21">536</dt>
+          <dd pn="section-5.1-1.22">要求されたPROTレベルは、メカニズムでサポートされていません。</dd>
+          <dt pn="section-5.1-1.23">537</dt>
+          <dd pn="section-5.1-1.24">コマンドの保護レベルは、セキュリティーメカニズムでサポートされていません。</dd>
+        </dl>
+      </section>
+      <section anchor="protected-replies" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-protected-replies">保護された応答</name>
+        <t indent="0" pn="section-5.2-1">新しい応答タイプを1つ導入します。</t>
+        <dl newline="false" spacing="normal" indent="6" pn="section-5.2-2">
+          <dt pn="section-5.2-2.1">6yz</dt>
+          <dd pn="section-5.2-2.2">
+            <t indent="0" pn="section-5.2-2.2.1">保護された応答</t>
+            <t indent="0" pn="section-5.2-2.2.2">このタイプの応答コードは3つあります。1つ目の応答コード631は、完全性保護された応答を示します。2つ目の応答コード632は、機密性と完全性の両方で保護された応答を示します。3つ目の応答コード633は、機密性保護された応答を示します。</t>
+            <t indent="0" pn="section-5.2-2.2.3">631応答のテキスト部分は、セキュリティーメカニズム固有のメッセージ完全性手順によって生成された「safe」メッセージをbase64エンコードしたものからなるTelnet文字列です。632応答のテキスト部分は、セキュリティーメカニズム固有のメッセージ機密性および完全性手順によって生成された「private」メッセージをbase64エンコードしたものからなるTelnet文字列です。633応答のテキスト部分は、セキュリティーメカニズム固有のメッセージ機密性手順によって生成された「confidential」メッセージをbase64エンコードしたものからなるTelnet文字列です。</t>
+            <t indent="0" pn="section-5.2-2.2.4">クライアントは、エンコードされた応答をデコードして検証します。応答のデコードや検証の失敗をどのように扱うかは、実装に固有です。行末コードを含める必要はありませんが、含める場合は、ローカルの行末コードではなくTelnetの行末コードでなければなりません。</t>
+            <t indent="0" pn="section-5.2-2.2.5">保護された応答を送信できるのは、セキュリティーデータ交換が成功した場合だけです。</t>
+            <t indent="0" pn="section-5.2-2.2.6">63z応答は複数行の応答であってもかまいません。この場合、平文の応答をいくつかの断片に分割しなければなりません。各断片は、保護してからbase64エンコードし、順番に複数行の応答の個別の行にしなければなりません。平文の応答の改行位置とエンコードされた応答の改行位置が対応している必要はありません。エンコードされた応答の平文には、Telnetの行末コードが現れなければなりません。ただし、最後の行末コードは省略可能です。</t>
+            <t indent="0" pn="section-5.2-2.2.7">複数行の応答は、RFC 959の継続行の仕様よりも厳密にフォーマットしなければなりません。特に、最後の行より前の各行は、応答コード、その直後のハイフン、その後に続く応答のbase64エンコードされた断片で構成しなければなりません。</t>
+            <t indent="0" pn="section-5.2-2.2.8">たとえば、平文の応答が次のとおりであるとします。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-5.2-2.2.9"><![CDATA[
+123-First line
+Second line
+  234 A line beginning with numbers
+123 The last line
+]]></artwork>
+            <t indent="0" pn="section-5.2-2.2.10">このとき、結果として得られる保護された応答は、次のいずれでもかまいません（1つ目の例は、余白に収めるためだけに改行しています）。</t>
+          </dd>
+        </dl>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-3"><![CDATA[
+631 base64(protect("123-First line\r\nSecond line\r\n  234 A line
+631-base64(protect("123-First line\r\n"))
+631-base64(protect("Second line\r\n"))
+631-base64(protect("  234 A line beginning with numbers\r\n"))
+631 base64(protect("123 The last line"))
+
+631-base64(protect("123-First line\r\nSecond line\r\n  234 A line b"))
+631 base64(protect("eginning with numbers\r\n123 The last line\r\n"))
+]]></artwork>
+      </section>
+    </section>
+    <section anchor="data-channel-encapsulation" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-data-channel-encapsulation">データチャネルのカプセル化</name>
+      <t indent="0" pn="section-6-1">クライアントとサーバーの間のデータ転送が（どちらの方向でも）保護される場合、受信者が送信されたファイルを適切にデコードできるように、特定の変換とカプセル化を行わなければなりません。</t>
+      <t indent="0" pn="section-6-2">送信者は、表現タイプ、ファイル構造、転送モードに関連する変換を行った後に、すべての保護サービスを適用しなければなりません。データチャネル上で送信されるデータは、保護の目的においてはバイトストリームとして扱われます。</t>
+      <t indent="0" pn="section-6-3">認証された方法でデータ転送を行う場合、認証チェックはファイル全体ではなく、ファイルの個々のブロックに対して行われます。その結果、挿入攻撃によって、正しく認証されるものの、受信者が検出できないまま破損したファイルとなるようなブロックを、データストリームに挿入する（つまりリプレイする）ことが可能です。このような攻撃を防ぐために、使用する特定のセキュリティーメカニズムには、このような攻撃から保護するメカニズムを含めるべきです。<xref target="section-appendix.a" format="default" sectionFormat="of" derivedContent="Appendix A">Appendix I</xref>の仕様で使用できる多くのGSS-APIメカニズムや、<xref target="section-appendix.b" format="default" sectionFormat="of" derivedContent="Appendix B">Appendix II</xref>のKerberosメカニズムは、そのようにしています。</t>
+      <t indent="0" pn="section-6-4">送信者は、入力されたバイトストリームを受け取り、各ブロックをセキュリティーメカニズム固有の手順でエンコードしたときに、クライアントがPBSZコマンドでネゴシエートしたバッファーサイズを超えないようにブロックに分割しなければなりません。各ブロックはエンコードしてから、エンコードされたブロックの長さを4バイトの符号なし整数（最上位バイトが先）として先頭に付加して送信しなければなりません。</t>
+      <t indent="0" pn="section-6-5">ファイルの終わりに達したら、送信者は0バイトのブロックをエンコードし、データコネクションを閉じる前に、この最後のブロックを受信者に送信しなければなりません。</t>
+      <t indent="0" pn="section-6-6">受信者は、4バイトの長さを読み取り、そのバイト数のデータブロックを読み取ってから、セキュリティーメカニズム固有の手順でこのブロックをデコードして検証します。これは、0バイトのバッファーをエンコードしたブロックを受信するまで繰り返さなければなりません。そのブロックは、エンコードされたバイトストリームの終わりを示します。</t>
+      <t indent="0" pn="section-6-7">表現タイプ、ファイル構造、転送モードに関連する変換は、受信者が上記のプロセスの結果として得られたバイトストリームに対して行います。</t>
+      <t indent="0" pn="section-6-8">ブロック転送モードを使用する場合、送信者の（平文の）バッファーサイズはブロックサイズとは無関係です。</t>
+      <t indent="0" pn="section-6-9">現在の保護レベルが、特定のファイル転送に対するサーバーのセキュリティー要件で指示されたレベルに達していない場合、サーバーはSTOR、STOU、RETR、LIST、NLST、またはAPPEコマンドに534で応答します。</t>
+      <t indent="0" pn="section-6-10">サーバー側でデータ転送中にいずれかのデータ保護サービスが失敗した場合（ネゴシエートされた最大値より大きなバッファーサイズを送信しようとした場合を含みます）、サーバーはデータ転送コマンド（STOR、STOU、RETR、LIST、NLST、またはAPPEのいずれか）に対して535応答を送信します。</t>
+    </section>
+    <section anchor="potential-policy-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-potential-policy-considerations">ポリシーに関する潜在的な考慮事項</name>
+      <t indent="0" pn="section-7-1">クライアントとサーバーのポリシーに制限はありませんが、実装が従うべきいくつかの推奨事項があります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7-2">
+        <li pn="section-7-2.1">セキュリティーデータ交換が行われた後は、サーバーはすべてのコマンドが（完全性および／または機密性によって）保護されていることを要求すべきであり、すべての応答を保護すべきです。応答には、その応答を生成したコマンドと同じレベルの保護を使用すべきです。これには、MIC、CONF、ENCコマンドの失敗を示す応答も含まれます。特に、AUTHとADATが保護されていることを要求するのは無意味ですが、PROTとPBSZが保護されていることを要求するのは意味があり有用です。特に、CCCの使用は推奨されませんが、そのような機能を望む可能性のある実装間の相互運用性のために定義されています。</li>
+        <li pn="section-7-2.2">クライアントは、可能な限りPASSコマンドを暗号化すべきです。サーバーが暗号化が利用可能であることを知っている場合、暗号化されていないPASSコマンドの受け入れを拒否することは妥当です。</li>
+        <li pn="section-7-2.3">セキュリティーコマンドの実装は必須ではありませんが、サポートするメカニズムとサイトのポリシー上の考慮事項（たとえば輸出規制）を踏まえて、実装可能なすべてのコマンドを実装が提供することを推奨します。</li>
+      </ul>
+    </section>
+    <section anchor="declarative-specifications" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-declarative-specifications">宣言的な仕様</name>
+      <t indent="0" pn="section-8-1">これらのセクションは、RFC 959のセクション5.3と5.4をモデルにしています。それらのセクションは、標準のFTPコマンドと応答について同じ情報を記述しています。</t>
+      <section anchor="ftp-security-commands-and-arguments" numbered="true" removeInRFC="false" toc="include" pn="section-8.1">
+        <name slugifiedName="name-ftp-security-commands-and-arguments">FTPセキュリティーコマンドと引数</name>
+        <artwork name="" type="" align="left" alt="" pn="section-8.1-1"><![CDATA[
+AUTH <SP> <mechanism-name> <CRLF>
+ADAT <SP> <base64data> <CRLF>
+PROT <SP> <prot-code> <CRLF>
+PBSZ <SP> <decimal-integer> <CRLF>
+MIC <SP> <base64data> <CRLF>
+CONF <SP> <base64data> <CRLF>
+ENC <SP> <base64data> <CRLF>
+
+<mechanism-name> ::= <string>
+<base64data> ::= <string>
+        ; must be formatted as described in section 9
+<prot-code> ::= C | S | E | P
+<decimal-integer> ::= any decimal integer from 1 to (2^32)-1
+]]></artwork>
+      </section>
+      <section anchor="command-reply-sequences" numbered="true" removeInRFC="false" toc="include" pn="section-8.2">
+        <name slugifiedName="name-command-reply-sequences">コマンドと応答のシーケンス</name>
+        <artwork name="" type="" align="left" alt="" pn="section-8.2-1"><![CDATA[
+Security Association Setup
+   AUTH
+      234
+      334
+      502, 504, 534, 431
+      500, 501, 421
+   ADAT
+      235
+      335
+      503, 501, 535
+      500, 501, 421
+Data protection negotiation commands
+   PBSZ
+      200
+      503
+      500, 501, 421, 530
+   PROT
+      200
+      504, 536, 503, 534, 431
+      500, 501, 421, 530
+Command channel protection commands
+   MIC
+      535, 533
+      500, 501, 421
+   CONF
+      535, 533
+      500, 501, 421
+   ENC
+      535, 533
+      500, 501, 421
+Security-Enhanced login commands (only new replies listed)
+   USER
+      232
+      336
+Data channel commands (only new replies listed)
+   STOR
+      534, 535
+   STOU
+      534, 535
+   RETR
+      534, 535
+   LIST
+      534, 535
+   NLST
+      534, 535
+   APPE
+      534, 535
+]]></artwork>
+        <t indent="0" pn="section-8.2-2">これらの応答コードに加えて、どのセキュリティーコマンドも500、501、502、533、または421を返すことがあります。セキュリティーデータ交換が正常に完了した後は、どのFTPコマンドも、631、632、または633応答にカプセル化された応答コードを返すことがあります。</t>
+      </section>
+    </section>
+    <section anchor="state-diagrams" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-state-diagrams">状態遷移図</name>
+      <t indent="0" pn="section-9-1">このセクションには、セキュリティー強化されたFTP実装における認証と認可の流れを示す状態遷移図を掲載します。長方形のブロックはクライアントがコマンドを発行しなければならない状態を示し、ひし形のブロックはサーバーが応答を返さなければならない状態を示します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-9-2"><![CDATA[
+       ,------------------,  USER
+    __\| Unauthenticated  |_________\
+   |  /| (new connection) |         /|
+   |   `------------------'          |
+   |            |                    |
+   |            | AUTH               |
+   |            V                    |
+   |           / \                   |
+   | 4yz,5yz  /   \   234            |
+   |<--------<     >------------->.  |
+   |          \   /               |  |
+   |           \_/                |  |
+   |            |                 |  |
+   |            | 334             |  |
+   |            V                 |  |
+   |  ,--------------------,      |  |
+   |  | Need Security Data |<--.  |  |
+   |  `--------------------'   |  |  |
+   |            |              |  |  |
+   |            | ADAT         |  |  |
+   |            V              |  |  |
+   |           / \             |  |  |
+   | 4yz,5yz  /   \   335      |  |  |
+   `<--------<     >-----------'  |  |
+              \   /               |  |
+               \_/                |  |
+                |                 |  |
+                | 235             |  |
+                V                 |  |
+        ,---------------.         |  |
+   ,--->| Authenticated |<--------'  |  After the client and server
+   |    `---------------'            |  have completed authenti-
+   |            |                    |  cation, command must be
+   |            | USER               |  integrity-protected if
+   |            |                    |  integrity is available.  The
+   |            |<-------------------'  CCC command may be issued to
+   |            V                       relax this restriction.
+   |           / \
+   | 4yz,5yz  /   \   2yz
+   |<--------<     >------------->.
+   |          \   /               |
+   |           \_/                |
+   |            |                 |
+   |            | 3yz             |
+   |            V                 |
+   |    ,---------------.         |
+   |    | Need Password |         |
+   |    `---------------'         |
+   |            |                 |
+   |            | PASS            |
+   |            V                 |
+   |           / \                |
+   | 4yz,5yz  /   \   2yz         |
+   |<--------<     >------------->|
+   |          \   /               |
+   |           \_/                |
+   |            |                 |
+   |            | 3yz             |
+   |            V                 |
+   |    ,--------------.          |
+   |    | Need Account |          |
+   |    `--------------'          |
+   |            |                 |
+   |            | ACCT            |
+   |            V                 |
+   |           / \                |
+   | 4yz,5yz  /   \   2yz         |
+   `<--------<     >------------->|
+              \   /               |
+               \_/                |
+                |                 |
+                | 3yz             |
+                V                 |
+          ,-------------.         |
+          | Authorized  |/________|
+          | (Logged in) |\
+          `-------------'
+]]></artwork>
+    </section>
+    <section anchor="base-64-encoding" numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-base-64-encoding">Base64エンコーディング</name>
+      <t indent="0" pn="section-10-1">Base64エンコーディングは、<xref target="RFC-1421" format="default" sectionFormat="of" derivedContent="RFC-1421"/>のセクション4.3.2.4で説明されているPrintable Encodingと同じですが、改行を含めてはならない点が異なります。このエンコーディングは次のように定義されます。</t>
+      <t indent="0" pn="section-10-2">メカニズム固有の保護ルーチンの結果として得られたビット列は、左から右へと順に、すべてのサイトで普遍的に表現可能な文字にエンコードされます。ただし、必ずしも同じビットパターンで表現されるとは限りません（たとえば、文字「E」はASCIIベースのシステムでは16進数の45、EBCDICベースのシステムでは16進数のC5で表現されますが、2つの表現のローカルでの意味は同等です）。</t>
+      <t indent="0" pn="section-10-3">国際アルファベットIA5の64文字からなるサブセットを使用し、印字可能な1文字あたり6ビットを表現できるようにします。（提案された文字のサブセットは、IA5とASCIIで同一に表現されます。）文字「=」は、印字可能エンコーディング手順の中でパディングに使われる特別な処理機能を表します。</t>
+      <t indent="0" pn="section-10-4">エンコーディング処理は、入力ビットの24ビットグループを、エンコードされた4文字の出力文字列として表現します。セキュリティーメカニズム固有のメッセージ保護手順から出力された24ビットの入力グループを左から右へと進みながら、各6ビットグループを、64個の印字可能文字の配列、すなわち「[A-Z][a-z][0-9]+/」へのインデックスとして使用します。インデックスで参照された文字が出力文字列に配置されます。これらの文字は普遍的に表現可能であるように選ばれており、このセットにはTelnetにとって特別な意味を持つ文字（たとえば「&lt;CR&gt;」、「&lt;LF&gt;」、IAC）は含まれません。</t>
+      <t indent="0" pn="section-10-5">メッセージの終わりで、入力グループに24ビット未満しかない場合は、特別な処理が行われます。メッセージの終わりでは、常に完全なエンコーディング単位が完成します。入力グループに24ビット未満の入力ビットしかない場合、6ビットグループの整数個になるように、（右側に）0のビットを追加します。実際の入力データを表現するのに必要ない出力文字の位置には、文字「=」を設定します。正規にエンコードされた出力はすべて整数個のオクテットなので、次の場合しか起こりえません。(1) エンコーディング入力の最後の単位が24ビットの整数倍の場合。このとき、エンコードされた出力の最後の単位は、「=」パディングのない4文字の整数倍になります。(2) エンコーディング入力の最後の単位がちょうど8ビットの場合。このとき、エンコードされた出力の最後の単位は、2文字の後に2つの「=」パディング文字が続いたものになります。(3) エンコーディング入力の最後の単位がちょうど16ビットの場合。このとき、エンコードされた出力の最後の単位は、3文字の後に1つの「=」パディング文字が続いたものになります。</t>
+      <t indent="0" pn="section-10-6">実装者は、ADAT、MIC、CONF、ENCコマンド、および63z応答に含まれるbase64エンコーディングが任意の長さになりうることに留意しなければなりません。したがって、処理する前に行全体を読み取らなければなりません。制御チャネル上で何回か連続して読み取る必要がある場合もあります。（それが送信された文脈においてデコーディングがそれ以外の点で整形式であると仮定して）単に長すぎるという理由で、サーバーがbase64エンコーディングを含むコマンドを拒否することは適切ではありません。</t>
+      <t indent="0" pn="section-10-7">base64エンコーディングを含むコマンドや応答を読み取る際には、大文字と小文字の違いを無視してはなりません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-11-1">この文書全体が、ファイル転送プロトコルに関連するセキュリティー上の考慮事項を扱っています。</t>
+      <t indent="0" pn="section-11-2">これらの拡張を使っても、サードパーティーによるファイル転送を安全にすることはできません。これらの機能を使って2つのサーバー間でセキュリティーコンテキストを確立することはできないからです（ADATトークンを受け渡すための制御コネクションがサーバー間に存在しません）。この分野でのさらなる作業は先送りとします。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="true" removeInRFC="false" toc="include" pn="section-12">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-12-1">この文書への貢献について、CAT WGのメンバー、および「cat-ietf@mit.edu」メーリングリストでの議論に参加したすべての方々に感謝します。特に、この作業に貢献してくれたSam Sjogren、John Linn、Ted Ts'o、Jordan Brown、Michael Kogut、Derrick Brashear、John Gardiner Myers、Denis Pinkas、Karri Balkに感謝します。もちろん、この文書の最初の6つの版の著者であるSteve Luntがいなければ、この文書はそもそも存在しなかったでしょう。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-13">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="TELNET-SEC" quoteTitle="true" derivedAnchor="TELNET-SEC">
+        <front>
+          <title>Telnet Authentication and Encryption Option</title>
+          <author fullname="D. Borman" initials="D." surname="Borman"/>
+        </front>
+        <refcontent>Work in Progress</refcontent>
+      </reference>
+      <reference anchor="RFC-1123" quoteTitle="true" derivedAnchor="RFC-1123">
+        <front>
+          <title>Requirements for Internet Hosts -- Application and Support</title>
+          <author fullname="R. Braden" initials="R." surname="Braden"/>
+          <date year="1989" month="October"/>
+        </front>
+        <seriesInfo name="STD" value="3"/>
+        <seriesInfo name="RFC" value="1123"/>
+      </reference>
+      <reference anchor="RFC-1421" quoteTitle="true" derivedAnchor="RFC-1421">
+        <front>
+          <title>Privacy Enhancement for Internet Electronic Mail: Part I: Message Encryption and Authentication Procedures</title>
+          <author fullname="J. Linn" initials="J." surname="Linn"/>
+          <date year="1993" month="February"/>
+        </front>
+        <seriesInfo name="RFC" value="1421"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="true" removeInRFC="false" toc="include" pn="section-14">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Marc Horowitz" initials="M." surname="Horowitz">
+        <organization showOnFrontPage="true">Cygnus Solutions</organization>
+        <address>
+          <postal>
+            <street>955 Massachusetts Avenue</street>
+            <city>Cambridge</city>
+            <region>MA</region>
+            <code>02139</code>
+          </postal>
+          <phone>+1 617 354 7688</phone>
+          <email>marc@cygnus.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="specification-under-the-gssapi" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-specification-under-the-gssapi">GSSAPIでの仕様</name>
+      <t indent="0" pn="section-appendix.a-1">新しいセキュリティーメカニズムの有用性を最大化するために、新しいメカニズムはFTPセキュリティーメカニズムとしてではなく、GSSAPIメカニズムとして実装することが望まれます。そうすることで、コードの変更がほとんど、あるいはまったく必要ないため、既存のFTP実装が新しいメカニズムをより容易にサポートできるようになります。さらに、そのメカニズムは、IMAPのようにGSSAPIの上に構築されたほかのプロトコルでも、メカニズムの設計者が追加の仕様策定や実装作業をすることなく使用できるようになります。</t>
+      <t indent="0" pn="section-appendix.a-2">GSSAPIを用いるすべてのメカニズムに関連付けられた（AUTHコマンド用の）セキュリティーメカニズム名はGSSAPIです。サーバーがGSSAPIを用いるセキュリティーメカニズムをサポートしている場合、次にADATコマンドが期待されることを示す334応答コードで応答しなければなりません。</t>
+      <t indent="0" pn="section-appendix.a-3">クライアントは、GSS_Init_Sec_Contextを呼び出して認証交換を開始しなければなりません。その際、input_context_handleには（最初は）0を渡し、targ_nameには、input_name_typeをHost-Based Service、input_name_stringを「ftp@hostname」としてGSS_Import_Nameを呼び出したときのoutput_nameを渡します。ここで「hostname」は、すべての文字を小文字にしたサーバーの完全修飾ホスト名です。（これが失敗した場合、クライアントはinput_name_stringに「host@hostname」を使って再試行してもかまいません。）その後、output_tokenをbase64エンコードし、ADATコマンドの引数としてサーバーに送信しなければなりません。GSS_Init_Sec_ContextがGSS_S_CONTINUE_NEEDEDを返した場合、クライアントは、ADATコマンドへの応答でトークンが返されることを期待しなければなりません。このトークンは、その後、GSS_Init_Sec_Contextの別の呼び出しに渡さなければなりません。この場合、GSS_Init_Sec_Contextがoutput_tokenを返さなければ、直前のADATコマンドに対するサーバーからの応答コードは235でなければなりません。GSS_Init_Sec_ContextがGSS_S_COMPLETEを返した場合、サーバーからそれ以上のトークンは期待されず、クライアントはサーバーが認証されたとみなさなければなりません。</t>
+      <t indent="0" pn="section-appendix.a-4">サーバーは、ADATコマンドの引数をbase64デコードし、得られたトークンをinput_tokenとしてGSS_Accept_Sec_Contextに渡さなければなりません。その際、acceptor_cred_handleにはNULL（「デフォルトの資格情報を使用する」の意味）を、input_context_handleには（最初は）0を設定します。output_tokenが返された場合、それをbase64エンコードし、応答のテキストに「ADAT=base64string」を含めることによってクライアントに返さなければなりません。GSS_Accept_Sec_ContextがGSS_S_COMPLETEを返した場合、応答コードは235でなければならず、サーバーはクライアントが認証されたとみなさなければなりません。GSS_Accept_Sec_ContextがGSS_S_CONTINUE_NEEDEDを返した場合、応答コードは335でなければなりません。それ以外の場合、応答コードは535であるべきであり、応答のテキストには説明的なエラーメッセージを含めるべきです。</t>
+      <t indent="0" pn="section-appendix.a-5">GSS_Init_Sec_ContextとGSS_Accept_Sec_Contextへのchan_bindings入力では、イニシエーターとアクセプターのアドレスとして、それぞれクライアントのインターネットアドレスとサーバーのインターネットアドレスを使用すべきです。両方のアドレスタイプはGSS_C_AF_INETとすべきです。アプリケーションデータは指定すべきではありません。</t>
+      <t indent="0" pn="section-appendix.a-6">GSSAPIはセキュリティーコンテキストに対する匿名のピアをサポートしているため、クライアントによるサーバーの認証が実際には身元を確立しない可能性があります。</t>
+      <t indent="0" pn="section-appendix.a-7">MICコマンド、631応答、およびSafeファイル転送に関連する手順は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-appendix.a-8"><![CDATA[
+GSS_Wrap for the sender, with conf_flag == FALSE
+
+GSS_Unwrap for the receiver
+]]></artwork>
+      <t indent="0" pn="section-appendix.a-9">ENCコマンド、632応答、およびPrivateファイル転送に関連する手順は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-appendix.a-10"><![CDATA[
+GSS_Wrap for the sender, with conf_flag == TRUE
+GSS_Unwrap for the receiver
+]]></artwork>
+      <t indent="0" pn="section-appendix.a-11">CONFコマンドと633応答はサポートされません。</t>
+      <t indent="0" pn="section-appendix.a-12">クライアントとサーバーはどちらも、ピアが機密性サービスをサポートしているかどうかを判断するために、conf_availの値を調べるべきです。</t>
+      <t indent="0" pn="section-appendix.a-13">セキュリティー状態がリセットされる場合（AUTHを2回目に受信した場合、またはREINを受信した場合）は、GSS_Delete_sec_context関数を呼び出すことによってリセットすべきです。</t>
+    </section>
+    <section anchor="specification-under-kerberos-version-4" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-specification-under-kerberos-version-4">Kerberosバージョン4での仕様</name>
+      <t indent="0" pn="section-appendix.b-1">Kerberosバージョン4に関連付けられた（AUTHコマンド用の）セキュリティーメカニズム名はKERBEROS_V4です。サーバーがKERBEROS_V4をサポートしている場合、次にADATコマンドが期待されることを示す334応答コードで応答しなければなりません。</t>
+      <t indent="0" pn="section-appendix.b-2">クライアントは、Kerberosプリンシパル「ftp.hostname@realm」のチケットを取得しなければなりません。そのために、プリンシパル名を「ftp」、インスタンスを（krb_get_phost(3)が返す）すべての文字を小文字にしたサーバーの正規ホスト名の最初の部分、サーバーのレルム名を（krb_realmofhost(3)が返す）値、そして任意のチェックサムを指定して、krb_mk_req(3)を呼び出します。その後、チケットをbase64エンコードし、ADATコマンドの引数として送信しなければなりません。</t>
+      <t indent="0" pn="section-appendix.b-3">「ftp」プリンシパル名がKerberosデータベースに登録されたプリンシパルではない場合、クライアントは「rcmd」プリンシパル名（インスタンスとレルムは同じ）にフォールバックしてもかまいません。ただし、サーバーはこれらのプリンシパル名のうちどちらか一方だけを受け入れなければならず、どちらでも受け入れるようにしてはなりません。一般に、サーバーがsrvtabに「ftp」プリンシパルの鍵を持っている場合は、そのプリンシパルだけを使用しなければならず、そうでない場合は「rcmd」プリンシパルだけを使用しなければなりません。</t>
+      <t indent="0" pn="section-appendix.b-4">サーバーは、ADATコマンドの引数をbase64デコードし、その結果をkrb_rd_req(3)に渡さなければなりません。サーバーは、オーセンティケーターのチェックサムに1を加え、その結果をネットワークバイトオーダー（最上位バイトが先）に変換し、krb_mk_safe(3)を使って署名し、その結果をbase64エンコードしなければなりません。成功した場合、サーバーは235コードでクライアントに応答し、応答のテキストに「ADAT=base64string」を含めなければなりません。失敗した場合、サーバーは535で応答すべきです。</t>
+      <t indent="0" pn="section-appendix.b-5">サーバーから235応答を受信したら、クライアントは、応答のテキストを解析してbase64エンコードされたデータを取り出し、それをデコードし、ネットワークバイトオーダーから変換して、その結果をkrb_rd_safe(3)に渡さなければなりません。得られたチェックサムが、以前に送信した値に1を加えたものと等しい場合、クライアントはサーバーが認証されたとみなさなければなりません。</t>
+      <t indent="0" pn="section-appendix.b-6">MICコマンド、631応答、およびSafeファイル転送に関連する手順は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-appendix.b-7"><![CDATA[
+krb_mk_safe(3) for the sender
+krb_rd_safe(3) for the receiver
+]]></artwork>
+      <t indent="0" pn="section-appendix.b-8">ENCコマンド、632応答、およびPrivateファイル転送に関連する手順は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-appendix.b-9"><![CDATA[
+krb_mk_priv(3) for the sender
+krb_rd_priv(3) for the receiver
+]]></artwork>
+      <t indent="0" pn="section-appendix.b-10">CONFコマンドと633応答はサポートされません。</t>
+      <t indent="0" pn="section-appendix.b-11">このKERBEROS_V4の仕様には、完全性と機密性のルーチンについて代替手段をネゴシエートするための規定がないことに注意してください。また、ADAT交換では、ピアが機密性サービスをサポートしているかどうかが伝えられないことにも注意してください。</t>
+      <t indent="0" pn="section-appendix.b-12">許可されたPBSZの範囲内に収めるために、実装者は、平文のバッファーがkrb_mk_safe(3)で処理されると31バイト増加し、krb_mk_priv(3)で処理されると26バイト増加することに注意しなければなりません。</t>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-appendix.c-1">Copyright (C) The Internet Society (1997).  All Rights Reserved.</t>
+      <t indent="0" pn="section-appendix.c-2">この文書およびその翻訳は、複製して他者に提供できます。また、この文書を論評もしくは説明する派生物、またはその実装を支援する派生物は、上記の著作権表示とこの段落をそのようなすべての複製物および派生物に含めることを条件として、いかなる制限もなく、その全部または一部を作成、複製、公開、配布できます。ただし、この文書自体は、著作権表示やインターネットソサエティー（Internet Society）その他のインターネット関連組織への言及を削除するなど、いかなる方法でも変更できません。例外は、インターネット標準を策定する目的で必要な場合（この場合は、インターネット標準化プロセスで定められた著作権の手続きに従う必要があります）と、英語以外の言語に翻訳するために必要な場合です。</t>
+      <t indent="0" pn="section-appendix.c-3">上記で付与された限定的な許諾は永続的なものであり、インターネットソサエティーまたはその承継人もしくは譲受人によって取り消されることはありません。</t>
+      <t indent="0" pn="section-appendix.c-4">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。インターネットソサエティーおよびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+  </back>
+</rfc>

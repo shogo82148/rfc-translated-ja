@@ -52,7 +52,8 @@ sub appendix_number($n) {
 }
 
 sub parse_section_name($s) {
-    unless($s =~ /^((?:\d+[.])+)\s+(.+)$/) {
+    # 古い RFC では "1.1 Title" のように章番号の末尾にピリオドがないことがある
+    unless($s =~ /^(\d+(?:[.]\d+)*[.]?)\s+(.+)$/) {
         die "invalid section name: $s";
     }
     my $number = $1;
@@ -72,7 +73,7 @@ sub parse_section_name($s) {
 }
 
 sub parse_appendix_name($s) {
-    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.])*)\s+(.+)$/) {
+    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.]?)*)\s+(.+)$/) {
         die "invalid appendix name: $s";
     }
     my $appendix = $1;
@@ -515,7 +516,21 @@ for my $content(@contents) {
         $context = $content;
 
         if ($context =~ /(:?Normative\s|Informative\s)?References/) {
-            my $title = parse_section_name($context);
+            my $title;
+            if ($context =~ /^(?:(?:Normative|Informative)\s+)?References$/) {
+                # 番号なしの参考文献セクション（古い RFC）
+                my $slugified_name = lc($context =~ s/\s+/-/gr);
+                $title = +{
+                    anchor => $slugified_name,
+                    pn => "section-$slugified_name",
+                    number => "",
+                    level => 1,
+                    slugified_name => "name-$slugified_name",
+                    name => $context,
+                };
+            } else {
+                $title = parse_section_name($context);
+            }
             my $new_references = +{
                 type => "references",
                 title => $title,
@@ -552,7 +567,9 @@ for my $content(@contents) {
                 $new_appendix->{parent} = $parent;
             }
             $current_appendix = $new_appendix;
-        } elsif ($context =~ /^\d+[.]/) {
+        } elsif ($context =~ /^\d+(?:[.]|\s)/) {
+            # 章番号の後ろに3つ以上の空白がある見出し（例: "1.   Abstract"）は2つにそろえる
+            $context =~ s/^(\d+(?:[.]\d+)*[.]?)\s{3,}(?=\S)/$1  /;
             my @contents = split /\s\s\s/, $context, 2;
             my $title = parse_section_name(shift @contents);
             my $new_section = +{
@@ -585,13 +602,13 @@ for my $content(@contents) {
     # 各行の先頭の空白を削除
     $content =~ s/^\s\s\s//mg;
 
-    if ($context eq "Abstract") {
+    if (lc($context) eq "abstract") {
         push @abstract, $content;
     } elsif ($context =~ /Status of This Memo/i) {
         push @status_of_this_memo, parseT($content);
     } elsif ($context eq "Copyright Notice") {
         push @copyright_notice, parseT($content);
-    } elsif ($context eq "Table of Contents") {
+    } elsif (lc($context) eq "table of contents") {
         push @table_of_contents, $content;
     } elsif ($context eq "Acknowledgements") {
         push @acknowledgements, parseT($content);
@@ -606,7 +623,7 @@ for my $content(@contents) {
         push @{$current_references->{contents}}, parse_reference($content);
     } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
         push @{$current_appendix->{contents}}, parse_content($content);
-    } elsif ($context =~ /^\d+[.]/) {
+    } elsif ($context =~ /^\d+(?:[.]|\s)/) {
         push @{$current_section->{contents}}, parse_content($content);
     }
 }

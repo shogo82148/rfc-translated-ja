@@ -1,0 +1,591 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" ipr="trust200902" docName="draft-ietf-tsvwg-udp-ecn-08" category="info" consensus="true" submissionType="IETF" xml:lang="en" number="10055" tocInclude="true" sortRefs="true" symRefs="true" prepTime="2026-10-14T22:42:10" indexInclude="true" scripts="Common,Latin" tocDepth="3">
+  <link href="https://dx.doi.org/10.17487/rfc10055" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tsvwg-udp-ecn-08" rel="prev"/>
+  <front>
+    <title abbrev="UDP Sockets for ECN">一般的なプラットフォームにおける明示的輻輳通知（ECN）のためのUDPソケットの設定</title>
+    <seriesInfo name="RFC" value="10055" stream="IETF"/>
+    <author initials="M." surname="Duke" fullname="Martin Duke">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <email>martin.h.duke@gmail.com</email>
+      </address>
+    </author>
+    <date month="10" year="2026"/>
+    <area>WIT</area>
+    <workgroup>tsvwg</workgroup>
+    <keyword>udp</keyword>
+    <keyword>ecn</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">明示的輻輳通知（Explicit Congestion Notification; ECN）は、原理的にはすべてのトランスポートプロトコルに適用できます。
+しかし、QUICが広く採用されるまで、UDPでのECNの展開は限られていました。
+その結果、さまざまなプラットフォームにおけるECN用のUDPソケットAPIのドキュメントは乏しいままです。
+この文書は、Apple、Linux、WindowsプラットフォームのChromiumでUDP上のECNを動作させるために、これらのAPIを試した結果を記録したものです。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、執筆時点でこれらのプラットフォームがサポートしているECNの状況のスナップショットを提供します。
+より新しい情報については、各プラットフォームのドキュメントを参照してください。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            IESGによって承認されたすべての文書が、あらゆるレベルのインターネット標準の候補となるわけではありません。RFC 7841のセクション2を参照してください。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc10055" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">Table of Contents</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-definitions">表記規則と定義</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-receiving-ecn-codepoints">ECNコードポイントの受信</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-setting-the-socket-to-repor">受信したECNコードポイントを報告するためのソケットの設定</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.1.2">
+                  <li pn="section-toc.1-1.3.2.1.2.1">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.2.1.1"><xref derivedContent="3.1.1" format="counter" sectionFormat="of" target="section-3.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-linux-apple-and-freebsd">Linux、Apple、FreeBSD</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.2.1"><xref derivedContent="3.1.2" format="counter" sectionFormat="of" target="section-3.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-windows">Windows</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-retrieving-ecn-codepoints-o">受信パケットのECNコードポイントの取得</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2">
+                  <li pn="section-toc.1-1.3.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-linux">Linux</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.2.1"><xref derivedContent="3.2.2" format="counter" sectionFormat="of" target="section-3.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-apple-and-freebsd">AppleとFreeBSD</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.3.1"><xref derivedContent="3.2.3" format="counter" sectionFormat="of" target="section-3.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-windows-2">Windows</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sending-ecn-codepoints">ECNコードポイントの送信</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-a-per-socket-basis">ソケット単位</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.1.2">
+                  <li pn="section-toc.1-1.4.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-apple-freebsd-and-linux">Apple、FreeBSD、Linux</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.2.1"><xref derivedContent="4.1.2" format="counter" sectionFormat="of" target="section-4.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-windows-3">Windows</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-a-per-packet-basis">パケット単位</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                  <li pn="section-toc.1-1.4.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-apple-freebsd-and-linux-2">Apple、FreeBSD、Linux</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.2.1"><xref derivedContent="4.2.2" format="counter" sectionFormat="of" target="section-4.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-windows-4">Windows</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-address">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> は、明示的輻輳通知（ECN）のためのIPヘッダー内の2ビットのフィールドを定義しています。
+これは、エンドポイントの輻輳制御器にネットワークからのフィードバックを提供するものです。
+歴史的に、これは主にTCP <xref target="RFC9293" format="default" sectionFormat="of" derivedContent="RFC9293"/> に関係するものでした。
+TCPでは、受信したECNコードポイントはカーネル内部で消費されるため、
+この機能の有効化と無効化を除いて、アプリケーションインターフェイスは必要ありません。</t>
+      <t indent="0" pn="section-1-2">Stream Control Transmission Protocol（SCTP） <xref target="RFC9260" format="default" sectionFormat="of" derivedContent="RFC9260"/> は、長らくその設計においてECNをサポートしてきました。
+SCTPはDTLSとUDPの上で運ばれることがあります <xref target="RFC8261" format="default" sectionFormat="of" derivedContent="RFC8261"/>。
+原理的には、ユーザー空間の実装者がUDPのECN APIを活用して、SCTPとUDPソケットの間でECNコードポイントを受け渡すことも考えられます。
+発行時点では、IETFはそのような取り組みを把握していません。</t>
+      <t indent="0" pn="section-1-3"><xref target="RFC6679" format="default" sectionFormat="of" derivedContent="RFC6679"/> は、UDP上のRTP上でのECNを定義しています。
+IETFは研究用の実装を把握していますが、商用の展開は確認できていません。
+<xref target="RFC8888" format="default" sectionFormat="of" derivedContent="RFC8888"/> は、<xref target="RFC6679" format="default" sectionFormat="of" derivedContent="RFC6679"/> と組み合わせて動作する別のフィードバック形式を提案しており、
+これにはいくつかの実装があります。</t>
+      <t indent="0" pn="section-1-4">QUIC <xref target="RFC9000" format="default" sectionFormat="of" derivedContent="RFC9000"/> はUDP上で動作し、SCTPよりも広く展開されています。
+Low Latency, Low Loss, Scalable Throughput（L4S）アーキテクチャー <xref target="RFC9330" format="default" sectionFormat="of" derivedContent="RFC9330"/> と
+QUICが相まって、UDP上のECNへの関心が高まっています。</t>
+      <t indent="0" pn="section-1-5">The Chromium Projects <xref target="CHROMIUM" format="default" sectionFormat="of" derivedContent="CHROMIUM"/> は、QUICを含む広く展開されたプロトコルライブラリーを提供しています。
+Chromiumが展開されている多くのプラットフォームでQUICのECNサポートを提供する取り組みの中で、
+ECN関連のUDPソケットインターフェイスの多くが十分に文書化されていないことが明らかになりました。</t>
+      <t indent="0" pn="section-1-6">この情報提供（Informational）文書は、その経験を記録し、
+他のQUIC実装や、UDP上で動作するECNコードポイントのあらゆる利用者において、ECNのサポートがさらに進むことを促すものです。
+この文書は標準化過程（Standards Track）の文書ではなく、プラットフォームに何らかのAPIを義務付けるものでも、そのようなAPIを提案するものでもありません。</t>
+      <t indent="0" pn="section-1-7">多くのソケットAPIは、IP_TOSというラベルを含め、いまだに「ToS（Type of Service）バイト」を参照しています。
+しかし、<xref target="RFC2474" format="default" sectionFormat="of" derivedContent="RFC2474"/> は1998年にこれを廃止しています。
+この8ビットのフィールドには現在、6ビットのDifferentiated Services Code Point（DSCP）と2ビットのECNフィールドが含まれています。</t>
+      <t indent="0" pn="section-1-8">この文書は、C言語およびC++言語のAPIに焦点を当てています。
+他の言語では、構文や機能が異なる可能性があります。</t>
+      <t indent="0" pn="section-1-9">「ecn-examples」コードリポジトリー <xref target="EXAMPLES" format="default" sectionFormat="of" derivedContent="EXAMPLES"/> は、
+この文書の情報を検証できる非常にコンパクトなコードです。</t>
+      <t indent="0" pn="section-1-10">この文書は、ソケットAPIを介したIPヘッダー内のECNフィールドへのアクセスを扱います。
+UDPトランスポート層オプション <xref target="RFC9868" format="default" sectionFormat="of" derivedContent="RFC9868"/> は、異なる層で動作する別の拡張メカニズムであるため、扱いません。</t>
+    </section>
+    <section anchor="conventions-and-definitions" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-and-definitions">表記規則と定義</name>
+      <t indent="0" pn="section-2-1">この文書はUDPソケットプログラミングの一般的なチュートリアルではなく、
+バインド、ソケットオプション、一般的なシステムエラーコードといった基本的なソケットの概念に精通していることを前提としています。</t>
+      <t indent="0" pn="section-2-2">この文書全体を通じて、「Apple」はmacOSとiOSの両方を指します。
+「Linux」に関する指針は、Androidにも当てはまります。</t>
+    </section>
+    <section anchor="receiving-ecn-codepoints" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-receiving-ecn-codepoints">ECNコードポイントの受信</name>
+      <t indent="0" pn="section-3-1">ネットワーク機器は、IPヘッダー内のECNコードポイントを変更できます。
+このフィードバックはパケットの送信者で必要となるため、パケットの受信者は送信者に報告するために、UDPソケットからこのコードポイントを取り出す必要があります。</t>
+      <t indent="0" pn="section-3-2">これには2つの要素があります。
+1) 受信したECNマークを報告するようにソケットを設定すること、
+2) 受信したパケットごとにECNコードポイントを取得することです。</t>
+      <t indent="0" pn="section-3-3">なお、Appleプラットフォームでは、従来のソケットオプションのセマンティクスを用いずに、UDP使用時にECNフラグを受信できるネットワーク接続用のフレームワークも提供されています。
+UDPデータグラムを送受信する際、IPプロトコルのメタデータが双方向にECN情報を運びます。
+<xref target="APPLE-NETWORK-FRAMEWORK" format="default" sectionFormat="of" derivedContent="APPLE-NETWORK-FRAMEWORK"/> を参照してください。</t>
+      <section anchor="setting-the-socket-to-report-incoming-ecn-codepoints" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-setting-the-socket-to-repor">受信したECNコードポイントを報告するためのソケットの設定</name>
+        <section anchor="linux-apple-and-freebsd" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.1">
+          <name slugifiedName="name-linux-apple-and-freebsd">Linux、Apple、FreeBSD</name>
+          <t indent="0" pn="section-3.1.1-1">ECNコードポイントを受信するには、アプリケーションはsetsockopt()呼び出しを使用してソケットオプションを「true」に設定します。</t>
+          <t indent="0" pn="section-3.1.1-2">すべてのプラットフォームで、IPv4ソケットではIP_RECVTOSという名前のIPPROTO_IPレベルのソケットオプションを設定する必要があります。</t>
+          <t indent="0" pn="section-3.1.1-3">すべてのプラットフォームで、IPv6ソケットではIPV6_RECVTCLASSという名前のIPPROTO_IPV6レベルのソケットオプションを設定する必要があります。</t>
+          <t indent="0" pn="section-3.1.1-4">IPv6ソケットがIPv6専用でない場合、Linuxホストでは、UDP/IPv4パケットのECNコードポイントを受信するために、IPPROTO_IPレベルのソケットオプションIP_RECVTOSも設定する必要があります。
+AppleやFreeBSDでは、この手順は必要ありません。</t>
+          <t indent="0" pn="section-3.1.1-5">執筆時点では、実装例は <xref target="CHROMIUM-POSIX" format="default" sectionFormat="of" derivedContent="CHROMIUM-POSIX"/> にあります。</t>
+        </section>
+        <section anchor="windows" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.2">
+          <name slugifiedName="name-windows">Windows</name>
+          <t indent="0" pn="section-3.1.2-1">Windowsのドキュメントでは、IPのバージョンにかかわらず、ECNコードポイントの報告を有効にするためにWSASetRecvIPEcn()関数を使用することを推奨しています。
+<xref target="WINDOWS-DOC" format="default" sectionFormat="of" derivedContent="WINDOWS-DOC"/> によれば、この関数はWindows 10 Build 20348から存在します。</t>
+          <t indent="0" pn="section-3.1.2-2">ただし、setsockopt()を呼び出し、IPv4ではレベルIPPROTO_IP・名前IP_RECVECN、IPv6ではレベルIPPROTO_IPV6・名前IPV6_RECVECNのオプションを使用することでも実現できます。
+これらのオプションは <xref target="WINDOWS-SOCKOPT" format="default" sectionFormat="of" derivedContent="WINDOWS-SOCKOPT"/> に記載されています。</t>
+          <t indent="0" pn="section-3.1.2-3">IPv6専用でないIPv6ソケットの場合、WSASetRecvIPEcn()はIPv4のECN報告を有効にしません。
+そのためには、IP_RECVECNオプションを使用した別のsetsockopt()呼び出しが必要です。</t>
+          <t indent="0" pn="section-3.1.2-4">ソケットがIPv4射影IPv6アドレス（つまり、::ffff:&lt;IPv4 address&gt;という形式のアドレス。<xref section="2.5.5.2" sectionFormat="of" target="RFC4291" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4291#section-2.5.5.2" derivedContent="RFC4291"/> を参照）にバインドされている場合、
+WSASetRecvIpEcn()の呼び出しはエラーEINVALを返します。
+このようなソケットでは、代わりに明示的なsetsockopt()呼び出しを使用してIP_RECVECNを設定すべきです。</t>
+          <t indent="0" pn="section-3.1.2-5">執筆時点では、実装例は <xref target="CHROMIUM-WINDOWS" format="default" sectionFormat="of" derivedContent="CHROMIUM-WINDOWS"/> にあります。</t>
+        </section>
+      </section>
+      <section anchor="retrieving-ecn-codepoints-on-incoming-packets" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-retrieving-ecn-codepoints-o">受信パケットのECNコードポイントの取得</name>
+        <t indent="0" pn="section-3.2-1">この文書で説明するすべてのプラットフォームでは、ソケットからデータを読み取り、ECNコードポイントを取得するために、recvmsg()呼び出しを使用する必要があります。
+これは、その情報が補助データ（ancillary data）として提供されるためです。
+これらのプラットフォームはいずれも、到着したパケットについて要求された情報を含む0個以上の「cmsg」を返します。</t>
+        <t indent="0" pn="section-3.2-2">以下で説明する手法の例は、<xref target="CHROMIUM-POSIX" format="default" sectionFormat="of" derivedContent="CHROMIUM-POSIX"/>
+と <xref target="CHROMIUM-WINDOWS" format="default" sectionFormat="of" derivedContent="CHROMIUM-WINDOWS"/> にあります。</t>
+        <section anchor="linux" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.1">
+          <name slugifiedName="name-linux">Linux</name>
+          <t indent="0" pn="section-3.2.1-1">UDP/IPv4メッセージを受信した場合、LinuxはレベルIPPROTO_IP、タイプIP_TOSのcmsgを含めます。
+cmsgのデータはunsigned charです。
+これは、IPv4ソケットと、IPv6専用でないIPv6ソケットに当てはまります。</t>
+          <t indent="0" pn="section-3.2.1-2">UDP/IPv6メッセージを受信した場合、LinuxはレベルIPPROTO_IPV6、タイプIPV6_TCLASSのcmsgを含めます。
+cmsgのデータはintです。
+これは、IPv6ソケットに当てはまります。</t>
+          <t indent="0" pn="section-3.2.1-3">cmsgのデータには、DSCPとECNコードポイントを含むIPヘッダーのバイト全体が含まれます。
+ECNコードポイントは、このバイトの下位2ビットを構成します。</t>
+          <t indent="0" pn="section-3.2.1-4">Linux固有のrecvmmsg()呼び出しにも同じことが当てはまります。</t>
+        </section>
+        <section anchor="apple-and-freebsd" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.2">
+          <name slugifiedName="name-apple-and-freebsd">AppleとFreeBSD</name>
+          <t indent="0" pn="section-3.2.2-1">IPv4ソケットでUDP/IPv4メッセージを受信した場合、補助データにはレベルIPPROTO_IP、タイプIP_RECVTOSのcmsgが含まれます。
+cmsgのデータはunsigned charです。</t>
+          <t indent="0" pn="section-3.2.2-2">IPv6ソケットでUDP/IPv6またはUDP/IPv4メッセージを受信した場合、補助データにはレベルIPPROTO_IPV6、タイプIPV6_TCLASSのcmsgが含まれます。
+cmsgのデータはintです。</t>
+          <t indent="0" pn="section-3.2.2-3">cmsgのデータには、DSCPとECNコードポイントを含むIPヘッダーのバイト全体が含まれます。
+ECNコードポイントは、このバイトの下位2ビットを構成します。</t>
+        </section>
+        <section anchor="windows-1" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.3">
+          <name slugifiedName="name-windows-2">Windows</name>
+          <t indent="0" pn="section-3.2.3-1">受信パケットがUDP/IPv4の場合、ソケットはレベルIPPROTO_IP、タイプIP_ECNのcmsgを含めます。
+cmsgのデータはintです。</t>
+          <t indent="0" pn="section-3.2.3-2">受信パケットがUDP/IPv6の場合、ソケットはレベルIPPROTO_IPV6、タイプIPV6_ECNのcmsgを含めます。
+cmsgのデータはintです。</t>
+          <t indent="0" pn="section-3.2.3-3">cmsgのデータはECNコードポイントのみで構成されており、追加のビット演算は必要ありません。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="sending-ecn-codepoints" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-sending-ecn-codepoints">ECNコードポイントの送信</name>
+      <t indent="0" pn="section-4-1">既存のECN仕様（<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> と <xref target="RFC9330" format="default" sectionFormat="of" derivedContent="RFC9330"/>）は、特定のコネクションが一貫して同じECNコードポイントを送信することを想定しています。
+コネクションは、ハンドシェイクが正常に完了した後や、経路やピアがECNをサポートしていないと認識したとき、新しい経路に移行するときに、そのマーキングを変更することがあります。
+したがって、一般的には、ソケットオプションを使用して一貫したマーキングを設定するほうがリソース効率が良くなります。</t>
+      <t indent="0" pn="section-4-2">しかし、サーバーの設計によっては、すべての受信パケットを単一のソケットで受け取るものがあります。
+このパケットストリームを構成する多数のコネクションは、ECNのサポート状況がそれぞれ異なる可能性があるため、パケット単位でECNコードポイントを指定するのが適しています。</t>
+      <t indent="0" pn="section-4-3">なお、Appleプラットフォームでは、従来のソケットオプションのセマンティクスを用いずに、UDP使用時にECNフラグを送信できるネットワーク接続用のフレームワークも提供されています。
+UDPデータグラムを送受信する際、IPプロトコルのメタデータが双方向にECN情報を運びます。
+<xref target="APPLE-NETWORK-FRAMEWORK" format="default" sectionFormat="of" derivedContent="APPLE-NETWORK-FRAMEWORK"/> を参照してください。</t>
+      <section anchor="on-a-per-socket-basis" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-on-a-per-socket-basis">ソケット単位</name>
+        <section anchor="apple-freebsd-and-linux" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.1">
+          <name slugifiedName="name-apple-freebsd-and-linux">Apple、FreeBSD、Linux</name>
+          <t indent="0" pn="section-4.1.1-1">IPv4ソケットでUDP/IPv4パケットを送信する場合、Apple、FreeBSD、Linuxプラットフォームでは、IP_TOSという名前のIPPROTO_IPレベルのソケットオプションを使用して、送信するECNコードポイントを設定できます。
+値の型はintです。</t>
+          <t indent="0" pn="section-4.1.1-2">IPv6ソケットでUDP/IPv6パケットを送信する場合、Apple、FreeBSD、Linuxプラットフォームでは、IPV6_TCLASSという名前のIPPROTO_IPV6レベルのソケットオプションを使用して、送信するECNコードポイントを設定できます。
+値の型はintです。</t>
+          <t indent="0" pn="section-4.1.1-3">IPv6ソケットでUDP/IPv4パケットを送信する場合、Linuxプラットフォームでは、IP_TOSという名前のIPPROTO_IPレベルのソケットオプションを使用して、送信するECNコードポイントを設定できます。</t>
+          <t indent="0" pn="section-4.1.1-4">IPv6ソケットでUDP/IPv4パケットを送信する場合、AppleおよびFreeBSDプラットフォームでは、IPV6_TCLASSという名前のIPPROTO_IPV6レベルのソケットオプションを使用して、送信するECNコードポイントを設定できます。</t>
+          <t indent="0" pn="section-4.1.1-5">Appleプラットフォームを除き、このsetsockopt()呼び出しは、ヘッダーのバイトの残りの部分を構成するDSCPも設定します。
+この呼び出しを行うアプリケーションは、スタック内の他のコードが設定した指示を上書きしないように、既存のDSCP設定を保持するのが望ましいです。
+そのためには、追加のgetsockopt()呼び出しが必要になる場合があります。
+複数のスレッドがこのバイトを変更する場合は、さらなる安全策が必要になります。</t>
+          <t indent="0" pn="section-4.1.1-6">上で説明した手法の例は、<xref target="CHROMIUM-POSIX" format="default" sectionFormat="of" derivedContent="CHROMIUM-POSIX"/> にあります。</t>
+        </section>
+        <section anchor="windows-2" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.2">
+          <name slugifiedName="name-windows-3">Windows</name>
+          <t indent="0" pn="section-4.1.2-1">この文書の執筆時点では、Windowsにはソケット単位でマーキングを設定する方法がありません。</t>
+        </section>
+      </section>
+      <section anchor="on-a-per-packet-basis" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-on-a-per-packet-basis">パケット単位</name>
+        <t indent="0" pn="section-4.2-1">sendmsg()呼び出しに付随する補助データを使用して、パケットごとに個別にECNコードポイントをマークできます。</t>
+        <section anchor="apple-freebsd-and-linux-1" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.1">
+          <name slugifiedName="name-apple-freebsd-and-linux-2">Apple、FreeBSD、Linux</name>
+          <t indent="0" pn="section-4.2.1-1">IPv4ソケットでUDP/IPv4パケットを送信する場合、Apple、FreeBSD、LinuxはレベルIPPROTO_IP、タイプIP_TOSのcmsgを使用します。
+データの型は、AppleとLinuxではint、FreeBSDではunsigned charです。</t>
+          <t indent="0" pn="section-4.2.1-2">IPv6ソケットでUDP/IPv6パケットを送信する場合、Apple、FreeBSD、LinuxはレベルIPPROTO_IPV6、タイプIPV6_TCLASSのcmsgを使用します。
+データの型はintです。</t>
+          <t indent="0" pn="section-4.2.1-3">IPv6ソケットでUDP/IPv4パケットを送信する場合、LinuxはレベルIPPROTO_IP、タイプIP_TOSのcmsgを必要とします。
+AppleとFreeBSDは、レベルIPPROTO_IPV6、タイプIPV6_TCLASSのcmsgを受け付けます。</t>
+          <t indent="0" pn="section-4.2.1-4">Linux固有のsendmmsg()呼び出しにも同じことが当てはまります。</t>
+        </section>
+        <section anchor="windows-3" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2">
+          <name slugifiedName="name-windows-4">Windows</name>
+          <t indent="0" pn="section-4.2.2-1">IPv4パケットの場合、WindowsはレベルIPPROTO_IP、タイプIP_ECNのcmsgを使用します。</t>
+          <t indent="0" pn="section-4.2.2-2">IPv6パケットの場合、WindowsはレベルIPPROTO_IPV6、タイプIPV6_ECNのcmsgを使用します。</t>
+          <t indent="0" pn="section-4.2.2-3">上で説明した手法の例は、<xref target="CHROMIUM-WINDOWS" format="default" sectionFormat="of" derivedContent="CHROMIUM-WINDOWS"/> にあります。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">ECNのセキュリティー上の影響は、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> と <xref target="RFC9330" format="default" sectionFormat="of" derivedContent="RFC9330"/> に記載されています。
+この文書はこれらの機能を有効にするための手引きであり、追加のセキュリティーに関する考慮事項は生じません。</t>
+      <t indent="0" pn="section-5-2">なお、一部のプラットフォームでのみECN機能を実装し、他のプラットフォームでは実装しない場合、ピアがホストで使用されているオペレーティングシステムを特定する手がかりとなり、プライバシーに影響を及ぼす可能性があります。
+この文書は、その可能性を軽減することを目的としています。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="sec-combined-references" pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references anchor="sec-normative-references" pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2474" target="https://www.rfc-editor.org/info/rfc2474" quoteTitle="true" derivedAnchor="RFC2474">
+          <front>
+            <title>Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="S. Blake" initials="S." surname="Blake"/>
+            <author fullname="F. Baker" initials="F." surname="Baker"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date month="December" year="1998"/>
+            <abstract>
+              <t indent="0">This document defines the IP header field, called the DS (for differentiated services) field. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2474"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2474"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date month="September" year="2001"/>
+            <abstract>
+              <t indent="0">This memo specifies the incorporation of ECN (Explicit Congestion Notification) to TCP and IP, including ECN's use of two bits in the IP header. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC9330" target="https://www.rfc-editor.org/info/rfc9330" quoteTitle="true" derivedAnchor="RFC9330">
+          <front>
+            <title>Low Latency, Low Loss, and Scalable Throughput (L4S) Internet Service: Architecture</title>
+            <author fullname="B. Briscoe" initials="B." role="editor" surname="Briscoe"/>
+            <author fullname="K. De Schepper" initials="K." surname="De Schepper"/>
+            <author fullname="M. Bagnulo" initials="M." surname="Bagnulo"/>
+            <author fullname="G. White" initials="G." surname="White"/>
+            <date month="January" year="2023"/>
+            <abstract>
+              <t indent="0">This document describes the L4S architecture, which enables Internet applications to achieve low queuing latency, low congestion loss, and scalable throughput control. L4S is based on the insight that the root cause of queuing delay is in the capacity-seeking congestion controllers of senders, not in the queue itself. With the L4S architecture, all Internet applications could (but do not have to) transition away from congestion control algorithms that cause substantial queuing delay and instead adopt a new class of congestion controls that can seek capacity with very little queuing. These are aided by a modified form of Explicit Congestion Notification (ECN) from the network. With this new architecture, applications can have both low latency and high throughput.</t>
+              <t indent="0">The architecture primarily concerns incremental deployment. It defines mechanisms that allow the new class of L4S congestion controls to coexist with 'Classic' congestion controls in a shared network. The aim is for L4S latency and throughput to be usually much better (and rarely worse) while typically not impacting Classic performance.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9330"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9330"/>
+        </reference>
+      </references>
+      <references anchor="sec-informative-references" pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="APPLE-NETWORK-FRAMEWORK" target="https://developer.apple.com/documentation/network/nwprotocolip/metadata" quoteTitle="true" derivedAnchor="APPLE-NETWORK-FRAMEWORK">
+          <front>
+            <title>NWProtocolIP.Metadata</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="CHROMIUM" target="https://www.chromium.org/chromium-projects/" quoteTitle="true" derivedAnchor="CHROMIUM">
+          <front>
+            <title>The Chromium Projects</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="CHROMIUM-POSIX" target="https://source.chromium.org/chromium/chromium/src/+/main:net/socket/udp_socket_posix.cc" quoteTitle="true" derivedAnchor="CHROMIUM-POSIX">
+          <front>
+            <title>udp_socket_posix.cc</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2026" month="June" day="19"/>
+          </front>
+          <refcontent>commit 6bdc14d</refcontent>
+        </reference>
+        <reference anchor="CHROMIUM-WINDOWS" target="https://source.chromium.org/chromium/chromium/src/+/main:net/socket/udp_socket_win.cc" quoteTitle="true" derivedAnchor="CHROMIUM-WINDOWS">
+          <front>
+            <title>udp_socket_win.cc</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2026" month="June" day="10"/>
+          </front>
+          <refcontent>commit 85a1d1c</refcontent>
+        </reference>
+        <reference anchor="EXAMPLES" target="https://github.com/nplab/ecn-examples" quoteTitle="true" derivedAnchor="EXAMPLES">
+          <front>
+            <title>ecn-examples</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2025" month="December" day="01"/>
+          </front>
+          <refcontent>commit 39e39bf</refcontent>
+        </reference>
+        <reference anchor="RFC4291" target="https://www.rfc-editor.org/info/rfc4291" quoteTitle="true" derivedAnchor="RFC4291">
+          <front>
+            <title>IP Version 6 Addressing Architecture</title>
+            <author fullname="R. Hinden" initials="R." surname="Hinden"/>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <date month="February" year="2006"/>
+            <abstract>
+              <t indent="0">This specification defines the addressing architecture of the IP Version 6 (IPv6) protocol. The document includes the IPv6 addressing model, text representations of IPv6 addresses, definition of IPv6 unicast addresses, anycast addresses, and multicast addresses, and an IPv6 node's required addresses.</t>
+              <t indent="0">This document obsoletes RFC 3513, "IP Version 6 Addressing Architecture". [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4291"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4291"/>
+        </reference>
+        <reference anchor="RFC6679" target="https://www.rfc-editor.org/info/rfc6679" quoteTitle="true" derivedAnchor="RFC6679">
+          <front>
+            <title>Explicit Congestion Notification (ECN) for RTP over UDP</title>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <author fullname="I. Johansson" initials="I." surname="Johansson"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <author fullname="P. O'Hanlon" initials="P." surname="O'Hanlon"/>
+            <author fullname="K. Carlberg" initials="K." surname="Carlberg"/>
+            <date month="August" year="2012"/>
+            <abstract>
+              <t indent="0">This memo specifies how Explicit Congestion Notification (ECN) can be used with the Real-time Transport Protocol (RTP) running over UDP, using the RTP Control Protocol (RTCP) as a feedback mechanism. It defines a new RTCP Extended Report (XR) block for periodic ECN feedback, a new RTCP transport feedback message for timely reporting of congestion events, and a Session Traversal Utilities for NAT (STUN) extension used in the optional initialisation method using Interactive Connectivity Establishment (ICE). Signalling and procedures for negotiation of capabilities and initialisation methods are also defined. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6679"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6679"/>
+        </reference>
+        <reference anchor="RFC8261" target="https://www.rfc-editor.org/info/rfc8261" quoteTitle="true" derivedAnchor="RFC8261">
+          <front>
+            <title>Datagram Transport Layer Security (DTLS) Encapsulation of SCTP Packets</title>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="R. Jesup" initials="R." surname="Jesup"/>
+            <author fullname="S. Loreto" initials="S." surname="Loreto"/>
+            <date month="November" year="2017"/>
+            <abstract>
+              <t indent="0">The Stream Control Transmission Protocol (SCTP) is a transport protocol originally defined to run on top of the network protocols IPv4 or IPv6. This document specifies how SCTP can be used on top of the Datagram Transport Layer Security (DTLS) protocol. Using the encapsulation method described in this document, SCTP is unaware of the protocols being used below DTLS; hence, explicit IP addresses cannot be used in the SCTP control chunks. As a consequence, the SCTP associations carried over DTLS can only be single-homed.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8261"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8261"/>
+        </reference>
+        <reference anchor="RFC8888" target="https://www.rfc-editor.org/info/rfc8888" quoteTitle="true" derivedAnchor="RFC8888">
+          <front>
+            <title>RTP Control Protocol (RTCP) Feedback for Congestion Control</title>
+            <author fullname="Z. Sarker" initials="Z." surname="Sarker"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <author fullname="V. Singh" initials="V." surname="Singh"/>
+            <author fullname="M. Ramalho" initials="M." surname="Ramalho"/>
+            <date month="January" year="2021"/>
+            <abstract>
+              <t indent="0">An effective RTP congestion control algorithm requires more fine-grained feedback on packet loss, timing, and Explicit Congestion Notification (ECN) marks than is provided by the standard RTP Control Protocol (RTCP) Sender Report (SR) and Receiver Report (RR) packets. This document describes an RTCP feedback message intended to enable congestion control for interactive real-time traffic using RTP. The feedback message is designed for use with a sender-based congestion control algorithm, in which the receiver of an RTP flow sends back to the sender RTCP feedback packets containing the information the sender needs to perform congestion control.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8888"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8888"/>
+        </reference>
+        <reference anchor="RFC9000" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="RFC9000">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author fullname="J. Iyengar" initials="J." role="editor" surname="Iyengar"/>
+            <author fullname="M. Thomson" initials="M." role="editor" surname="Thomson"/>
+            <date month="May" year="2021"/>
+            <abstract>
+              <t indent="0">This document defines the core of the QUIC transport protocol. QUIC provides applications with flow-controlled streams for structured communication, low-latency connection establishment, and network path migration. QUIC includes security measures that ensure confidentiality, integrity, and availability in a range of deployment circumstances. Accompanying documents describe the integration of TLS for key negotiation, loss detection, and an exemplary congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC9260" target="https://www.rfc-editor.org/info/rfc9260" quoteTitle="true" derivedAnchor="RFC9260">
+          <front>
+            <title>Stream Control Transmission Protocol</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="M. Tüxen" initials="M." surname="Tüxen"/>
+            <author fullname="K. Nielsen" initials="K." surname="Nielsen"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">This document describes the Stream Control Transmission Protocol (SCTP) and obsoletes RFC 4960. It incorporates the specification of the chunk flags registry from RFC 6096 and the specification of the I bit of DATA chunks from RFC 7053. Therefore, RFCs 6096 and 7053 are also obsoleted by this document. In addition, RFCs 4460 and 8540, which describe errata for SCTP, are obsoleted by this document.</t>
+              <t indent="0">SCTP was originally designed to transport Public Switched Telephone Network (PSTN) signaling messages over IP networks. It is also suited to be used for other applications, for example, WebRTC.</t>
+              <t indent="0">SCTP is a reliable transport protocol operating on top of a connectionless packet network, such as IP. It offers the following services to its users:</t>
+              <t indent="0">The design of SCTP includes appropriate congestion avoidance behavior and resistance to flooding and masquerade attacks.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9260"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9260"/>
+        </reference>
+        <reference anchor="RFC9293" target="https://www.rfc-editor.org/info/rfc9293" quoteTitle="true" derivedAnchor="RFC9293">
+          <front>
+            <title>Transmission Control Protocol (TCP)</title>
+            <author fullname="W. Eddy" initials="W." role="editor" surname="Eddy"/>
+            <date month="August" year="2022"/>
+            <abstract>
+              <t indent="0">This document specifies the Transmission Control Protocol (TCP). TCP is an important transport-layer protocol in the Internet protocol stack, and it has continuously evolved over decades of use and growth of the Internet. Over this time, a number of changes have been made to TCP as it was specified in RFC 793, though these have only been documented in a piecemeal fashion. This document collects and brings those changes together with the protocol specification from RFC 793. This document obsoletes RFC 793, as well as RFCs 879, 2873, 6093, 6429, 6528, and 6691 that updated parts of RFC 793. It updates RFCs 1011 and 1122, and it should be considered as a replacement for the portions of those documents dealing with TCP requirements. It also updates RFC 5961 by adding a small clarification in reset handling while in the SYN-RECEIVED state. The TCP header control bits from RFC 793 have also been updated based on RFC 3168.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="9293"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9293"/>
+        </reference>
+        <reference anchor="RFC9868" target="https://www.rfc-editor.org/info/rfc9868" quoteTitle="true" derivedAnchor="RFC9868">
+          <front>
+            <title>Transport Options for UDP</title>
+            <author fullname="J. Touch" initials="J." surname="Touch"/>
+            <author fullname="C. Heard" initials="C." role="editor" surname="Heard"/>
+            <date month="October" year="2025"/>
+            <abstract>
+              <t indent="0">Transport protocols are extended through the use of transport header options. This document updates RFC 768 (UDP) by indicating the location, syntax, and semantics for UDP transport layer options within the surplus area after the end of the UDP user data but before the end of the IP datagram.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9868"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9868"/>
+        </reference>
+        <reference anchor="WINDOWS-DOC" target="https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-wsasetrecvipecn" quoteTitle="true" derivedAnchor="WINDOWS-DOC">
+          <front>
+            <title>WSASetRecvIPEcn function (ws2tcpip.h)</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2024" month="February" day="22"/>
+          </front>
+        </reference>
+        <reference anchor="WINDOWS-SOCKOPT" target="https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options" quoteTitle="true" derivedAnchor="WINDOWS-SOCKOPT">
+          <front>
+            <title>MSDN - IPPROTO_IP socket options</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2026" month="May" day="07"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" anchor="acknowledgments" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者は、この取り組みを通じて常に助言をくれた <contact fullname="Ryan Hamilton"/> に感謝します。
+Appleの <contact fullname="Randall Meyer"/> とMicrosoftの <contact fullname="Nick Grifka"/> は、
+それぞれのオペレーティングシステムの動作について有益なヒントを提供してくれました。
+ただし、上記の誤りについては、すべて著者が責任を負います。</t>
+      <t indent="0" pn="section-appendix.a-2"><contact fullname="Michael Tüxen"/> は、この文書の結論を検証するのに非常に役立った「ecn-examples」のコードを書きました。
+また、編集面でも何度も貢献してくれました。</t>
+      <t indent="0" pn="section-appendix.a-3"><contact fullname="Neal Cardwell"/>、<contact fullname="Gorry Fairhurst"/>、<contact fullname="Max Franke"/>、<contact fullname="Rodney Grimes"/>、<contact fullname="Will Hawkins"/>、
+<contact fullname="Guillaume Hétier"/>、<contact fullname="Max Inden"/>、<contact fullname="Jonathan Lennox"/>、<contact fullname="Colin Perkins"/>、<contact fullname="Marten Seemann"/>、<contact fullname="Greg White"/> は、この文書の改善に貢献しました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author initials="M." surname="Duke" fullname="Martin Duke">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <email>martin.h.duke@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

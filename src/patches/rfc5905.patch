@@ -3587,6 +3587,10 @@
 -          |        n-1                      |
 -          |        ---                      |
 -          |   1    \                     2  |
+-  psi_s = | ---- * /  (theta_s - theta_j)   |
+-          |  n-1   ---                      |
+-          |        j=1                      |
+-          +-----                       -----+
 +<xref target="section-appendix.a.5.5.1" format="default" sectionFormat="of" derivedContent="Appendix A.5.5.1"/>.</t>
 +          <dl newline="false" spacing="normal" indent="4" pn="section-11.2.2-2">
 +            <dt pn="section-11.2.2-2.1">1.</dt>
@@ -3598,17 +3602,14 @@
 +            <dd pn="section-11.2.2-2.6">
 +              <t indent="0" pn="section-11.2.2-2.6.1">For each candidate, compute the selection jitter psi_s:</t>
 +              <artwork name="" type="" align="left" alt="" pn="section-11.2.2-2.6.2"><![CDATA[
-+       +-----                       -----+^1/2
-+       |        n-1                      |
-+       |        ---                      |
-+       |   1    \                     2  |
-   psi_s = | ---- * /  (theta_s - theta_j)   |
--          |  n-1   ---                      |
--          |        j=1                      |
--          +-----                       -----+
-+       |  n-1   ---                      |
-+       |        j=1                      |
-+       +-----                       -----+
++        +-----                       -----+^1/2
++        |        n-1                      |
++        |        ---                      |
++        |   1    \                     2  |
++psi_s = | ---- * /  (theta_s - theta_j)   |
++        |  n-1   ---                      |
++        |        j=1                      |
++        +-----                       -----+
  ]]></artwork>
 -</t>
 -          <t indent="0" pn="section-11.2.2-6">4.  Select psi_max as the candidate with maximum psi_s.</t>
@@ -3831,12 +3832,6 @@
 -                    . |         |      |             |    .
 -                    . +---------+      +-------------+    .
 -                    .......................................
--]]></artwork>
--</t>
--        <t indent="0" pn="section-11.3-4"><figure anchor="fig-26" align="left" suppress-title="false" pn="figure-26">
--<name slugifiedName="name-figure-26">Clock Discipline Feedback Loop</name>
--<artwork name="" type="" align="left" alt=""><![CDATA[
--
 +        <figure anchor="fig-26" align="left" suppress-title="false" pn="figure-26">
 +          <name slugifiedName="name-clock-discipline-feedback-loop">Clock Discipline Feedback Loop</name>
 +          <artwork name="" type="" align="left" alt="" pn="figure-26.1"><![CDATA[
@@ -3860,6 +3855,12 @@
 +           . +---------+      +-------------+    .
 +           .......................................
  ]]></artwork>
+-</t>
+-        <t indent="0" pn="section-11.3-4"><figure anchor="fig-26" align="left" suppress-title="false" pn="figure-26">
+-<name slugifiedName="name-figure-26">Clock Discipline Feedback Loop</name>
+-<artwork name="" type="" align="left" alt=""><![CDATA[
+-
+-]]></artwork>
 -</figure>
 -</t>
 +        </figure>
@@ -4514,7 +4515,7 @@
  following sections.  SNTP is intended for primary servers equipped
  with a single reference clock, as well as for clients with a single
  upstream server and no dependent clients.  The fully developed NTPv4
-@@ -3597,78 +3291,101 @@
+@@ -3597,165 +3291,192 @@
  than these considerations, NTP and SNTP servers and clients are
  completely interoperable and can be intermixed in NTP subnets.</t>
        <t indent="0" pn="section-14-2">An SNTP primary server implementing the on-wire protocol described in
@@ -4592,6 +4593,93 @@
 -]]></artwork>
 -</figure>
 -</t>
+-      <t indent="0" pn="section-14-6">An SNTP client implementing the on-wire protocol has a single server
+-and no dependent clients.  It can operate with any subset of the NTP
+-on-wire protocol, the simplest approach using only the transmit
+-timestamp of the server packet and ignoring all other fields.
+-However, the additional complexity to implement the full on-wire
+-protocol is minimal so that a full implementation is encouraged.</t>
+-    </section>
+-    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-15">
+-      <name slugifiedName="name-security-considerations">Security Considerations</name>
+-      <t indent="0" pn="section-15-1">NTP security requirements are even more stringent than most other
+-distributed services.  First, the operation of the authentication
+-mechanism and the time synchronization mechanism are inextricably
+-intertwined.  Reliable time synchronization requires cryptographic
+-keys that are valid only over a designated time interval; but, time
+-intervals can be enforced only when participating servers and clients
+-are reliably synchronized to UTC.  In addition, the NTP subnet is
+-hierarchical by nature, so time and trust flow from the primary
+-servers at the root through secondary servers to the clients at the
+-leaves.</t>
+-      <t indent="0" pn="section-15-2">An NTP client can claim to have authentic time to dependent
+-applications only if all servers on the path to the primary servers
+-are authenticated.  In NTP each server authenticates the next lower
+-stratum servers and authenticates by induction the lowest stratum
+-(primary) servers.  It is important to note that authentication in
+-the context of NTP does not necessarily imply the time is correct.
+-An NTP client mobilizes a number of concurrent associations with
+-different servers and uses a crafted agreement algorithm to pluck
+-truechimers from the population possibly including falsetickers.</t>
+-      <t indent="0" pn="section-15-3">The NTP specification assumes that the goal of the intruder is to
+-inject false time values, disrupt the protocol, or clog the network,
+-servers, or clients with spurious packets that exhaust resources and
+-deny service to legitimate applications.  There are a number of
+-defense mechanisms already built in the NTP architecture, protocol,
+-and algorithms.  The on-wire timestamp exchange scheme is inherently
+-resistant to spoofing, packet-loss, and replay attacks.  The
+-engineered clock filter, selection and clustering algorithms are
+-designed to defend against evil cliques of Byzantine traitors.  While
+-not necessarily designed to defeat determined intruders, these
+-algorithms and accompanying sanity checks have functioned well over
+-the years to deflect improperly operating but presumably friendly
+-scenarios.  However, these mechanisms do not securely identify and
+-authenticate servers to clients.  Without specific further
+-protection, an intruder can inject any or all of the following
+-attacks:</t>
+-      <t indent="0" pn="section-15-4">1.  An intruder can intercept and archive packets forever, as well as
+-    all the public values ever generated and transmitted over the
+-    net.</t>
+-      <t indent="0" pn="section-15-5">2.  An intruder can generate packets faster than the server, network
+-    or client can process them, especially if they require expensive
+-    cryptographic computations.</t>
+-      <t indent="0" pn="section-15-6">3.  In a wiretap attack, the intruder can intercept, modify, and
+-    replay a packet.  However, it cannot permanently prevent onward
+-    transmission of the original packet; that is, it cannot break the
+-    wire, only tell lies and congest it.  Generally, the modified
+-    packet cannot arrive at the victim before the original packet,
+-    nor does it have the server private keys or identity parameters.</t>
+-      <t indent="0" pn="section-15-7">4.  In a middleman or masquerade attack, the intruder is positioned
+-    between the server and client, so it can intercept, modify and
+-    replay a packet and prevent onward transmission of the original
+-    packet.  However, the middleman does not have the server private
+-    keys.</t>
+-      <t indent="0" pn="section-15-8">The NTP security model assumes the following possible limitations:</t>
+-      <t indent="0" pn="section-15-9">1.  The running times for public key algorithms are relatively long
+-    and highly variable.  In general, the performance of the time
+-    synchronization function is badly degraded if these algorithms
+-    must be used for every NTP packet.</t>
+-      <t indent="0" pn="section-15-10">2.  In some modes of operation, it is not feasible for a server to
+-    retain state variables for every client.  It is however feasible
+-    to regenerated them for a client upon arrival of a packet from
+-    that client.</t>
+-      <t indent="0" pn="section-15-11">3.  The lifetime of cryptographic values must be enforced, which
+-    requires a reliable system clock.  However, the sources that
+-    synchronize the system clock must be trusted.  This circular
+-    interdependence of the timekeeping and authentication functions
+-    requires special handling.</t>
+-      <t indent="0" pn="section-15-12">4.  Client security functions must involve only public values
+-    transmitted over the net.  Private values must never be disclosed
+-    beyond the machine on which they were created, except in the case
+-    of a special trusted agent (TA) assigned for this purpose.</t>
+-      <t indent="0" pn="section-15-13">Unlike the Secure Shell (SSH) security model, where the client must
+-be securely authenticated to the server, in NTP the server must be
+-securely authenticated to the client.  In SSH, each different
+-interface address can be bound to a different name, as returned by a
+-reverse-DNS query.  In this design, separate public/private key pairs
+-may be required for each interface address with a distinct name.  A
+-perceived advantage of this design is that the security compartment
+-can be different for each interface.  This allows a firewall, for
 +<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>.</t>
 +      <table anchor="fig-31" align="center" pn="figure-31">
 +        <name slugifiedName="name-fast-xmit-packet-header">fast_xmit Packet Header</name>
@@ -4680,30 +4768,50 @@
 +          </tr>
 +        </tbody>
 +      </table>
-       <t indent="0" pn="section-14-6">An SNTP client implementing the on-wire protocol has a single server
- and no dependent clients.  It can operate with any subset of the NTP
- on-wire protocol, the simplest approach using only the transmit
-@@ -3713,41 +3430,45 @@
- authenticate servers to clients.  Without specific further
- protection, an intruder can inject any or all of the following
- attacks:</t>
--      <t indent="0" pn="section-15-4">1.  An intruder can intercept and archive packets forever, as well as
--    all the public values ever generated and transmitted over the
--    net.</t>
--      <t indent="0" pn="section-15-5">2.  An intruder can generate packets faster than the server, network
--    or client can process them, especially if they require expensive
--    cryptographic computations.</t>
--      <t indent="0" pn="section-15-6">3.  In a wiretap attack, the intruder can intercept, modify, and
--    replay a packet.  However, it cannot permanently prevent onward
--    transmission of the original packet; that is, it cannot break the
--    wire, only tell lies and congest it.  Generally, the modified
--    packet cannot arrive at the victim before the original packet,
--    nor does it have the server private keys or identity parameters.</t>
--      <t indent="0" pn="section-15-7">4.  In a middleman or masquerade attack, the intruder is positioned
--    between the server and client, so it can intercept, modify and
--    replay a packet and prevent onward transmission of the original
--    packet.  However, the middleman does not have the server private
--    keys.</t>
++      <t indent="0" pn="section-14-6">An SNTP client implementing the on-wire protocol has a single server
++and no dependent clients.  It can operate with any subset of the NTP
++on-wire protocol, the simplest approach using only the transmit
++timestamp of the server packet and ignoring all other fields.
++However, the additional complexity to implement the full on-wire
++protocol is minimal so that a full implementation is encouraged.</t>
++    </section>
++    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-15">
++      <name slugifiedName="name-security-considerations">Security Considerations</name>
++      <t indent="0" pn="section-15-1">NTP security requirements are even more stringent than most other
++distributed services.  First, the operation of the authentication
++mechanism and the time synchronization mechanism are inextricably
++intertwined.  Reliable time synchronization requires cryptographic
++keys that are valid only over a designated time interval; but, time
++intervals can be enforced only when participating servers and clients
++are reliably synchronized to UTC.  In addition, the NTP subnet is
++hierarchical by nature, so time and trust flow from the primary
++servers at the root through secondary servers to the clients at the
++leaves.</t>
++      <t indent="0" pn="section-15-2">An NTP client can claim to have authentic time to dependent
++applications only if all servers on the path to the primary servers
++are authenticated.  In NTP each server authenticates the next lower
++stratum servers and authenticates by induction the lowest stratum
++(primary) servers.  It is important to note that authentication in
++the context of NTP does not necessarily imply the time is correct.
++An NTP client mobilizes a number of concurrent associations with
++different servers and uses a crafted agreement algorithm to pluck
++truechimers from the population possibly including falsetickers.</t>
++      <t indent="0" pn="section-15-3">The NTP specification assumes that the goal of the intruder is to
++inject false time values, disrupt the protocol, or clog the network,
++servers, or clients with spurious packets that exhaust resources and
++deny service to legitimate applications.  There are a number of
++defense mechanisms already built in the NTP architecture, protocol,
++and algorithms.  The on-wire timestamp exchange scheme is inherently
++resistant to spoofing, packet-loss, and replay attacks.  The
++engineered clock filter, selection and clustering algorithms are
++designed to defend against evil cliques of Byzantine traitors.  While
++not necessarily designed to defeat determined intruders, these
++algorithms and accompanying sanity checks have functioned well over
++the years to deflect improperly operating but presumably friendly
++scenarios.  However, these mechanisms do not securely identify and
++authenticate servers to clients.  Without specific further
++protection, an intruder can inject any or all of the following
++attacks:</t>
 +      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-15-4">
 +        <li pn="section-15-4.1">An intruder can intercept and archive packets forever, as well as
 +all the public values ever generated and transmitted over the
@@ -4723,24 +4831,7 @@
 +packet.  However, the middleman does not have the server private
 +keys.</li>
 +      </ol>
-       <t indent="0" pn="section-15-8">The NTP security model assumes the following possible limitations:</t>
--      <t indent="0" pn="section-15-9">1.  The running times for public key algorithms are relatively long
--    and highly variable.  In general, the performance of the time
--    synchronization function is badly degraded if these algorithms
--    must be used for every NTP packet.</t>
--      <t indent="0" pn="section-15-10">2.  In some modes of operation, it is not feasible for a server to
--    retain state variables for every client.  It is however feasible
--    to regenerated them for a client upon arrival of a packet from
--    that client.</t>
--      <t indent="0" pn="section-15-11">3.  The lifetime of cryptographic values must be enforced, which
--    requires a reliable system clock.  However, the sources that
--    synchronize the system clock must be trusted.  This circular
--    interdependence of the timekeeping and authentication functions
--    requires special handling.</t>
--      <t indent="0" pn="section-15-12">4.  Client security functions must involve only public values
--    transmitted over the net.  Private values must never be disclosed
--    beyond the machine on which they were created, except in the case
--    of a special trusted agent (TA) assigned for this purpose.</t>
++      <t indent="0" pn="section-15-8">The NTP security model assumes the following possible limitations:</t>
 +      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-15-9">
 +        <li pn="section-15-9.1">The running times for public key algorithms are relatively long
 +and highly variable.  In general, the performance of the time
@@ -4760,9 +4851,17 @@
 +beyond the machine on which they were created, except in the case
 +of a special trusted agent (TA) assigned for this purpose.</li>
 +      </ol>
-       <t indent="0" pn="section-15-13">Unlike the Secure Shell (SSH) security model, where the client must
- be securely authenticated to the server, in NTP the server must be
- securely authenticated to the client.  In SSH, each different
++      <t indent="0" pn="section-15-13">Unlike the Secure Shell (SSH) security model, where the client must
++be securely authenticated to the server, in NTP the server must be
++securely authenticated to the client.  In SSH, each different
++interface address can be bound to a different name, as returned by a
++reverse-DNS query.  In this design, separate public/private key pairs
++may be required for each interface address with a distinct name.  A
++perceived advantage of this design is that the security compartment
++can be different for each interface.  This allows a firewall, for
+ instance, to require some interfaces to authenticate the client and
+ others not.</t>
+       <t indent="0" pn="section-15-14">In the case of NTP as specified herein, NTP broadcast clients are
 @@ -3768,7 +3489,7 @@
  timing information from properly signed NTP messages to be utilized
  in synchronizing its clock.  Higher levels of authentication may be
@@ -5845,152 +5944,6 @@
 -          <name slugifiedName="name-receive()">receive()</name>
 -          <section anchor="packet()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.1.1">
 -            <name slugifiedName="name-packet()">packet()</name>
--          </section>
--        </section>
--        <section anchor="clock_filter()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.2">
--          <name slugifiedName="name-clock_filter()">clock_filter()</name>
--        </section>
--        <section anchor="fast_xmit()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.3">
--          <name slugifiedName="name-fast_xmit()">fast_xmit()</name>
--        </section>
--        <section anchor="access()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.4">
--          <name slugifiedName="name-access()">access()</name>
--          <t indent="0" pn="section-a.5.4-1"> /*
--  * access() - determine access restrictions
--  */
-- int
-- access(
--      struct r *r             /* receive packet pointer */
--      )</t>
--          <t indent="0" pn="section-a.5.4-2"> {
--      /*
--       * The access control list is an ordered set of tuples
--       * consisting of an address, mask, and restrict word containing
--       * defined bits.  The list is searched for the first match on
--       * the source address (r-&gt;srcaddr) and the associated restrict
--       * word is returned.
--       */
--      return (/* access bits */ 0);
-- }</t>
--        </section>
--        <section anchor="system-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5">
--          <name slugifiedName="name-system-process">System Process</name>
--          <section anchor="clock_select()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.1">
--            <name slugifiedName="name-clock_select()">clock_select()</name>
--          </section>
--          <section anchor="root_dist()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.2">
--            <name slugifiedName="name-root_dist()">root_dist()</name>
--          </section>
--          <section anchor="accept()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.3">
--            <name slugifiedName="name-accept()">accept()</name>
--          </section>
--          <section anchor="clock_update()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.4">
--            <name slugifiedName="name-clock_update()">clock_update()</name>
--          </section>
--          <section anchor="clock_combine()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.5">
--            <name slugifiedName="name-clock_combine()">clock_combine()</name>
--          </section>
--          <section anchor="local_clock()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.6">
--            <name slugifiedName="name-local_clock()">local_clock()</name>
--          </section>
--          <section anchor="rstclock()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.7">
--            <name slugifiedName="name-rstclock()">rstclock()</name>
--            <t indent="0" pn="section-a.5.5.7-1"><artwork name="" type="" align="left" alt=""><![CDATA[
--  /*
--* rstclock() - clock state machine
--*/
--  void
--  rstclock(
--       int     state,          /* new state */
--       double  offset,         /* new offset */
--       double  t               /* new update time */
--       )
--  {
--       /*
--        * Enter new state and set state variables.  Note, we use the
--        * time of the last clock filter sample, which must be earlier
--        * than the current time.
--        */
--       c.state = state;
--       c.last = c.offset = offset;
--       s.t = t;
--  }
--]]></artwork>
--</t>
--          </section>
--        </section>
--        <section anchor="clock-adjust-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.6">
--          <name slugifiedName="name-clock-adjust-process">Clock Adjust Process</name>
--          <section anchor="clock_adjust()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.6.1">
--            <name slugifiedName="name-clock_adjust()">clock_adjust()</name>
--            <t indent="0" pn="section-a.5.6.1-1"> /*
--  * clock_adjust() - runs at one-second intervals
--  */
-- void
-- clock_adjust() {
--      double  dtemp;</t>
--            <t indent="0" pn="section-a.5.6.1-2"><artwork name="" type="" align="left" alt=""><![CDATA[
--      /*
--       * Update the process time c.t.  Also increase the dispersion
--       * since the last update.  In contrast to NTPv3, NTPv4 does not
--       * declare unsynchronized after one day, since the dispersion
--       * threshold serves this function.  When the dispersion exceeds
--       * MAXDIST (1 s), the server is considered unfit for
--       * synchronization.
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-3"><artwork name="" type="" align="left" alt=""><![CDATA[
--       */
--      c.t++;
--      s.rootdisp += PHI;
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-4"><artwork name="" type="" align="left" alt=""><![CDATA[
--      /*
--       * Implement the phase and frequency adjustments.  The gain
--       * factor (denominator) is not allowed to increase beyond the
--       * Allan intercept.  It doesn't make sense to average phase
--       * noise beyond this point and it helps to damp residual offset
--       * at the longer poll intervals.
--       */
--      dtemp = c.offset / (PLL * min(LOG2D(s.poll), ALLAN));
--      c.offset -= dtemp;
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-5"><artwork name="" type="" align="left" alt=""><![CDATA[
--      /*
--       * This is the kernel adjust time function, usually implemented
--       * by the Unix adjtime() system call.
--       */
--      adjust_time(c.freq + dtemp);
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-6"><artwork name="" type="" align="left" alt=""><![CDATA[
--      /*
--       * Peer timer.  Call the poll() routine when the poll timer
--       * expires.
--       */
--      while (/* all associations */ 0) {
--              struct p *p;    /* dummy peer structure pointer */
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-7"><artwork name="" type="" align="left" alt=""><![CDATA[
--              if (c.t >= p->nextdate)
--                      poll(p);
--      }
--]]></artwork>
--</t>
--            <t indent="0" pn="section-a.5.6.1-8"><artwork name="" type="" align="left" alt=""><![CDATA[
--      /*
--       * Once per hour, write the clock frequency to a file.
--       */
--      /*
--       * if (c.t % 3600 == 3599)
--       *   write c.freq to file
--       */
-- }
--]]></artwork>
--</t>
 +                            BEGIN_CLEAR((struct p *)0))
 +]]></sourcecode>
 +        <section anchor="receive" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.1">
@@ -6329,9 +6282,48 @@
 +]]></sourcecode>
            </section>
          </section>
--        <section anchor="poll-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.7">
--          <name slugifiedName="name-poll-process">Poll Process</name>
--          <t indent="0" pn="section-a.5.7-1">/*
+-        <section anchor="clock_filter()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.2">
+-          <name slugifiedName="name-clock_filter()">clock_filter()</name>
+-        </section>
+-        <section anchor="fast_xmit()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.3">
+-          <name slugifiedName="name-fast_xmit()">fast_xmit()</name>
+-        </section>
+-        <section anchor="access()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.4">
+-          <name slugifiedName="name-access()">access()</name>
+-          <t indent="0" pn="section-a.5.4-1"> /*
+-  * access() - determine access restrictions
+-  */
+- int
+- access(
+-      struct r *r             /* receive packet pointer */
+-      )</t>
+-          <t indent="0" pn="section-a.5.4-2"> {
+-      /*
+-       * The access control list is an ordered set of tuples
+-       * consisting of an address, mask, and restrict word containing
+-       * defined bits.  The list is searched for the first match on
+-       * the source address (r-&gt;srcaddr) and the associated restrict
+-       * word is returned.
+-       */
+-      return (/* access bits */ 0);
+- }</t>
+-        </section>
+-        <section anchor="system-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5">
+-          <name slugifiedName="name-system-process">System Process</name>
+-          <section anchor="clock_select()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.1">
+-            <name slugifiedName="name-clock_select()">clock_select()</name>
+-          </section>
+-          <section anchor="root_dist()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.2">
+-            <name slugifiedName="name-root_dist()">root_dist()</name>
+-          </section>
+-          <section anchor="accept()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.3">
+-            <name slugifiedName="name-accept()">accept()</name>
+-          </section>
+-          <section anchor="clock_update()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.4">
+-            <name slugifiedName="name-clock_update()">clock_update()</name>
+-          </section>
+-          <section anchor="clock_combine()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.5">
+-            <name slugifiedName="name-clock_combine()">clock_combine()</name>
 +        <section anchor="clock-filter" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.2">
 +          <name slugifiedName="name-clock-filter">clock_filter()</name>
 +          <sourcecode type="c" markers="false" pn="section-appendix.a.5.2-1"><![CDATA[
@@ -6766,7 +6758,9 @@
 +        clock_update(s.p);
 +}
 +]]></sourcecode>
-+          </section>
+           </section>
+-          <section anchor="local_clock()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.6">
+-            <name slugifiedName="name-local_clock()">local_clock()</name>
 +          <section anchor="root-dist" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.5.2">
 +            <name slugifiedName="name-root-dist">root_dist()</name>
 +            <sourcecode type="c" markers="false" pn="section-appendix.a.5.5.2-1"><![CDATA[
@@ -6834,7 +6828,31 @@
 +        return (TRUE);
 +}
 +]]></sourcecode>
-+          </section>
+           </section>
+-          <section anchor="rstclock()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.5.7">
+-            <name slugifiedName="name-rstclock()">rstclock()</name>
+-            <t indent="0" pn="section-a.5.5.7-1"><artwork name="" type="" align="left" alt=""><![CDATA[
+-  /*
+-* rstclock() - clock state machine
+-*/
+-  void
+-  rstclock(
+-       int     state,          /* new state */
+-       double  offset,         /* new offset */
+-       double  t               /* new update time */
+-       )
+-  {
+-       /*
+-        * Enter new state and set state variables.  Note, we use the
+-        * time of the last clock filter sample, which must be earlier
+-        * than the current time.
+-        */
+-       c.state = state;
+-       c.last = c.offset = offset;
+-       s.t = t;
+-  }
+-]]></artwork>
+-</t>
 +          <section anchor="clock-update" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.5.4">
 +            <name slugifiedName="name-clock-update">clock_update()</name>
 +            <sourcecode type="c" markers="false" pn="section-appendix.a.5.5.4-1"><![CDATA[
@@ -7223,8 +7241,80 @@
 +        s.t = t;
 +}
 +]]></sourcecode>
-+          </section>
-+        </section>
+           </section>
+         </section>
+-        <section anchor="clock-adjust-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.6">
+-          <name slugifiedName="name-clock-adjust-process">Clock Adjust Process</name>
+-          <section anchor="clock_adjust()" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.6.1">
+-            <name slugifiedName="name-clock_adjust()">clock_adjust()</name>
+-            <t indent="0" pn="section-a.5.6.1-1"> /*
+-  * clock_adjust() - runs at one-second intervals
+-  */
+- void
+- clock_adjust() {
+-      double  dtemp;</t>
+-            <t indent="0" pn="section-a.5.6.1-2"><artwork name="" type="" align="left" alt=""><![CDATA[
+-      /*
+-       * Update the process time c.t.  Also increase the dispersion
+-       * since the last update.  In contrast to NTPv3, NTPv4 does not
+-       * declare unsynchronized after one day, since the dispersion
+-       * threshold serves this function.  When the dispersion exceeds
+-       * MAXDIST (1 s), the server is considered unfit for
+-       * synchronization.
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-3"><artwork name="" type="" align="left" alt=""><![CDATA[
+-       */
+-      c.t++;
+-      s.rootdisp += PHI;
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-4"><artwork name="" type="" align="left" alt=""><![CDATA[
+-      /*
+-       * Implement the phase and frequency adjustments.  The gain
+-       * factor (denominator) is not allowed to increase beyond the
+-       * Allan intercept.  It doesn't make sense to average phase
+-       * noise beyond this point and it helps to damp residual offset
+-       * at the longer poll intervals.
+-       */
+-      dtemp = c.offset / (PLL * min(LOG2D(s.poll), ALLAN));
+-      c.offset -= dtemp;
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-5"><artwork name="" type="" align="left" alt=""><![CDATA[
+-      /*
+-       * This is the kernel adjust time function, usually implemented
+-       * by the Unix adjtime() system call.
+-       */
+-      adjust_time(c.freq + dtemp);
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-6"><artwork name="" type="" align="left" alt=""><![CDATA[
+-      /*
+-       * Peer timer.  Call the poll() routine when the poll timer
+-       * expires.
+-       */
+-      while (/* all associations */ 0) {
+-              struct p *p;    /* dummy peer structure pointer */
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-7"><artwork name="" type="" align="left" alt=""><![CDATA[
+-              if (c.t >= p->nextdate)
+-                      poll(p);
+-      }
+-]]></artwork>
+-</t>
+-            <t indent="0" pn="section-a.5.6.1-8"><artwork name="" type="" align="left" alt=""><![CDATA[
+-      /*
+-       * Once per hour, write the clock frequency to a file.
+-       */
+-      /*
+-       * if (c.t % 3600 == 3599)
+-       *   write c.freq to file
+-       */
+- }
+-]]></artwork>
+-</t>
 +        <section anchor="clock-adjust-process-a-5-6" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.6">
 +          <name slugifiedName="name-clock-adjust-process-a-5-6">Clock Adjust Process</name>
 +          <section anchor="clock-adjust" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.6.1">
@@ -7284,8 +7374,11 @@
 +         */
 +}
 +]]></sourcecode>
-+          </section>
-+        </section>
+           </section>
+         </section>
+-        <section anchor="poll-process" numbered="true" removeInRFC="false" toc="include" pn="section-a.5.7">
+-          <name slugifiedName="name-poll-process">Poll Process</name>
+-          <t indent="0" pn="section-a.5.7-1">/*
 +        <section anchor="poll-process-a-5-7" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.5.7">
 +          <name slugifiedName="name-poll-process-a-5-7">Poll Process</name>
 +          <sourcecode type="c" markers="false" pn="section-appendix.a.5.7-1"><![CDATA[

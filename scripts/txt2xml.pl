@@ -73,12 +73,13 @@ sub parse_section_name($s) {
 }
 
 sub parse_appendix_name($s) {
-    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.]?)*)\s+(.+)$/) {
+    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.]?)*)\s+(.+)$/s) {
         die "invalid appendix name: $s";
     }
     my $appendix = $1;
     my $number = $2;
     my $name = $3;
+    $name =~ s/\s*\n\s*/ /g; # 複数行に折り返された見出し
 
     $number =~ s/[.]$//; # 末尾のピリオドを削除
     my @numbers = split /[.]/, $number;

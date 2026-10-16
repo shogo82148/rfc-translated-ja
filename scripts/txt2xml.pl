@@ -522,7 +522,7 @@ for my $content(@contents) {
         # 概要・目次・セクション等の開始
         $context = $content;
 
-        if ($context =~ /(:?Normative\s|Informative\s)?References/) {
+        if ($context =~ /^(?:\d+(?:[.]\d+)*[.]?\s+)?(?:(?:Normative|Informative)\s+)?References$/) {
             my $title;
             if ($context =~ /^(?:(?:Normative|Informative)\s+)?References$/) {
                 # 番号なしの参考文献セクション（古い RFC）
@@ -627,7 +627,7 @@ for my $content(@contents) {
         push @acknowledgement, parseT($content);
     } elsif ($context =~ /^Author(?:'s|s|s')? Address(?:es)?$/) {
         # 解析が大変なのでギブアップ
-    } elsif ($context =~ /(:?Normative\s|Informative\s)?References/) {
+    } elsif ($context =~ /^(?:\d+(?:[.]\d+)*[.]?\s+)?(?:(?:Normative|Informative)\s+)?References$/) {
         $content =~ s/\s+/ /g;
         push @{$current_references->{contents}}, parse_reference($content);
     } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {

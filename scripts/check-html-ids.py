@@ -26,6 +26,8 @@ class IdCollector(HTMLParser):
         self._collect(attrs)
 
     def handle_startendtag(self, tag, attrs):
+        if tag == 'svg':
+            return
         self._collect(attrs)
 
     def handle_endtag(self, tag):

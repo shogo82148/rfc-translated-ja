@@ -132,6 +132,7 @@ all: \
 	docs/rfc4330.html \
 	docs/rfc3339.html \
 	docs/rfc3164.html \
+	docs/rfc2234.html \
 	docs/rfc2233.html \
 	docs/rfc2232.html \
 	docs/rfc2231.html \
@@ -668,6 +669,10 @@ docs/rfc3164.html: src/en/rfc3164.xml src/rfcs/rfc3164.json src/ja/rfc3164.xml s
 	scripts/xml2html.py 3164
 src/en/rfc3164.xml: src/rfcs/rfc3164.txt src/rfcs/rfc3164.json scripts/txt2xml.pl src/patches/rfc3164.patch
 	scripts/txt2xml.pl 3164 > $@
+docs/rfc2234.html: src/en/rfc2234.xml src/rfcs/rfc2234.json src/ja/rfc2234.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2234
+src/en/rfc2234.xml: src/rfcs/rfc2234.txt src/rfcs/rfc2234.json scripts/txt2xml.pl src/patches/rfc2234.patch
+	scripts/txt2xml.pl 2234 > $@
 docs/rfc2233.html: src/en/rfc2233.xml src/rfcs/rfc2233.json src/ja/rfc2233.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 2233
 src/en/rfc2233.xml: src/rfcs/rfc2233.txt src/rfcs/rfc2233.json scripts/txt2xml.pl src/patches/rfc2233.patch
@@ -768,6 +773,7 @@ update-english:
 	scripts/txt2xml.pl 4330 > src/ja/rfc4330.xml
 	scripts/txt2xml.pl 3339 > src/ja/rfc3339.xml
 	scripts/txt2xml.pl 3164 > src/ja/rfc3164.xml
+	scripts/txt2xml.pl 2234 > src/ja/rfc2234.xml
 	scripts/txt2xml.pl 2233 > src/ja/rfc2233.xml
 	scripts/txt2xml.pl 2232 > src/ja/rfc2232.xml
 	scripts/txt2xml.pl 2231 > src/ja/rfc2231.xml

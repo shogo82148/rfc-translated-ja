@@ -769,3 +769,7 @@ update-english:
 .PHONY: update-toc
 update-toc:
 	scripts/update-toc.pl
+
+.PHONY: test
+test: all
+	scripts/check-html-ids.py

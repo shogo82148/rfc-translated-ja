@@ -1006,11 +1006,12 @@ class HtmlWriter:
             if name_slug:
                 h.append(build('span', id='%s-%s'%(name_slug,self.lang)))
         
+        pn = x.get('pn')
         anchor = x.get('anchor')
-        if anchor:
+        # anchor が pn と同じ場合は table 自身の ID と重複するので省略する
+        if anchor and anchor != pn:
             h.append(build('span', id='%s-%s'%(anchor,self.lang)))
 
-        pn = x.get('pn')
         if pn:
             table = build('table', id='%s-%s'%(pn,self.lang))
         else:
@@ -1292,8 +1293,9 @@ class HtmlWriter:
         figure = build('figure')
         h.append(figure)
 
+        # anchor が pn と同じ場合は set_pn_id で figure 自身に付く ID と重複するので省略する
         anchor = x.get('anchor')
-        if anchor:
+        if anchor and anchor != x.get('pn'):
             figure.append(build('span', id='%s-%s'%(anchor,self.lang)))
 
         for c in x:

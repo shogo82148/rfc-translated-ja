@@ -133,6 +133,16 @@ all: \
 	docs/rfc4330.html \
 	docs/rfc3339.html \
 	docs/rfc3164.html \
+	docs/rfc2250.html \
+	docs/rfc2249.html \
+	docs/rfc2248.html \
+	docs/rfc2247.html \
+	docs/rfc2246.html \
+	docs/rfc2245.html \
+	docs/rfc2244.html \
+	docs/rfc2243.html \
+	docs/rfc2242.html \
+	docs/rfc2241.html \
 	docs/rfc2240.html \
 	docs/rfc2239.html \
 	docs/rfc2238.html \
@@ -680,6 +690,46 @@ docs/rfc3164.html: src/en/rfc3164.xml src/rfcs/rfc3164.json src/ja/rfc3164.xml s
 	scripts/xml2html.py 3164
 src/en/rfc3164.xml: src/rfcs/rfc3164.txt src/rfcs/rfc3164.json scripts/txt2xml.pl src/patches/rfc3164.patch
 	scripts/txt2xml.pl 3164 > $@
+docs/rfc2250.html: src/en/rfc2250.xml src/rfcs/rfc2250.json src/ja/rfc2250.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2250
+src/en/rfc2250.xml: src/rfcs/rfc2250.txt src/rfcs/rfc2250.json scripts/txt2xml.pl src/patches/rfc2250.patch
+	scripts/txt2xml.pl 2250 > $@
+docs/rfc2249.html: src/en/rfc2249.xml src/rfcs/rfc2249.json src/ja/rfc2249.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2249
+src/en/rfc2249.xml: src/rfcs/rfc2249.txt src/rfcs/rfc2249.json scripts/txt2xml.pl src/patches/rfc2249.patch
+	scripts/txt2xml.pl 2249 > $@
+docs/rfc2248.html: src/en/rfc2248.xml src/rfcs/rfc2248.json src/ja/rfc2248.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2248
+src/en/rfc2248.xml: src/rfcs/rfc2248.txt src/rfcs/rfc2248.json scripts/txt2xml.pl src/patches/rfc2248.patch
+	scripts/txt2xml.pl 2248 > $@
+docs/rfc2247.html: src/en/rfc2247.xml src/rfcs/rfc2247.json src/ja/rfc2247.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2247
+src/en/rfc2247.xml: src/rfcs/rfc2247.txt src/rfcs/rfc2247.json scripts/txt2xml.pl src/patches/rfc2247.patch
+	scripts/txt2xml.pl 2247 > $@
+docs/rfc2246.html: src/en/rfc2246.xml src/rfcs/rfc2246.json src/ja/rfc2246.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2246
+src/en/rfc2246.xml: src/rfcs/rfc2246.txt src/rfcs/rfc2246.json scripts/txt2xml.pl src/patches/rfc2246.patch
+	scripts/txt2xml.pl 2246 > $@
+docs/rfc2245.html: src/en/rfc2245.xml src/rfcs/rfc2245.json src/ja/rfc2245.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2245
+src/en/rfc2245.xml: src/rfcs/rfc2245.txt src/rfcs/rfc2245.json scripts/txt2xml.pl src/patches/rfc2245.patch
+	scripts/txt2xml.pl 2245 > $@
+docs/rfc2244.html: src/en/rfc2244.xml src/rfcs/rfc2244.json src/ja/rfc2244.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2244
+src/en/rfc2244.xml: src/rfcs/rfc2244.txt src/rfcs/rfc2244.json scripts/txt2xml.pl src/patches/rfc2244.patch
+	scripts/txt2xml.pl 2244 > $@
+docs/rfc2243.html: src/en/rfc2243.xml src/rfcs/rfc2243.json src/ja/rfc2243.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2243
+src/en/rfc2243.xml: src/rfcs/rfc2243.txt src/rfcs/rfc2243.json scripts/txt2xml.pl src/patches/rfc2243.patch
+	scripts/txt2xml.pl 2243 > $@
+docs/rfc2242.html: src/en/rfc2242.xml src/rfcs/rfc2242.json src/ja/rfc2242.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2242
+src/en/rfc2242.xml: src/rfcs/rfc2242.txt src/rfcs/rfc2242.json scripts/txt2xml.pl src/patches/rfc2242.patch
+	scripts/txt2xml.pl 2242 > $@
+docs/rfc2241.html: src/en/rfc2241.xml src/rfcs/rfc2241.json src/ja/rfc2241.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2241
+src/en/rfc2241.xml: src/rfcs/rfc2241.txt src/rfcs/rfc2241.json scripts/txt2xml.pl src/patches/rfc2241.patch
+	scripts/txt2xml.pl 2241 > $@
 docs/rfc2240.html: src/en/rfc2240.xml src/rfcs/rfc2240.json src/ja/rfc2240.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 2240
 src/en/rfc2240.xml: src/rfcs/rfc2240.txt src/rfcs/rfc2240.json scripts/txt2xml.pl src/patches/rfc2240.patch
@@ -808,6 +858,16 @@ update-english:
 	scripts/txt2xml.pl 4330 > src/ja/rfc4330.xml
 	scripts/txt2xml.pl 3339 > src/ja/rfc3339.xml
 	scripts/txt2xml.pl 3164 > src/ja/rfc3164.xml
+	scripts/txt2xml.pl 2250 > src/ja/rfc2250.xml
+	scripts/txt2xml.pl 2249 > src/ja/rfc2249.xml
+	scripts/txt2xml.pl 2248 > src/ja/rfc2248.xml
+	scripts/txt2xml.pl 2247 > src/ja/rfc2247.xml
+	scripts/txt2xml.pl 2246 > src/ja/rfc2246.xml
+	scripts/txt2xml.pl 2245 > src/ja/rfc2245.xml
+	scripts/txt2xml.pl 2244 > src/ja/rfc2244.xml
+	scripts/txt2xml.pl 2243 > src/ja/rfc2243.xml
+	scripts/txt2xml.pl 2242 > src/ja/rfc2242.xml
+	scripts/txt2xml.pl 2241 > src/ja/rfc2241.xml
 	scripts/txt2xml.pl 2240 > src/ja/rfc2240.xml
 	scripts/txt2xml.pl 2239 > src/ja/rfc2239.xml
 	scripts/txt2xml.pl 2238 > src/ja/rfc2238.xml

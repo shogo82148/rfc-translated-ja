@@ -1225,8 +1225,9 @@ class HtmlWriter:
     # ソースコード
     def render1_sourcecode(self, h, x):
         classes = 'sourcecode'
-        if type:
-            classes += ' lang-%s' % type
+        lang = (x.get('type') or '').strip()
+        if lang:
+            classes += ' lang-%s' % re.sub(r'\s+', '-', lang)
         if len(x.text.split('\n')) > 50:
             classes += ' breakable'
 

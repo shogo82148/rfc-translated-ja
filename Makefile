@@ -51,6 +51,7 @@ all: \
 	docs/rfc9949.html \
 	docs/rfc9948.html \
 	docs/rfc9896.html \
+	docs/rfc9841.html \
 	docs/rfc9806.html \
 	docs/rfc9769.html \
 	docs/rfc9748.html \
@@ -115,6 +116,7 @@ all: \
 	docs/rfc7992.html \
 	docs/rfc7991.html \
 	docs/rfc7990.html \
+	docs/rfc7932.html \
 	docs/rfc7826.html \
 	docs/rfc7822.html \
 	docs/rfc7797.html \
@@ -385,6 +387,10 @@ docs/rfc9896.html: src/en/rfc9896.xml src/rfcs/rfc9896.json src/ja/rfc9896.xml s
 	scripts/xml2html.py 9896
 src/en/rfc9896.xml: src/rfcs/rfc9896.xml
 	cp $< $@
+docs/rfc9841.html: src/en/rfc9841.xml src/rfcs/rfc9841.json src/ja/rfc9841.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9841
+src/en/rfc9841.xml: src/rfcs/rfc9841.xml
+	cp $< $@
 docs/rfc9806.html: src/en/rfc9806.xml src/rfcs/rfc9806.json src/ja/rfc9806.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9806
 src/en/rfc9806.xml: src/rfcs/rfc9806.xml
@@ -641,6 +647,10 @@ docs/rfc7990.html: src/en/rfc7990.xml src/rfcs/rfc7990.json src/ja/rfc7990.xml s
 	scripts/xml2html.py 7990
 src/en/rfc7990.xml: src/rfcs/rfc7990.txt src/rfcs/rfc7990.json scripts/txt2xml.pl src/patches/rfc7990.patch
 	scripts/txt2xml.pl 7990 > $@
+docs/rfc7932.html: src/en/rfc7932.xml src/rfcs/rfc7932.json src/ja/rfc7932.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 7932
+src/en/rfc7932.xml: src/rfcs/rfc7932.txt src/rfcs/rfc7932.json scripts/txt2xml.pl src/patches/rfc7932.patch
+	scripts/txt2xml.pl 7932 > $@
 docs/rfc7826.html: src/en/rfc7826.xml src/rfcs/rfc7826.json src/ja/rfc7826.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 7826
 src/en/rfc7826.xml: src/rfcs/rfc7826.txt src/rfcs/rfc7826.json scripts/txt2xml.pl src/patches/rfc7826.patch
@@ -952,6 +962,7 @@ update-english:
 	scripts/txt2xml.pl 7992 > src/ja/rfc7992.xml
 	scripts/txt2xml.pl 7991 > src/ja/rfc7991.xml
 	scripts/txt2xml.pl 7990 > src/ja/rfc7990.xml
+	scripts/txt2xml.pl 7932 > src/ja/rfc7932.xml
 	scripts/txt2xml.pl 7826 > src/ja/rfc7826.xml
 	scripts/txt2xml.pl 7822 > src/ja/rfc7822.xml
 	scripts/txt2xml.pl 7797 > src/ja/rfc7797.xml

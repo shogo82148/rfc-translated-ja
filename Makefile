@@ -138,6 +138,10 @@ all: \
 	docs/rfc4330.html \
 	docs/rfc3339.html \
 	docs/rfc3164.html \
+	docs/rfc2275.html \
+	docs/rfc2274.html \
+	docs/rfc2273.html \
+	docs/rfc2272.html \
 	docs/rfc2271.html \
 	docs/rfc2270.html \
 	docs/rfc2269.html \
@@ -736,6 +740,22 @@ docs/rfc3164.html: src/en/rfc3164.xml src/rfcs/rfc3164.json src/ja/rfc3164.xml s
 	scripts/xml2html.py 3164
 src/en/rfc3164.xml: src/rfcs/rfc3164.txt src/rfcs/rfc3164.json scripts/txt2xml.pl src/patches/rfc3164.patch
 	scripts/txt2xml.pl 3164 > $@
+docs/rfc2275.html: src/en/rfc2275.xml src/rfcs/rfc2275.json src/ja/rfc2275.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2275
+src/en/rfc2275.xml: src/rfcs/rfc2275.txt src/rfcs/rfc2275.json scripts/txt2xml.pl src/patches/rfc2275.patch
+	scripts/txt2xml.pl 2275 > $@
+docs/rfc2274.html: src/en/rfc2274.xml src/rfcs/rfc2274.json src/ja/rfc2274.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2274
+src/en/rfc2274.xml: src/rfcs/rfc2274.txt src/rfcs/rfc2274.json scripts/txt2xml.pl src/patches/rfc2274.patch
+	scripts/txt2xml.pl 2274 > $@
+docs/rfc2273.html: src/en/rfc2273.xml src/rfcs/rfc2273.json src/ja/rfc2273.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2273
+src/en/rfc2273.xml: src/rfcs/rfc2273.txt src/rfcs/rfc2273.json scripts/txt2xml.pl src/patches/rfc2273.patch
+	scripts/txt2xml.pl 2273 > $@
+docs/rfc2272.html: src/en/rfc2272.xml src/rfcs/rfc2272.json src/ja/rfc2272.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 2272
+src/en/rfc2272.xml: src/rfcs/rfc2272.txt src/rfcs/rfc2272.json scripts/txt2xml.pl src/patches/rfc2272.patch
+	scripts/txt2xml.pl 2272 > $@
 docs/rfc2271.html: src/en/rfc2271.xml src/rfcs/rfc2271.json src/ja/rfc2271.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 2271
 src/en/rfc2271.xml: src/rfcs/rfc2271.txt src/rfcs/rfc2271.json scripts/txt2xml.pl src/patches/rfc2271.patch
@@ -989,6 +1009,10 @@ update-english:
 	scripts/txt2xml.pl 4330 > src/ja/rfc4330.xml
 	scripts/txt2xml.pl 3339 > src/ja/rfc3339.xml
 	scripts/txt2xml.pl 3164 > src/ja/rfc3164.xml
+	scripts/txt2xml.pl 2275 > src/ja/rfc2275.xml
+	scripts/txt2xml.pl 2274 > src/ja/rfc2274.xml
+	scripts/txt2xml.pl 2273 > src/ja/rfc2273.xml
+	scripts/txt2xml.pl 2272 > src/ja/rfc2272.xml
 	scripts/txt2xml.pl 2271 > src/ja/rfc2271.xml
 	scripts/txt2xml.pl 2270 > src/ja/rfc2270.xml
 	scripts/txt2xml.pl 2269 > src/ja/rfc2269.xml

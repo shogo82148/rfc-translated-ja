@@ -1410,6 +1410,8 @@ class HtmlWriter:
                 a.tail = '>'
                 inner.append(span)
         for c in x.iterdescendants('annotation'):
+            if len(inner) and not inner[-1].tail:
+                inner[-1].tail = ', '
             self.render1(inner, c)
         return outer
 
@@ -1579,6 +1581,15 @@ class HtmlWriter:
         span.text = x.text
         for c in x:
             self.render(span, c)
+
+    def render1_annotation(self, h, x):
+        span = build('span')
+        h.append(span)
+        span.set('class', 'annotation')
+        span.text = x.text
+        for c in x:
+            self.render1(span, c)
+        return span
 
     def render1_date(self, h, x):
         have_date = x.get('day') or x.get('month') or x.get('year')

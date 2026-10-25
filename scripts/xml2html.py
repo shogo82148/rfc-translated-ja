@@ -1411,7 +1411,7 @@ class HtmlWriter:
                 inner.append(span)
         for c in x.iterdescendants('annotation'):
             if len(inner) and not inner[-1].tail:
-                inner[-1].tail = '. '
+                inner[-1].tail = ', '
             self.render1(inner, c)
         return outer
 

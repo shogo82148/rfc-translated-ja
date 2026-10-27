@@ -1,0 +1,1068 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-briscoe-docsis-q-protection-07" number="9957" ipr="trust200902" obsoletes="" updates="" submissionType="independent" xml:lang="en" tocInclude="true" tocDepth="4" symRefs="true" sortRefs="true" prepTime="2026-05-11T14:40:56" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-briscoe-docsis-q-protection-07" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9957" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Queue Protection to Preserve Low Latency">低遅延を維持するための DOCSIS キュー保護アルゴリズム</title>
+    <seriesInfo name="RFC" value="9957" stream="independent"/>
+    <author fullname="Bob Briscoe" initials="B." role="editor" surname="Briscoe">
+      <organization showOnFrontPage="true">Independent</organization>
+      <address>
+        <postal>
+          <country>United Kingdom</country>
+        </postal>
+        <email>ietf@bobbriscoe.net</email>
+        <uri>https://bobbriscoe.net/</uri>
+      </address>
+    </author>
+    <author fullname="Greg White" initials="G." surname="White">
+      <organization showOnFrontPage="true">CableLabs</organization>
+      <address>
+        <postal>
+          <country>United States of America</country>
+        </postal>
+        <email>G.White@CableLabs.com</email>
+      </address>
+    </author>
+    <date month="05" year="2026"/>
+    <area>WIT</area>
+    <workgroup>tsvwg</workgroup>
+    <keyword>Independent Submission Stream</keyword>
+    <keyword>ISE</keyword>
+    <keyword>Latency</keyword>
+    <keyword>Policing</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この情報提供のための RFC は、バージョン 3.1 で Data-Over-Cable Service Interface Specification（DOCSIS）技術に導入されたキュー保護アルゴリズムの仕様を説明します。共有された低遅延のキューは、それを使用するすべてのトラフィックフローがキューを構築しない振る舞いをすることに依存しています。しかし、偶然か悪意によって、一部のフローはそのような配慮をしない可能性があります。キューが遅延の閾値レベルを超えようとしている場合、キュー保護アルゴリズムは、原因である可能性が最も高いフローを迅速に検出できます。そして、それらのフローの選択されたパケット（またはすべてのパケット）を追い出すことで、低遅延のキュー内のほかのトラフィックへの害を防ぐことができます。この文書は、4 つの読者層を対象に設計されています。a）アルゴリズムの「良い」側にとどまる方法を理解する必要のある輻輳制御の設計者、b）アルゴリズムをより深く理解したいアルゴリズムの実装者、c）おそらく DOCSIS 以外のシナリオのために、同様の目標を持つアルゴリズムを設計する者、d）アルゴリズムの評価に関心のある研究者です。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            これは、他のいかなるRFCストリームからも独立した、RFCシリーズへの寄稿です。
+            RFCエディターは自らの裁量でこの文書の公開を選択しており、実装や展開における価値については何ら表明していません。
+            RFCエディターによって公開が承認された文書は、いずれのレベルのインターネット標準の候補にもなりません。
+            RFC 7841のセクション2を参照してください。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9957" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、BCP 78とIETF TrustのIETF文書に関する法的規定
+          (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従います。これらの文書は、この文書に対するあなたの権利と制限を説明しているので、よく確認してください。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-document-roadmap">文書のロードマップ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.3.1"><xref derivedContent="1.3" format="counter" sectionFormat="of" target="section-1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-source-material">原資料</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-approach-in-brief">アプローチ（概要）</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mechanism">メカニズム</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-policy">ポリシー</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.2.2">
+                  <li pn="section-toc.1-1.2.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.2.2.2.2.1.1"><xref derivedContent="2.2.1" format="counter" sectionFormat="of" target="section-2.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-policy-conditions">ポリシーの条件</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.2.2.2.2.2.1"><xref derivedContent="2.2.2" format="counter" sectionFormat="of" target="section-2.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-policy-action">ポリシーのアクション</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-necessary-flow-behaviour">フローに必要な振る舞い</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-pseudocode-walk-through">擬似コードの解説</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-input-parameters-constants-">入力パラメーター、定数、変数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-qprot-data-path">QProt のデータパス</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                  <li pn="section-toc.1-1.4.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-qprotect-function">qprotect() 関数</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.2.1"><xref derivedContent="4.2.2" format="counter" sectionFormat="of" target="section-4.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-pick_bucket-function">pick_bucket() 関数</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.3.1"><xref derivedContent="4.2.3" format="counter" sectionFormat="of" target="section-4.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-fill_bucket-function">fill_bucket() 関数</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.4.1"><xref derivedContent="4.2.4" format="counter" sectionFormat="of" target="section-4.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-calcprobnative-function">calcProbNative() 関数</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale">根拠</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-blame-for-queuing">根拠: レートそのものではなくキューイングに対する責任</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-constant-aging-of">根拠: キューイングスコアの一定のエージング</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-transformed-queui">根拠: 変換されたキューイングスコア</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-policy-conditions">根拠: ポリシーの条件</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.5">
+                <t indent="0" pn="section-toc.1-1.5.2.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-reclassification-">根拠: ポリシーのアクションとしての再分類</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limitations">制限事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-resource-exhaustion-attacks">資源枯渇攻撃</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2.1.2">
+                  <li pn="section-toc.1-1.8.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.8.2.1.2.1.1"><xref derivedContent="8.1.1" format="counter" sectionFormat="of" target="section-8.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-exhausting-flow-state-stora">フローの状態の保存領域の枯渇</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.8.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.8.2.1.2.2.1"><xref derivedContent="8.1.2" format="counter" sectionFormat="of" target="section-8.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-exhausting-processing-resou">処理資源の枯渇</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-comments-solicited">コメントの募集</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="qp_intro" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">この情報提供のための RFC は、バージョン 3.1 で DOCSIS 技術に導入されたキュー保護（QProt）アルゴリズムの仕様 <xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/> を説明します。</t>
+      <t indent="0" pn="section-1-2">このアルゴリズムは <xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/> の Annex P で定義されていますが、一連の仕様のほかの部分への相互参照に依存しています。この文書は、すべての要素を 1 つの自己完結した文書にまとめます。文書の中核は、DOCSIS の仕様にあるものと同様の擬似コードの解説ですが、次の追加の資料も含まれています。</t>
+      <ol spacing="normal" type="i" indent="adaptive" start="1" pn="section-1-3">
+	<li pn="section-1-3.1" derivedCounter="i.">簡単な概要</li>
+        <li pn="section-1-3.2" derivedCounter="ii.">キュー保護をトリガーしないためにデータの送信者がどのように振る舞う必要があるかの定義</li>
+        <li pn="section-1-3.3" derivedCounter="iii.">設計上の選択の根拠を示すセクション</li>
+      </ol>
+      <t indent="0" pn="section-1-4">低いキューイング遅延は、ホストが、低いレートで、または明示的輻輳通知（ECN）に応答して（<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/> と <xref target="RFC9331" format="default" sectionFormat="of" derivedContent="RFC9331"/> を参照）、データを滑らかに送信することに依存しています。したがって、低遅延のキューイングはホスト自身が作り出すものであり、ネットワークがホストに与えるものではありません。これにより、自己の利益だけでフローがパケットを低遅延のキュー向けに誤ってマークすることにはなりにくくなります。しかし、キューを構築しない方法で振る舞わないアプリケーションからのトラフィックが、偶然か悪意によって、誤って低遅延のキューに分類される可能性があります。QProt は、低遅延のキュー内のほかのトラフィックを、そのような異常な振る舞いによって引き起こされる過剰なキューイングによる害から保護します。</t>
+      <t indent="0" pn="section-1-5">誤って分類されたトラフィックのない通常のシナリオでは、QProt がパケットの分類や転送に介入することはまったくないと想定されています。</t>
+      <t indent="0" pn="section-1-6">DOCSIS 技術に低遅延のサポートがどのように追加されたかの概要は <xref target="LLD" format="default" sectionFormat="of" derivedContent="LLD"/> にあります。DOCSIS リンクの各方向（上りと下り）には、IETF の Dual-Queue Coupled Active Queue Management（AQM）<xref target="RFC9332" format="default" sectionFormat="of" derivedContent="RFC9332"/> に似た配置で、低遅延（LL）トラフィック用とクラシックトラフィック用の 2 つのキューがあります。この 2 つのキューにより、「クラシック」から「スケーラブル」な輻輳制御への移行が可能になり、従来から低遅延サービスと関連付けられてきた低レートのアプリケーションだけでなく、完全なスループットと低遅延の両方を求めるものも含め、あらゆるアプリケーションにとって低遅延が標準となりえます。クラシックのキューは、リンクを完全に利用するために約 1 ラウンドトリップ分のバッファリングを必要とする従来の（Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> / Cubic <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/>）TCP のようなトラフィックにのみ必要です。そのため、このトラフィックには自身を低遅延として誤ってマークする動機がありません。QProt の機能は、低遅延のキューの入口に配置されます。したがって、上りでは QProt はケーブルモデム（CM）に配置され、下りでは CM 終端システム（CMTS）に配置されます。到着したパケットがキュー保護をトリガーした場合、QProt アルゴリズムはそのパケットを低遅延のキューから追い出し、クラシックのキューに再分類します。</t>
+      <t indent="0" pn="section-1-7">QProt を DOCSIS リンク以外の環境で使用する場合は、シナリオに応じて、わずかに異なる条件を使用してキューを構築するフローを検出したり、結果として異なるアクションをトリガーしたりすることは簡単です。たとえば、パケットを再分類する代わりに破棄したり、特定のパケットだけでなくフロー全体をリダイレクトするかどうかを決定するためにフローごとの 2 つ目のスコアを蓄積したりすることです。そのような作業は今後の検討課題であり、この文書の範囲外です。</t>
+      <t indent="0" pn="section-1-8">QProt アルゴリズムは、各フローが輻輳にどれだけ寄与しているかを定量化するための厳密なアプローチに基づいています。これは、経済学で、ある当事者の振る舞いがほかの当事者に与えるコスト（経済的外部性）の責任を配分するために使用されるものです。このアプローチのもう 1 つの重要な特徴は、キューイングスコアに使用されるメトリックが、送信者に見える ECN のシグナリングのレベルを決定するのと同じ変数に基づいていることです（<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/> と <xref target="RFC9331" format="default" sectionFormat="of" derivedContent="RFC9331"/> を参照）。これにより、内部のキューイングスコアが ECN のマークとして外部から見えるようになります。この透明性は、フローがアルゴリズムの「良い」側にどのようにとどまれるかを（<xref target="qp_nec_flow_behaviour" format="default" sectionFormat="of" derivedContent="Section 3"/> で）客観的に述べるために必要です。</t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-document-roadmap">文書のロードマップ</name>
+        <t indent="0" pn="section-1.1-1">文書の中核は、<xref target="qp_walk-through" format="default" sectionFormat="of" derivedContent="Section 4"/> における DOCSIS の QProt アルゴリズムの擬似コードの解説です。</t>
+        <t indent="0" pn="section-1.1-2">その前に、<xref target="qp_approach" format="default" sectionFormat="of" derivedContent="Section 2"/> でアルゴリズムで使用されるアプローチを要約します。次に、<xref target="qp_nec_flow_behaviour" format="default" sectionFormat="of" derivedContent="Section 3"/> で、QProt アルゴリズムがパケットを低遅延のキューから追い出さないようにするためにフローが従う必要のある振る舞いを定義することで、エンドシステムの観点から QProt を検討します。</t>
+        <t indent="0" pn="section-1.1-3"><xref target="qp_rationale" format="default" sectionFormat="of" derivedContent="Section 5"/> では、アルゴリズムの背後にある原則と根拠についてのより深い洞察を示します。次に、<xref target="qp_limitations" format="default" sectionFormat="of" derivedContent="Section 6"/> でアプローチの限界を説明します。その後に通常の締めくくりのセクションが続きます。</t>
+      </section>
+      <section anchor="l4sds_Terminology" numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-terminology">用語</name>
+        <t indent="0" pn="section-1.2-1">DOCSIS の QProt アルゴリズムの規範的な記述は、この情報提供のための RFC ではなく、DOCSIS の仕様 <xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/>、<xref target="DOCSIS-CM-OSS" format="default" sectionFormat="of" derivedContent="DOCSIS-CM-OSS"/>、<xref target="DOCSIS-CCAP-OSS" format="default" sectionFormat="of" derivedContent="DOCSIS-CCAP-OSS"/> にあります。不一致がある場合は、DOCSIS の仕様が優先されます。</t>
+        <t indent="0" pn="section-1.2-2">次の用語と略語を使用します。</t>
+        <dl newline="false" spacing="normal" indent="3" pn="section-1.2-3">
+          <dt pn="section-1.2-3.1">CM:</dt>
+          <dd pn="section-1.2-3.2">ケーブルモデム</dd>
+          <dt pn="section-1.2-3.3">CMTS:</dt>
+          <dd pn="section-1.2-3.4">CM 終端システム</dd>
+          <dt pn="section-1.2-3.5">Congestion-rate:</dt>
+          <dd pn="section-1.2-3.6">IP-ECN フィールド <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> に Congestion Experienced（CE）コードポイントが設定されたフローのパケットに含まれるビットまたはバイトだけを数えた伝送レート（特に指定がない限り IP ヘッダーを含みます）。輻輳ビットレート（congestion-bit-rate）と輻輳量（congestion-volume）は <xref target="RFC7713" format="default" sectionFormat="of" derivedContent="RFC7713"/> と <xref target="RFC6789" format="default" sectionFormat="of" derivedContent="RFC6789"/> で導入されました。</dd>
+          <dt pn="section-1.2-3.7">DOCSIS:</dt>
+          <dd pn="section-1.2-3.8">Data-Over-Cable Service Interface Specification。"DOCSIS" は Cable Television Laboratories, Inc.（"CableLabs"）の登録商標です。</dd>
+          <dt pn="section-1.2-3.9">QProt:</dt>
+          <dd pn="section-1.2-3.10">DOCSIS のキュー保護機能</dd>
+          <dt pn="section-1.2-3.11">non-queue-building:</dt>
+          <dd pn="section-1.2-3.12">
+            <t indent="0" pn="section-1.2-3.12.1">キューを構築しない傾向のあるフロー。</t>
+            <t indent="0" pn="section-1.2-3.12.2">フローの振る舞いを表す小文字の "non-queue-building" の使用は、Diffserv のマーキング <xref target="RFC9956" format="default" sectionFormat="of" derivedContent="RFC9956"/> を指す大文字の Non-Queue-Building（NQB）とは対照的であることに注意してください。自身を大文字の NQB として識別するフローが、実際にはキューを構築しない方法で振る舞わない場合があり、それこそが QProt アルゴリズムが検出することを意図しているものです。</t>
+          </dd>
+          <dt pn="section-1.2-3.13">queue-building:</dt>
+          <dd pn="section-1.2-3.14">キューを構築するフロー。低遅延のキューに分類された場合、QProt アルゴリズムが検出して制裁を加える候補になります。</dd>
+          <dt pn="section-1.2-3.15">ECN:</dt>
+          <dd pn="section-1.2-3.16">明示的輻輳通知 <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/></dd>
+          <dt pn="section-1.2-3.17">ECN のマークまたは ECN のシグナリング（ECN marking or ECN signalling）:</dt>
+          <dd pn="section-1.2-3.18">キューイングが悪化するにつれて、増加する割合のパケットの IP-ECN フィールドを Congestion Experienced（CE）コードポイント <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> に設定すること。</dd>
+        </dl>
+      </section>
+      <section anchor="source" numbered="true" toc="include" removeInRFC="false" pn="section-1.3">
+        <name slugifiedName="name-source-material">原資料</name>
+        <t indent="0" pn="section-1.3-1">この文書の一部は、Cable Television Laboratories, Inc.（"CableLabs"）の好意による許可を得て、<xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/> から転載しています。</t>
+      </section>
+    </section>
+    <section anchor="qp_approach" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-approach-in-brief">アプローチ（概要）</name>
+      <t indent="0" pn="section-2-1">QProt アルゴリズムは、メカニズムとポリシーに分けられます。ポリシーのコードはごくわずかしかありませんが、ポリシーは将来変更する必要が生じる可能性があります。そのため、ハードウェア実装を検討している場合は、ポリシーの側面をファームウェアやソフトウェアで実装することが望ましいでしょう。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-2">
+        <li pn="section-2-2.1">
+          <t indent="0" pn="section-2-2.1.1">メカニズムの側面は、フローを識別し、フローの状態を維持し、フローごとのキューイングスコアを蓄積します。</t>
+        </li>
+        <li pn="section-2-2.2">
+          <t indent="0" pn="section-2-2.2.1">ポリシーの側面は、条件とアクションに分けられます。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-2.2.2">
+            <li pn="section-2-2.2.2.1">
+              <t indent="0" pn="section-2-2.2.2.1.1">条件は、キューイング遅延が過剰になるリスクを回避するためにいつアクションをとるべきかを決定するロジックです。</t>
+            </li>
+            <li pn="section-2-2.2.2.2">
+              <t indent="0" pn="section-2-2.2.2.2.1">アクションは、たとえばフローのパケットを別のキューにリダイレクトしたり、誤って分類されたと思われるフロー全体を再分類したりすることで、このリスクをどのように回避するかを決定します。</t>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <section anchor="qp_approach_mechanism" numbered="true" toc="include" removeInRFC="false" pn="section-2.1">
+        <name slugifiedName="name-mechanism">メカニズム</name>
+        <t indent="0" pn="section-2.1-1">アルゴリズムはフローごとの状態を維持します。ここで「フロー」は通常、エンドツーエンド（レイヤー 4）の 5 タプルを意味します。フローの状態は、時間とともに減衰するキューイングスコアで構成されます。実際、それは時間の単位に変換され、フローの状態自身の有効期限を表すようになっています（<xref target="qp_rationale_normalize" format="default" sectionFormat="of" derivedContent="Section 5.3"/> で説明します）。キューイングスコアが高いほど、有効期限はさらに先に延びます。</t>
+        <t indent="0" pn="section-2.1-2">キューを構築しないフローは、フローの状態をすぐに解放する傾向があります。通常、フローの状態は、通常のフローのパケットの間隔の中でかなり早く期限切れになります。そして、そのメモリーは、その間に到着するほかのフローのパケットのために再利用できます。したがって、キューを構築するフローだけがフローの状態を持続的に保持します。</t>
+        <t indent="0" pn="section-2.1-3">アルゴリズムの単純さと有効性は、キューイングスコアの定義によるものです。キューイングスコアは、各フローが負うキューイングの責任の割合を表します。スコアリングのアルゴリズムは、低遅延のキューの AQM がパケットに ECN のマークを付けるために使用するのと同じ内部変数 probNative を使用します。（ほかの 2 つの形式のマーキングであるクラシックとカップルドは、クラシックのトラフィックによって駆動されるため、LL キューの保護には関係ありません。）このようにして、キューイングスコアは、フローの到着した各パケットのサイズを、パケットが到着した瞬間の probNative の値（0 から 1 の範囲）でスケーリングして蓄積します。したがって、フローのスコアは次の場合に速く蓄積されます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.1-4">
+          <li pn="section-2.1-4.1">キューイングの程度が高いほど</li>
+          <li pn="section-2.1-4.2">キューイングがあるときにフローのパケットが速く到着するほど</li>
+        </ul>
+        <t indent="0" pn="section-2.1-5">このスコアがキューイングの責任を表す理由については、<xref target="qp_rationale_not_throughput" format="default" sectionFormat="of" derivedContent="Section 5.1"/> でさらに説明します。</t>
+        <t indent="0" pn="section-2.1-6">したがって、アルゴリズムは、フローのいわゆる輻輳レート（<xref target="l4sds_Terminology" format="default" sectionFormat="of" derivedContent="Section 1.2"/> を参照）、つまりフローが輻輳に寄与しているレート、または AQM が ECN のマークが付いたフローのバイトを転送しているレートで上昇するキューイングスコアを蓄積します。ただし、キューイングスコアは継続的に増加するのではなく、一定のレートで減少（または「エージング」）もされます。これは、容量を求めるフローが利用可能な容量を追跡する際に、継続的に低いレベルの輻輳を引き起こすことは避けられないためです。<xref target="qp_rationale_aging" format="default" sectionFormat="of" derivedContent="Section 5.2"/> は、ビットレートにかかわらず、この許容量をどのスケーラブルなフローに対しても同じ定数に設定できる理由を説明しています。その結果、キューイングスコアは、フローの輻輳レートと許容されるエージングのレートの差に応じて上昇（または下降）します。</t>
+        <t indent="0" pn="section-2.1-7">実装の効率性のため、キューイングスコアは時間の単位に変換されます。そうすると、それは（上ですでに議論したように）フローの状態の有効期限を表します。そして、時間の自然な経過が暗黙的に有効期限を「エージング」するため、明示的にエージングする必要はありません。時間の単位への変換は、単に各パケットのキューイングスコアを一定のエージングのレートで割るだけです（これについては <xref target="qp_rationale_normalize" format="default" sectionFormat="of" derivedContent="Section 5.3"/> でさらに説明します）。</t>
+      </section>
+      <section anchor="qp_approach_policy" numbered="true" toc="include" removeInRFC="false" pn="section-2.2">
+        <name slugifiedName="name-policy">ポリシー</name>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-2.2.1">
+          <name slugifiedName="name-policy-conditions">ポリシーの条件</name>
+          <t indent="0" pn="section-2.2.1-1">アルゴリズムは、各パケットを追い出すかどうかを判断するために、パケットが最初に到着した時点でのみキューイングスコアを使用します。これにより、利用できるポリシーが制限されます。たとえば、キューイング遅延が閾値を超えたときに、キューイングスコアが最も高いフローのパケットを追い出すことは実現できません。そのようなパケットを（実際にまだキュー内にあるとしても）キュー内で探すことが必要になるからです。それでも、閾値に対するキューイング遅延の超過が大きいほどキューイングスコアの閾値を厳しくすることで、キューの低遅延を保護するポリシーを開発することは依然として可能です（これについては <xref target="qp_rationale_conditions" format="default" sectionFormat="of" derivedContent="Section 5.4"/> で説明します）。</t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-2.2.2">
+          <name slugifiedName="name-policy-action">ポリシーのアクション</name>
+          <t indent="0" pn="section-2.2.2-1">この文書の執筆時点では、DOCSIS の QProt の仕様は、ポリシーの条件が満たされた場合に低遅延のキューを保護するためにとられるアクションは、パケットをクラシックのキューに再分類することであると述べています（これは <xref target="qp_rationale_reclassify" format="default" sectionFormat="of" derivedContent="Section 5.5"/> で正当化されています）。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="qp_nec_flow_behaviour" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-necessary-flow-behaviour">フローに必要な振る舞い</name>
+      <t indent="0" pn="section-3-1">ここで説明する QProt アルゴリズムは、応答するフローにも応答しないフローにも使用できます。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-2">
+        <li pn="section-3-2.1">
+          <t indent="0" pn="section-3-2.1.1">リンクの容量やほかのトラフィックの量にかかわらず、キュー保護をトリガーしないためにフローが輻輳シグナルに応答する必要のある、最も応答性の低い方法を客観的に記述することができます。</t>
+        </li>
+        <li pn="section-3-2.2">
+          <t indent="0" pn="section-3-2.2.1">キュー保護を避けるために応答しないフローがどれだけ速く、または滑らかであるべきかを記述することはできません。それは、アプリケーションが知ることのできない、ほかのトラフィックの量とリンクの容量に依存するからです。ただし、応答しないフローがパケットを滑らかにペーシングし、典型的なブロードバンドのリンク容量に比べてそのレートが低いほど、キュー保護をトリガーするのに十分なキューイングを引き起こすリスクの可能性は低くなります。</t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-3-3">応答する低遅延のフローは、低遅延・低損失・スケーラブルスループット（L4S）の ECN コードポイント <xref target="RFC9331" format="default" sectionFormat="of" derivedContent="RFC9331"/> を使用して、低遅延のキューに分類されることができます。</t>
+      <t indent="0" pn="section-3-4">送信者は、DOCSIS の仕様がサポートする Non-Queue-Building（NQB）の Diffserv コードポイント <xref target="RFC9956" format="default" sectionFormat="of" derivedContent="RFC9956"/> を使用して、滑らかであるものの ECN のマーキングに応答しないフローを低遅延のキューに分類させることができます。あるいは、オペレーターがほかのさまざまなローカルの分類器を使用することもできます。</t>
+      <t indent="0" pn="section-3-5"><xref target="qp_approach_mechanism" format="default" sectionFormat="of" derivedContent="Section 2.1"/> ですでに説明したように、QProt アルゴリズムは、低遅延（"LL"）のキューにおける ECN のマーキング確率を駆動するのと同じ変数から駆動されます（LL キューの "Native" AQM は、<xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/> の Immediate Active Queue Management Annex で定義されています）。この内部変数を計算するアルゴリズムは、QProt アルゴリズムで使用できるよう、ECN に対応しているかどうかにかかわらず、すべての LL パケットの到着時に実行されます。ただし、この変数は ECN に対応したパケットに ECN のマークを付けるためにだけ使用されます。</t>
+      <t indent="0" pn="section-3-6">この変数の二重の使用は、処理の効率性を向上させるだけでなく、少なくとも応答する ECN 対応のフローにとって、QProt アルゴリズムの基礎を可視化し透明にします。そのため、フローは、ECN のマークが付いたパケットのビットレート（輻輳レート）を、アルゴリズムの設定された定数である AGING（デフォルトは 2^19 B/s ≈ 4 Mb/s）未満に保つことで、キュー保護のトリガーを避けられると客観的に述べることができます。一時的な動的変化の間にキュー保護をトリガーしないよう、平均的な輻輳レートをこのレベルより十分に低く（たとえば約 1 Mb/s）保つことは、輻輳制御器自身の利益であることに注意してください。</t>
+      <t indent="0" pn="section-3-7">QProt アルゴリズムをほかの環境で使用する場合でも、DOCSIS のアプローチと同様の方法で、可視の輻輳シグナリングのレベルに基づく必要があります。アルゴリズムの決定の基礎に透明性がなければ、エンドシステムは客観的な基準でキュー保護のトリガーを避けることができません。</t>
+    </section>
+    <section anchor="qp_walk-through" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-pseudocode-walk-through">擬似コードの解説</name>
+      <section anchor="qp_header_file" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-input-parameters-constants-">入力パラメーター、定数、変数</name>
+        <t indent="0" pn="section-4.1-1">以下の擬似コードの最初の 2 つのブロックでパラメーターを設定するオペレーターの入力パラメーターは、ケーブルモデム（CM）については <xref target="DOCSIS-CM-OSS" format="default" sectionFormat="of" derivedContent="DOCSIS-CM-OSS"/> で、CMTS については <xref target="DOCSIS-CCAP-OSS" format="default" sectionFormat="of" derivedContent="DOCSIS-CCAP-OSS"/> で定義されています。その後、さらなる定数は、入力パラメーターから導出されるか、ハードコードされます。</t>
+        <t indent="0" pn="section-4.1-2">デフォルト値と単位は角括弧内に示しています。デフォルト値（あるいは QProt アルゴリズムのあらゆる側面）は変更される可能性があるため、最新の DOCSIS の仕様が決定的な参照先です。また、オペレーターが特定のパラメーターをデフォルト以外の値に設定する場合もあります。</t>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-4.1-3">
+// 入力パラメーター
+MAX_RATE;          // 設定された最大持続レート [b/s]
+QPROTECT_ON;       // キュー保護が有効 [デフォルト: TRUE]
+CRITICALqL_us;     // LL キューのしきい値遅延 [µs] デフォルト: MAXTH_us
+CRITICALqLSCORE_us;// しきい値キューイングスコア [デフォルト: 4000 µs]
+LG_AGING;          // キューイングスコアの減衰率 [デフォルト: 19]
+                   //   輻輳レートの 2 を底とする対数 [lg(B/s)]
+
+// calcProbNative() アルゴリズムの入力パラメーター:
+MAXTH_us;          // LL AQM の最大マーキングしきい値 [デフォルト: 1000 µs]
+LG_RANGE;          // ランプの範囲の 2 を底とする対数 [lg(ns)]
+                   //   デフォルト: 2^19 = 524288 ns（約 525 µs）</sourcecode>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-4.1-4">
+// 定数（入力パラメーターから導出するか、ハードコードする）
+T_RES;                                    // t_exp の分解能 [ns]
+                                          // 単位を変換（近似）
+AGING = pow(2, (LG_AGING-30) ) * T_RES;   // lg([B/s]) から [B/T_RES] へ
+CRITICALqL = CRITICALqL_us * 1000;        // [µs] から [ns] へ
+CRITICALqLSCORE = CRITICALqLSCORE_us * 1000/T_RES; // [µs] から [T_RES] へ
+// キューイングスコアの条件のしきい値
+CRITICALqLPRODUCT = CRITICALqL * CRITICALqLSCORE;
+qLSCORE_MAX = 5E9 / T_RES;           // 最大キューイングスコア = 5 秒
+
+ATTEMPTS = 2; // バケットを選ぶ最大試行回数（ベンダー固有）
+BI_SIZE = 5;  // 非デフォルトのバケットのインデックス番号のビット幅
+NBUCKETS = pow(2, BI_SIZE);  // 非デフォルトのバケットの数
+MASK = NBUCKETS-1;     // BI_SIZE 個の LSB が立った便利な定数
+
+                       // キュー保護の終了状態
+EXIT_SUCCESS  = 0;     // パケットを転送する
+EXIT_SANCTION = 1;     // パケットをリダイレクトする
+
+MAX_PROB      = 1; // 整数演算では、オーバーフローの余地を
+                   //   残すために大きな整数（例: 2^31）を使う
+MAXTH = MAXTH_us * 1000;   // 最大マーキングしきい値 [ns]
+MAX_FRAME_SIZE = 2000;  // DOCSIS 全体の定数 [B]
+// 低速リンクのための 2 MTU の最小マーキングしきい値 [ns]
+FLOOR =  2 * 8 * MAX_FRAME_SIZE * 10^9 / MAX_RATE;
+RANGE = (1 &lt;&lt; LG_RANGE);      // ランプの範囲 [ns]
+MINTH = max ( MAXTH - RANGE, FLOOR);
+MAXTH = MINTH + RANGE;           // 最大マーキングしきい値 [ns]</sourcecode>
+        <t indent="0" pn="section-4.1-5">擬似コード全体を通じて、ほとんどの変数は整数です。唯一の例外は、確率を表す浮動小数点の変数（MAX_PROB と probNative）と AGING パラメーターです。実際の DOCSIS の QProt アルゴリズムは整数演算を使用して定義されていますが、この文書で使用する浮動小数点演算では 0 &lt;= probNative &lt;= 1 です。また、擬似コードではオーバーフローのチェックを省略しており、デフォルト以外の入力パラメーターに対して堅牢にする必要があります。</t>
+        <t indent="0" pn="section-4.1-6">時間を表現するための分解能 T_RES は、バケットの有効期限が、システムで想定されるパケットの到着間隔の一部（たとえば 1/10）の時間を表現できるように選ぶ必要があります。</t>
+        <t indent="0" pn="section-4.1-7">次の定義は、重要な変数と関数の目的を説明しています。</t>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-4.1-8">
+// 公開変数:
+qdelay;        // LL キューの現在のキューイング遅延 [ns]
+probNative;    // LL キューのネイティブマーキング確率（[0,1] の範囲）
+
+// 外部変数
+packet;            // パケットヘッダーのフィールドを保持する構造体
+packet.size;       // 現在のパケットのサイズ [B]
+packet.uflow;      // 現在のパケットのフロー識別子
+                   //   （例: 5 タプル、IPsec の場合は 4 タプル）
+
+// qdelay を返す DOCSIS の関数の無関係な詳細は省略
+qdelayL(...)      // 低遅延キューの現在の遅延を返す [ns]</sourcecode>
+        <t indent="0" pn="section-4.1-9">変数 packet.uflow を設定するために、アルゴリズムがフロー ID によってパケットをどのように分類するかの擬似コードは、ここでは詳しく示しません。アプリケーションのフロー ID は通常、次の共通の 5 タプル（または 4 タプル）によって定義されます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.1-10">
+          <li pn="section-4.1-10.1">
+            <t indent="0" pn="section-4.1-10.1.1">見つかった最も内側の IP ヘッダーの送信元と宛先の IP アドレス</t>
+          </li>
+          <li pn="section-4.1-10.2">
+            <t indent="0" pn="section-4.1-10.2.1">この IP ヘッダーのプロトコル（IPv4）または次ヘッダー（IPv6）のフィールド</t>
+          </li>
+          <li pn="section-4.1-10.3">
+            <t indent="0" pn="section-4.1-10.3.1">次のいずれか:</t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.1-10.3.2">
+              <li pn="section-4.1-10.3.2.1">
+                <t indent="0" pn="section-4.1-10.3.2.1.1">TCP、UDP、UDP-Lite、Stream Control Transmission Protocol（SCTP）、Datagram Congestion Control Protocol（DCCP）などの送信元と宛先のポート番号</t>
+              </li>
+              <li pn="section-4.1-10.3.2.2">
+                <t indent="0" pn="section-4.1-10.3.2.2.1">IPsec の Encapsulating Security Payload（ESP）<xref target="RFC4303" format="default" sectionFormat="of" derivedContent="RFC4303"/> のセキュリティーパラメーターインデックス（SPI）</t>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <t indent="0" pn="section-4.1-11">DOCSIS の仕様 <xref target="DOCSIS" format="default" sectionFormat="of" derivedContent="DOCSIS"/> の Queue Protection Annex の Microflow Classification のセクションは、拡張ヘッダーやカプセル化をスキップしてこれらのヘッダーを見つけるためのさまざまな戦略を定義しています。それらが見つからない場合、仕様は、使用されるさまざまなより具体的でない 3 タプルを定義しています。これらのすべての戦略については DOCSIS の仕様を参照すべきであり、ここでは繰り返しません。</t>
+        <t indent="0" pn="section-4.1-12">以下で定義するバケット構造の配列は、すべての QProt の関数で使用されます。</t>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-4.1-13">
+struct bucket { // フローごとの状態を保持するリーキーバケットの構造体
+   id;          // バケットを使用するフローの識別子（例: 5 タプル）
+   t_exp;       // T_RES 単位の有効期限
+                // (t_exp - now) = フローの変換後のキューイングスコア
+};
+struct bucket buckets[NBUCKETS+1];</sourcecode>
+      </section>
+      <section anchor="qp_data_path" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-qprot-data-path">QProt のデータパス</name>
+        <t indent="0" pn="section-4.2-1">QProt のすべての関数は、パケットの到着によって駆動され、データパス上で動作します。</t>
+        <t indent="0" pn="section-4.2-2">フローごとのキューイングスコアを維持し、フローごとの状態を管理する次の関数は、主にメカニズムとみなされます。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-4.2-3">
+    pick_bucket(uflow_id);              // バケット識別子を返す
+    fill_bucket(bucket_id, pkt_size, probNative); /* キューイング
+                                                   * スコアを返す */
+    calcProbNative(qdelay); /* ネイティブ LL AQM の ECN マーキング
+                             * 確率を返す */</sourcecode>
+        <t indent="0" pn="section-4.2-4">次の関数は主にポリシーに関わるものです。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-4.2-5">
+    qprotect(packet, ...); /* パケットを転送するかリダイレクト
+                            * するかの終了状態を返す */</sourcecode>
+        <t indent="0" pn="section-4.2-6">（'...' は気を散らす詳細を省略しています。）</t>
+        <t indent="0" pn="section-4.2-7">ポリシーの側面の将来の変更は、メカニズムの変更よりも可能性が高いです。したがって、ポリシーの側面はハードウェアによる高速化の候補としてはあまり適切ではありません。</t>
+        <t indent="0" pn="section-4.2-8">これらの関数への入口は qprotect() であり、パケットの分類と AQM（ECN のマーキングを含む）の後、各パケットが適切なキュー queue_id にエンキューされる前に、次のように呼び出されます。</t>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-4.2-9">
+classifier(packet) {
+   // ECN、DSCP、ローカル使用のフィールドを使ってキューを決定
+   queue_id = classify(packet);
+   //   LQ と CQ は classify() が返す有効なキュー ID のマクロ
+   if (queue_id == LQ) {
+      // パケットが低遅延サービスフローに分類された場合
+      aqm_mark(packet); // AQM に基づき必要に応じて ECN マークを付ける
+      if (QPROTECT_ON) {
+         if (qprotect(packet, ...) == EXIT_SANCTION) {
+            // パケットをクラシックサービスフローにリダイレクト
+            queue_id = CQ;
+         }
+      }
+   return queue_id;
+}</sourcecode>
+        <section anchor="qp_qprotect" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.1">
+          <name slugifiedName="name-the-qprotect-function">qprotect() 関数</name>
+          <t indent="0" pn="section-4.2.1-1">低遅延（LL）のキューにパケットが到着するたびに、qprotect() は LL キューの現在の遅延を測定し、そこから Native の LL のマーキング確率を導出します。次に、pick_bucket を使用して、フローの状態をすでに保持しているバケットを見つけるか、フローが新しいかその状態が期限切れになっている場合（最も可能性の高い場合）は新しいバケットを割り当てます。次に、fill_bucket() 関数によってキューイングスコアが更新されます。これでメカニズムの側面は完了です。</t>
+          <t indent="0" pn="section-4.2.1-2">後続のポリシーの条件とアクションに対するコメントは、表面的なレベルでは自明なはずです。これらの条件のより深い根拠は <xref target="qp_rationale_conditions" format="default" sectionFormat="of" derivedContent="Section 5.4"/> で示します。</t>
+          <sourcecode name="" type="pseudocode" markers="true" pn="section-4.2.1-3">
+// パケットごとのキュー保護
+qprotect(packet, ...) {
+
+   bckt_id;   // バケットのインデックス
+   qLscore;   // パケットのフローの T_RES 単位のキューイングスコア
+
+   qdelay = qL.qdelay(...);
+   probNative = calcProbNative(qdelay);
+
+   bckt_id = pick_bucket(packet.uflow);
+   qLscore = fill_bucket(buckets[bckt_id], packet.size, probNative);
+
+   // パケットに制裁を科すかどうかを決定
+   if ( ( ( qdelay &gt; CRITICALqL ) // qdelay がしきい値を超えるか確認...
+      // ...かつ、qdelay/CRITICALqL でスケールしたフローの
+      // ...キューイングスコアが CRITICALqLSCORE を超える
+      &amp;&amp; ( qdelay * qLscore &gt; CRITICALqLPRODUCT ) )
+      // または qLSCORE_MAX に到達
+      || ( qLscore &gt;= qLSCORE_MAX ) )
+
+      return EXIT_SANCTION;
+
+   else
+      return EXIT_SUCCESS;
+}</sourcecode>
+        </section>
+        <section anchor="qp_pick_bucket" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.2">
+          <name slugifiedName="name-the-pick_bucket-function">pick_bucket() 関数</name>
+          <t indent="0" pn="section-4.2.2-1">pick_bucket() 関数は、同じフローのパケットとパケットの間で通常は期限切れになっているフローの状態のために最適化されています。これは各パケットのフロー ID に関連付けられたバケットを見つける方法の 1 つにすぎず、より効率的な代替手段を開発できる可能性があります。</t>
+          <t indent="0" pn="section-4.2.2-2">アルゴリズムは、パケットに関連付けられた生きている（期限切れでない）フローの状態を保持するバケットが、新しいバケットが割り当てられる前に必ず見つかるように構成されています。前に定義した定数 ATTEMPTS は、各フローのバケットを見つけるために使用されるハッシュの数を決定します。（実際には、1 つのハッシュだけが生成されます。そして、デフォルトでは 2^5 = 32 個のバケットがあるため、デフォルトではそのうちの 5 ビットずつがハッシュ値として使用されます。）</t>
+          <t indent="0" pn="section-4.2.2-3">アルゴリズムは、フロー自身の ID をそのフローの状態に格納します。そのため、フローのパケットが到着すると、アルゴリズムはフロー自身の ID を探して、最大 ATTEMPTS 回までバケットへのハッシュを試みます。見つかった場合はそのバケットを使用し、期限切れになっていれば最初に有効期限を「現在」にリセットします。</t>
+          <t indent="0" pn="section-4.2.2-4">フローの ID が見つからず、有効期限がまだ現在のものである場合、アルゴリズムは別のフローがそのバケットを使用していると判断でき、そのフローのためのバケットを探し続けます。有効期限が過ぎた別のフローのバケットを見つけた場合でも、すぐにはそれを使用しません。単にそれを使用する可能性のあるバケットとして記憶しておくだけです。しかし、まずすべての ATTEMPTS 回のハッシュを実行して、そのフロー ID に割り当てられたバケットを探します。その後、生きているバケットがまだパケットのフローに関連付けられていない場合、アルゴリズムは、スコアが期限切れになった既存のバケットをすでに確保しているはずです。このバケットはもはや以前のフローの状態を保持する必要がないため、現在のパケットのフローで使用するために再利用できます。</t>
+          <t indent="0" pn="section-4.2.2-5">ほかのすべてが失敗した場合は、使用できる追加のバケットが 1 つあります（dregs と呼ばれます）。dregs がまだ別のフローによって使用中である場合、自身のバケットを見つけられない後続のフローはすべてそれを共有し、dregs にあるスコアに自身のスコアを加えます。フローが単独で dregs を使用してうまくやり過ごせる場合もありますが、誤ってマークされたフローが多数ある場合は、無実のフローを含む複数のフローが dregs で衝突する可能性が高くなります。バケットの数とハッシュの試行回数の選択によって、この望ましくないシナリオが発生する可能性が決まります。</t>
+          <sourcecode name="" type="pseudocode" markers="true" pn="section-4.2.2-6">
+// フロー uflw に関連付けられたバケットを選ぶ
+pick_bucket(uflw) {
+
+   now;                      // 現在時刻
+   j;                        // ループカウンター
+   h32;                      // パケットのフロー ID のハッシュを保持
+   h;                        // 確認中のバケットのインデックス
+   hsav;                     // 暫定的に選んだバケットのインデックス
+
+   h32   = hash32(uflw);     // フロー ID の 32 ビットハッシュ
+   hsav  = NBUCKETS;         // デフォルトのバケット
+   now   = get_time_now();   // T_RES 単位
+
+   // for ループは、ATTEMPTS 個のバケットがフロー ID に所有されているか確認する
+   // また、期限切れで再利用できるバケットがあれば、その最初の
+   // バケットを記録する。
+   // 所有権の確認がすべて終わるまでバケットを再利用してはならない
+   for (j=0; j&lt;ATTEMPTS; j++) {
+      // 各試行でハッシュの下位 BI_SIZE ビットを使う
+      h = h32 &amp; MASK;
+      if (buckets[h].id == uflw) {    // uflw のバケットが見つかったら...
+         if (buckets[h].t_exp &lt;= now) // ...バケットが期限切れなら...
+            buckets[h].t_exp = now;   // ...リセットする
+         return h;                    // いずれにせよ、それを使う
+      }
+      else if ( (hsav == NBUCKETS)  // 期限切れのバケットをまだ見ておらず
+                                    //   このバケットが期限切れの場合
+           &amp;&amp; (buckets[h].t_exp &lt;= now) ) {
+         hsav = h;                  // それを暫定バケットに設定
+      }
+      h32 &gt;&gt;= BI_SIZE;          // 次の試行のためにハッシュをビットシフト
+   }
+   // ここに来たら、確認したどのバケットもそのフロー ID に所有されていない
+   if (hsav != NBUCKETS) {
+      // ここに来たら、上の for ループで期限切れのバケットを見つけた
+      buckets[hsav].t_exp = now;              // 期限切れのバケットをリセット
+   } else {
+      // ここに来たら、デフォルトのバケット（残りかす）を使う必要がある
+      if (buckets[hsav].t_exp &lt;= now) {   // 残りかすが期限切れなら...
+         buckets[hsav].t_exp = now;       // ...リセットする
+      }
+   }
+   buckets[hsav].id = uflw; // どちらの場合も、再利用のために確保する
+   return hsav;
+}</sourcecode>
+        </section>
+        <section anchor="qp_fill_bucket" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.3">
+          <name slugifiedName="name-the-fill_bucket-function">fill_bucket() 関数</name>
+          <t indent="0" pn="section-4.2.3-1">fill_bucket() 関数は、<xref target="qp_approach_mechanism" format="default" sectionFormat="of" derivedContent="Section 2.1"/> で概説したように、時間とともにキューイングスコアの蓄積とエージングの両方を行います。スコアのエージングを効率的にするため、キューイングスコアの増分は AGING で割ることで時間の単位に変換され、その結果がフローの新しい有効期限を表すようになっています。</t>
+          <t indent="0" pn="section-4.2.3-2">probNative はすでに ECN のマークを付けるパケットを選択するために使用されているため、すべてのパケットのサイズ（pkt_sz）と probNative の積でキューイングスコアを増やす代わりに、選択された各パケットの完全なサイズでキューイングスコアを増やすだけでよいと考えられるかもしれません。しかし、著者の 1 人がほかの輻輳ポリサーで得た未公開の経験によると、そうするとスコアの増え方が、特に probNative が低いときに、あまりにも不規則になることがわかっています。</t>
+          <t indent="0" pn="section-4.2.3-3">キューイングスコアのより深い説明は <xref target="qp_rationale" format="default" sectionFormat="of" derivedContent="Section 5"/> にあります。</t>
+          <sourcecode name="" type="pseudocode" markers="true" pn="section-4.2.3-4">
+fill_bucket(bckt_id, pkt_sz, probNative) {
+   now;                                       // 現在時刻
+   now = get_time_now();                      // T_RES 単位
+   // パケットのキューイングスコアを加算
+   // 整数演算では、除算をビットシフトで置き換えられる
+   qLscore = min(buckets[bckt_id].t_exp - now
+                 + probNative * pkt_sz / AGING, qLSCORE_MAX);
+   buckets[bckt_id].t_exp = now + qLscore;
+   return qLscore;
+}</sourcecode>
+        </section>
+        <section anchor="qp_calcProbNative" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.4">
+          <name slugifiedName="name-the-calcprobnative-function">calcProbNative() 関数</name>
+          <t indent="0" pn="section-4.2.4-1">このキューイングスコアを導出するために、QProt アルゴリズムは、LL キューの瞬間的なキューイング遅延を [0,1] の範囲の確率に正規化する線形ランプ関数 calcProbNative() を使用し、その値を probNative に割り当てます。</t>
+          <sourcecode name="" type="pseudocode" markers="true" pn="section-4.2.4-2">
+calcProbNative(qdelay){
+      if ( qdelay &gt;= MAXTH ) {
+         probNative = MAX_PROB;
+      } else if ( qdelay &gt; MINTH ) {
+         probNative = MAX_PROB * (qdelay - MINTH)/RANGE;
+         // 実際には、* と / はビットシフトを使う
+      } else {
+         probNative = 0;
+      }
+      return probNative;
+}</sourcecode>
+        </section>
+      </section>
+    </section>
+    <section anchor="qp_rationale" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-rationale">根拠</name>
+      <section anchor="qp_rationale_not_throughput" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-rationale-blame-for-queuing">根拠: レートそのものではなくキューイングに対する責任</name>
+        <t indent="0" pn="section-5.1-1"><xref target="qp_fig_blame_cbr_v_burst" format="default" sectionFormat="of" derivedContent="Figure 1"/> は、2 つのフローのビットレートを積み上げた領域として示しています。どちらのフローがキューイング遅延に対してより責任があるかという問題を提起しています。容量の約 80% を消費している応答しない固定ビットレートのフロー（c）でしょうか、それとも定期的に短い応答しないバーストを送信しているフロー（b）でしょうか。c の滑らかさはキューイングを避けるのに優れているように見えますが、その高いレートはそうではありません。しかし、フロー c が存在しないか、わずかに遅く動作していれば、b はキューイングをまったく引き起こさないでしょう。</t>
+        <figure anchor="qp_fig_blame_cbr_v_burst" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-which-is-more-to-blame-for-">キューイング遅延に対してより責任があるのはどちらか</name>
+          <artwork name="" type="" align="left" alt="" pn="section-5.1-2.1">
+^ bit rate (stacked areas)
+|  ,-.          ,-.          ,-.          ,-.          ,-.
+|--|b|----------|b|----------|b|----------|b|----------|b|---Capacity
+|__|_|__________|_|__________|_|__________|_|__________|_|_____
+|
+|                       c
+|
+|
+|
++----------------------------------------------------------------&gt;
+                                                              time</artwork>
+        </figure>
+        <t indent="0" pn="section-5.1-3">キューイングスコアを説明するため、以下では、最初は QProt アルゴリズムがキューイングスコアを蓄積しているものの、その結果として何のアクションもとっていないと仮定します。</t>
+        <t indent="0" pn="section-5.1-4">各フローがキューイング遅延に対して負う責任を定量化するため、QProt アルゴリズムは、各パケットが到着した瞬間に測定された、各フローのレートと輻輳のレベルの積を蓄積します。瞬間的なフローのレートは、パケットが到着する各離散的なイベントにおいて、そのパケットのサイズによって表されます。これは、単位時間内に到着するパケットが多いほど速く蓄積されます。輻輳のレベルは、0 から 1 の間の無次元の数（probNative）に正規化されます。この分数の輻輳のレベルは、次の 2 つの理由で、キューイング遅延に直接依存するよりも好まれます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.1-5">
+          <li pn="section-5.1-5.1">
+            <t indent="0" pn="section-5.1-5.1.1">遅延にほとんど寄与しない非常に低いレベルのキューイングを無視できるようにするため</t>
+          </li>
+          <li pn="section-5.1-5.2">
+            <t indent="0" pn="section-5.1-5.2.1">過剰なキューイング遅延に対する急峻な障壁を設けられるようにするため</t>
+          </li>
+        </ul>
+        <t indent="0" pn="section-5.1-6">結果として得られるキュースコアの単位は、1 秒あたりの「輻輳したバイト（congested-bytes）」であり、単なる 1 秒あたりのバイトとは区別されます。</t>
+        <t indent="0" pn="section-5.1-7">そうすると、バースト（b）の間の期間には、どちらのフローもキューイングスコアを蓄積しません。c の高いレートは無害です。しかし、各バーストの間は、c と b のレートがそれぞれ容量の 80% と 45% で、25% の過負荷を引き起こしているとすると、それぞれがキューイング遅延の責任の (80/125)% と (45/125)%（64% と 36%）を負います。アルゴリズムはこれらの割合を明示的に計算するわけではありません。これらは単に、バーストの間に各フローから到着するパケットの数の結果です。</t>
+        <t indent="0" pn="section-5.1-8">要約すると、キューイングスコアは、レートそのものを理由に制裁を加えることは決してありません。レートがキューイングを引き起こす限りにおいてのみ制裁を加えます。</t>
+        <figure anchor="qp_fig_blame_scenario" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-responsibility-for-queuing-">キューイングの責任: より複雑なシナリオ</name>
+          <artwork name="" type="" align="left" alt="" pn="section-5.1-9.1">
+^ bit rate (stacked areas)                               ,
+|               ,-.                       |\           ,-
+|------Capacity-|b|----------,-.----------|b|----------|b\-----
+|             __|_|_______   |b|        /``\| _...-._-': | ,.--
+|  ,-.     __/            \__|_|_     _/    |/          \|/
+|  |b| ___/                      \___/   __       r
+|  |_|/                v             \__/  \_______    _/\____/
+| _/                                               \__/
+| 
++----------------------------------------------------------------&gt;
+                                                              time</artwork>
+        </figure>
+        <t indent="0" pn="section-5.1-10"><xref target="qp_fig_blame_scenario" format="default" sectionFormat="of" derivedContent="Figure 2"/> は、キューイングスコアがキューイングの責任をどのように割り当てるかについて、より複雑な説明を示しています（ASCII アートで表現できる精度に限られます）。この図は、b、v、r とラベル付けされた積み上げ領域として表された 3 つのフローのビットレートを示しています。応答しないバースト（b）は前の例と同じですが、可変レートの映像（v）がフロー c に置き換わっています。そのレートは、映像のシーンの複雑さが変わるにつれて変化します。また、より遅い時間尺度では、輻輳のレベルに応じて映像はその品質を調整します。ただし、短い時間尺度では、少量のキューイングには応答しないように見えます。また、途中で、ほかの 2 つが残した容量の残りを埋めることを目指す、低遅延の応答するフロー（r）が加わります。</t>
+        <t indent="0" pn="section-5.1-11">最初のバーストと、映像のアプリケーションによって制限された低いレートの組み合わせでは、どちらのフローもキューイングスコアを蓄積しません。対照的に、2 番目のバーストは、<xref target="qp_fig_blame_cbr_v_burst" format="default" sectionFormat="of" derivedContent="Figure 1"/> の例と同様の過剰な過負荷（125%）を引き起こします。その後、映像はたまたまレートを下げる（おそらくより複雑でないシーンのため）ため、3 番目のバーストはわずかな輻輳しか引き起こしません。結果として生じるキューによって probNative がわずか 1% まで上昇すると仮定すると、このバーストの間、キューイングスコアはフロー v と b の各パケットのサイズの 1% しか蓄積しません。</t>
+        <t indent="0" pn="section-5.1-12">4 番目のバーストは、新しい応答するフロー（r）が利用可能な容量を埋めたちょうどそのときに到着するため、キューの非常に急速な増加につながります。1 ラウンドトリップの後、応答するフローは急速に後退し、適応型の映像も、輻輳のレベルが非常に高いため、通常よりも急速に後退します。フロー r の輻輳への迅速な応答により、3 つのフローすべてが蓄積するキューイングスコアは減少しますが、それぞれは依然として、パケットがキューに到着するレートと、そのときの probNative の値の積に比例してコストを負担します。したがって、5 番目のバーストの間は、キューイング遅延がそれほど過剰ではないため、すべてのフローが 4 番目よりも低いスコアを蓄積します。</t>
+      </section>
+      <section anchor="qp_rationale_aging" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-rationale-constant-aging-of">根拠: キューイングスコアの一定のエージング</name>
+        <t indent="0" pn="section-5.2-1">行儀の良いフローであっても、動的なイベントに常に十分速く応答できるとは限りません。また、たとえば Data Center TCP（DCTCP）<xref target="RFC8257" format="default" sectionFormat="of" derivedContent="RFC8257"/>、TCP Prague <xref target="I-D.briscoe-iccrg-prague-congestion-control" format="default" sectionFormat="of" derivedContent="PRAGUE-CC"/>、Bottleneck Bandwidth and Round-trip propagation time version 3（BBRv3）<xref target="BBRv3" format="default" sectionFormat="of" derivedContent="BBRv3"/>、リアルタイムメディア <xref target="RFC8298" format="default" sectionFormat="of" derivedContent="RFC8298"/> のための SCReAM <xref target="SCReAM" format="default" sectionFormat="of" derivedContent="SCReAM"/> の L4S 版などの行儀の良いフローは、より多くを求めて継続的に慎重に探りつつ、低いレベルの ECN シグナリングに応じてレート（または輻輳ウィンドウ）から継続的に少しずつ差し引くことで、非常に浅いキューを維持できます。したがって、QProt アルゴリズムは、蓄積されるキューイングスコアをエージングするために、継続的にある程度の寛容さを提供する必要があります。</t>
+        <t indent="0" pn="section-5.2-2">上記のようなスケーラブルな輻輳制御器は、輻輳ウィンドウを輻輳のレベル probNative に反比例して維持します。これにより、リンクの容量や競合するほかのフローの数にかかわらず、平均すると、スケーラブルなフローは輻輳ウィンドウと輻輳のレベルの積を一定に保つという重要な特性がもたらされます。たとえば、リンクの容量が 2 倍になると、スケーラブルなフローは半分の輻輳確率を引き起こします。あるいは、3 つのスケーラブルなフローが容量を奪い合う場合、各フローは単独で使用する容量の 3 分の 1 に減らし、輻輳のレベルを 3 倍に増やします。したがって、定常状態では、スケーラブルなフローは、リンクの容量や容量を共有するフローの数にかかわらず、ラウンドトリップごとに同じ一定量の「輻輳したバイト」を引き起こします。</t>
+        <t indent="0" pn="section-5.2-3">これは、QProt アルゴリズムが十分な一定のレートでキューイングスコアをエージングすれば、行儀の良いスケーラブルなフローに制裁を加えないことを示唆しています。この定数は、通常の動的な変化を許容するため、行儀の良いスケーラブルなフローの平均よりもいくらか高くする必要があります。</t>
+        <t indent="0" pn="section-5.2-4">QProt のエージングの定数をスケーラブルなフローに関連付けることは、フローがスケーラブルなフローのように振る舞わなければならないことを意味するわけではありません。より積極的でないことは許されますが、より積極的であることは許されません。たとえば、RTT の長いフローは、エージングのレートよりも低い輻輳レートで動作できますが、RTT の短いスケーラブルなフローのレートと等しくなるまで積極性を高めることもできます <xref target="ScalingCC" format="default" sectionFormat="of" derivedContent="ScalingCC"/>。QProt の一定のエージングはまた、長時間動作する応答しないフローが、競合する応答するスケーラブルなフローよりも速く動作すると、QProt をトリガーしやすくなることも意味します。そしてもちろん、フローが短期的に過剰なキューイングを引き起こした場合、そのキューイングスコアは、一定のエージングのプロセスがそれを減らすよりも速く上昇します。その場合でも、QProt は、共有されたキューの低遅延を損なう前に、そのフローのパケットを追い出します。</t>
+      </section>
+      <section anchor="qp_rationale_normalize" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-rationale-transformed-queui">根拠: 変換されたキューイングスコア</name>
+        <t indent="0" pn="section-5.3-1">QProt アルゴリズムは、フローのキューイングスコアの状態を「バケット」と呼ばれる構造に保持します。これは、通常のリーキーバケットに似ているためです（ただし、バケットの内容はバイトを表しません）。</t>
+        <figure anchor="qp_fig_qscore_normalize" align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-transformation-of-queuing-s">キューイングスコアの変換</name>
+          <artwork name="" type="" align="left" alt="" pn="section-5.3-2.1">
+probNative * pkt_sz   probNative * pkt_sz / AGING
+          |                        |
+       |  V  |                  |  V  |
+       |  :  |        ___       |  :  |
+       |_____|        ___       |_____|
+       |     |        ___       |     |
+       |__ __|                  |__ __|
+          |                        |
+          V                        V
+     AGING * Dt                    Dt</artwork>
+        </figure>
+        <t indent="0" pn="section-5.3-3">キューイングスコアの蓄積とエージングは、<xref target="qp_fig_qscore_normalize" format="default" sectionFormat="of" derivedContent="Figure 3"/> の左側にトークンバケットの形式で示しています。Dt は、現在のパケットと前のパケットのスコアが処理された時刻の差です。</t>
+        <t indent="0" pn="section-5.3-4">このトークンバケットの変換された同等のものを、入力と出力の両方を一定のレート AGING で割って、<xref target="qp_fig_qscore_normalize" format="default" sectionFormat="of" derivedContent="Figure 3"/> の右側に示しています。結果は、時間を表し、時間が経過するレートで排出されるバケットの深さです。</t>
+        <t indent="0" pn="section-5.3-5">さらなる最適化として、バケットが最後に更新された時刻はフローの状態とともには保存されません。代わりに、バケットが初期化されるとき、キューイングスコアがシステム時刻「現在」に加えられ、その結果の有効期限がバケットに書き込まれます。その後、バケットが期限切れになっていなければ、増分のキューイングスコアがバケットにすでに保持されている時刻に加えられます。そうすると、キューイングスコアは常にフローの状態自体の有効期限を表します。これは、キューイングスコアが暗黙的に自らエージングするため、明示的にエージングする必要がないことを意味します。</t>
+      </section>
+      <section anchor="qp_rationale_conditions" numbered="true" toc="include" removeInRFC="false" pn="section-5.4">
+        <name slugifiedName="name-rationale-policy-conditions">根拠: ポリシーの条件</name>
+        <t indent="0" pn="section-5.4-1">QProt のポリシーの条件の擬似コードは、<xref target="qp_header_file" format="default" sectionFormat="of" derivedContent="Section 4.1"/> の qprotect() 関数の後半に示しています。各パケットが到着すると、そのフローの状態を見つけてパケットのフローのキューイングスコアを更新した後、アルゴリズムは、便宜のために以下に繰り返すように、共有キューの遅延が一定の閾値 CRITICALqL（たとえば 2 ms）を超えているかどうかを確認します。</t>
+        <sourcecode name="" type="pseudocode" markers="true" pn="section-5.4-2">
+   if (  ( qdelay &gt; CRITICALqL )  // qdelay がしきい値を超えるか確認...
+      // ...かつ、qdelay/CRITICALqL でスケールしたフローの
+      // ...キューイングスコアが CRITICALqLSCORE を超える
+      &amp;&amp; ( qdelay * qLscore &gt; CRITICALqLPRODUCT ) )
+      // CRITICALqLPRODUCT = CRITICALqL * CRITICALqLSCORE であることに注意</sourcecode>
+        <t indent="0" pn="section-5.4-3">キューの遅延の閾値を超えている場合、フローのキューイングスコアは、現在のキューの遅延と閾値のキューイング遅延 CRITICALqL の比によって一時的にスケールアップされます（スケーリングの理由は次に示します）。このスケールアップされたスコアが別の一定の閾値 CRITICALqLSCORE を超えた場合、パケットは追い出されます。上記のコードの実際の最後の行は、コストのかかる除算を避けるため、2 番目の条件の両辺に CRITICALqL を掛けています。</t>
+        <t indent="0" pn="section-5.4-4">このアプローチにより、各パケットは到着時に 1 回だけ評価されます。キューの遅延が閾値を超えると、次の 2 つのことが生じます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.4-5">
+          <li pn="section-5.4-5.1">
+            <t indent="0" pn="section-5.4-5.1.1">キューイングスコアがより高いフローのパケットがすでにキュー内にあっても、現在のパケットが追い出される場合があります。しかし、キューに寄与し続けるフローはさらにパケットを送信する必要があり、それらが後で到着するときにそれらも追い出す機会が得られます。</t>
+          </li>
+          <li pn="section-5.4-5.2">
+            <t indent="0" pn="section-5.4-5.2.1">次に到着するパケットは、キューイングスコアの低いフローに属している可能性があるため、追い出されない場合があります。この場合、パケットを追い出す機会がないままキューの遅延が上昇し続ける可能性があります。キューイングスコアが現在のキューの遅延によってスケールアップされるのはこのためです。そうすることで、パケットを追い出さずにキューが大きくなるほど、アルゴリズムはさらなるパケットに対して「ハードルを上げる」ことになります。</t>
+          </li>
+        </ul>
+        <t indent="0" pn="section-5.4-6">上記のアプローチは、キューイングスコアが最も高いフローを探してバケットを検索し、追い出すためにそのパケットの 1 つを（まだキュー内にあれば）キュー内で探すという、パケットごとの追加の処理コストよりも好まれます。</t>
+        <t indent="0" pn="section-5.4-7"><xref target="qp_fig_policy_conditions" format="default" sectionFormat="of" derivedContent="Figure 4"/> は、このアプローチを図で説明しています。横軸には実際の害、つまり共有キューにおけるキューイング遅延を示しています。縦軸には、アルゴリズムではフローのキューイングスコアによって表される、現在到着しているパケットに関連付けられたフローの振る舞いの記録を示しています。網掛けの領域は、パケットが追い出されることになる、実際の害と振る舞いの記録の組み合わせを表しています。</t>
+        <aside pn="section-5.4-8">
+          <t indent="0" pn="section-5.4-8.1">デフォルトでは、CRITICALqL_us はランプのマーキングアルゴリズムの最大閾値 MAXTH_us に設定されることに注意してください。ただし、代わりに最小閾値に設定すると QProt の性能が向上するかどうかについては議論があります。そうすると、CRITICALqLSCORE の閾値と比較される qdelay と CRITICALqL の比がおよそ 2 倍になります。したがって、それに応じて閾値もおよそ 2 倍にする必要があります。</t>
+        </aside>
+        <figure anchor="qp_fig_policy_conditions" align="left" suppress-title="false" pn="figure-4">
+          <name slugifiedName="name-graphical-explanation-of-th">ポリシーの条件の図による説明</name>
+          <artwork name="" type="" align="left" alt="" pn="section-5.4-9.1">
+Behaviour Record:
+Queueing Score of
+Arriving Packet's Flow
+^
+|   +          |/ / / / / / / / / / / / / / / / / / /
+|    +   N     | / / / / / / / / / / / / / / / / / / /
+|     +        |/ / / / /                   / / / / /
+|      +       | / / / /  E (Eject packet)   / / / / /
+|       +      |/ / / / /                   / / / / /
+|         +    | / / / / / / / / / / / / / / / / / / /
+|           +  |/ / / / / / / / / / / / / / / / / / /
+|             +| / / / / / / / / / / / / / / / / / / /
+|              |+ / / / / / / / / / / / / / / / / / / 
+|    N         |   + / / / / / / / / / / / / / / / / /
+| (No actual   |       +/ / / / / / / / / / / / / / / 
+|   harm)      |            +  / / / / / / / / / / / /
+|              | P (Pass over)   +   ,/ / / / / / / / 
+|              |                           ^ + /./ /_/ 
++--------------+------------------------------------------&gt;
+          CRITICALqL        Actual Harm: Shared Queue Delay</artwork>
+        </figure>
+        <t indent="0" pn="section-5.4-10">"N" とラベル付けされた領域は、最初の条件が満たされない、つまり実際の害がない場合を表しています。キューの遅延が臨界閾値 CRITICALqL を下回っています。</t>
+        <t indent="0" pn="section-5.4-11">"E" とラベル付けされた領域は、実際の害があり（キューの遅延が CRITICALqL を超えている）、到着したパケットに関連付けられたキューイングスコアが、確実にそれを追い出せるほど高い場合を表しています。</t>
+        <t indent="0" pn="section-5.4-12">"P" とラベル付けされた領域は、実際の害はあるものの、到着したパケットのキューイングスコアがそれを追い出すには不十分であり、見逃さなければならない場合を表しています。これはキューイング遅延を増やしますが、代替案は無実のフローに制裁を加えるリスクを冒すことになります。実際の害が増加するにつれて、無実の判断がますます厳しくなることがわかります。次のパケットのフローの振る舞いの記録は、それを追い出すためにそれほど悪くなくてもよくなります。</t>
+        <t indent="0" pn="section-5.4-13">追い出しを実際の害を条件とすることで、VPN のパケットが不必要に追い出されることを防ぐのに役立ちます。複数のフローで構成される VPN は、エージングのレートが単一のフローを想定しているため、キューイングスコアをエージングされるよりも速く蓄積する傾向があります。しかし、トラフィックの一部が VPN 内にあるかどうかにかかわらず、キューの遅延の閾値（CRITICALqL）を超える可能性が高くなるわけではありません。したがって、追い出しを実際の害を条件とすることで、VPN のトラフィックが QProt 機能によって追い出される可能性を減らすのに役立ちます。</t>
+      </section>
+      <section anchor="qp_rationale_reclassify" numbered="true" toc="include" removeInRFC="false" pn="section-5.5">
+        <name slugifiedName="name-rationale-reclassification-">根拠: ポリシーのアクションとしての再分類</name>
+        <t indent="0" pn="section-5.5-1">DOCSIS の QProt アルゴリズムが低遅延のキューを保護するためにパケットを追い出す必要があると判断した場合、パケットをクラシックのキューにリダイレクトします。低遅延の DOCSIS のアーキテクチャー（一般に Dual-Queue Coupled AQM と同様）では、クラシックのキューは、クラシックの AQM（遅延の目標は 10 ms）と相互作用するクラシックの輻輳制御器やその他のバースト性のあるトラフィックによって引き起こされる、より大きなパケットの滞留を頻繁に持つことが想定されています。</t>
+        <t indent="0" pn="section-5.5-2">したがって、通常、追い出されたパケットはそうでない場合よりも高いキューイング遅延を経験し、そのフロー内で順序が入れ替わる可能性があります（QProt が異常なフローのすべてのパケットを追い出すわけではないと仮定した場合）。追い出されたパケットのフローの性能に生じる軽い害は意図的なものです。これにより、送信者にはパケットを正しく識別するわずかな動機が与えられます。</t>
+        <t indent="0" pn="section-5.5-3">そのような害がなければ、すべてのフローが自身を低遅延のキューへの分類に適したものとして識別し、結果として生じる集約を QProt にキューを構築するフローとキューを構築しないフローに振り分けさせることを妨げるものは何もないでしょう。これは、送信者にフローを正しく識別することを要求する代わりの有用な選択肢のように思えるかもしれません。しかし、誤って分類されたフローの扱いにはコストがかかります。再分類しなければならないパケットが多いほど、低遅延のキューの遅延が閾値を超える頻度が高くなります。また、追加のフローの状態を保持するために、より多くのメモリーが必要になります。</t>
+        <t indent="0" pn="section-5.5-4">パケットがクラシックのキューにリダイレクトされた場合、オペレーターは、パケットがさらに下流の別の低遅延のキューに分類されないよう、元々そのパケットを低遅延のキューに分類させた識別子を変更したい場合があります。しかし、時折のパケットのリダイレクトは、特定のボトルネックだけでの異常に高い一時的な負荷によるものである可能性があり、必ずしもほかのボトルネックでのものではなく、必ずしも悪いフローの振る舞いによるものでもありません。したがって、<xref target="RFC9331" section="5.4.1.2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9331#section-5.4.1.2" derivedContent="RFC9331"/> は、ネットワークノードが L4S の扱いからトラフィックを除外するためにエンドツーエンドの ECN フィールドを変更することを禁じています。代わりに、各オペレーターがほかのオペレーターが何をすべきかを先入観で判断することなく独自のポリシーを適用できるよう、ローカル用途の識別子（たとえば Diffserv コードポイントや VLAN タグ）を使用すべきです。</t>
+        <t indent="0" pn="section-5.5-5">DOCSIS の仕様ではサポートされていませんが、QProt を拡張して、リダイレクトされた多数のパケットが同じフローに属していることを認識できるようにすることも考えられます。これは、バケットの有効期限 t_exp が閾値を超えたときに検出される可能性があります。ポリシーと実装の能力に応じて、QProt はその後、古くなった分類器を削除するためのアイドルタイムアウトを伴って、フロー全体をクラシックのキューにリダイレクトする分類器をインストールできます。これらの「常習犯」の場合、QProt は、下流のほかの潜在的な低遅延のキューを保護するため、リダイレクトされた各パケットの DSCP を上書きすることもできます。DOCSIS の仕様はフロー全体への制裁については議論していません。さらなる議論はこの文書の範囲外です。</t>
+      </section>
+    </section>
+    <section anchor="qp_limitations" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-limitations">制限事項</name>
+      <t indent="0" pn="section-6-1">QProt アルゴリズムは、共通のレイヤー 4 のフロー識別子を持つパケットをグループ化します。そして、このグループ化を使用して、キューイングスコアを蓄積し、パケットに制裁を加えます。</t>
+      <t indent="0" pn="section-6-2">グループ化のためのこの識別子の選択は実用的なものであり、科学的な根拠はありません。フローのすべてのパケットは確かに同じ 2 つのエンドポイントの間を通過します。しかし、一部のアプリケーションは、たとえばメディア、制御、データなどのために、同じエンドポイントの間で複数のフローを開始する場合があります。ほかのアプリケーションは、これらすべてのストリームに共通のフロー識別子を使用する場合があります。また、ユーザーは、同じレイヤー 4 のトンネルのエンドポイントの間の同じ暗号化された VPN 内に、複数のアプリケーションフローをまとめる場合があります。そして、フローとアプリケーションの間に一対一の対応があったとしても、輻輳を引き起こすことのできるレートをアプリケーションフローごとに配分すべきだと信じる理由はありません。</t>
+      <t indent="0" pn="section-6-3">キューイングに寄与しないフローのレートの側面を除外するキューイングスコアを使用すること（<xref target="qp_rationale_not_throughput" format="default" sectionFormat="of" derivedContent="Section 5.1"/>）は、この制限を緩和するのにある程度役立ちます。アルゴリズムは、1 つのフロー ID の下にグループ化されたフローの集合の合計レートに主に基づいて、キューイング遅延の責任を判断するわけではないからです。</t>
+    </section>
+    <section anchor="l4sds_IANA" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">この文書にIANAのアクションはありません。
+      </t>
+    </section>
+    <section anchor="l4sds_Security_Considerations" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">この文書全体がトラフィックのセキュリティーに関するものです。共有された低遅延のキューを使用するために必要な、キューを構築しない振る舞いに、偶然か悪意によって従わないトラフィックをどのように識別して追い出すかというセキュリティーの問題を検討しています。</t>
+      <t indent="0" pn="section-8-2">L4S アーキテクチャー <xref target="RFC9330" format="default" sectionFormat="of" derivedContent="RFC9330"/> の <xref target="RFC9330" section="8.2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9330#section-8.2" derivedContent="RFC9330"/> は、自制または強制によって低遅延を維持するという問題を紹介し、この問題へのより広い一連のアプローチの中に DOCSIS のキュー保護（QProt）を位置付けています。</t>
+      <section anchor="qp_resource_exhaust" numbered="true" toc="include" removeInRFC="false" pn="section-8.1">
+        <name slugifiedName="name-resource-exhaustion-attacks">資源枯渇攻撃</name>
+        <t indent="0" pn="section-8.1-1">QProt アルゴリズムは、アルゴリズム自身の処理とフローの状態に使用される資源を枯渇させるように細工されたトラフィックに直面しても、穏やかに失敗するように設計されています。これは、キューを構築しないフローが、キューを構築するフローよりも制裁を受ける可能性が常に低いことを意味します。しかし、誤って制裁を受ける無実の（キューを構築しない）フローの割合が増加するような方法で資源を枯渇させる攻撃が考え出される可能性があります。</t>
+        <t indent="0" pn="section-8.1-2">誤った制裁は壊滅的ではないことが意図されています。その結果、行儀の良いフローからのより多くのパケットがクラシックのキューにリダイレクトされ、無実のフローにより多くの順序の入れ替わりがもたらされます。</t>
+        <section anchor="qp_flow-state_exhaust" numbered="true" toc="include" removeInRFC="false" pn="section-8.1.1">
+          <name slugifiedName="name-exhausting-flow-state-stora">フローの状態の保存領域の枯渇</name>
+          <t indent="0" pn="section-8.1.1-1">バケットの数を枯渇させるための最も効率的な攻撃は、到着したフローが利用可能なバケットを見つけられず、したがって "dregs" バケットを共有しなければならない可能性を高めるのに十分な数の、長時間動作する攻撃フローを送信することです。たとえば、ATTEMPTS=2 かつ NBUCKETS=32 の場合、到着したフローが dregs を共有しなければならない確率を 99% に高めるには、それぞれが異なるポート番号を使用する約 94 個の攻撃フローが必要です。そこでは、残りの攻撃フローとともに、クラシックのキューへの高い程度のリダイレクトを共有することになります。</t>
+          <t indent="0" pn="section-8.1.1-2">攻撃者がバケットを占有し続けるには、はるかに多数のポートにわたって単一パケットのフローでバケットの占有と解放を繰り返すよりも、一連のポート番号（上の例では 94 個）を定期的に巡回してバケットを保持し続けるほうが効率的です。</t>
+          <t indent="0" pn="section-8.1.1-3">そのような攻撃の間、カップルドのマーキング確率は 100% で飽和しているでしょう。したがって、バケットを保持するには、攻撃フローのレートは各バケットのエージングのレート（デフォルトでは 4 Mb/s）以上である必要があります。しかし、攻撃フローが確実にバケットを保持し続けるには、それよりもいくらか速く送信する必要があります。したがって、100 個のフローによる攻撃には、合計で 100 * 4 Mb/s = 400 Mb/s を超える力が必要になります。</t>
+          <t indent="0" pn="section-8.1.1-4">この攻撃は、バケットの数を増やすことで緩和できます（ただし防ぐことはできません）。必要な攻撃の力は、バケットの数 NBUCKETS に比例して増加します。したがって、NBUCKETS を 2 倍の 64 にすると、無実のフローへの同じ影響を維持するために 2 倍の数の 4 Mb/s のフローが必要になります。</t>
+          <t indent="0" pn="section-8.1.1-5">おそらく最も効果的な緩和策は、特定の違反フローの個々のパケットが十分にリダイレクトされた後に、フロー全体のリダイレクトを実装することでしょう。これにより、常習犯のパケットごとのキューイングスコアを維持するために使用されるバケットが解放されます。フロー全体のリダイレクトは、ここで規定する現在のバージョンの QProt アルゴリズムの範囲外ですが、<xref target="qp_rationale_reclassify" format="default" sectionFormat="of" derivedContent="Section 5.5"/> の最後で簡単に議論しています。</t>
+          <t indent="0" pn="section-8.1.1-6">常習的に違反するフローのすべてのパケットは、リダイレクトするのではなく破棄すべきだと考えられるかもしれません。しかし、攻撃フローがフロー全体の破棄を悪用し、少なくとも一部の無実のフローにそれを向けさせることで、順序の入れ替わりを引き起こす攻撃を、一部の無実のフローの完全な削除にまで増幅させる可能性があるため、これは推奨されません。</t>
+        </section>
+        <section anchor="qp_proc_exhaust" numbered="true" toc="include" removeInRFC="false" pn="section-8.1.2">
+          <name slugifiedName="name-exhausting-processing-resou">処理資源の枯渇</name>
+          <t indent="0" pn="section-8.1.2-1">各低遅延（LL）パケットに QProt アルゴリズムを適用するのに必要な処理時間は小さく、かなり小さいパケットが連続する場合のそれぞれの間で利用可能な時間をすべて使い切ることがないように意図されています。しかし、攻撃では、複数の入力インターフェースから、より容量の小さい出力インターフェースに向けて、最小サイズのパケットを送り込むことができます。QProt アルゴリズムがプロセッサーの枯渇に対して脆弱かどうかは、具体的な実装に依存します。</t>
+          <t indent="0" pn="section-8.1.2-2">常習的に違反するフローを LL からクラシックにリダイレクトする機能を追加することが、攻撃を受けているときに QProt アルゴリズムのパケットごとの処理コストを減らす最も効果的な方法でしょう。<xref target="qp_flow-state_exhaust" format="default" sectionFormat="of" derivedContent="Section 8.1.1"/> ですでに述べたように、これはフローの状態の枯渇攻撃を緩和する効果的な方法でもあります。フロー全体のリダイレクトのさらなる議論はこの文書の範囲外ですが、<xref target="qp_rationale_reclassify" format="default" sectionFormat="of" derivedContent="Section 5.5"/> の最後で簡単に議論しています。</t>
+        </section>
+      </section>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-9">
+      <name slugifiedName="name-comments-solicited">コメントの募集</name>
+      <t indent="0" pn="section-9-1">研究者によるアルゴリズムの評価と査定を募集しています。コメントと質問も奨励され、歓迎されます。著者宛てにお寄せください。</t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.briscoe-iccrg-prague-congestion-control" to="PRAGUE-CC"/>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="DOCSIS" target="https://www.cablelabs.com/specifications/CM-SP-MULPIv3.1" quoteTitle="true" derivedAnchor="DOCSIS">
+          <front>
+            <title>MAC and Upper Layer Protocols Interface (MULPI) Specification, CM-SP-MULPIv3.1</title>
+            <author fullname="" surname="">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <date day="21" month="January" year="2019"/>
+          </front>
+          <seriesInfo name="Data-Over-Cable Service Interface Specifications DOCSIS(r) 3.1" value="Version I17 or later"/>
+        </reference>
+        <reference anchor="DOCSIS-CCAP-OSS" target="https://www.cablelabs.com/specifications/CM-SP-CCAP-OSSIv3.1" quoteTitle="true" derivedAnchor="DOCSIS-CCAP-OSS">
+          <front>
+            <title>CCAP Operations Support System Interface Specification</title>
+            <author fullname="" surname="">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <date day="7" month="February" year="2019"/>
+          </front>
+          <seriesInfo name="Data-Over-Cable Service Interface Specifications DOCSIS(r) 3.1" value="Version I14 or later"/>
+          <format target="https://specification-search.cablelabs.com/CM-SP-CCAP-OSSIv3.1" type="PDF"/>
+        </reference>
+        <reference anchor="DOCSIS-CM-OSS" target="https://www.cablelabs.com/specifications/CM-SP-CM-OSSIv3.1" quoteTitle="true" derivedAnchor="DOCSIS-CM-OSS">
+          <front>
+            <title>Cable Modem Operations Support System Interface Specification</title>
+            <author fullname="" surname="">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <date day="21" month="January" year="2019"/>
+          </front>
+          <seriesInfo name="Data-Over-Cable Service Interface Specifications DOCSIS(r) 3.1" value="Version I14 or later"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date month="September" year="2001"/>
+            <abstract>
+              <t indent="0">This memo specifies the incorporation of ECN (Explicit Congestion Notification) to TCP and IP, including ECN's use of two bits in the IP header. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC8311" target="https://www.rfc-editor.org/info/rfc8311" quoteTitle="true" derivedAnchor="RFC8311">
+          <front>
+            <title>Relaxing Restrictions on Explicit Congestion Notification (ECN) Experimentation</title>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date month="January" year="2018"/>
+            <abstract>
+              <t indent="0">This memo updates RFC 3168, which specifies Explicit Congestion Notification (ECN) as an alternative to packet drops for indicating network congestion to endpoints. It relaxes restrictions in RFC 3168 that hinder experimentation towards benefits beyond just removal of loss. This memo summarizes the anticipated areas of experimentation and updates RFC 3168 to enable experimentation in these areas. An Experimental RFC in the IETF document stream is required to take advantage of any of these enabling updates. In addition, this memo makes related updates to the ECN specifications for RTP in RFC 6679 and for the Datagram Congestion Control Protocol (DCCP) in RFCs 4341, 4342, and 5622. This memo also records the conclusion of the ECN nonce experiment in RFC 3540 and provides the rationale for reclassification of RFC 3540 from Experimental to Historic; this reclassification enables new experimental use of the ECT(1) codepoint.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8311"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8311"/>
+        </reference>
+        <reference anchor="RFC9331" target="https://www.rfc-editor.org/info/rfc9331" quoteTitle="true" derivedAnchor="RFC9331">
+          <front>
+            <title>The Explicit Congestion Notification (ECN) Protocol for Low Latency, Low Loss, and Scalable Throughput (L4S)</title>
+            <author fullname="K. De Schepper" initials="K." surname="De Schepper"/>
+            <author fullname="B. Briscoe" initials="B." role="editor" surname="Briscoe"/>
+            <date month="January" year="2023"/>
+            <abstract>
+              <t indent="0">This specification defines the protocol to be used for a new network service called Low Latency, Low Loss, and Scalable throughput (L4S). L4S uses an Explicit Congestion Notification (ECN) scheme at the IP layer that is similar to the original (or 'Classic') ECN approach, except as specified within. L4S uses 'Scalable' congestion control, which induces much more frequent control signals from the network, and it responds to them with much more fine-grained adjustments so that very low (typically sub-millisecond on average) and consistently low queuing delay becomes possible for L4S traffic without compromising link utilization. Thus, even capacity-seeking (TCP-like) traffic can have high bandwidth and very low delay at the same time, even during periods of high traffic load.</t>
+              <t indent="0">The L4S identifier defined in this document distinguishes L4S from 'Classic' (e.g., TCP-Reno-friendly) traffic. Then, network bottlenecks can be incrementally modified to distinguish and isolate existing traffic that still follows the Classic behaviour, to prevent it from degrading the low queuing delay and low loss of L4S traffic. This Experimental specification defines the rules that L4S transports and network elements need to follow, with the intention that L4S flows neither harm each other's performance nor that of Classic traffic. It also suggests open questions to be investigated during experimentation. Examples of new Active Queue Management (AQM) marking algorithms and new transports (whether TCP-like or real time) are specified separately.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9331"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9331"/>
+        </reference>
+        <reference anchor="RFC9956" target="https://www.rfc-editor.org/info/rfc9956" quoteTitle="true" derivedAnchor="RFC9956">
+          <front>
+            <title>A Non-Queue-Building Per-Hop Behavior (NQB PHB) for Differentiated Services</title>
+            <author initials="G." surname="White" fullname="Greg White">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <author initials="T." surname="Fossati" fullname="Thomas Fossati">
+              <organization showOnFrontPage="true">Linaro</organization>
+            </author>
+            <author initials="R." surname="Geib" fullname="Ruediger Geib">
+              <organization showOnFrontPage="true">Deutsche Telekom</organization>
+            </author>
+            <date month="May" year="2026"/>
+          </front>
+          <seriesInfo name="RFC" value="9956"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9956"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="BBRv3" target="https://github.com/google/bbr/blob/v3/README.md" quoteTitle="true" derivedAnchor="BBRv3">
+          <front>
+            <title>TCP BBR v3 Release</title>
+            <author/>
+            <date day="18" month="March" year="2025"/>
+          </front>
+          <refcontent>commit 90210de</refcontent>
+        </reference>
+        <reference anchor="LLD" target="https://cablela.bs/low-latency-docsis-technology-overview-february-2019" quoteTitle="true" derivedAnchor="LLD">
+          <front>
+            <title>Low Latency DOCSIS: Technology Overview</title>
+            <author fullname="Greg White" initials="G." surname="White">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <author fullname="Karthik Sundaresan" initials="K." surname="Sundaresan">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <author fullname="Bob Briscoe" initials="B." surname="Briscoe">
+              <organization showOnFrontPage="true">CableLabs</organization>
+            </author>
+            <date day="" month="February" year="2019"/>
+          </front>
+          <refcontent>CableLabs White Paper</refcontent>
+        </reference>
+        <reference anchor="I-D.briscoe-iccrg-prague-congestion-control" target="https://datatracker.ietf.org/doc/html/draft-briscoe-iccrg-prague-congestion-control-04" quoteTitle="true" derivedAnchor="PRAGUE-CC">
+          <front>
+            <title>Prague Congestion Control</title>
+            <author fullname="Koen De Schepper" initials="K." surname="De Schepper">
+              <organization showOnFrontPage="true">Nokia Bell Labs</organization>
+            </author>
+            <author fullname="Olivier Tilmans" initials="O." surname="Tilmans">
+              <organization showOnFrontPage="true">Nokia Bell Labs</organization>
+            </author>
+            <author fullname="Bob Briscoe" initials="B." surname="Briscoe">
+              <organization showOnFrontPage="true">Independent</organization>
+            </author>
+            <author fullname="Vidhi Goel" initials="V." surname="Goel">
+              <organization showOnFrontPage="true">Apple Inc</organization>
+            </author>
+            <date day="24" month="July" year="2024"/>
+            <abstract>
+              <t indent="0">This specification defines the Prague congestion control scheme, which is derived from DCTCP and adapted for Internet traffic by implementing the Prague L4S requirements. Over paths with L4S support at the bottleneck, it adapts the DCTCP mechanisms to achieve consistently low latency and full throughput. It is defined independently of any particular transport protocol or operating system, but notes are added that highlight issues specific to certain transports and OSs. It is mainly based on experience with the reference Linux implementation of TCP Prague and the Apple implementation over QUIC, but it includes experience from other implementations where available. The implementation does not satisfy all the Prague requirements (yet) and the IETF might decide that certain requirements need to be relaxed as an outcome of the process of trying to satisfy them all. Future plans that have typically only been implemented as proof-of- concept code are outlined in a separate section.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-briscoe-iccrg-prague-congestion-control-04"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC4303" target="https://www.rfc-editor.org/info/rfc4303" quoteTitle="true" derivedAnchor="RFC4303">
+          <front>
+            <title>IP Encapsulating Security Payload (ESP)</title>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <date month="December" year="2005"/>
+            <abstract>
+              <t indent="0">This document describes an updated version of the Encapsulating Security Payload (ESP) protocol, which is designed to provide a mix of security services in IPv4 and IPv6. ESP is used to provide confidentiality, data origin authentication, connectionless integrity, an anti-replay service (a form of partial sequence integrity), and limited traffic flow confidentiality. This document obsoletes RFC 2406 (November 1998). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4303"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4303"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date month="September" year="2009"/>
+            <abstract>
+              <t indent="0">This document defines TCP's four intertwined congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery. In addition, the document specifies how TCP should begin transmission after a relatively long idle period, as well as discussing various acknowledgment generation methods. This document obsoletes RFC 2581. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC6789" target="https://www.rfc-editor.org/info/rfc6789" quoteTitle="true" derivedAnchor="RFC6789">
+          <front>
+            <title>Congestion Exposure (ConEx) Concepts and Use Cases</title>
+            <author fullname="B. Briscoe" initials="B." role="editor" surname="Briscoe"/>
+            <author fullname="R. Woundy" initials="R." role="editor" surname="Woundy"/>
+            <author fullname="A. Cooper" initials="A." role="editor" surname="Cooper"/>
+            <date month="December" year="2012"/>
+            <abstract>
+              <t indent="0">This document provides the entry point to the set of documentation about the Congestion Exposure (ConEx) protocol. It explains the motivation for including a ConEx marking at the IP layer: to expose information about congestion to network nodes. Although such information may have a number of uses, this document focuses on how the information communicated by the ConEx marking can serve as the basis for significantly more efficient and effective traffic management than what exists on the Internet today. This document is not an Internet Standards Track specification; it is published for informational purposes.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6789"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6789"/>
+        </reference>
+        <reference anchor="RFC7713" target="https://www.rfc-editor.org/info/rfc7713" quoteTitle="true" derivedAnchor="RFC7713">
+          <front>
+            <title>Congestion Exposure (ConEx) Concepts, Abstract Mechanism, and Requirements</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="B. Briscoe" initials="B." surname="Briscoe"/>
+            <date month="December" year="2015"/>
+            <abstract>
+              <t indent="0">This document describes an abstract mechanism by which senders inform the network about the congestion recently encountered by packets in the same flow. Today, network elements at any layer may signal congestion to the receiver by dropping packets or by Explicit Congestion Notification (ECN) markings, and the receiver passes this information back to the sender in transport-layer feedback. The mechanism described here enables the sender to also relay this congestion information back into the network in-band at the IP layer, such that the total amount of congestion from all elements on the path is revealed to all IP elements along the path, where it could, for example, be used to provide input to traffic management. This mechanism is called Congestion Exposure, or ConEx. The companion document, "Congestion Exposure (ConEx) Concepts and Use Cases" (RFC 6789), provides the entry point to the set of ConEx documentation.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7713"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7713"/>
+        </reference>
+        <reference anchor="RFC8257" target="https://www.rfc-editor.org/info/rfc8257" quoteTitle="true" derivedAnchor="RFC8257">
+          <front>
+            <title>Data Center TCP (DCTCP): TCP Congestion Control for Data Centers</title>
+            <author fullname="S. Bensley" initials="S." surname="Bensley"/>
+            <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+            <author fullname="P. Balasubramanian" initials="P." surname="Balasubramanian"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date month="October" year="2017"/>
+            <abstract>
+              <t indent="0">This Informational RFC describes Data Center TCP (DCTCP): a TCP congestion control scheme for data-center traffic. DCTCP extends the Explicit Congestion Notification (ECN) processing to estimate the fraction of bytes that encounter congestion rather than simply detecting that some congestion has occurred. DCTCP then scales the TCP congestion window based on this estimate. This method achieves high-burst tolerance, low latency, and high throughput with shallow- buffered switches. This memo also discusses deployment issues related to the coexistence of DCTCP and conventional TCP, discusses the lack of a negotiating mechanism between sender and receiver, and presents some possible mitigations. This memo documents DCTCP as currently implemented by several major operating systems. DCTCP, as described in this specification, is applicable to deployments in controlled environments like data centers, but it must not be deployed over the public Internet without additional measures.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8257"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8257"/>
+        </reference>
+        <reference anchor="RFC8298" target="https://www.rfc-editor.org/info/rfc8298" quoteTitle="true" derivedAnchor="RFC8298">
+          <front>
+            <title>Self-Clocked Rate Adaptation for Multimedia</title>
+            <author fullname="I. Johansson" initials="I." surname="Johansson"/>
+            <author fullname="Z. Sarker" initials="Z." surname="Sarker"/>
+            <date month="December" year="2017"/>
+            <abstract>
+              <t indent="0">This memo describes a rate adaptation algorithm for conversational media services such as interactive video. The solution conforms to the packet conservation principle and uses a hybrid loss-and-delay- based congestion control algorithm. The algorithm is evaluated over both simulated Internet bottleneck scenarios as well as in a Long Term Evolution (LTE) system simulator and is shown to achieve both low latency and high video throughput in these scenarios.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8298"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8298"/>
+        </reference>
+        <reference anchor="RFC9330" target="https://www.rfc-editor.org/info/rfc9330" quoteTitle="true" derivedAnchor="RFC9330">
+          <front>
+            <title>Low Latency, Low Loss, and Scalable Throughput (L4S) Internet Service: Architecture</title>
+            <author fullname="B. Briscoe" initials="B." role="editor" surname="Briscoe"/>
+            <author fullname="K. De Schepper" initials="K." surname="De Schepper"/>
+            <author fullname="M. Bagnulo" initials="M." surname="Bagnulo"/>
+            <author fullname="G. White" initials="G." surname="White"/>
+            <date month="January" year="2023"/>
+            <abstract>
+              <t indent="0">This document describes the L4S architecture, which enables Internet applications to achieve low queuing latency, low congestion loss, and scalable throughput control. L4S is based on the insight that the root cause of queuing delay is in the capacity-seeking congestion controllers of senders, not in the queue itself. With the L4S architecture, all Internet applications could (but do not have to) transition away from congestion control algorithms that cause substantial queuing delay and instead adopt a new class of congestion controls that can seek capacity with very little queuing. These are aided by a modified form of Explicit Congestion Notification (ECN) from the network. With this new architecture, applications can have both low latency and high throughput.</t>
+              <t indent="0">The architecture primarily concerns incremental deployment. It defines mechanisms that allow the new class of L4S congestion controls to coexist with 'Classic' congestion controls in a shared network. The aim is for L4S latency and throughput to be usually much better (and rarely worse) while typically not impacting Classic performance.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9330"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9330"/>
+        </reference>
+        <reference anchor="RFC9332" target="https://www.rfc-editor.org/info/rfc9332" quoteTitle="true" derivedAnchor="RFC9332">
+          <front>
+            <title>Dual-Queue Coupled Active Queue Management (AQM) for Low Latency, Low Loss, and Scalable Throughput (L4S)</title>
+            <author fullname="K. De Schepper" initials="K." surname="De Schepper"/>
+            <author fullname="B. Briscoe" initials="B." role="editor" surname="Briscoe"/>
+            <author fullname="G. White" initials="G." surname="White"/>
+            <date month="January" year="2023"/>
+            <abstract>
+              <t indent="0">This specification defines a framework for coupling the Active Queue Management (AQM) algorithms in two queues intended for flows with different responses to congestion. This provides a way for the Internet to transition from the scaling problems of standard TCP-Reno-friendly ('Classic') congestion controls to the family of 'Scalable' congestion controls. These are designed for consistently very low queuing latency, very low congestion loss, and scaling of per-flow throughput by using Explicit Congestion Notification (ECN) in a modified way. Until the Coupled Dual Queue (DualQ), these Scalable L4S congestion controls could only be deployed where a clean-slate environment could be arranged, such as in private data centres.</t>
+              <t indent="0">This specification first explains how a Coupled DualQ works. It then gives the normative requirements that are necessary for it to work well. All this is independent of which two AQMs are used, but pseudocode examples of specific AQMs are given in appendices.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9332"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9332"/>
+        </reference>
+        <reference anchor="RFC9438" target="https://www.rfc-editor.org/info/rfc9438" quoteTitle="true" derivedAnchor="RFC9438">
+          <front>
+            <title>CUBIC for Fast and Long-Distance Networks</title>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="V. Goel" initials="V." surname="Goel"/>
+            <author fullname="L. Eggert" initials="L." role="editor" surname="Eggert"/>
+            <date month="August" year="2023"/>
+            <abstract>
+              <t indent="0">CUBIC is a standard TCP congestion control algorithm that uses a cubic function instead of a linear congestion window increase function to improve scalability and stability over fast and long-distance networks. CUBIC has been adopted as the default TCP congestion control algorithm by the Linux, Windows, and Apple stacks.</t>
+              <t indent="0">This document updates the specification of CUBIC to include algorithmic improvements based on these implementations and recent academic work. Based on the extensive deployment experience with CUBIC, this document also moves the specification to the Standards Track and obsoletes RFC 8312. This document also updates RFC 5681, to allow for CUBIC's occasionally more aggressive sending behavior.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9438"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9438"/>
+        </reference>
+        <reference anchor="ScalingCC" target="https://arxiv.org/abs/1904.07605" quoteTitle="true" derivedAnchor="ScalingCC">
+          <front>
+            <title>Resolving Tensions between Congestion Control Scaling Requirements</title>
+            <author fullname="Bob Briscoe" initials="B." surname="Briscoe">
+              <organization showOnFrontPage="true">Simula Research Lab</organization>
+            </author>
+            <author fullname="Koen De Schepper" initials="K." surname="De Schepper">
+              <organization showOnFrontPage="true">Nokia Bell Labs</organization>
+            </author>
+            <date month="July" year="2017"/>
+          </front>
+          <seriesInfo name="Simula Technical Report" value="TR-CS-2016-001"/>
+          <seriesInfo name="DOI" value="10.48550/arXiv.1904.07605"/>
+          <refcontent>arXiv:1904.07605</refcontent>
+        </reference>
+        <reference anchor="SCReAM" target="https://github.com/EricssonResearch/scream/blob/master/README.md" quoteTitle="true" derivedAnchor="SCReAM">
+          <front>
+            <title>SCReAM</title>
+            <author/>
+            <date day="10" month="November" year="2025"/>
+          </front>
+          <refcontent>commit 0208f59</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書をレビューしてくださった <contact fullname="Tom Henderson"/>、<contact fullname="Magnus Westerlund"/>、<contact fullname="David Black"/>、<contact fullname="Adrian Farrel"/>、<contact fullname="Gorry       Fairhurst"/> に感謝します。QProt アルゴリズムの設計とパラメーターの設定は、低遅延 DOCSIS に関するケーブル業界のワーキンググループの参加者による議論と批評の恩恵を受けました。CableLabs は、この文書に関する <contact fullname="Bob       Briscoe"/> の初期の作業に資金を提供しました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Bob Briscoe" initials="B." role="editor" surname="Briscoe">
+        <organization showOnFrontPage="true">Independent</organization>
+        <address>
+          <postal>
+            <country>United Kingdom</country>
+          </postal>
+          <email>ietf@bobbriscoe.net</email>
+          <uri>https://bobbriscoe.net/</uri>
+        </address>
+      </author>
+      <author fullname="Greg White" initials="G." surname="White">
+        <organization showOnFrontPage="true">CableLabs</organization>
+        <address>
+          <postal>
+            <country>United States of America</country>
+          </postal>
+          <email>G.White@CableLabs.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

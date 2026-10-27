@@ -1,0 +1,920 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-tcpm-prr-rfc6937bis-21" number="9937" ipr="trust200902" obsoletes="6937" updates="" submissionType="IETF" xml:lang="en" tocInclude="true" tocDepth="4" symRefs="true" sortRefs="true" prepTime="2025-12-19T08:48:19" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-prr-rfc6937bis-21" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9937" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="PRR">比例レート削減（PRR）</title>
+    <seriesInfo name="RFC" value="9937" stream="IETF"/>
+    <author fullname="Matt Mathis" initials="M." surname="Mathis">
+      <address>
+        <email>matt.mathis@gmail.com</email>
+      </address>
+    </author>
+    <author fullname="Neal Cardwell" initials="N." surname="Cardwell">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>ncardwell@google.com</email>
+      </address>
+    </author>
+    <author fullname="Yuchung Cheng" initials="Y." surname="Cheng">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>ycheng@google.com</email>
+      </address>
+    </author>
+    <author fullname="Nandita Dukkipati" initials="N." surname="Dukkipati">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>nanditad@google.com</email>
+      </address>
+    </author>
+    <date month="12" year="2025"/>
+    <area>WIT</area>
+    <workgroup>tcpm</workgroup>
+    <keyword>loss recovery</keyword>
+    <keyword>SACK</keyword>
+    <keyword>self clock</keyword>
+    <keyword>fast retransmit</keyword>
+    <keyword>fast recovery</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、RFC 6937 で説明されている実験的（Experimental）なバージョンを廃止する、比例レート削減（Proportional Rate Reduction、PRR）アルゴリズムの標準化過程（Standards Track）のバージョンを規定します。PRR は、高速回復の間に TCP やほかのトランスポートプロトコルが送信するデータの量を調整します。PRR は、回復の終わりに実際のフライトサイズが輻輳制御アルゴリズムによって決定されたスロースタート閾値（ssthresh）にできるだけ近くなるよう、回復の間を通じてフライトサイズを正確に調整します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+          これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+          この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+          この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+          この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+          インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9937" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2025 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+          この文書は、BCP 78 およびこの文書の公開日に有効な IETF Trust の
+          IETF 文書に関する法的規定
+          (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>) の適用を受けます。
+          これらの文書には、この文書に関するあなたの権利および制限が記載されていますので、
+          注意深く確認してください。この文書から抽出されたコードコンポーネントには、
+          Trust Legal Provisions のセクション 4.e で説明されている Revised BSD License の
+          テキストを含めなければなりません。また、これらは Revised BSD License に記載された
+          とおり無保証で提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions">表記規則</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-definitions">定義</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-relative-to-rfc-693">RFC 6937 からの変更点</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relationships-to-other-stan">ほかの標準との関係</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-algorithm">アルゴリズム</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-initialization-steps">初期化の手順</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-ack-steps">ACK ごとの手順</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.3">
+                <t indent="0" pn="section-toc.1-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-transmit-steps">送信ごとの手順</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.4">
+                <t indent="0" pn="section-toc.1-1.6.2.4.1"><xref derivedContent="6.4" format="counter" sectionFormat="of" target="section-6.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-completion-steps">完了の手順</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-properties">特性</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-examples">例</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-adapting-prr-to-other-trans">ほかのトランスポートプロトコルへの PRR の適応</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-measurement-studies">測定研究</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations">運用上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="11.1" format="counter" sectionFormat="of" target="section-11.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-incremental-deployment">漸進的な展開</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="11.2" format="counter" sectionFormat="of" target="section-11.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fairness">公平性</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.3">
+                <t indent="0" pn="section-toc.1-1.11.2.3.1"><xref derivedContent="11.3" format="counter" sectionFormat="of" target="section-11.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protecting-the-network-agai">過剰なキューイングとパケット損失からのネットワークの保護</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="13" format="counter" sectionFormat="of" target="section-13"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="14" format="counter" sectionFormat="of" target="section-14"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.14.2">
+              <li pn="section-toc.1-1.14.2.1">
+                <t indent="0" pn="section-toc.1-1.14.2.1.1"><xref derivedContent="14.1" format="counter" sectionFormat="of" target="section-14.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.14.2.2">
+                <t indent="0" pn="section-toc.1-1.14.2.2.1"><xref derivedContent="14.2" format="counter" sectionFormat="of" target="section-14.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t indent="0" pn="section-toc.1-1.15.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-strong-packet-conservation-">強いパケット保存上限</xref></t>
+          </li>
+          <li pn="section-toc.1-1.16">
+            <t indent="0" pn="section-toc.1-1.16.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.17">
+            <t indent="0" pn="section-toc.1-1.17.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">Van Jacobson のパケット保存則 <xref target="Jacobson88" format="default" sectionFormat="of" derivedContent="Jacobson88"/> は、受信者に配送された N 個のデータセグメントが確認応答を生成し、データの送信者がそれをクロックとして使用して別の N 個のデータセグメントをネットワークに送信するきっかけとする、セルフクロックの過程を定義しています。</t>
+      <t indent="0" pn="section-1-2">Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> や CUBIC <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/> などの輻輳制御アルゴリズムは、このセルフクロックの過程という概念的な基盤の上に構築されています。これらは、輻輳ウィンドウ（"cwnd"）を使用して、ある時点でネットワーク内を転送中であるとコネクションが推定するデータの量である "inflight" を制限することで、トランスポートプロトコルのコネクションの送信過程を制御します。さらに、これらのアルゴリズムは、トランスポートプロトコルのコネクションがパケットの損失に応じて cwnd を減らすことを要求します。高速回復（<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> と <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> を参照）は、確認応答からのフィードバックを使用してこの cwnd の削減を行うためのアルゴリズムです。その掲げられた目標は、回復の間に戻ってくる ACK に依拠してより多くのデータをネットワークに送り出すことで、送信者のセルフクロックを維持することです。比例レート削減（PRR）がない場合、高速回復は通常、データを送信する前にラウンドトリップ時間（RTT）の大部分（Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> では ACK の半ラウンドトリップ時間、CUBIC <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/> ではラウンドトリップ時間の 30%）が経過するのを待つことでウィンドウを調整します。</t>
+      <t indent="0" pn="section-1-3"><xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> は、ネットワーク内でまだ未処理のバイト数の送信者側の推定値である "pipe" を計算することで、選択的確認応答（SACK）<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/> を伴う高速回復をより正確にします。<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> では、高速回復は、各 ACK で必要に応じてデータを送信し、pipe が輻輳制御アルゴリズムによって決定された高速回復の目標ウィンドウサイズである ssthresh に一致するまで上昇できるようにすることで実装されます。これにより、損失が大きい多くの場合に、高速回復がタイムアウトから保護されます。しかし、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> には 2 つの重大な欠点があります。第一に、高速回復の開始時に cwnd を大きく乗算的に減少させるため、データのウィンドウの後半全体または ACK が失われた場合にタイムアウトを引き起こす可能性があります。第二に、大量のデータの欠落を示唆する SACK オプションを運ぶ単一の ACK が pipe の推定値に段差状の不連続を引き起こす可能性があり、それにより高速再送が大量のデータのバーストを送信する可能性があります。</t>
+      <t indent="0" pn="section-1-4">PRR は、これらの過剰なウィンドウの調整を避ける方法で高速回復中の送信過程を調整します。その結果、送信は滑らかに進行し、回復の終わりには実際のウィンドウサイズが ssthresh にできるだけ近くなります。</t>
+      <t indent="0" pn="section-1-5">PRR のアプローチは、Van Jacobson のパケット保存則に触発されたものです。PRR は可能な限りセルフクロックの過程に依拠しており、転送中のデータの量の推定値などの推定器の正確さからはわずかしか影響を受けません。このことが、ほかの推定器に不確実性を引き起こすイベントが存在する場合でも、このアルゴリズムに精度を与えています。</t>
+      <t indent="0" pn="section-1-6">inflight が ssthresh を上回っている場合、PRR は、配送されたデータと ssthresh の両方に比例するレートで送信を送り出すことで、inflight を ssthresh に向けて滑らかに減らします。</t>
+      <t indent="0" pn="section-1-7">inflight が ssthresh より小さい場合、PRR は、一時的なアプリケーションの停止や損失自体を含むすべてのメカニズムによるウィンドウ全体の削減を制限するため、2 つの削減上限（Reduction Bound）のうちの 1 つを状況に応じて選択します。基本として、相当な輻輳がある可能性がある場合に慎重であるため、PRR は厳密にパケットを保存する保守的削減上限（Conservative Reduction Bound、CRB）を使用します。回復が順調に進んでいるように見える場合、PRR は、PRR-CRB よりも ACK あたり最大 1 セグメントだけ積極的なスロースタート削減上限（Slow Start Reduction Bound、SSRB）を使用します。PRR-CRB は <xref target="conservative" format="default" sectionFormat="of" derivedContent="Appendix A"/> で説明されている強いパケット保存上限（Strong Packet Conservation Bound）を満たします。しかし、実際のネットワークで唯一のアプローチとして使用した場合、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> で説明されているアルゴリズムほどの性能は発揮しません。後者は多くの場合により積極的であることがわかっています。PRR-SSRB は、状況によっては PRR-CRB と比べて ACK あたり 1 つの追加セグメントの送信をコネクションに許可することで、妥協点を提供します。PRR-SSRB は <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> よりも積極的ではない（送信するセグメントが少ないか、送信により多くの時間をかける）ものの、回復中の追加の損失の確率が低いため、より優れた性能を発揮します。</t>
+      <t indent="0" pn="section-1-8">パケット保存則の元の定義 <xref target="Jacobson88" format="default" sectionFormat="of" derivedContent="Jacobson88"/> は、失われたと推定されるパケット（たとえば、再送の候補としてマークされたもの）をネットワークから離れたものとして扱っていました。この考え方は PRR が使用する inflight の推定器に反映されていますが、<xref target="conservative" format="default" sectionFormat="of" derivedContent="Appendix A"/> で説明されている強いパケット保存上限とは異なります。後者は受信者に到着したデータのみに基づいて定義されています。</t>
+      <t indent="0" pn="section-1-9">この文書は、<xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> の以前のバージョンの PRR からいくつかの主な変更を規定しています。第一に、inflight が ssthresh より小さい場合に PRR がどれだけ保守的であるか（PRR-CRB と PRR-SSRB のどちらを使用するか）を決定していた手動の設定パラメーターを置き換える、新しい適応的なヒューリスティックを導入します。第二に、このアルゴリズムは非 SACK コネクション（"SACK-permitted" オプションを介して SACK <xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/> のサポートをネゴシエーションしていないコネクション）の振る舞いを規定します。第三に、このアルゴリズムは、送信者が大きな並べ替えを経験し、大量のシーケンス空間が SACK された後に損失の回復を開始する場合でも、滑らかな送信過程を確保します。最後に、この文書には、PRR と輻輳制御や損失検出のアルゴリズムとの統合に関する追加の議論も含まれています。</t>
+      <t indent="0" pn="section-1-10">PRR には、2011 年に最初に広く展開された TCP の PRR 実装 <xref target="First_TCP_PRR" format="default" sectionFormat="of" derivedContent="First_TCP_PRR"/> 以来、複数の TCP 実装での広範な展開の経験があります。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions">表記規則</name>
+      <t indent="0" pn="section-2-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-definitions">定義</name>
+      <t indent="0" pn="section-3-1">次の用語、パラメーター、状態変数は、以前の文書で定義されているとおりに使用します。</t>
+      <dl spacing="normal" newline="false" indent="3" pn="section-3-2">
+        <dt pn="section-3-2.1">SND.UNA:</dt>
+        <dd pn="section-3-2.2">確認応答されていない最も古いシーケンス番号。これは <xref target="RFC9293" section="3.4" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9293#section-3.4" derivedContent="RFC9293"/> で定義されています。</dd>
+        <dt pn="section-3-2.3">SND.NXT:</dt>
+        <dd pn="section-3-2.4">次に送信されるシーケンス番号。これは <xref target="RFC9293" section="3.4" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9293#section-3.4" derivedContent="RFC9293"/> で定義されています。</dd>
+        <dt pn="section-3-2.5">重複 ACK（duplicate ACK）:</dt>
+        <dd pn="section-3-2.6">（a）ACK の受信者が未処理のデータを持っており、（b）受信した確認応答がデータを運ばず、（c）SYN ビットと FIN ビットがどちらもオフであり、（d）確認応答番号が SND.UNA と等しく、（e）受信した確認応答で広告されたウィンドウが最後に受信した確認応答で広告されたウィンドウと等しい場合、その確認応答は「重複 ACK」または「重複確認応答」とみなされます。これは <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> で定義されています。</dd>
+        <dt pn="section-3-2.7">FlightSize:</dt>
+        <dd pn="section-3-2.8">送信されたものの、まだ累積的に確認応答されていないデータの量。これは <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> で定義されています。</dd>
+        <dt pn="section-3-2.9">受信者の最大セグメントサイズ（Receiver Maximum Segment Size、RMSS）:</dt>
+        <dd pn="section-3-2.10">RMSS は、受信者が受け入れる意思のある最大のセグメントのサイズです。これは、コネクションの開始時に受信者が送信する MSS オプションで指定される値です（<xref target="RFC9293" section="3.7.1" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9293#section-3.7.1" derivedContent="RFC9293"/> を参照）。MSS オプションが使用されない場合は、IPv4 ではデフォルトの 536 バイト、IPv6 では 1220 バイトです（<xref target="RFC9293" section="3.7.1" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9293#section-3.7.1" derivedContent="RFC9293"/> を参照）。このサイズには TCP/IP のヘッダーとオプションは含まれません。RMSS は <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> と <xref target="RFC9293" section="3.8.6.3" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9293#section-3.8.6.3" derivedContent="RFC9293"/> で定義されています。</dd>
+        <dt pn="section-3-2.11">送信者の最大セグメントサイズ（Sender Maximum Segment Size、SMSS）:</dt>
+        <dd pn="section-3-2.12">SMSS は、送信者が送信できる最大のセグメントのサイズです。この値は、ネットワークの最大転送単位（MTU）、経路 MTU 探索 <xref target="RFC1191" format="default" sectionFormat="of" derivedContent="RFC1191"/> <xref target="RFC8201" format="default" sectionFormat="of" derivedContent="RFC8201"/> <xref target="RFC4821" format="default" sectionFormat="of" derivedContent="RFC4821"/> のアルゴリズム、RMSS、またはその他の要因に基づくことができます。このサイズには TCP/IP のヘッダーとオプションは含まれません。これは <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> で定義されています。</dd>
+        <dt pn="section-3-2.13">受信ウィンドウ（Receiver Window、rwnd）:</dt>
+        <dd pn="section-3-2.14">最後に受信した、広告された受信ウィンドウ（バイト単位）。どの時点においても、コネクションは SND.UNA と rwnd の合計より大きいシーケンス番号を持つデータを送信しては<bcp14>なりません（MUST NOT）</bcp14>。これは <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> で定義されています。</dd>
+        <dt pn="section-3-2.15">輻輳ウィンドウ（Congestion Window、cwnd）:</dt>
+        <dd pn="section-3-2.16">コネクションが送信できるデータの量を制限する状態変数。どの時点においても、inflight（下記参照）が cwnd と一致するか cwnd を超える場合、コネクションはデータを送信しては<bcp14>なりません（MUST NOT）</bcp14>。これは <xref target="RFC5681" section="2" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-2" derivedContent="RFC5681"/> で定義されています。</dd>
+        <dt pn="section-3-2.17">スロースタート閾値（Slow Start Threshold、ssthresh）:</dt>
+        <dd pn="section-3-2.18">スロースタート閾値（ssthresh）の状態変数は、データ送信の制御にスロースタートと輻輳回避のどちらのアルゴリズムを使用するかを決定するために使用します。高速回復の間、ssthresh は、輻輳制御アルゴリズムによって決定された、高速回復のエピソードの目標ウィンドウサイズです。これは <xref target="RFC5681" section="3.1" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc5681#section-3.1" derivedContent="RFC5681"/> で定義されています。</dd>
+      </dl>
+      <t indent="0" pn="section-3-3">PRR は追加の変数と用語を定義します。</t>
+      <dl spacing="normal" newline="false" indent="3" pn="section-3-4">
+        <dt pn="section-3-4.1">配送されたデータ（Delivered Data、DeliveredData）:</dt>
+        <dd pn="section-3-4.2">以前に受信した ACK 以降に受信者に配送されたことを現在の ACK が示しているバイトの総数についての、データの送信者による最善の推定値。</dd>
+        <dt pn="section-3-4.3">転送中のデータ（In-Flight Data、inflight）:</dt>
+        <dd pn="section-3-4.4">ネットワーク内を転送中である、確認応答されていないバイト数、つまり送信され、失われてもデータの受信者に受信されてもいないバイト数についての、データの送信者による最善の推定値。</dd>
+        <dt pn="section-3-4.5">回復フライトサイズ（Recovery Flight Size、RecoverFS）:</dt>
+        <dd pn="section-3-4.6">現在の PRR のエピソードの間に配送される可能性があると送信者が推定するバイト数。</dd>
+        <dt pn="section-3-4.7">SafeACK:</dt>
+        <dd pn="section-3-4.8">現在の ACK が、回復が順調に進行しており、適切であれば送信者が inflight を増やしてより積極的に送信できることを示していることを表す、ローカルのブール変数。</dd>
+        <dt pn="section-3-4.9">SndCnt:</dt>
+        <dd pn="section-3-4.10">各 ACK に応答して送信すべきバイト数を正確に示すローカル変数。</dd>
+        <dt pn="section-3-4.11">自発的なウィンドウの削減（Voluntary window reductions）:</dt>
+        <dd pn="section-3-4.12">送信ウィンドウサイズとデータレートを減らす目的で、一部の ACK に応答してデータを送信しないことを選択すること。</dd>
+      </dl>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-changes-relative-to-rfc-693">RFC 6937 からの変更点</name>
+      <t indent="0" pn="section-4-1"><xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> からの最大の変更は、良好な回復の進行（TCP の場合、最新の ACK が SND.UNA を進め、以前の高速再送が失われたことを示していない場合）を使用して削減上限（PRR-CRB または PRR-SSRB）を選択する、新しいヒューリスティックの導入です。<xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> は削減上限の選択を実装者の裁量に任せていましたが、デフォルトで PRR-SSRB を使用することを推奨していました。以前の PRR の研究で調べられたすべての環境について、新しいヒューリスティックは古い推奨と一致しています。</t>
+      <t indent="0" pn="section-4-2">論文 "An Internet-Wide Analysis of Traffic Policing" <xref target="Flach2016policing" format="default" sectionFormat="of" derivedContent="Flach2016policing"/> は、以前は調べられていなかった重要な状況を明らかにしました。そこでは、両方の削減上限が、異なる理由で非常に悪い性能を示します。多くの設定のもとで、トークンバケットによるトラフィックポリサーは、トークンが枯渇すると、エンドシステムに何の警告もなく、突然トラフィックの大部分を破棄し始めることがあります。トランスポートの輻輳制御にはトークンレートを測定する機会がなく、以前に観測された経路の性能に基づいて ssthresh を設定します。この ssthresh の値は、トークンの補充レートよりも大幅に大きいデータレートを引き起こし、大きな損失を引き起こす可能性があります。これらの条件のもとでは、両方の削減上限が非常に悪い性能を示します。PRR-CRB は臆病すぎて、必要以上に小さいウィンドウで非常に長い回復時間を引き起こすことがあり、PRR-SSRB は積極的すぎて、多くの場合、多数の再送が複数のラウンドにわたって失われる原因となります。どちらの場合も回復が長引き、アプリケーションのレイテンシーやグッドプットを大きく損ないます。</t>
+      <t indent="0" pn="section-4-3">これらの環境を調査した結果、削減上限を動的に切り替える "SafeACK" ヒューリスティックが開発されました。デフォルトでは保守的に PRR-CRB を使用し、回復が順調に進んでいることを ACK が示す場合（新しい損失を検出することなく SND.UNA が進んでいる場合）にだけ PRR-SSRB に切り替えます。SafeACK ヒューリスティックは Google のコンテンツ配信ネットワーク（CDN）<xref target="Flach2016policing" format="default" sectionFormat="of" derivedContent="Flach2016policing"/> で実験され、2015 年から Linux の TCP に実装されています。</t>
+      <t indent="0" pn="section-4-4">この SafeACK ヒューリスティックは、損失、アプリケーションによる制限のある振る舞い、またはその他のイベントによって、転送中のデータの現在の推定値が ssthresh を下回る場合にだけ呼び出されます。このヒューリスティックが不可欠となる高い損失率は、トラフィックポリサー <xref target="Flach2016policing" format="default" sectionFormat="of" derivedContent="Flach2016policing"/> のような大きな損失がある場合にだけ一般的です。これらの環境では、このヒューリスティックはどちらの上限を単独で使用するよりも優れた性能を発揮します。</t>
+      <t indent="0" pn="section-4-5">PRR アルゴリズムのもう 1 つの変更は、シーケンス空間の大部分が SACK された後に送信者が回復に入る場合の送信過程を改善します。このシナリオは、たとえば <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/> を使用して、送信者が以前に並べ替えを検出した場合に発生する可能性があります。以前のバージョンの PRR では、RecoverFS は高速回復に入る前に SACK されたシーケンス範囲を適切に考慮していなかったため、PRR は最初に送信が遅すぎていました。この変更により、PRR は高速回復に入る前に SACK されたシーケンス範囲を適切に考慮します。</t>
+      <t indent="0" pn="section-4-6">さらに別の変更は、回復をトリガーする最初の ACK で高速再送を強制することです。以前は、損失の状況によっては、PRR は高速回復の最初の ACK で高速再送を許可しない（つまり SndCnt が 0 になる）場合がありました。高速再送を強制することは、ACK クロックを維持し、再送タイムアウト（RTO）イベントの可能性を避けるために重要です。強制される高速再送は回復全体の間に一度だけ発生し、それでも PRR のパケット保存則に従います。このヒューリスティックは、2011 年に最初に広く展開された TCP の PRR 実装 <xref target="First_TCP_PRR" format="default" sectionFormat="of" derivedContent="First_TCP_PRR"/> 以来実装されています。</t>
+      <t indent="0" pn="section-4-7">別の変更として、回復を終了する際に、データの送信者は cwnd を ssthresh に設定します。これは堅牢な性能のために重要です。回復の終わりに cwnd を ssthresh に設定しない場合、アプリケーションによる制限のある送信者の振る舞いと一部の損失のパターンによっては、cwnd が ssthresh を大きく下回った状態で高速回復を終える可能性があり、性能の低下につながります。場合によっては、回復の開始時に cwnd を単に ssthresh に設定する <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> の回復よりも性能が悪くなる可能性があります。回復の終わりに cwnd を ssthresh に設定するこの振る舞いは、2011 年に最初に広く展開された TCP の PRR 実装 <xref target="First_TCP_PRR" format="default" sectionFormat="of" derivedContent="First_TCP_PRR"/> 以来実装されており、回復の開始時に cwnd を ssthresh に設定することを規定している <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> に似ています。</t>
+      <t indent="0" pn="section-4-8"><xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> が書かれて以来、PRR は、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> で規定されている明示的輻輳通知（ECN）など、損失ベースでない輻輳制御アルゴリズムのための乗算的なウィンドウの削減を実行するようにも応用されています。これは、損失回復の状態機械の一部（特に <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> の RecoveryPoint）を使用して、ちょうど 1 ラウンドトリップ分の ACK に対して PRR の ACK 処理を呼び出すことで実現できます。ただし、PRR の使用と、アクティブキュー管理（AQM）や ECN へのアプローチとの間には相互作用がありえます。輻輳制御メカニズムの開発と評価に関するガイダンスは <xref target="RFC9743" format="default" sectionFormat="of" derivedContent="RFC9743"/> で提供されています。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-relationships-to-other-stan">ほかの標準との関係</name>
+      <t indent="0" pn="section-5-1">PRR は、転送中のデータの現在の量が輻輳ウィンドウ（cwnd）によって制限され、その削減の間の転送中のデータの目標量が ssthresh で与えられる固定値である限り、約 1 ラウンドトリップ時間の時間尺度で送信レートを乗算的に減少させることを意図する任意の輻輳制御アルゴリズムと組み合わせて使用しても<bcp14>よいです（MAY）</bcp14>。特に、PRR は Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> と CUBIC <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/> の両方の輻輳制御に適用できます。PRR は "A Conservative Loss Recovery Algorithm Based on Selective Acknowledgment (SACK) for TCP" <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> への変更として説明されています。SACK <xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/> とともに使用する場合に最も正確ですが、SACK を必要とはしません。</t>
+      <t indent="0" pn="section-5-2">PRR は、さまざまな損失検出アルゴリズムと組み合わせて使用できます。これは、損失検出アルゴリズムがどのパケットが配送され、どのパケットが失われたかをどのように推定するかの詳細に PRR がまったく依存しないためです。PRR は、各 ACK の受信時に、いくつのパケットが失われたとマークされ、いくつのパケットが配送されたとマークされたかを損失検出アルゴリズムから伝えてもらうだけで済みます。したがって、PRR は、次の文書で規定または説明されている損失検出アルゴリズムと組み合わせて使用しても<bcp14>よいです（MAY）</bcp14>: Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、NewReno <xref target="RFC6582" format="default" sectionFormat="of" derivedContent="RFC6582"/>、SACK <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>、Forward Acknowledgment（FACK）<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>、Recent Acknowledgment Tail Loss Probe（RACK-TLP）<xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>。末尾の損失、並べ替え、失われた再送に対する耐性を含む RACK-TLP の性能特性のため、PRR を RACK-TLP の損失回復 <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/> とともに実装することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      <t indent="0" pn="section-5-3">SafeACK ヒューリスティックは、<xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/> の初期の前身で開発されていた堅牢な失われた再送の検出（Lost Retransmission Detection）の結果として生まれました。失われた再送の検出がない場合、Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、CUBIC <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/>、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> は制限されたレートを大幅に上回る再送を送信する可能性があるため、非常に高い損失率を引き起こすポリサーは、再送タイムアウトを引き起こすリスクが非常に高くなります。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-algorithm">アルゴリズム</name>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-initialization-steps">初期化の手順</name>
+        <t indent="0" pn="section-6.1-1">輻輳制御アルゴリズムによって開始される輻輳制御の応答エピソードの開始時に、PRR を使用するデータの送信者は PRR の状態を初期化し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-6.1-2">輻輳制御の応答エピソードの開始のタイミングは完全に輻輳制御アルゴリズムに任されており、（たとえば）高速回復のエピソードの開始に対応する場合もあれば、高速回復がすでに進行中の後に失われた再送や失われた元の送信が検出された場合の、ラウンドトリップごとに 1 回の削減に対応する場合もあります。</t>
+        <t indent="0" pn="section-6.1-3">PRR の初期化では、輻輳制御アルゴリズム CongCtrlAlg() が ssthresh を FlightSize/2 以外の値に設定することを許容します（たとえば CUBIC <xref target="RFC9438" format="default" sectionFormat="of" derivedContent="RFC9438"/> を含みます）。</t>
+        <t indent="0" pn="section-6.1-4">PRR の初期化の重要な手順は、PRR のエピソードの間に配送される可能性があるとデータの送信者が推定するバイト数である、回復フライトサイズ（RecoverFS）を計算することです。これは、エピソードの開始時における次の値の合計と考えることができます: inflight、回復をトリガーした ACK で累積的に確認応答されたバイト、回復をトリガーした ACK で SACK されたバイト、SND.UNA と SND.NXT の間で失われたとマークされたバイト。損失はヒューリスティックを使用してマークされるため、以前に失われたとマークされた一部のパケットが最終的に回復中に（再送されずに）配送される可能性があり、そのため RecoverFS には損失が含まれます。PRR は RecoverFS を使用して滑らかな送信レートを計算します。高速回復に入ると、PRR は RecoverFS を初期化し、RecoverFS は特定の高速回復のエピソードの間は一定のままです。</t>
+        <t indent="0" pn="section-6.1-5">PRR アルゴリズムの初期化の手順の全体は次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-6.1-6">
+   ssthresh = CongCtrlAlg()      // Target flight size in recovery
+   prr_delivered = 0             // Total bytes delivered in recovery
+   prr_out = 0                   // Total bytes sent in recovery
+   RecoverFS = SND.NXT - SND.UNA
+   // Bytes SACKed before entering recovery will not be
+   // marked as delivered during recovery:
+   RecoverFS -= (bytes SACKed in scoreboard)
+   // Include the (common) case of selectively ACKed bytes:
+   RecoverFS += (bytes newly SACKed)
+   // Include the (rare) case of cumulatively ACKed bytes:
+   RecoverFS += (bytes newly cumulatively acknowledged)
+</sourcecode>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-per-ack-steps">ACK ごとの手順</name>
+        <t indent="0" pn="section-6.2-1">高速回復を開始する ACK または高速回復中の ACK ごとに、PRR のエピソードを終了させる ACK を除いて、PRR は次の手順を実行します。</t>
+        <t indent="0" pn="section-6.2-2">まず、送信者は DeliveredData を計算します。これは、以前に受信した ACK 以降に受信者に配送されたことを現在の ACK が示しているバイトの総数についての、データの送信者による最善の推定値です。SACK を使用する場合、DeliveredData は、SND.UNA の変化に、スコアボードで SACK されたとマークされたデータの量の符号付きの変化を加えたものとして正確に計算できます。したがって、ACK の前後でスコアボードに SACK されたシーケンス範囲がない特別な場合には、DeliveredData は SND.UNA の変化です。SACK を使用しない回復では、受信した重複 ACK（つまり、SND.UNA が変化しなかったもの）ごとに DeliveredData を 1 SMSS と推定します。SND.UNA が進んだ場合（つまり、完全な ACK または部分的な ACK の場合）、DeliveredData は SND.UNA の変化から、先行する重複 ACK ごとに 1 SMSS を引いたものです。SACK を使用しない場合、（<xref target="Savage99" format="default" sectionFormat="of" derivedContent="Savage99"/> で説明されているように）余分な重複 ACK を返す行儀の悪い受信者が、DeliveredData を人為的に膨らませようとする可能性があることに注意してください。この緩和策として、SACK を使用しない場合、PRR のエピソードで配送されたバイトの合計が回復に入った時点で推定された未処理のデータ（RecoverFS）を超えることになるときは、PRR は DeliveredData を増やすことを許可しません。</t>
+        <t indent="0" pn="section-6.2-3">次に、送信者は inflight を計算します。これは、ネットワーク内を転送中のバイト数についての、データの送信者による最善の推定値です。inflight を計算するために、SACK が有効で <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> の損失検出を使用しているコネクションは、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> で規定されている "pipe" アルゴリズムを使用しても<bcp14>よいです（MAY）</bcp14>。RACK-TLP の損失検出 <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/> またはほかの損失検出アルゴリズムを使用している SACK が有効なコネクションは、SND.NXT - SND.UNA から始めて、スコアボードで SACK されたバイトを引き、スコアボードで失われたとマークされたバイトを引き、最後に失われたとマークされて以降に再送されたスコアボード内のバイトを加えることで、inflight を計算し<bcp14>なければなりません（MUST）</bcp14>。SACK が有効でないコネクションの場合、送信者は、SACK スコアボードで SACK されたバイトを引く代わりに、min(RecoverFS, 高速回復のエピソードで先行する重複 ACK ごとに 1 SMSS) を引か<bcp14>なければなりません（MUST）</bcp14>。RecoverFS との min() は、不正な振る舞いをする受信者 <xref target="Savage99" format="default" sectionFormat="of" derivedContent="Savage99"/> から保護するためのものです。</t>
+        <t indent="0" pn="section-6.2-4">次に、送信者は SafeACK を計算します。これは、現在の ACK が良好な進行を報告したことを示すローカルのブール変数です。SafeACK は、ACK が新しいデータを累積的に確認応答し、かつ ACK がさらなる損失を示していない場合にだけ真になります。たとえば、「救済」の再送（<xref target="RFC6675" section="4" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc6675#section-4" derivedContent="RFC6675"/>、NextSeg() の条件 4）をトリガーする ACK は、さらなる損失を示している可能性があります。両方の条件は、回復が順調に進行しており、適切であれば送信者が inflight を増やしてより積極的に送信できることを示します。</t>
+        <t indent="0" pn="section-6.2-5">最後に、送信者は DeliveredData、inflight、SafeACK、およびその他の PRR の状態を使用して、各 ACK に応答して送信すべきバイト数を正確に示すローカル変数である SndCnt を計算し、次に SndCnt を使用して cwnd を更新します。</t>
+        <t indent="0" pn="section-6.2-6">ACK ごとの PRR アルゴリズムの手順の全体は次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-6.2-7">
+   if (DeliveredData is 0)
+      Return
+
+
+   prr_delivered += DeliveredData
+   inflight = (estimated volume of in-flight data)
+   SafeACK = (SND.UNA advances and no further loss indicated)
+   if (inflight &gt; ssthresh) {
+      // Proportional Rate Reduction
+      // This uses integer division, rounding up:
+      #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+      out = DIV_ROUND_UP(prr_delivered * ssthresh, RecoverFS)
+      SndCnt = out - prr_out
+   } else {
+      // PRR-CRB by default
+      SndCnt = MAX(prr_delivered - prr_out, DeliveredData)
+      if (SafeACK) {
+         // PRR-SSRB when recovery is making good progress
+         SndCnt += SMSS
+      }
+      // Attempt to catch up, as permitted
+      SndCnt = MIN(ssthresh - inflight, SndCnt)
+   }
+
+
+   if (prr_out is 0 AND SndCnt is 0) {
+      // Force a fast retransmit upon entering recovery
+      SndCnt = SMSS
+   }
+   cwnd = inflight + SndCnt</sourcecode>
+        <t indent="0" pn="section-6.2-8">送信者は、SndCnt を計算し、それを使用して cwnd を更新した後、さらにデータを送信します。どのデータを送信するか（たとえば、欠落したデータを再送するか、さらに新しいデータを送信するか）の決定は、この文書の範囲外であることに注意してください。</t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-per-transmit-steps">送信ごとの手順</name>
+        <t indent="0" pn="section-6.3-1">データの送信または再送のたびに、PRR は次を実行します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-6.3-2">
+   prr_out += (data sent)
+</sourcecode>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-6.4">
+        <name slugifiedName="name-completion-steps">完了の手順</name>
+        <t indent="0" pn="section-6.4-1">PRR のエピソードは、高速回復が完了したとき、または新しい輻輳制御の応答エピソードによって新しい PRR のエピソードが開始される前に終了します。</t>
+        <t indent="0" pn="section-6.4-2">PRR のエピソードの完了時に、PRR は次を実行します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-6.4-3">
+   cwnd = ssthresh
+</sourcecode>
+        <t indent="0" pn="section-6.4-4">cwnd を ssthresh に設定するこの手順は、シナリオによっては、連続したセグメントのバーストをネットワークに送り出してしまう可能性があることに注意してください。</t>
+        <t indent="0" pn="section-6.4-5">データトラフィックのバースト性を減らすために、実装がペーシングを使用することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。この推奨は、アイドル状態から再開した後の送信バーストのペーシングを含む、バーストを緩和するための現在のプラクティス（たとえば <xref target="I-D.welzl-iccrg-pacing" format="default" sectionFormat="of" derivedContent="PACING"/>）と一致しています。</t>
+      </section>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-properties">特性</name>
+      <t indent="0" pn="section-7-1">次の特性は、特に記載がない限り、PRR-CRB と PRR-SSRB の両方に共通です。</t>
+      <t indent="0" pn="section-7-2">PRR は、バースト損失を含む回復イベントを通じて、送信者の ACK クロッキングを維持しようとします。対照的に、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> はバースト損失の後に、クロックされない大きなバーストを送信する可能性があります。</t>
+      <t indent="0" pn="section-7-3">通常、PRR は自発的なウィンドウの削減を RTT 全体に均等に分散させます。これは、一般にインターネットのトラフィックのバースト性を減らす可能性があり、一種のソフトなペーシングと考えることができます。仮説的には、どのようなペーシングも異なるフローが交互に配置される確率を高め、ACK の圧縮やトラフィックのバースト性を高めるその他の現象の機会を減らします。ただし、これらの効果は定量化されていません。</t>
+      <t indent="0" pn="section-7-4">損失が最小限であれば、PRR は輻輳制御アルゴリズムが選択した目標ウィンドウに正確に収束します。送信者が回復の終わりに近づくにつれて、prr_delivered は RecoverFS に近づき、prr_out が ssthresh に近づくように SndCnt が計算されることに注意してください。</t>
+      <t indent="0" pn="section-7-5">回復中の複数の孤立した損失による暗黙的なウィンドウの削減により、後の自発的な削減はスキップされます。損失の数が少ない場合、ウィンドウサイズは輻輳制御アルゴリズムが選択したウィンドウちょうどで終わります。</t>
+      <t indent="0" pn="section-7-6">バースト損失の場合、以前の自発的なウィンドウの削減は、回復中に後から到着する ACK に応答して追加のセグメントを送信することで取り消すことができます。一部の自発的なウィンドウの削減が取り消されず、アプリケーションの停止がない限り、inflight の最終値は ssthresh と同じになることに注意してください。</t>
+      <t indent="0" pn="section-7-7">どちらの削減上限を使用する PRR も、アプリケーションの停止がある場合、たとえば送信側のアプリケーションが送信のためのデータを十分速くキューに入れない場合や、受信者が受信ウィンドウを進めるのを止めた場合の状況を改善します。回復の初期にアプリケーションの停止があると、prr_out は SndCnt によって許可された送信の合計よりも遅れます。停止によって逃した送信の機会は、蓄えられた自発的なウィンドウの削減のように扱われます。具体的には、それによって prr_delivered - prr_out が大きく正になります。送信者がまだ回復中にアプリケーションが追いつくと、送信者は、アプリケーションが一度も停止しなかった場合にそうなっていたはずの状態にちょうど追いつくまで inflight を増やすために、部分的なウィンドウのバーストを送信します。そのようなバーストは当該フローや共有しているほかのフローに悪影響を与える可能性がありますが、これは回復中でないときに RTT 未満のアプリケーションの停止があるたびにまさに起こることです。PRR は、RTT 未満の停止の振る舞いをすべての状態で一様にします。この振る舞いを変更することは、この文書の範囲外です。</t>
+      <t indent="0" pn="section-7-8">削減上限を伴う PRR は、inflight の推定器の誤差の影響を受けにくくなっています。回復中、inflight は本質的に推定器であり、SACK されていないセグメントが実際に失われたのか、単にネットワーク内で順序が入れ替わっているだけなのかを推定するために不完全な情報を使用しています。条件によっては、inflight に大きな誤差が生じる場合があります。たとえば、並べ替えられたデータのバーストが早まって失われたと想定され、再送のためにマークされた場合、inflight は過小評価されます。<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> のように送信が inflight によって直接調整される場合、inflight の推定器の段差状の不連続はデータのバーストを引き起こし、数 ACK 後に inflight の推定器が修正されても、そのバーストを取り消すことはできません。PRR の動作では、inflight は単に、DeliveredData から SndCnt を計算するために PRR と削減上限のどちらのアルゴリズムを使用するかを決定するだけです。inflight が過小評価されている間、アルゴリズムの違いは ACK あたり最大 1 セグメントです。inflight が更新されると、それらは回復の終わりに同じ最終ウィンドウに収束します。</t>
+      <t indent="0" pn="section-7-9">回復中のあらゆる条件とイベントの順序のもとで、PRR-CRB は、送信されるデータを受信者に配送されたデータの量以下に厳密に制限します。この強いパケット保存上限は、一部の環境で追加の強制的な損失につながらない最も積極的なアルゴリズムです。これには、交差トラフィックのないボトルネックに定常的なキューがある場合、パケットの到着時刻と出発時刻の違いによる +1/-1 の変動を除いて、回復の期間中キューがちょうど一定の長さを維持するという特性があります。この特性の詳細な議論については <xref target="conservative" format="default" sectionFormat="of" derivedContent="Appendix A"/> を参照してください。</t>
+      <t indent="0" pn="section-7-10">強いパケット保存上限は多くの理由で非常に魅力的ですが、以前の測定（<xref target="RFC6675" section="6" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc6675#section-6" derivedContent="RFC6675"/>）では、それがより積極的でなく、損失のバーストがあるときにデータのバーストを許可する <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> ほどの性能を発揮しないことが示されています。PRR-SSRB は、ACK が、さらなる損失なしに回復が順調に進んでいることを示す場合に、パケット保存上限と比べて ACK あたり 1 つの追加セグメントの送信を送信者に許可する妥協案です。厳密なパケット保存上限の観点からは、PRR-SSRB は確かに回復中にウィンドウを開きます。しかし、バースト損失がある場合には、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> よりも大幅に積極的ではありません。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-examples">例</name>
+      <t indent="0" pn="section-8-1">このセクションでは、単一の損失または 15 個の連続した損失のバーストのいずれかを経験するコネクションという 2 つの例のシナリオでの異なる振る舞いを示すことで、PRR と <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> のアルゴリズムを説明します。すべての場合で、バルクデータ転送（アプリケーションの一時停止なし）、Reno の輻輳制御 <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、cwnd = FlightSize = inflight = 20 セグメントを使用するため、回復の開始時に ssthresh は 10 に設定されます。シナリオでは標準の高速再送 <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> と限定送信 <xref target="RFC3042" format="default" sectionFormat="of" derivedContent="RFC3042"/> を使用するため、送信者は損失の後の最初の 3 つの重複 ACK に応答して、2 つの新しいセグメントとそれに続く 1 つの再送を送信します。</t>
+      <t indent="0" pn="section-8-2">以下の各図は、0 番目のセグメントが失われた場合の、2 つの回復アルゴリズムの最初のラウンドトリップにおける ACK ごとの応答を示しています。一番上の行（"ack#"）は ACK をトリガーした送信セグメントの番号を示し、失われたセグメントは X で示しています。"cwnd" と "inflight" の行は、それぞれ、これらのアルゴリズムが戻ってきた各 ACK を処理した後、さらなる（再）送信の前の cwnd と inflight の値を示しています。"sent" の行は、どれだけの新しい（"N"ew）データまたは再送された（"R"etransmitted）データが送信されるかを示しています。どのデータを送信するかを決定するアルゴリズムはこの文書の範囲外であることに注意してください。</t>
+      <figure align="left" suppress-title="false" pn="figure-1">
+        <artwork align="left" pn="section-8-3.1">
+RFC 6675
+a X  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22
+c   20 20 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10
+i   19 19 18 18 17 16 15 14 13 12 11 10  9  9  9  9  9  9  9  9  9  9
+s    N  N  R                             N  N  N  N  N  N  N  N  N  N
+
+
+
+
+
+
+
+
+PRR
+a X  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22
+c   20 20 19 18 18 17 17 16 16 15 15 14 14 13 13 12 12 11 11 10 10 10
+i   19 19 18 18 17 17 16 16 15 15 14 14 13 13 12 12 11 11 10 10  9  9
+s    N  N  R     N     N     N     N     N     N     N     N     N  N
+
+
+a: ack#;  c: cwnd;  i: inflight;  s: sent
+</artwork>
+      </figure>
+      <t indent="0" pn="section-8-4">この最初の例では、ACK#1 から ACK#19 は元のデータのフライトに対する SACK を含み、ACK#20 と ACK#21 は最初と 2 番目の SACK されたセグメントによってトリガーされた限定送信に対する SACK を運び、ACK#22 は限定送信までのすべてのデータを網羅する完全な累積 ACK を運びます。ACK#22 は高速回復のエピソードを完了させ、したがって PRR のエピソードを完了させます。</t>
+      <t indent="0" pn="section-8-5">両方のアルゴリズムが同じ総量のデータを送信し、両方のアルゴリズムが ssthresh の 20 と一致する cwnd で高速回復のエピソードを完了することに注意してください。<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> は「半ウィンドウの沈黙」を経験しますが、PRR は自発的なウィンドウの削減を RTT 全体に分散させます。</t>
+      <t indent="0" pn="section-8-6">次に、最初の 15 個のパケット（0-14）が失われることを除いて同じ初期条件を持つ例のシナリオを考えます。損失のあるラウンドトリップの残りの間に、送信者に返される ACK は 5 つだけです。以下では、これらの各アルゴリズムを順番に調べます。</t>
+      <figure align="left" suppress-title="false" pn="figure-2">
+        <artwork align="left" pn="section-8-7.1">
+RFC 6675
+a X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  15 16 17 18 19
+c                                              20 20 10 10 10
+i                                              19 19  4  9  9
+s                                               N  N 6R  R  R
+
+
+
+
+PRR
+a X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  15 16 17 18 19
+c                                              20 20  5  5  5
+i                                              19 19  4  4  4
+s                                               N  N  R  R  R
+
+
+a: ack#;  c: cwnd;  i: inflight;  s: sent
+</artwork>
+      </figure>
+      <t indent="0" pn="section-8-8">この特定の状況では、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> のほうが積極的です。高速再送が（セグメント 17 の ACK で）トリガーされると、送信者は inflight を cwnd まで引き上げるのに十分なデータをすぐに再送するからです。以前の測定（<xref target="RFC6675" section="6" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc6675#section-6" derivedContent="RFC6675"/>）によると、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> は、PRR-CRB だけを使用する <xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> のバージョンの PRR や、テストされたほかの同様に保守的なアルゴリズムよりも大幅に優れた性能を発揮しており、実際の損失が輻輳制御アルゴリズムによって決定された cwnd の削減を超えることがかなり一般的であることを示しています。</t>
+      <t indent="0" pn="section-8-9">このような大きな損失のもとでは、高速回復の最初のラウンドトリップの間、PRR はパケット保存則に従うために PRR-CRB を使用します。損失の合計によって inflight が ssthresh を下回るため、送信されたデータの合計である prr_out が、戻ってくる ACK によって報告された受信者に配送されたデータの合計に従うようにデータが送信されます。送信は、prr_delivered - prr_out に設定される送信上限によって制御されます。</t>
+      <t indent="0" pn="section-8-10">上の図には示されていませんが、ACK#17 から送信が開始された高速再送が配送され、SND.UNA を進める ACK を引き出すと、PRR は PRR-SSRB に入り、回復中に inflight が ssthresh に上昇するまで、ACK あたりちょうど 1 セグメントずつウィンドウを増やします。cwnd が大きいときの大きな損失では、PRR-SSRB は PRR-CRB よりも指数関数的に速く損失から回復します。回復中にウィンドウを増やすのは賢明でないように思えるかもしれませんが、これは実際には、高速再送をトリガーした ACK に応答して同じ量の追加データを単一のバーストとして送信する <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> が許可するものよりも積極的ではないことを覚えておくことが重要です。</t>
+      <t indent="0" pn="section-8-11">損失の合計が FlightSize と ssthresh の差よりも小さい、それほど深刻でない損失イベントの場合、PRR は比例レート削減モードにとどまるため、PRR-CRB と PRR-SSRB は呼び出されません。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-adapting-prr-to-other-trans">ほかのトランスポートプロトコルへの PRR の適応</name>
+      <t indent="0" pn="section-9-1">主要な PRR アルゴリズムと削減上限は、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> をサポートできる任意のトランスポートに適応できます。ある主要な実装（Linux の TCP）では、2011 年の導入 <xref target="First_TCP_PRR" format="default" sectionFormat="of" derivedContent="First_TCP_PRR"/> 以来、PRR がデフォルトの輻輳制御モジュールとサポートされる輻輳制御モジュールのための高速回復アルゴリズムとなっています。</t>
+      <t indent="0" pn="section-9-2">SafeACK ヒューリスティックは、ほかのセグメントを再送のためにマークさせない、再送に対する任意の ACK として一般化できます。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-measurement-studies">測定研究</name>
+      <t indent="0" pn="section-10-1"><xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/> については、関連する論文 <xref target="IMC11" format="default" sectionFormat="of" derivedContent="IMC11"/> が大規模な測定研究で <xref target="RFC3517" format="default" sectionFormat="of" derivedContent="RFC3517"/> とさまざまな実験的な PRR のバージョンを評価しました。この文書の公開時点では、その研究で使用されたレガシーなアルゴリズムは、その研究で使用されたコードベースにもはや存在しないため、歴史的なアルゴリズムを再作成しない限り、そのような比較は困難です。測定研究に関心のある読者は、<xref target="RFC6937" section="5" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc6937#section-5" derivedContent="RFC6937"/> と IMC の論文 <xref target="IMC11" format="default" sectionFormat="of" derivedContent="IMC11"/> を参照してください。</t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-operational-considerations">運用上の考慮事項</name>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-11.1">
+        <name slugifiedName="name-incremental-deployment">漸進的な展開</name>
+        <t indent="0" pn="section-11.1-1">PRR は、データ配送の確認応答と失われたデータの検出のために既存のトランスポートプロトコルのメカニズムだけを利用するため、漸進的に展開できます。PRR は、データの送信者でのトランスポートプロトコルの実装の変更だけを必要とし、データの受信者やネットワークでの変更は必要としません。これにより、PRR を使用するデータの送信者は、既存のどのデータの受信者やネットワークとも正しく動作できます。PRR は、ネットワーク内のルーター、スイッチ、その他のデバイスへの変更やそれらからの支援を必要としません。</t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-11.2">
+        <name slugifiedName="name-fairness">公平性</name>
+        <t indent="0" pn="section-11.2-1">PRR は、ともに展開される輻輳制御アルゴリズムの公平性の特性を維持するように設計されています。PRR は、高速回復や、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> で定義されている TCP の ECN への反応による cwnd の段階的な削減など、輻輳制御の応答エピソードの間にだけ動作します。また、エピソードの終わりに輻輳制御アルゴリズムによって決定されたスロースタート閾値（ssthresh）にできるだけ近くなるよう、エピソードの間の転送中のデータの量を滑らかに調整するための、短期的な確認応答ごとの決定だけを行います。PRR は、輻輳制御の応答エピソード以外では、輻輳制御の cwnd の増加や減少のメカニズムを変更しません。</t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-11.3">
+        <name slugifiedName="name-protecting-the-network-agai">過剰なキューイングとパケット損失からのネットワークの保護</name>
+        <t indent="0" pn="section-11.3-1">長い時間尺度では、PRR は、ともに展開される輻輳制御アルゴリズムのキューイングとパケット損失の特性を維持するように設計されています。上で述べたように、PRR は、高速回復や ECN への応答など、輻輳制御の応答エピソードの間にだけ動作します。また、エピソードの終わりに輻輳制御アルゴリズムによって決定されたスロースタート閾値（ssthresh）にできるだけ近くなるよう、エピソードの間の転送中のデータの量を滑らかに調整するための、短期的な確認応答ごとの決定だけを行います。</t>
+        <t indent="0" pn="section-11.3-2">短い時間尺度では、PRR は、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> のような以前のアプローチよりも低いパケット損失率をもたらすように設計されています。大まかに言えば、PRR はパケット保存則に触発されたものであり、可能な限りセルフクロックの過程に依拠しています。対照的に、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> では、大量のデータの欠落を示唆する SACK オプションを運ぶ単一の ACK が pipe の推定値に段差状の不連続を引き起こす可能性があり、それにより高速再送が、配送されたデータの量よりもはるかに大きいデータのバーストを送信する可能性があります。PRR は、失われたデータの量ではなく配送されたデータの量に基づいて送信の決定を行うことで、そのようなバーストを避けます。さらに、上で述べたように、PRR-SSRB は <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> よりも積極的ではなく（送信するセグメントが少ないか、送信により多くの時間をかける）、回復中の追加の損失の確率が低いため、より優れた性能を発揮します。</t>
+      </section>
+    </section>
+    <section anchor="IANA" numbered="true" removeInRFC="false" toc="include" pn="section-12">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-12-1">この文書にIANAのアクションはありません。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-13">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-13-1">PRR は、トランスポートプロトコルのリスクプロファイルを変更しません。</t>
+      <t indent="0" pn="section-13-2">PRR をバイトの計数からセグメントの計数に変更する実装者は、受信者が送信者の輻輳の計算を混乱させる目的で部分的なセグメントを確認応答する ACK 分割攻撃 <xref target="Savage99" format="default" sectionFormat="of" derivedContent="Savage99"/> の影響に注意する必要があります。</t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.mathis-tcp-ratehalving" to="TCP-RH"/>
+    <displayreference target="I-D.welzl-iccrg-pacing" to="PACING"/>
+    <references pn="section-14">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-14.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1191" target="https://www.rfc-editor.org/info/rfc1191" quoteTitle="true" derivedAnchor="RFC1191">
+          <front>
+            <title>Path MTU discovery</title>
+            <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <date month="November" year="1990"/>
+            <abstract>
+              <t indent="0">This memo describes a technique for dynamically discovering the maximum transmission unit (MTU) of an arbitrary internet path. It specifies a small change to the way routers generate one type of ICMP message. For a path that passes through a router that has not been so changed, this technique might not discover the correct Path MTU, but it will always choose a Path MTU as accurate as, and in many cases more accurate than, the Path MTU that would be chosen by current practice. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1191"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1191"/>
+        </reference>
+        <reference anchor="RFC2018" target="https://www.rfc-editor.org/info/rfc2018" quoteTitle="true" derivedAnchor="RFC2018">
+          <front>
+            <title>TCP Selective Acknowledgment Options</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="J. Mahdavi" initials="J." surname="Mahdavi"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="A. Romanow" initials="A." surname="Romanow"/>
+            <date month="October" year="1996"/>
+            <abstract>
+              <t indent="0">This memo proposes an implementation of SACK and discusses its performance and related issues. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2018"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2018"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4821" target="https://www.rfc-editor.org/info/rfc4821" quoteTitle="true" derivedAnchor="RFC4821">
+          <front>
+            <title>Packetization Layer Path MTU Discovery</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="J. Heffner" initials="J." surname="Heffner"/>
+            <date month="March" year="2007"/>
+            <abstract>
+              <t indent="0">This document describes a robust method for Path MTU Discovery (PMTUD) that relies on TCP or some other Packetization Layer to probe an Internet path with progressively larger packets. This method is described as an extension to RFC 1191 and RFC 1981, which specify ICMP-based Path MTU Discovery for IP versions 4 and 6, respectively. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4821"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4821"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date month="September" year="2009"/>
+            <abstract>
+              <t indent="0">This document defines TCP's four intertwined congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery. In addition, the document specifies how TCP should begin transmission after a relatively long idle period, as well as discussing various acknowledgment generation methods. This document obsoletes RFC 2581. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC6582" target="https://www.rfc-editor.org/info/rfc6582" quoteTitle="true" derivedAnchor="RFC6582">
+          <front>
+            <title>The NewReno Modification to TCP's Fast Recovery Algorithm</title>
+            <author fullname="T. Henderson" initials="T." surname="Henderson"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="A. Gurtov" initials="A." surname="Gurtov"/>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida"/>
+            <date month="April" year="2012"/>
+            <abstract>
+              <t indent="0">RFC 5681 documents the following four intertwined TCP congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery. RFC 5681 explicitly allows certain modifications of these algorithms, including modifications that use the TCP Selective Acknowledgment (SACK) option (RFC 2883), and modifications that respond to "partial acknowledgments" (ACKs that cover new data, but not all the data outstanding when loss was detected) in the absence of SACK. This document describes a specific algorithm for responding to partial acknowledgments, referred to as "NewReno". This response to partial acknowledgments was first proposed by Janey Hoe. This document obsoletes RFC 3782. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6582"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6582"/>
+        </reference>
+        <reference anchor="RFC6675" target="https://www.rfc-editor.org/info/rfc6675" quoteTitle="true" derivedAnchor="RFC6675">
+          <front>
+            <title>A Conservative Loss Recovery Algorithm Based on Selective Acknowledgment (SACK) for TCP</title>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="L. Wang" initials="L." surname="Wang"/>
+            <author fullname="I. Jarvinen" initials="I." surname="Jarvinen"/>
+            <author fullname="M. Kojo" initials="M." surname="Kojo"/>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida"/>
+            <date month="August" year="2012"/>
+            <abstract>
+              <t indent="0">This document presents a conservative loss recovery algorithm for TCP that is based on the use of the selective acknowledgment (SACK) TCP option. The algorithm presented in this document conforms to the spirit of the current congestion control specification (RFC 5681), but allows TCP senders to recover more effectively when multiple segments are lost from a single flight of data. This document obsoletes RFC 3517 and describes changes from it. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6675"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6675"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8201" target="https://www.rfc-editor.org/info/rfc8201" quoteTitle="true" derivedAnchor="RFC8201">
+          <front>
+            <title>Path MTU Discovery for IP version 6</title>
+            <author fullname="J. McCann" initials="J." surname="McCann"/>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+            <author fullname="R. Hinden" initials="R." role="editor" surname="Hinden"/>
+            <date month="July" year="2017"/>
+            <abstract>
+              <t indent="0">This document describes Path MTU Discovery (PMTUD) for IP version 6. It is largely derived from RFC 1191, which describes Path MTU Discovery for IP version 4. It obsoletes RFC 1981.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="87"/>
+          <seriesInfo name="RFC" value="8201"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8201"/>
+        </reference>
+        <reference anchor="RFC8985" target="https://www.rfc-editor.org/info/rfc8985" quoteTitle="true" derivedAnchor="RFC8985">
+          <front>
+            <title>The RACK-TLP Loss Detection Algorithm for TCP</title>
+            <author fullname="Y. Cheng" initials="Y." surname="Cheng"/>
+            <author fullname="N. Cardwell" initials="N." surname="Cardwell"/>
+            <author fullname="N. Dukkipati" initials="N." surname="Dukkipati"/>
+            <author fullname="P. Jha" initials="P." surname="Jha"/>
+            <date month="February" year="2021"/>
+            <abstract>
+              <t indent="0">This document presents the RACK-TLP loss detection algorithm for TCP. RACK-TLP uses per-segment transmit timestamps and selective acknowledgments (SACKs) and has two parts. Recent Acknowledgment (RACK) starts fast recovery quickly using time-based inferences derived from acknowledgment (ACK) feedback, and Tail Loss Probe (TLP) leverages RACK and sends a probe packet to trigger ACK feedback to avoid retransmission timeout (RTO) events. Compared to the widely used duplicate acknowledgment (DupAck) threshold approach, RACK-TLP detects losses more efficiently when there are application-limited flights of data, lost retransmissions, or data packet reordering events. It is intended to be an alternative to the DupAck threshold approach.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8985"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8985"/>
+        </reference>
+        <reference anchor="RFC9293" target="https://www.rfc-editor.org/info/rfc9293" quoteTitle="true" derivedAnchor="RFC9293">
+          <front>
+            <title>Transmission Control Protocol (TCP)</title>
+            <author fullname="W. Eddy" initials="W." role="editor" surname="Eddy"/>
+            <date month="August" year="2022"/>
+            <abstract>
+              <t indent="0">This document specifies the Transmission Control Protocol (TCP). TCP is an important transport-layer protocol in the Internet protocol stack, and it has continuously evolved over decades of use and growth of the Internet. Over this time, a number of changes have been made to TCP as it was specified in RFC 793, though these have only been documented in a piecemeal fashion. This document collects and brings those changes together with the protocol specification from RFC 793. This document obsoletes RFC 793, as well as RFCs 879, 2873, 6093, 6429, 6528, and 6691 that updated parts of RFC 793. It updates RFCs 1011 and 1122, and it should be considered as a replacement for the portions of those documents dealing with TCP requirements. It also updates RFC 5961 by adding a small clarification in reset handling while in the SYN-RECEIVED state. The TCP header control bits from RFC 793 have also been updated based on RFC 3168.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="9293"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9293"/>
+        </reference>
+        <reference anchor="RFC9438" target="https://www.rfc-editor.org/info/rfc9438" quoteTitle="true" derivedAnchor="RFC9438">
+          <front>
+            <title>CUBIC for Fast and Long-Distance Networks</title>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="V. Goel" initials="V." surname="Goel"/>
+            <author fullname="L. Eggert" initials="L." role="editor" surname="Eggert"/>
+            <date month="August" year="2023"/>
+            <abstract>
+              <t indent="0">CUBIC is a standard TCP congestion control algorithm that uses a cubic function instead of a linear congestion window increase function to improve scalability and stability over fast and long-distance networks. CUBIC has been adopted as the default TCP congestion control algorithm by the Linux, Windows, and Apple stacks.</t>
+              <t indent="0">This document updates the specification of CUBIC to include algorithmic improvements based on these implementations and recent academic work. Based on the extensive deployment experience with CUBIC, this document also moves the specification to the Standards Track and obsoletes RFC 8312. This document also updates RFC 5681, to allow for CUBIC's occasionally more aggressive sending behavior.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9438"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9438"/>
+        </reference>
+      </references>
+      <references pn="section-14.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="FACK" target="https://dl.acm.org/doi/10.1145/248156.248181" quoteTitle="true" derivedAnchor="FACK">
+          <front>
+            <title>Forward Acknowledgment: Refining TCP Congestion Control</title>
+            <author initials="M." surname="Mathis" fullname="Matthew Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Mahdavi" fullname="Jamshid Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="1996"/>
+          </front>
+          <refcontent>SIGCOMM '96: Conference Proceedings on Applications, Technologies, Architectures, and Protocols for Computer Communications, pp. 281-291</refcontent>
+          <seriesInfo name="DOI" value="10.1145/248156.248181"/>
+        </reference>
+        <reference anchor="First_TCP_PRR" target="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=a262f0cdf1f2916ea918dc329492abb5323d9a6c" quoteTitle="true" derivedAnchor="First_TCP_PRR">
+          <front>
+            <title>Proportional Rate Reduction for TCP.</title>
+            <author>
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="2011"/>
+          </front>
+          <refcontent>commit a262f0cdf1f2916ea918dc329492abb5323d9a6c</refcontent>
+        </reference>
+        <reference anchor="Flach2016policing" target="https://doi.org/10.1145/2934872.2934873" quoteTitle="true" derivedAnchor="Flach2016policing">
+          <front>
+            <title>An Internet-Wide Analysis of Traffic Policing</title>
+            <author initials="T" surname="Flach" fullname="Tobias Flach">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P" surname="Papageorge" fullname="Pavlos Papageorge">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A" surname="Terzis" fullname="Andreas Terzis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L" surname="Pedrosa" fullname="Luis Pedrosa">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y" surname="Cheng" fullname="Yuchung Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T" surname="Karim" fullname="Tayeb Karim">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E" surname="Katz-Bassett" fullname="Ethan Katz-Bassett">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R" surname="Govindan" fullname="R. Govindan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="2016"/>
+          </front>
+          <refcontent>SIGCOMM '16: Proceedings of the 2016 ACM SIGCOMM Conference, pp. 468-482</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2934872.2934873"/>
+        </reference>
+        <reference anchor="Hoe96Startup" quoteTitle="true" target="https://doi.org/10.1145/248156.248180" derivedAnchor="Hoe96Startup">
+          <front>
+            <title>Improving the Start-up Behavior of a Congestion Control Scheme for TCP</title>
+            <author initials="J" surname="Hoe" fullname="Janey C. Hoe">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="1996"/>
+          </front>
+          <refcontent>SIGCOMM '96: Conference Proceedings on Applications, Technologies, Architectures, and Protocols for Computer Communications, pp. 270-280</refcontent>
+          <seriesInfo name="DOI" value="10.1145/248156.248180"/>
+        </reference>
+        <reference anchor="IMC11" quoteTitle="true" target="https://doi.org/10.1145/2068816.2068832" derivedAnchor="IMC11">
+          <front>
+            <title>Proportional Rate Reduction for TCP</title>
+            <author initials="N" surname="Dukkipati" fullname="Nandita Dukkipati">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M" surname="Mathis" fullname="Matt Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y" surname="Cheng" fullname="Yuchung Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M" surname="Ghobadi" fullname="Monia Ghobadi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="November" year="2011"/>
+          </front>
+          <refcontent>IMC '11: Proceedings of the 2011 ACM SIGCOMM Conference on Internet Measurement Conference, pp. 155-170</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2068816.2068832"/>
+        </reference>
+        <reference anchor="Jacobson88" quoteTitle="true" target="https://doi.org/10.1145/52325.52356" derivedAnchor="Jacobson88">
+          <front>
+            <title>Congestion Avoidance and Control</title>
+            <author initials="V" surname="Jacobson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1988" month="August"/>
+          </front>
+          <refcontent>Symposium proceedings on Communications architectures and protocols (SIGCOMM '88), pp. 314-329</refcontent>
+          <seriesInfo name="DOI" value="10.1145/52325.52356"/>
+        </reference>
+        <reference anchor="I-D.welzl-iccrg-pacing" target="https://datatracker.ietf.org/doc/html/draft-welzl-iccrg-pacing-03" quoteTitle="true" derivedAnchor="PACING">
+          <front>
+            <title>Pacing in Transport Protocols</title>
+            <author initials="M." surname="Welzl" fullname="Michael Welzl">
+              <organization showOnFrontPage="true">University of Oslo</organization>
+            </author>
+            <author initials="W." surname="Eddy" fullname="Wesley Eddy">
+              <organization showOnFrontPage="true">MTI Systems</organization>
+            </author>
+            <author initials="V." surname="Goel" fullname="Vidhi Goel">
+              <organization showOnFrontPage="true">Apple Inc.</organization>
+            </author>
+            <author initials="M." surname="Tüxen" fullname="Michael Tüxen">
+              <organization showOnFrontPage="true">Münster University of Applied Sciences</organization>
+            </author>
+            <date month="July" day="7" year="2025"/>
+            <abstract>
+              <t indent="0">   Applications or congestion control mechanisms can produce bursty
+   traffic which can cause unnecessary queuing and packet loss.  To
+   reduce the burstiness of traffic, the concept of evenly spacing out
+   the traffic from a data sender over a round-trip time known as
+   "pacing" has been used in many transport protocol implementations.
+   This document gives an overview of pacing and how some known pacing
+   implementations work.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-welzl-iccrg-pacing-03"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC3042" target="https://www.rfc-editor.org/info/rfc3042" quoteTitle="true" derivedAnchor="RFC3042">
+          <front>
+            <title>Enhancing TCP's Loss Recovery Using Limited Transmit</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="H. Balakrishnan" initials="H." surname="Balakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <date month="January" year="2001"/>
+            <abstract>
+              <t indent="0">This document proposes a new Transmission Control Protocol (TCP) mechanism that can be used to more effectively recover lost segments when a connection's congestion window is small, or when a large number of segments are lost in a single transmission window. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3042"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3042"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date month="September" year="2001"/>
+            <abstract>
+              <t indent="0">This memo specifies the incorporation of ECN (Explicit Congestion Notification) to TCP and IP, including ECN's use of two bits in the IP header. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC3517" target="https://www.rfc-editor.org/info/rfc3517" quoteTitle="true" derivedAnchor="RFC3517">
+          <front>
+            <title>A Conservative Selective Acknowledgment (SACK)-based Loss Recovery Algorithm for TCP</title>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="K. Fall" initials="K." surname="Fall"/>
+            <author fullname="L. Wang" initials="L." surname="Wang"/>
+            <date month="April" year="2003"/>
+            <abstract>
+              <t indent="0">This document presents a conservative loss recovery algorithm for TCP that is based on the use of the selective acknowledgment (SACK) TCP option. The algorithm presented in this document conforms to the spirit of the current congestion control specification (RFC 2581), but allows TCP senders to recover more effectively when multiple segments are lost from a single flight of data. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3517"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3517"/>
+        </reference>
+        <reference anchor="RFC6937" target="https://www.rfc-editor.org/info/rfc6937" quoteTitle="true" derivedAnchor="RFC6937">
+          <front>
+            <title>Proportional Rate Reduction for TCP</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="N. Dukkipati" initials="N." surname="Dukkipati"/>
+            <author fullname="Y. Cheng" initials="Y." surname="Cheng"/>
+            <date month="May" year="2013"/>
+            <abstract>
+              <t indent="0">This document describes an experimental Proportional Rate Reduction (PRR) algorithm as an alternative to the widely deployed Fast Recovery and Rate-Halving algorithms. These algorithms determine the amount of data sent by TCP during loss recovery. PRR minimizes excess window adjustments, and the actual window size at the end of recovery will be as close as possible to the ssthresh, as determined by the congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6937"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6937"/>
+        </reference>
+        <reference anchor="RFC9743" target="https://www.rfc-editor.org/info/rfc9743" quoteTitle="true" derivedAnchor="RFC9743">
+          <front>
+            <title>Specifying New Congestion Control Algorithms</title>
+            <author fullname="M. Duke" initials="M." role="editor" surname="Duke"/>
+            <author fullname="G. Fairhurst" initials="G." role="editor" surname="Fairhurst"/>
+            <date month="March" year="2025"/>
+            <abstract>
+              <t indent="0">RFC 5033 discusses the principles and guidelines for standardizing new congestion control algorithms. This document obsoletes RFC 5033 to reflect changes in the congestion control landscape by providing a framework for the development and assessment of congestion control mechanisms, promoting stability across diverse network paths. This document seeks to ensure that proposed congestion control algorithms operate efficiently and without harm when used in the global Internet. It emphasizes the need for comprehensive testing and validation to prevent adverse interactions with existing flows.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="133"/>
+          <seriesInfo name="RFC" value="9743"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9743"/>
+        </reference>
+        <reference anchor="Savage99" quoteTitle="true" target="https://doi.org/10.1145/505696.505704" derivedAnchor="Savage99">
+          <front>
+            <title>TCP Congestion Control with a Misbehaving Receiver</title>
+            <author initials="S" surname="Savage">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N" surname="Cardwell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D" surname="Wetherall">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T" surname="Anderson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1999" month="October"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review, vol. 29, no. 5, pp. 71-78</refcontent>
+          <seriesInfo name="DOI" value="10.1145/505696.505704"/>
+        </reference>
+        <reference anchor="I-D.mathis-tcp-ratehalving" target="https://datatracker.ietf.org/doc/html/draft-mathis-tcp-ratehalving-00" quoteTitle="true" derivedAnchor="TCP-RH">
+          <front>
+            <title>The Rate-Halving Algorithm for TCP Congestion Control</title>
+            <author initials="M." surname="Mathis" fullname="Matt Mathis">
+         </author>
+            <author initials="J." surname="Mahdavi" fullname="Jamshid Mahdavi">
+              <organization showOnFrontPage="true">Novell</organization>
+            </author>
+            <author initials="J." surname="Semke" fullname="Jeff Semke">
+         </author>
+            <date month="August" day="30" year="1999"/>
+            <abstract>
+              <t indent="0">This draft provides a detailed description of the Rate-Halving
+algorithm.  As specified by RFC2581, Fast Recovery adjusts the
+congestion window (cwnd) by transmitting new data only during the
+second half of the recovery interval.  The Rate-Halving algorithm
+adjusts the congestion window by spacing transmissions at the rate of
+one data segment per two segments acknowledged over the entire
+recovery period, thereby sustaining the self-clocking of TCP and
+avoiding a burst.  Since it is largely independent of the details of
+the data retransmission strategy, the Rate-Halving algorithm can be
+used with several standard and experimental TCP implementations:
+NewReno, SACK, and ECN.
+
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mathis-tcp-ratehalving-00"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="conservative" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-strong-packet-conservation-">強いパケット保存上限</name>
+      <t indent="0" pn="section-appendix.a-1">PRR-CRB は、ここで説明する、保守的で、哲学的に純粋で、美的にも魅力的な強いパケット保存上限に基づいています。パケット保存則 <xref target="Jacobson88" format="default" sectionFormat="of" derivedContent="Jacobson88"/> に触発されたものですが、欠落していて失われたと推定されるセグメントの扱い方が異なります。回復中のあらゆる条件とイベントの順序のもとで、PRR-CRB は、送信されるデータを受信者に配送されたデータの量以下に厳密に制限します。推定された損失の影響は inflight の計算に含まれますが、inflight が ssthresh を下回った後は PRR-CRB の結果に影響しないことに注意してください。</t>
+      <t indent="0" pn="section-appendix.a-2">この強いパケット保存上限は、一部の環境で追加の強制的な損失につながらない最も積極的なアルゴリズムです。これには、ほかのトラフィックを運んでいないボトルネックに定常的なキューがある場合、パケットの到着時刻と出発時刻の違いによる +1/-1 の変動を除いて、回復の全期間中キューがちょうど一定の長さを維持するという特性があります。これより積極的でないアルゴリズムでは、ボトルネックのキューは減少していきます。これより積極的なアルゴリズムでは、キューが増加するか、満杯のドロップテールキューの場合は追加の損失が発生します。</t>
+      <t indent="0" pn="section-appendix.a-3">この特性は、思考実験によって示されます。</t>
+      <t indent="0" pn="section-appendix.a-4">順方向の経路にある単一のボトルネックでの処理時間とキューを除いて、両方向の遅延が無視できるネットワーク経路を想像してください。特に、パケットがボトルネックのキューの先頭で「処理」されると、ボトルネックの 1 パケット時間よりもはるかに短い時間で次のイベントが発生します。パケットが受信者に到着し、受信者が送信者に到着する ACK を送信し、送信者が ACK を処理してデータを送信し、そのデータがボトルネックでキューに入れられます。</t>
+      <t indent="0" pn="section-appendix.a-5">SndCnt が DeliveredData に設定され、データの送信を妨げるものがほかに何もない場合、ボトルネックのキューに到着するデータは、キューの先頭で処理されたデータをちょうど置き換えるため、キューは一定の長さを持つことは明らかです。キューがドロップテールで満杯である場合、キューはちょうど満杯のままです。ACK の経路での損失や並べ替えは、キューのサイズの変動を大きくするだけで、データが順序どおりか順序外か（以前の RTT からの損失回復を含む）にかかわらず、そのピークサイズを上げることはありません。追加のデータを送信するより積極的なアルゴリズムは、ドロップテールキューをあふれさせて損失を引き起こします。より積極的でないアルゴリズムは、キューを満たしきれません。したがって、SndCnt を DeliveredData に設定することは、この単純なネットワークで強制的な損失を引き起こさない最も積極的なアルゴリズムです。仮定を緩めること（たとえば、遅延をより現実的にし、フローや遅延 ACK などを追加すること）は、キューのサイズの細かい変動を増やす可能性が高いものの、その基本的な振る舞いは変わりません。</t>
+      <t indent="0" pn="section-appendix.a-6">輻輳制御アルゴリズムは、ネットワークを適切に共有することを含む、より広い意味での最適性を実装していることに注意してください。典型的な輻輳制御アルゴリズムは、PRR によって実装されるパケット保存上限と比べて送信されるデータを減らし、TCP の実際のウィンドウを ssthresh まで下げる可能性が高いです。</t>
+    </section>
+    <section numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.b-1">この文書は、一部、<contact fullname="Janey C. Hoe"/>（"Recovery from Multiple Packet Losses"、<xref target="Hoe96Startup" format="default" sectionFormat="of" derivedContent="Hoe96Startup"/> のセクション 3.2 を参照）、<contact fullname="Matt Mathis"/>、<contact fullname="Jeff Semke"/>、<contact fullname="Jamshid Mahdavi"/> <xref target="I-D.mathis-tcp-ratehalving" format="default" sectionFormat="of" derivedContent="TCP-RH"/> による以前の作業に基づいており、<contact fullname="John Heffner"/> とのいくつかの議論の影響を受けています。</t>
+      <t indent="0" pn="section-appendix.b-2"><contact fullname="Monia Ghobadi"/> と <contact fullname="Sivasankar Radhakrishnan"/> は実験の分析に協力してくださいました。<contact fullname="Ilpo Jarvinen"/> は最初の実装をレビューしてくださいました。<contact fullname="Mark Allman"/>、<contact fullname="Richard Scheffenegger"/>、<contact fullname="Markku Kojo"/>、<contact fullname="Mirja Kuehlewind"/>、<contact fullname="Gorry Fairhurst"/>、<contact fullname="Russ Housley"/>、<contact fullname="Paul Aitken"/>、<contact fullname="Daniele Ceccarelli"/>、<contact fullname="Mohamed Boucadair"/> は、洞察に満ちたレビューと提案によってこの文書を改善してくださいました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Matt Mathis" initials="M." surname="Mathis">
+        <address>
+          <email>matt.mathis@gmail.com</email>
+        </address>
+      </author>
+      <author fullname="Neal Cardwell" initials="N." surname="Cardwell">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>ncardwell@google.com</email>
+        </address>
+      </author>
+      <author fullname="Yuchung Cheng" initials="Y." surname="Cheng">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>ycheng@google.com</email>
+        </address>
+      </author>
+      <author fullname="Nandita Dukkipati" initials="N." surname="Dukkipati">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>nanditad@google.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

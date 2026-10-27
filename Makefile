@@ -55,6 +55,7 @@ all: \
 	docs/rfc9841.html \
 	docs/rfc9806.html \
 	docs/rfc9769.html \
+	docs/rfc9759.html \
 	docs/rfc9748.html \
 	docs/rfc9692.html \
 	docs/rfc9672.html \
@@ -636,6 +637,10 @@ src/en/rfc9806.xml: src/rfcs/rfc9806.xml
 docs/rfc9769.html: src/en/rfc9769.xml src/rfcs/rfc9769.json src/ja/rfc9769.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9769
 src/en/rfc9769.xml: src/rfcs/rfc9769.xml
+	cp $< $@
+docs/rfc9759.html: src/en/rfc9759.xml src/rfcs/rfc9759.json src/ja/rfc9759.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9759
+src/en/rfc9759.xml: src/rfcs/rfc9759.xml
 	cp $< $@
 docs/rfc9748.html: src/en/rfc9748.xml src/rfcs/rfc9748.json src/ja/rfc9748.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9748

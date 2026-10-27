@@ -53,13 +53,14 @@ sub appendix_number($n) {
 
 sub parse_section_name($s) {
     # 古い RFC では "1.1 Title" のように章番号の末尾にピリオドがないことがある
-    unless($s =~ /^(\d+(?:[.]\d+)*[.]?)\s+(.+)$/) {
+    # "2.5.2: Title" や "4.1.Title" のような見出しもある
+    unless($s =~ /^(\d+(?:[.]\d+)*[.:]?)\s*(\S.*)$/) {
         die "invalid section name: $s";
     }
     my $number = $1;
     my $name = $2;
 
-    $number =~ s/[.]$//; # 末尾のピリオドを削除
+    $number =~ s/[.:]$//; # 末尾のピリオドやコロンを削除
     my @numbers = split /[.]/, $number;
     my $slugified_name = lc($name =~ s/\s+/-/gr);
     return +{
@@ -73,7 +74,7 @@ sub parse_section_name($s) {
 }
 
 sub parse_appendix_name($s) {
-    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.]?)*)\s+(.+)$/s) {
+    unless($s =~ /^(?:(Appendix) )?([A-Z][.](?:\d+[.]?)*):?\s+(.+)$/s) {
         die "invalid appendix name: $s";
     }
     my $appendix = $1;
@@ -576,9 +577,18 @@ for my $content(@contents) {
             $current_appendix = $new_appendix;
         } elsif ($context =~ /^\d+(?:[.]|\s)/) {
             # 章番号の後ろに3つ以上の空白がある見出し（例: "1.   Abstract"）は2つにそろえる
-            $context =~ s/^(\d+(?:[.]\d+)*[.]?)\s{3,}(?=\S)/$1  /;
+            $context =~ s/^(\d+(?:[.]\d+)*[.:]?)\s{3,}(?=\S)/$1  /;
             my @contents = split /\s\s\s/, $context, 2;
-            my $title = parse_section_name(shift @contents);
+            my $title = eval { parse_section_name($contents[0]) };
+            unless ($title) {
+                # 行頭から始まる見出し以外のブロック（例: 16 進ダンプ）は読み飛ばす
+                # 正しい構造はパッチで復元する
+                # 後続の字下げされた本文が直前の節に入らないように、次の見出しまで読み飛ばす
+                warn $@;
+                $context = "";
+                next;
+            }
+            shift @contents;
             my $new_section = +{
                 type => "section",
                 title => $title,

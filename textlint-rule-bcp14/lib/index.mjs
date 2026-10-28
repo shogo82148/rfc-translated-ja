@@ -32,6 +32,10 @@ const QUOTES = [
 function isQuoted(source, range) {
   const before = source.slice(0, range[0]).replace(/<bcp14[^>]*>$/, "");
   const after = source.slice(range[1]).replace(/^<\/bcp14>/, "");
+  // a key word inside <tt> is a literal in code, e.g. ASN.1 OPTIONAL
+  if (before.endsWith("<tt>") && after.startsWith("</tt>")) {
+    return true;
+  }
   return QUOTES.some(
     ([open, close]) => before.endsWith(open) && after.startsWith(close),
   );

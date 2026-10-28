@@ -833,7 +833,13 @@ class HtmlWriter:
         p = build('p')
         h.append(p)
 
-        if x.text:
+        # 段落の anchor（xref の参照先）
+        anchor = x.get('anchor')
+        if anchor and anchor != x.get('pn'):
+            span = build('span', id='%s-%s'%(anchor,self.lang))
+            span.tail = x.text
+            p.append(span)
+        elif x.text:
             p.text = x.text
         for c in x:
             ret = self.render1(p, c)
@@ -1337,6 +1343,10 @@ class HtmlWriter:
         self.part = x.tag
         section = build('section')
         h.append(section)
+        # 参考文献セクションの anchor（xref の参照先）
+        anchor = x.get('anchor')
+        if anchor:
+            section.set('id', self.unique_id('%s-%s' % (anchor, self.lang)))
         hh = section
         for c in x:
             if c.tag in ['reference', 'referencegroup'] and hh.tag != 'dl':

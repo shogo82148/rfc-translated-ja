@@ -170,6 +170,7 @@ all: \
 	docs/rfc9865.html \
 	docs/rfc9864.html \
 	docs/rfc9863.html \
+	docs/rfc9862.html \
 	docs/rfc9861.html \
 	docs/rfc9860.html \
 	docs/rfc9859.html \
@@ -1256,6 +1257,10 @@ src/en/rfc9864.xml: src/rfcs/rfc9864.xml
 docs/rfc9863.html: src/en/rfc9863.xml src/rfcs/rfc9863.json src/ja/rfc9863.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9863
 src/en/rfc9863.xml: src/rfcs/rfc9863.xml
+	cp $< $@
+docs/rfc9862.html: src/en/rfc9862.xml src/rfcs/rfc9862.json src/ja/rfc9862.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9862
+src/en/rfc9862.xml: src/rfcs/rfc9862.xml
 	cp $< $@
 docs/rfc9861.html: src/en/rfc9861.xml src/rfcs/rfc9861.json src/ja/rfc9861.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9861

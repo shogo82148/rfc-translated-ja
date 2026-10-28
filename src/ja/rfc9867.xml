@@ -1,0 +1,717 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" submissionType="IETF" ipr="trust200902" docName="draft-ietf-ipsecme-ikev2-qr-alt-10" number="9867" consensus="true" updates="" obsoletes="" xml:lang="en" tocInclude="true" symRefs="true" sortRefs="false" prepTime="2025-11-05T11:27:05" indexInclude="true" scripts="Common,Latin" tocDepth="3">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-qr-alt-10" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9867" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Enhanced Mixing PSKs in IKEv2 for PQ Security">耐量子セキュリティーのためのインターネット鍵交換プロトコルバージョン2（IKEv2）のIKE_INTERMEDIATE交換およびCREATE_CHILD_SA交換における事前共有鍵の混合</title>
+    <seriesInfo name="RFC" value="9867" stream="IETF"/>
+    <author initials="V." surname="Smyslov" fullname="Valery Smyslov">
+      <organization showOnFrontPage="true">ELVIS-PLUS</organization>
+      <address>
+        <postal>
+          <street>PO Box 81</street>
+          <city>Moscow (Zelenograd)</city>
+          <code>124460</code>
+          <country>Russian Federation</country>
+        </postal>
+        <phone>+7 495 276 0211</phone>
+        <email>svan@elvis.ru</email>
+      </address>
+    </author>
+    <date month="11" year="2025"/>
+    <keyword>internet key exchange</keyword>
+    <keyword>quantum computer</keyword>
+    <keyword>post quantum</keyword>
+    <keyword>post-quantum</keyword>
+    <keyword>quantum safe</keyword>
+    <keyword>PPK</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1"> RFC 8784で定義されたインターネット鍵交換プロトコルバージョン2（IKEv2）の拡張により、
+            VPN通信を保存しておき、暗号解読に関係する量子コンピューター（Cryptographically Relevant Quantum Computer、CRQC）が利用可能になったとき（もしそうなった場合）に
+            それを復号しようとする者からIPsecトラフィックを保護できます。
+            この保護は、セッション鍵の計算に混合される耐量子事前共有鍵（Post-quantum Preshared Key、PPK）によって実現されます。
+            しかし、この保護は最初のIKEv2セキュリティーアソシエーション（SA）には及ばず、シナリオによってはこれが許容できない場合があります。
+            この仕様は、量子コンピューターに対する保護を提供する代替の方法を定義します。
+            この方法はRFC 8784で定義された解決策と似ていますが、最初のIKEv2 SAも保護します。
+      </t>
+      <t indent="0" pn="section-abstract-2"> RFC 8784は、PPKが静的であり、したがって最初のIKEv2 SAを作成するときにだけ使われることを前提としています。
+            IKE SAが期限切れになる前に新しいPPKが利用可能になった場合、
+            それを使う唯一の方法は現在のIKE SAを削除して新しいIKE SAを一から作成することですが、これは非効率です。
+            この仕様は、追加のIPsec SAの作成と鍵更新操作のために、アクティブなIKEv2 SAでPPKを使う方法を定義します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9867" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2025 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology-and-notation">用語と表記</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protocol-description">プロトコルの説明</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-creating-initial-ike-sa">最初のIKE SAの作成</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.1.2">
+                  <li pn="section-toc.1-1.3.2.1.2.1">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.2.1.1"><xref derivedContent="3.1.1" format="counter" sectionFormat="of" target="section-3.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-computing-ike-sa-keys">IKE SAの鍵の計算</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-ppks-in-the-create_ch">CREATE_CHILD_SA交換でのPPKの使用</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2">
+                  <li pn="section-toc.1-1.3.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-computing-keys">鍵の計算</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-comparison-of-this-specific">この仕様とRFC 8784の比較</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-address">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1"> <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で定義されたインターネット鍵交換プロトコルバージョン2（IKEv2）は、
+            IPsecアーキテクチャーにおいて認証付き鍵交換を行うために使われます。
+            耐量子セキュリティーのために事前共有鍵を混合するIKEv2の拡張が<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されています。
+            この拡張により、現在のIPsecトラフィックを将来の量子コンピューターから保護できます。
+            この保護は、セッション鍵の計算に混合される耐量子事前共有鍵（Post-quantum Preshared Key、PPK）を使うことで実現されます。
+            この拡張が開発されていた当時、IPsecME WGのコンセンサスは、
+            IKEトラフィックよりもIPsecトラフィックを保護するほうが重要であるというものでした。
+            IKE SA上で転送される情報（ピアのアイデンティティーを含む）はそれほど重要ではなく、
+            保護を最初のIKE SAにまで拡張するにはIKEv2のコアプロトコルに大幅な変更が必要になると考えられていました。
+            目標の1つは、そのような変更を最小限にすることでした。また、最初のIKE SAをただちに鍵更新すれば、
+            新しいIKE SAにこの保護が加わる（ただし、ピアのアイデンティティーは保護されない）ということも決定されました。
+      </t>
+      <t indent="0" pn="section-1-2"> しかし、状況によっては、最初のIKE SAが作成される時点から、IKE SAに対してこの保護があることが望ましい場合があります。
+            そのような状況の例として、<xref target="RFC9838" format="default" sectionFormat="of" derivedContent="RFC9838"/>で定義されている、
+            IKEv2を使用したグループ鍵管理プロトコルがあります。このプロトコルでは、最初のIKE SAが作成されるとただちに、
+            グループポリシーとセッション鍵がグループコントローラー/鍵サーバー（Group Controller/Key Server、GCKS）からグループメンバー（Group Member、GM）へ転送されます。
+            セッション鍵はSK_dから導出された鍵で追加的に保護されます（したがって、PPK
+            <xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>を用いれば量子コンピューターに対して耐性があります）が、グループポリシーを含むその他の機密データは保護されません。
+      </t>
+      <t indent="0" pn="section-1-3"> <xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されたとおりにPPKを使うことのもう1つの問題は、
+            このアプローチが、PPKをごくまれにしか変更されない静的なエンティティーであると前提していることです。このため、PPKは最初のIKE SAが確立されるときに一度だけ使われます。
+            この制限により、たとえば量子鍵配送（Quantum Key Distribution、QKD）を使用する場合のように、PPKが比較的頻繁に変更されるときには、
+            <xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されたとおりにPPKを使うことが困難になります。
+            IKE SAが期限切れになる前に新しいPPKが利用可能になった場合、それを使うには、
+            IKE SAを削除し、新しいPPKを使って新しいIKE SAを一から作り直す以外に方法がありません。
+      </t>
+      <t indent="0" pn="section-1-4"> 耐量子セキュリティーのためにIKEv2で事前共有鍵を混合するプロトコル拡張が<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されてからしばらくして、
+            IKEv2のための新しいIKE_INTERMEDIATE交換<xref target="RFC9242" format="default" sectionFormat="of" derivedContent="RFC9242"/>が開発されました。この交換を開発した主な動機は、
+            IKEv2で複数の鍵交換を使えるようにすること（これは<xref target="RFC9370" format="default" sectionFormat="of" derivedContent="RFC9370"/>で定義されています）でしたが、
+            IKE_INTERMEDIATE交換自体は他の目的にも使用できます。
+      </t>
+      <t indent="0" pn="section-1-5"> この仕様は、耐量子セキュリティーのためにIKEv2のIKE_INTERMEDIATE交換でPPKを使用する方法を定義します。
+            これにより、最初のIKE SAについても量子コンピューターに対する完全な保護を得ることができます。
+      </t>
+      <t indent="0" pn="section-1-6"> この仕様は、追加のIPsec SAの作成と、IKE SAおよびIPsec SAの鍵更新のために、
+            CREATE_CHILD_SA交換でPPKを使用する方法も定義します。
+            これにより、実装はIKE SAを削除して一から作成し直すことなく、新しいPPKを活用できます。
+      </t>
+      <t indent="0" pn="section-1-7"> この仕様は、<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されたアプローチを置き換えるものではありません。
+            IKEv2でPPKを使用する両方のアプローチを、状況に応じて使い分けることができます
+            （<xref target="comparison" format="default" sectionFormat="of" derivedContent="Appendix A"/>を参照）。
+      </t>
+    </section>
+    <section anchor="mustshouldmay" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology-and-notation">用語と表記</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+        「<bcp14>要求されています（REQUIRED）</bcp14>」、
+        「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+        「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+        「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+        「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+        BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+        ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+      <t indent="0" pn="section-2-2"> この文書は、<xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で定義された用語を使用します。特に、
+            読者はその文書で使われている「イニシエーター（initiator）」と「レスポンダー（responder）」という用語をよく理解しておく必要があります。
+      </t>
+      <t indent="0" pn="section-2-3"> この文書全体を通して、<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されたアプローチを「IKE_AUTH交換でのPPKの使用」、
+            または単に「IKE_AUTHでのPPKの使用」と呼びます。
+      </t>
+    </section>
+    <section anchor="protocol" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-protocol-description">プロトコルの説明</name>
+      <section anchor="init" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-creating-initial-ike-sa">最初のIKE SAの作成</name>
+        <t indent="0" pn="section-3.1-1"> IKE_INTERMEDIATE交換をサポートし、PPKを使って最初のIKE SAを保護したいIKEイニシエーターは、
+            IKE_SA_INITリクエストにINTERMEDIATE_EXCHANGE_SUPPORTED通知とUSE_PPK_INTタイプの通知を含めます。
+            レスポンダーがIKE_INTERMEDIATE交換をサポートしており、最初のIKE SAの保護にPPKを使用する意思がある場合、
+            レスポンダーはIKE_SA_INITレスポンスにこれら両方の通知を含めます。
+        </t>
+        <artwork align="left" pn="section-3.1-2">
+Initiator                       Responder
+------------------------------------------------------------------
+HDR, SAi1, KEi, Ni,
+N(INTERMEDIATE_EXCHANGE_SUPPORTED),
+N(USE_PPK_INT)              ---&gt;
+                        &lt;---    HDR, SAr1, KEr, Nr, [CERTREQ,]
+                                N(INTERMEDIATE_EXCHANGE_SUPPORTED),
+                                N(USE_PPK_INT)</artwork>
+        <t indent="0" pn="section-3.1-3"> USE_PPK_INTは、ステータスタイプのIKEv2通知です。その通知メッセージタイプ（Notify
+        Message Type）は16445です。プロトコルID（Protocol ID）は0に設定されます。セキュリティーパラメーターインデックス（Security
+        Parameter Index、SPI）は存在しないため、SPIサイズ（SPI Size）も0に設定されます。
+        この仕様はこの通知が含みうるデータを定義しないため、通知データ（Notification Data）は空のままにします。
+        ただし、この仕様の将来の拡張がこれを利用する可能性があります。実装は、
+        通知内の理解できないデータを無視<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-3.1-4"> このネゴシエーションは、<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で規定されているPPK使用のネゴシエーションとは独立していることに注意してください。
+            IKE_AUTHでのPPKの使用<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>とIKE_INTERMEDIATEでのPPKの使用の両方をサポートするイニシエーターは、
+            そのように設定されている場合、USE_PPK_INT通知とUSE_PPK通知の両方を含めても<bcp14>よいです（MAY）</bcp14>。
+            しかし、レスポンダーが両方の仕様をサポートし、PPKを使用するように設定されている場合、
+            レスポンダーはどちらか一方を選ばなければなりません。したがって、レスポンダーはレスポンスでUSE_PPK_INT通知またはUSE_PPK通知のいずれか一方を返さ<bcp14>なければなりません（MUST）</bcp14>。
+            両方を返すことはできません。
+        </t>
+        <t indent="0" pn="section-3.1-5"> イニシエーターがIKE_SA_INITリクエストでこの拡張の使用を提案せず、かつレスポンダーのポリシーが
+            最初のIKE SAをPPKで保護することを義務付けている場合、レスポンダーはNO_PROPOSAL_CHOSEN通知を返さ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-3.1-6"> ネゴシエーションが成功した場合、イニシエーターはIKE_INTERMEDIATEリクエストに、
+            作成中のIKE SAに適切であるとイニシエーターが考えるPPKアイデンティティーを持つ、
+            1つ以上のPPK_IDENTITY_KEY通知を含めます。
+        </t>
+        <t indent="0" pn="section-3.1-7"> PPK_IDENTITY_KEYは、ステータスタイプのIKEv2通知です。その通知メッセージタイプは16446です。
+            プロトコルIDフィールドとSPIサイズフィールドはどちらも0に設定されます。
+            通知データの形式を以下の<xref target="ppk_identity_key_format" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示します。
+        </t>
+        <figure anchor="ppk_identity_key_format" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-ppk_identity_key-notificati">PPK_IDENTITY_KEY通知データの形式</name>
+          <artwork align="left" pn="section-3.1-8.1">
+                     1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
+~                             PPK_ID                            ~
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                        PPK Confirmation                       +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</artwork>
+        </figure>
+        <t indent="0" pn="section-3.1-9">各フィールドは次のとおりです。</t>
+        <dl spacing="normal" newline="false" indent="3" pn="section-3.1-10">
+          <dt pn="section-3.1-10.1">PPK_ID（可変長）：</dt>
+          <dd pn="section-3.1-10.2"> <xref target="RFC8784" section="5.1" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc8784#section-5.1" derivedContent="RFC8784"/>で定義されたPPK_IDです。受信者は、
+          通知データの長さから8（PPK Confirmationの長さ）を引くことで、
+          PPK_IDの長さを判断できます。</dd>
+          <dt pn="section-3.1-10.3">PPK Confirmation（8オクテット）：</dt>
+          <dd pn="section-3.1-10.4">
+            <t indent="0" pn="section-3.1-10.4.1">レスポンダーが、
+          指定されたPPK_IDに対してイニシエーターと同じPPKを持っているかどうかを確認できるようにする値です。
+          このフィールドには、prf( PPK, Ni | Nr | SPIi | SPIr )として計算された文字列の最初の8オクテットが含まれます。ここで、</t>
+            <ul spacing="compact" bare="false" empty="false" indent="3" pn="section-3.1-10.4.2">
+              <li pn="section-3.1-10.4.2.1">「prf」は、ネゴシエートされたPRFです。</li>
+              <li pn="section-3.1-10.4.2.2">PPKは、指定されたPPK_IDに対する鍵の値です。</li>
+              <li pn="section-3.1-10.4.2.3">Ni、Nr、SPIi、SPIrは、確立中のSAのノンスとIKE SPIです。</li>
+            </ul>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-3.1-11">一連のIKE_INTERMEDIATE交換が行われる場合、
+        PPK_IDENTITY_KEY通知は最後の交換、つまりIKE_AUTH交換の直前のIKE_INTERMEDIATE交換で送信され<bcp14>なければなりません（MUST）</bcp14>。
+        このIKE_INTERMEDIATE交換に他の目的のための他のペイロードが含まれている場合、
+        通知はそれらのペイロードに相乗りさせても<bcp14>よいです（MAY）</bcp14>。
+        IKE_INTERMEDIATE交換を利用する将来のIKEv2拡張では、そのような拡張がネゴシエートされた場合に、
+        PPKに関する交換の後に1つ以上のIKE_INTERMEDIATE交換が行われることを許可する可能性があることに注意してください。</t>
+        <artwork align="left" pn="section-3.1-12">
+Initiator                         Responder
+------------------------------------------------------------------
+HDR, SK { ... N(PPK_IDENTITY_KEY, PPK_ID_1)
+           [, N(PPK_IDENTITY_KEY, PPK_ID_2)] ...
+           [, N(PPK_IDENTITY_KEY, PPK_ID_n)]}   ---&gt;</artwork>
+        <t indent="0" pn="section-3.1-13">
+            レスポンダーの能力とポリシーに応じて、次の状況が起こりえます。
+        </t>
+        <ol type="1" indent="adaptive" spacing="normal" start="1" pn="section-3.1-14">
+          <li anchor="case1" pn="section-3.1-14.1" derivedCounter="1.">
+            <t indent="0" pn="section-3.1-14.1.1">レスポンダーが、イニシエーターから送信されたIDの中にあるIDを持つPPKで設定されており、
+            かつそのPPKがイニシエーターのPPKと一致する（PPK Confirmationフィールドの情報に基づく）場合、
+            レスポンダーはそのPPKを選択し、そのアイデンティティーをPPK_IDENTITY通知で返します。
+            PPK_IDENTITY通知は<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されています。
+            </t>
+            <artwork align="left" pn="section-3.1-14.1.2">
+Initiator                       Responder
+---------------------------------------------------------------
+               &lt;---    HDR, SK { ... N(PPK_IDENTITY, PPK_ID_i)}</artwork>
+            <t indent="0" pn="section-3.1-14.1.3">
+              この場合、IKE_AUTH交換はIKEv2 <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で定義されているとおりに実行されます。
+              ただし、IKE SAの鍵は、<xref target="init_keys" format="default" sectionFormat="of" derivedContent="Section 3.1.1"/>で説明するように、PPKを使って計算されます。
+              イニシエーターが提案していないPPKアイデンティティーをレスポンダーが返した場合、イニシエーターは
+              これを致命的なエラーとして扱い、IKE SAの確立を中止<bcp14>しなければなりません（MUST）</bcp14>。
+            </t>
+          </li>
+          <li anchor="case2" pn="section-3.1-14.2" derivedCounter="2.">
+            <t indent="0" pn="section-3.1-14.2.1">レスポンダーが、イニシエーターから送信されたIDのいずれにも一致するIDを持つPPKを持っていない場合、
+            またはレスポンダーが提案されたPPKのいくつかを持っているがそれらの値がイニシエーターのPPKと一致しない（PPK Confirmationフィールドの情報に基づく）場合で、
+            かつPPKの使用がレスポンダーにとって必須である場合、レスポンダーは
+            AUTHENTICATION_FAILED通知を返してIKE SAの作成を中止<bcp14>しなければなりません（MUST）</bcp14>。
+            </t>
+            <artwork align="left" pn="section-3.1-14.2.2">
+Initiator                       Responder
+---------------------------------------------------------------
+                 &lt;---    HDR, SK {... N(AUTHENTICATION_FAILED)}</artwork>
+          </li>
+          <li anchor="case3" pn="section-3.1-14.3" derivedCounter="3.">
+            <t indent="0" pn="section-3.1-14.3.1">
+              レスポンダーが、イニシエーターが提案したPPKを1つも持っていない場合、
+              またはレスポンダーが提案されたPPKのいくつかしか持っておらずそれらの値がイニシエーターのものと一致しない（PPK Confirmationフィールドの情報に基づく）場合で、
+              かつPPKの使用がレスポンダーにとってオプションである場合、
+              レスポンダーはレスポンスにPPK_IDENTITY通知を含めません。
+            </t>
+            <artwork align="left" pn="section-3.1-14.3.2">
+Initiator                       Responder
+---------------------------------------------------------------
+                        &lt;---    HDR, SK {...}</artwork>
+            <t indent="0" pn="section-3.1-14.3.3">
+              この場合、イニシエーターは提案したPPKを使って量子コンピューターへの耐性を実現できません。
+              それがイニシエーターにとって要件である場合、イニシエーターはIKE SAの作成を中止<bcp14>しなければなりません（MUST）</bcp14>。
+              そうでない場合、イニシエーターはIKEv2 <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で説明されているとおりにIKE_AUTH交換を続行します。
+            </t>
+          </li>
+        </ol>
+        <t indent="0" pn="section-3.1-15"><xref target="responders_behavior" format="default" sectionFormat="of" derivedContent="Table 1"/>に、レスポンダーに関する上記のロジックをまとめます。</t>
+        <table anchor="responders_behavior" align="center" pn="table-1">
+          <name slugifiedName="name-responders-behavior">レスポンダーの動作</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">USE_PPK_INTを受信した</th>
+              <th align="left" colspan="1" rowspan="1">USE_PPK_INTをサポートしている</th>
+              <th align="left" colspan="1" rowspan="1">提案されたPPKのいずれかを持っている</th>
+              <th align="left" colspan="1" rowspan="1">最初のIKE SAでPPKが必須である</th>
+              <th align="left" colspan="1" rowspan="1">動作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">*</td>
+              <td align="left" colspan="1" rowspan="1">*</td>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>（提案された場合）または標準のIKEv2プロトコル</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">*</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">NO_PROPOSAL_CHOSENを送信</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">*</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="case1" format="default" sectionFormat="of" derivedContent="Section 3.1, Paragraph 14, Item 1"/>（この拡張を使用）</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="case2" format="default" sectionFormat="of" derivedContent="Section 3.1, Paragraph 14, Item 2"/>（ネゴシエーションを中止）</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">はい</td>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">いいえ</td>
+              <td align="left" colspan="1" rowspan="1">
+                <xref target="case3" format="default" sectionFormat="of" derivedContent="Section 3.1, Paragraph 14, Item 3"/>（標準のIKEv2プロトコル）</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-3.1-17"> レスポンダーはイニシエーターのアイデンティティーを知る前にPPKを選択するため、
+            レスポンダーがIKE_INTERMEDIATE交換であるPPKの使用に同意したものの、その後IKE_AUTH交換の間に、
+            そのPPKがローカルポリシーにおいてイニシエーターのアイデンティティーに関連付けられていないことに気付くという状況が起こる可能性があります。
+            レスポンダーはこのPPKを持っているものの、このイニシエーターとともに使用するPPKとしては列挙されていないだけであることに注意してください。
+            この場合、レスポンダーは自身のポリシーとの一貫性を保つため、ネゴシエーションを中止してAUTHENTICATION_FAILED通知を返す<bcp14>べきです（SHOULD）</bcp14>。
+            ただし、ローカルポリシー上で許容できる場合、レスポンダーはネゴシエートされた「誤った」PPKを使ってIKE SAの作成を続行<bcp14>してもよいです（MAY）</bcp14>。
+        </t>
+        <section anchor="init_keys" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.1">
+          <name slugifiedName="name-computing-ike-sa-keys">IKE SAの鍵の計算</name>
+          <t indent="0" pn="section-3.1.1-1">IKE_INTERMEDIATE交換でPPKがネゴシエートされると、
+          IKE SAの鍵が再計算されます。このIKE_INTERMEDIATE交換で実行される他の動作の結果としても
+          IKE SAの鍵が再計算される場合（たとえば<xref target="RFC9370" format="default" sectionFormat="of" derivedContent="RFC9370"/>で定義されているように）、
+          PPKを使ったIKE SAの鍵の再計算が、それらの鍵が次の交換で使われる前の最後の動作となるように、
+          PPKの適用はそれらすべての後に行われ<bcp14>なければなりません（MUST）</bcp14>。
+          IKE_INTERMEDIATE交換を利用する将来のIKEv2拡張が、そのような拡張がネゴシエートされた場合について
+          この要件を更新する可能性があることに注意してください。
+          </t>
+          <t indent="0" pn="section-3.1.1-2"> IKE SAの鍵は、IKE_AUTHでPPKを使用する場合とは異なる方法で計算されます。
+          ネゴシエートされたPPKと、最も新しく計算されたSK_d鍵を使って、新しいSKEYSEED'値が計算されます。
+          PPKは<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で規定されているとおりにSK_dに適用され、その結果がSKEYSEED'として使われることに注意してください。
+          </t>
+          <artwork align="left" pn="section-3.1.1-3">
+SKEYSEED' = prf+ (PPK, SK_d)</artwork>
+          <t indent="0" pn="section-3.1.1-4">
+              次に、SKEYSEED'を使って、<xref target="RFC7296" section="2.14" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-2.14" derivedContent="RFC7296"/>で定義されているとおりにすべてのSK_*鍵を再計算します。
+          </t>
+          <artwork align="left" pn="section-3.1.1-5">
+{SK_d | SK_ai | SK_ar | SK_ei | SK_er | SK_pi | SK_pr}
+                           = prf+ (SKEYSEED', Ni | Nr | SPIi | SPIr )</artwork>
+          <t indent="0" pn="section-3.1.1-6">
+              上記の式において、NiとNrはIKE_SA_INIT交換のノンスであり、SPIiとSPIrは作成中のIKE SAのSPIです。
+              SK_d、SK_pi、SK_prは、<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されているような方法でPPKを使って個別に再計算されるわけではないことに注意してください。
+          </t>
+          <t indent="0" pn="section-3.1.1-7"> 得られた鍵は、その後IKE_AUTH交換と、作成されたIKE SAで使われます。
+          </t>
+        </section>
+      </section>
+      <section anchor="create_child_sa" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-using-ppks-in-the-create_ch">CREATE_CHILD_SA交換でのPPKの使用</name>
+        <t indent="0" pn="section-3.2-1"> IKE SAがアクティブな時点で新しいPPKが両方のピアで利用可能になった場合、
+            ピアは、追加のIPsec SAを作成する必要があるときや既存のSAを鍵更新する必要があるときに、
+            新しいIKE SAを一から作成することなく、この新しいPPKを使用<bcp14>してもよいです（MAY）</bcp14>。
+            この場合、現在のIKE SAがPPKを使用して作成されたかどうか
+            （またその方法がIKE_AUTH、IKE_INTERMEDIATE、CREATE_CHILD_SAのいずれであるか）にかかわらず、
+            PPKを追加のIPsec SAの作成と、IKE SAおよびIPsec SAの両方の鍵更新に使用できます。
+        </t>
+        <t indent="0" pn="section-3.2-2"> イニシエーターがCREATE_CHILD_SA交換でPPKを使用したい場合、イニシエーターはCREATE_CHILD_SAリクエストに、
+            作成中のSAに適切であるとイニシエーターが考えるPPKアイデンティティーを含む、
+            1つ以上のPPK_IDENTITY_KEY通知を含めます。
+            この場合、PPK Confirmationフィールドには、prf( PPK, Ni | SPIi | SPIr )として計算された文字列の最初の8オクテットが含まれます。
+            ここで、NiはCREATE_CHILD_SAリクエストに含まれるイニシエーターのノンスであり、SPIi/SPIrは現在のIKE SAのSPIです。
+            レスポンダーがCREATE_CHILD_SA交換でのPPKの使用をサポートしており、それを行うように設定され準備ができている場合、
+            以下の図に示すように、レスポンダーは選択したPPKのIDを含むPPK_IDENTITY通知を返します。
+</t>
+        <figure align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-create_child_sa-exchange-fo">子SAの作成または鍵更新のためのCREATE_CHILD_SA交換</name>
+          <artwork align="left" pn="section-3.2-3.1">
+Initiator                         Responder
+------------------------------------------------------------------
+HDR, SK {[N(REKEY_SA),] SA, Ni, [KEi,] TSi, TSr,
+        N(PPK_IDENTITY_KEY, PPK_ID_1)
+        [, N(PPK_IDENTITY_KEY, PPK_ID_2)] ...
+        [, N(PPK_IDENTITY_KEY, PPK_ID_n)]}   ---&gt;
+
+                         &lt;---    HDR, SK {SA, Nr [KEr,] TSi, TSr,
+                                         N(PPK_IDENTITY, PPK_ID_i)}</artwork>
+        </figure>
+        <figure align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-create_child_sa-exchange-for">IKE SAの鍵更新のためのCREATE_CHILD_SA交換</name>
+          <artwork align="left" pn="section-3.2-4.1">
+Initiator                         Responder
+------------------------------------------------------------------
+HDR, SK {SA, Ni, KEi,
+        N(PPK_IDENTITY_KEY, PPK_ID_1)
+        [, N(PPK_IDENTITY_KEY, PPK_ID_2)] ...
+        [, N(PPK_IDENTITY_KEY, PPK_ID_n)]}   ---&gt;
+
+                         &lt;---    HDR, SK {SA, Nr, KEr,
+                                         N(PPK_IDENTITY, PPK_ID_i)}</artwork>
+        </figure>
+        <t indent="0" pn="section-3.2-5">
+          レスポンダーがCREATE_CHILD_SA交換でのPPKの使用をサポートしていない（またはそのように設定されていない）場合、
+          イニシエーターから送信されたIDのいずれにも一致するIDを持つPPKを持っていない場合、
+          またはレスポンダーが提案されたPPKのいくつかを持っているがそれらの値がイニシエーターのPPKと一致しない
+          （PPK Confirmationフィールドの情報に基づく）場合、レスポンダーはレスポンスにPPK_IDENTITY通知を含めず、
+          新しいSAはIKEv2 <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で定義されているとおりに作成されます。
+          これがイニシエーターにとって不適切な場合、イニシエーターはこのSAをただちに削除できます。
+        </t>
+        <t indent="0" pn="section-3.2-6">
+          CREATE_CHILD_SAでのPPKの使用がレスポンダーにとって必須であり、
+          イニシエーターがリクエストにPPK_IDENTITY_KEY通知を1つも含めていない場合、
+          レスポンダーがイニシエーターから送信されたIDのいずれにも一致するIDを持つPPKを持っていない場合、
+          またはレスポンダーが提案されたPPKのいくつかを持っているがイニシエーターのPPKと値が一致しない
+          （PPK Confirmationフィールドの情報に基づく）場合、レスポンダーは
+          NO_PROPOSAL_CHOSEN通知を返さ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-3.2-7"> それ以外の場合、新しいSAは選択されたPPKを使って作成されます。
+        </t>
+        <section anchor="create_child_sa_keys" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.1">
+          <name slugifiedName="name-computing-keys">鍵の計算</name>
+          <t indent="0" pn="section-3.2.1-1"> 新しいSAのセッション鍵を計算するために、まず現在のSK_d鍵が、
+              選択されたPPKと混合されます。
+          </t>
+          <artwork align="left" pn="section-3.2.1-2">
+SK_d' = prf+ (PPK, SK_d)</artwork>
+          <t indent="0" pn="section-3.2.1-3">
+              得られた鍵SK_d'は、新しいSAの鍵を計算するためのすべての式において、SK_dの代わりに使われます
+              （<xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>のセクション<xref target="RFC7296" sectionFormat="bare" section="2.17" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-2.17" derivedContent="RFC7296"/>と<xref target="RFC7296" sectionFormat="bare" section="2.18" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-2.18" derivedContent="RFC7296"/>、および<xref target="RFC9370" section="2.2.4" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9370#section-2.2.4" derivedContent="RFC9370"/>）。
+          </t>
+          <t indent="0" pn="section-3.2.1-4"> IKE SAの確立に使用されたPPKが変更されていない場合、
+              それをCREATE_CHILD_SA交換で使用する意味はないことに注意してください。
+          </t>
+        </section>
+      </section>
+    </section>
+    <section anchor="security" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1"> IKEv2プロトコルで耐量子事前共有鍵を使用することに関するセキュリティー上の考慮事項は、
+            <xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で議論されています。
+            IKE_AUTHでPPKを使用する場合とは異なり、この仕様では最初のIKE SAさえも量子に対して安全になります。
+            さらに、PPKはIKE_AUTH交換が始まる前にSK_*鍵の計算に混合され、PPKは認証にも使われるため、
+            この交換は能動的な攻撃者に対しても量子に対して安全です。
+      </t>
+      <t indent="0" pn="section-4-2"> この仕様はIKE_INTERMEDIATE交換に依存しています。
+            関連するセキュリティー上の問題の議論については<xref target="RFC9242" format="default" sectionFormat="of" derivedContent="RFC9242"/>を参照してください。
+      </t>
+      <t indent="0" pn="section-4-3"> <xref target="RFC9370" section="4" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc9370#section-4" derivedContent="RFC9370"/>は、CRQCが利用可能になった場合に
+      IKEv2で使用されるさまざまな暗号プリミティブに及ぼしうる影響について議論しています。
+      ここで改めて述べておく価値があるのは、対称鍵暗号プリミティブのセキュリティーは
+      CRQCの影響を受けないと考えられているということです。
+      </t>
+    </section>
+    <section anchor="iana" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">この文書に従い、IANAは「IKEv2 Notify Message Status Types」レジストリーに次の通知メッセージタイプを追加しました。</t>
+      <dl spacing="compact" newline="false" indent="3" pn="section-5-2">
+        <dt pn="section-5-2.1">16445</dt>
+        <dd pn="section-5-2.2">USE_PPK_INT</dd>
+        <dt pn="section-5-2.3">16446</dt>
+        <dd pn="section-5-2.4">PPK_IDENTITY_KEY</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-6.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC7296" target="https://www.rfc-editor.org/info/rfc7296" quoteTitle="true" derivedAnchor="RFC7296">
+          <front>
+            <title>Internet Key Exchange Protocol Version 2 (IKEv2)</title>
+            <author fullname="C. Kaufman" initials="C." surname="Kaufman"/>
+            <author fullname="P. Hoffman" initials="P." surname="Hoffman"/>
+            <author fullname="Y. Nir" initials="Y." surname="Nir"/>
+            <author fullname="P. Eronen" initials="P." surname="Eronen"/>
+            <author fullname="T. Kivinen" initials="T." surname="Kivinen"/>
+            <date month="October" year="2014"/>
+            <abstract>
+              <t indent="0">This document describes version 2 of the Internet Key Exchange (IKE) protocol. IKE is a component of IPsec used for performing mutual authentication and establishing and maintaining Security Associations (SAs). This document obsoletes RFC 5996, and includes all of the errata for it. It advances IKEv2 to be an Internet Standard.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="79"/>
+          <seriesInfo name="RFC" value="7296"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7296"/>
+        </reference>
+        <reference anchor="RFC8784" target="https://www.rfc-editor.org/info/rfc8784" quoteTitle="true" derivedAnchor="RFC8784">
+          <front>
+            <title>Mixing Preshared Keys in the Internet Key Exchange Protocol Version 2 (IKEv2) for Post-quantum Security</title>
+            <author fullname="S. Fluhrer" initials="S." surname="Fluhrer"/>
+            <author fullname="P. Kampanakis" initials="P." surname="Kampanakis"/>
+            <author fullname="D. McGrew" initials="D." surname="McGrew"/>
+            <author fullname="V. Smyslov" initials="V." surname="Smyslov"/>
+            <date month="June" year="2020"/>
+            <abstract>
+              <t indent="0">The possibility of quantum computers poses a serious challenge to cryptographic algorithms deployed widely today. The Internet Key Exchange Protocol Version 2 (IKEv2) is one example of a cryptosystem that could be broken; someone storing VPN communications today could decrypt them at a later time when a quantum computer is available. It is anticipated that IKEv2 will be extended to support quantum-secure key exchange algorithms; however, that is not likely to happen in the near term. To address this problem before then, this document describes an extension of IKEv2 to allow it to be resistant to a quantum computer by using preshared keys.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8784"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8784"/>
+        </reference>
+        <reference anchor="RFC9242" target="https://www.rfc-editor.org/info/rfc9242" quoteTitle="true" derivedAnchor="RFC9242">
+          <front>
+            <title>Intermediate Exchange in the Internet Key Exchange Protocol Version 2 (IKEv2)</title>
+            <author fullname="V. Smyslov" initials="V." surname="Smyslov"/>
+            <date month="May" year="2022"/>
+            <abstract>
+              <t indent="0">This document defines a new exchange, called "Intermediate Exchange", for the Internet Key Exchange Protocol Version 2 (IKEv2). This exchange can be used for transferring large amounts of data in the process of IKEv2 Security Association (SA) establishment. An example of the need to do this is using key exchange methods resistant to Quantum Computers (QCs) for IKE SA establishment. The Intermediate Exchange makes it possible to use the existing IKE fragmentation mechanism (which cannot be used in the initial IKEv2 exchange), helping to avoid IP fragmentation of large IKE messages if they need to be sent before IKEv2 SA is established.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9242"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9242"/>
+        </reference>
+      </references>
+      <references pn="section-6.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC9838" target="https://www.rfc-editor.org/info/rfc9838" quoteTitle="true" derivedAnchor="RFC9838">
+          <front>
+            <title>Group Key Management Using the Internet Key Exchange Protocol Version 2 (IKEv2)</title>
+            <author initials="V" surname="Smyslov" fullname="Valery Smyslov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B" surname="Weis" fullname="Brian Weis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="November" year="2025"/>
+          </front>
+          <seriesInfo name="RFC" value="9838"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9838"/>
+        </reference>
+        <reference anchor="RFC9370" target="https://www.rfc-editor.org/info/rfc9370" quoteTitle="true" derivedAnchor="RFC9370">
+          <front>
+            <title>Multiple Key Exchanges in the Internet Key Exchange Protocol Version 2 (IKEv2)</title>
+            <author fullname="CJ. Tjhai" initials="CJ." surname="Tjhai"/>
+            <author fullname="M. Tomlinson" initials="M." surname="Tomlinson"/>
+            <author fullname="G. Bartlett" initials="G." surname="Bartlett"/>
+            <author fullname="S. Fluhrer" initials="S." surname="Fluhrer"/>
+            <author fullname="D. Van Geest" initials="D." surname="Van Geest"/>
+            <author fullname="O. Garcia-Morchon" initials="O." surname="Garcia-Morchon"/>
+            <author fullname="V. Smyslov" initials="V." surname="Smyslov"/>
+            <date month="May" year="2023"/>
+            <abstract>
+              <t indent="0">This document describes how to extend the Internet Key Exchange Protocol Version 2 (IKEv2) to allow multiple key exchanges to take place while computing a shared secret during a Security Association (SA) setup.</t>
+              <t indent="0">This document utilizes the IKE_INTERMEDIATE exchange, where multiple key exchanges are performed when an IKE SA is being established. It also introduces a new IKEv2 exchange, IKE_FOLLOWUP_KE, which is used for the same purpose when the IKE SA is being rekeyed or is creating additional Child SAs.</t>
+              <t indent="0">This document updates RFC 7296 by renaming a Transform Type 4 from "Diffie-Hellman Group (D-H)" to "Key Exchange Method (KE)" and renaming a field in the Key Exchange Payload from "Diffie-Hellman Group Num" to "Key Exchange Method". It also renames an IANA registry for this Transform Type from "Transform Type 4 - Diffie- Hellman Group Transform IDs" to "Transform Type 4 - Key Exchange Method Transform IDs". These changes generalize key exchange algorithms that can be used in IKEv2.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9370"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9370"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="comparison" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-comparison-of-this-specific">この仕様とRFC 8784の比較</name>
+      <t indent="0" pn="section-appendix.a-1"> この仕様は、<xref target="RFC8784" format="default" sectionFormat="of" derivedContent="RFC8784"/>で定義されたIKE_AUTHでのPPKの使用を置き換えることを意図したものではありません。
+            そうではなく、最初のIKE SAを量子に対して安全にする必要がある場合や、
+            利用可能な複数のPPKの中から選択する必要がある場合など、そこで定義されたアプローチが要件を満たさない状況で使われることを想定しています。
+            ただし、ピアがIKE_AUTHでのPPKの使用とこの仕様の両方をサポートしている場合、
+            IKE_AUTHでのPPKの使用で十分な状況（たとえば、最初のIKE SAを量子から保護する必要がない場合）でも
+            後者を使用してもかまいません。
+      </t>
+      <t indent="0" pn="section-appendix.a-2"> この文書で定義されたアプローチには、次の利点があります。
+      </t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-appendix.a-3">
+        <li pn="section-appendix.a-3.1" derivedCounter="1.">
+          <t indent="0" pn="section-appendix.a-3.1.1"> IKE_AUTH交換ではなくIKE_INTERMEDIATE交換でPPKを使う主な利点は、IKE_AUTHを完全に保護できることです。
+                これは、IKE_AUTHで送信されるIDペイロードやその他の機密性のある内容が、量子コンピューターから保護されることを意味します。
+                G-IKEv2プロトコル<xref target="RFC9838" format="default" sectionFormat="of" derivedContent="RFC9838"/>のGSA_AUTH交換で送信される機密データについても同様です。
+          </t>
+        </li>
+        <li pn="section-appendix.a-3.2" derivedCounter="2.">
+          <t indent="0" pn="section-appendix.a-3.2.1"> IKE_AUTH交換が完全に保護されることに加えて、最初のIKE SAも完全に保護されます。これは、
+                機密情報が最初のIKE SA上で転送される場合に重要です。そのような状況の例として、
+                IKEv2のCREATE_CHILD_SA交換や、G-IKEv2 <xref target="RFC9838" format="default" sectionFormat="of" derivedContent="RFC9838"/>のGSA_REGISTRATION交換があります。
+          </t>
+        </li>
+        <li pn="section-appendix.a-3.3" derivedCounter="3.">
+          <t indent="0" pn="section-appendix.a-3.3.1"> PPKの交換はIKE_AUTHの前に別の交換として行われるため、イニシエーターは複数のPPKを提案でき、
+                レスポンダーはその中から1つを選ぶことができます。これは、PPKの交換がIKE_AUTHで行われる場合には不可能です。この機能により、
+                PPKのロールオーバーが簡単になる可能性があります。
+          </t>
+        </li>
+        <li pn="section-appendix.a-3.4" derivedCounter="4.">
+          <t indent="0" pn="section-appendix.a-3.4.1"> この仕様では、PPKの使用が双方にとってオプションである状況をサポートするために、
+                イニシエーターがAUTHペイロードの内容を2回（PPKありとPPKなしで）計算する必要がありません。
+          </t>
+        </li>
+      </ol>
+      <t indent="0" pn="section-appendix.a-4">
+            この文書で定義されたアプローチの主な欠点は、IKE SAと最初のIPsec SAを確立するために、
+            常に追加のラウンドトリップ（IKE_INTERMEDIATE交換）が必要になることです。しかし、いずれにしても他の目的のためにIKE_INTERMEDIATE交換を使用しなければならない場合は、
+            PPK関連のペイロードを他のペイロードに相乗りさせることができ、このペナルティーはなくなります。
+      </t>
+    </section>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.b-1"> 著者は、貴重なコメントをくれた<contact fullname="Paul Wouters"/>、
+      および文書を徹底的にレビューして多くの文章の改善を提案し、
+      事前共有鍵の不一致の問題も指摘してくれた<contact fullname="Tero Kivinen"/>に感謝します。
+      文書へのコメントと提案を提供してくれた<contact fullname="Rebecca Guthrie"/>と、
+      CREATE_CHILD_SAにおけるPPK Confirmationの計算の問題を発見してくれた<contact fullname="Mikhail Borodin"/>にも感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author initials="V." surname="Smyslov" fullname="Valery Smyslov">
+        <organization showOnFrontPage="true">ELVIS-PLUS</organization>
+        <address>
+          <postal>
+            <street>PO Box 81</street>
+            <city>Moscow (Zelenograd)</city>
+            <code>124460</code>
+            <country>Russian Federation</country>
+          </postal>
+          <phone>+7 495 276 0211</phone>
+          <email>svan@elvis.ru</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

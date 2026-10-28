@@ -1142,6 +1142,18 @@ class HtmlWriter:
             self.render1(sup, c)
         return sup
 
+    # 下付き文字
+    def render1_sub(self, h, x):
+        sub = build('sub')
+        h.append(sub)
+        if x.text:
+            sub.text = x.text
+        if x.tail:
+            sub.tail = x.tail
+        for c in x:
+            self.render1(sub, c)
+        return sub
+
     def render1_bcp14(self, h, x):
         bcp14 = build('span')
         h.append(bcp14)
@@ -1177,6 +1189,8 @@ class HtmlWriter:
     def render1_dt(self, h, x):
         dt = build('dt')
         h.append(dt)
+        if x.get('anchor'):
+            dt.set('id', '%s-%s' % (x.get('anchor'), self.lang))
         if x.text:
             dt.text = x.text
         if x.tail:

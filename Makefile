@@ -206,6 +206,7 @@ all: \
 	docs/rfc9820.html \
 	docs/rfc9819.html \
 	docs/rfc9818.html \
+	docs/rfc9817.html \
 	docs/rfc9816.html \
 	docs/rfc9815.html \
 	docs/rfc9814.html \
@@ -1407,6 +1408,10 @@ src/en/rfc9819.xml: src/rfcs/rfc9819.xml
 docs/rfc9818.html: src/en/rfc9818.xml src/rfcs/rfc9818.json src/ja/rfc9818.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9818
 src/en/rfc9818.xml: src/rfcs/rfc9818.xml
+	cp $< $@
+docs/rfc9817.html: src/en/rfc9817.xml src/rfcs/rfc9817.json src/ja/rfc9817.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9817
+src/en/rfc9817.xml: src/rfcs/rfc9817.xml
 	cp $< $@
 docs/rfc9816.html: src/en/rfc9816.xml src/rfcs/rfc9816.json src/ja/rfc9816.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9816

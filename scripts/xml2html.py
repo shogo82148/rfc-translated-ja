@@ -1202,6 +1202,8 @@ class HtmlWriter:
     def render1_dd(self, h, x):
         dd = build('dd')
         h.append(dd)
+        if x.get('anchor'):
+            dd.set('id', '%s-%s' % (x.get('anchor'), self.lang))
         if x.text:
             dd.text = x.text
         if x.tail:

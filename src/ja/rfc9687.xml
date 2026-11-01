@@ -1,0 +1,528 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-idr-bgp-sendholdtimer-15" number="9687" updates="4271" obsoletes="" ipr="trust200902" submissionType="IETF" consensus="true" sortRefs="true" symRefs="true" tocInclude="true" tocDepth="3" xml:lang="en" prepTime="2024-11-06T01:48:36" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-sendholdtimer-15" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9687" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="BGP SendHoldTimer">Border Gateway Protocol 4（BGP-4）送信ホールドタイマー</title>
+    <seriesInfo name="RFC" value="9687" stream="IETF"/>
+    <author fullname="Job Snijders" initials="J." surname="Snijders">
+      <organization showOnFrontPage="true">Fastly</organization>
+      <address>
+        <postal>
+          <city>Amsterdam</city>
+          <country>Netherlands</country>
+        </postal>
+        <email>job@fastly.com</email>
+      </address>
+    </author>
+    <author fullname="Ben Cartwright-Cox" initials="B." surname="Cartwright-Cox">
+      <organization abbrev="Port 179" showOnFrontPage="true">Port 179 Ltd</organization>
+      <address>
+        <postal>
+          <city>London</city>
+          <country>United Kingdom</country>
+        </postal>
+        <email>ben@benjojo.co.uk</email>
+      </address>
+    </author>
+    <author fullname="Yingzhen Qu" initials="Y" surname="Qu">
+      <organization abbrev="Futurewei" showOnFrontPage="true">Futurewei Technologies</organization>
+      <address>
+        <postal>
+          <city>San Jose</city>
+          <region>CA</region>
+          <code>95131</code>
+          <country>United States of America</country>
+        </postal>
+        <email>yingzhen.ietf@gmail.com</email>
+      </address>
+    </author>
+    <date month="11" year="2024"/>
+    <area>RTG</area>
+    <workgroup>idr</workgroup>
+    <keyword>BGP</keyword>
+    <keyword>TCP</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">
+      この文書は、Border Gateway Protocol（BGP）の有限状態機械（Finite State Machine、FSM）に対して、<tt>SendHoldTimer</tt>と<tt>SendHoldTimer_Expires</tt>イベントを定義します。
+      <tt>SendHoldTimer</tt>を実装すると、リモートシステムがBGPメッセージを処理していないことをローカルシステムが検出したあとも、BGPコネクションが終了されないという状況を克服しやすくなります。
+      この文書は、<tt>SendHoldTimer</tt>が満了したときに、ローカルシステムはコネクションの切断をリモートシステムだけに頼るのではなく、自らBGPコネクションを閉じるべきであることを規定します。
+      この文書はRFC 4271を更新します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9687" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2024 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-of-a-problematic-sc">問題のあるシナリオの例</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-to-rfc-4271-sendhol">Changes to RFC 4271 - <tt>SendHoldTimer</tt></xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-session-attributes">セッション属性</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-timer-event-sendholdtimer_e">Timer Event: <tt>SendHoldTimer_Expires</tt></xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-to-the-fsm">FSMの変更</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-to-bgp-timers">BGPタイマーの変更</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-send-hold-timer-expired-err">Send Hold Timer Expiredのエラー処理</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-consideratio">実装に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations">運用に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">
+      この文書は、<xref target="RFC4271" section="8" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8" derivedContent="RFC4271"/>で定義されているBorder Gateway Protocol（BGP）の有限状態機械（Finite State Machine、FSM）に対して、<tt>SendHoldTimer</tt>と<tt>SendHoldTimer_Expires</tt>イベントを定義します。
+      </t>
+      <t indent="0" pn="section-1-2">
+      ブロックされたBGPコネクションを終了できないと、ネットワークの到達可能性の問題が生じる可能性があります。また、その結果としてローカルシステムの別のBGPスピーカーへBGP UPDATEメッセージを生成して配送できなくなることは、ドメイン間ルーティングシステムのすべての参加者にとって有害です。
+      この現象は、グローバルなインターネットルーティングシステムにおけるIPトラフィックのパケットロス事象の一因になったと考えられています<xref target="bgpzombies" format="default" sectionFormat="of" derivedContent="bgpzombies"/>。
+      </t>
+      <t indent="0" pn="section-1-3">
+      この仕様は、<tt>SendHoldTime</tt>の期間中にリモートシステムがBGPメッセージをまったく処理できていないはずだとローカルシステムが検出した場合に、BGPコネクションを終了することを要求することで、この状況を改善することを目的としています。
+      前述の要件を標準化することで、運用者は異なるBGP実装間で一貫した動作という恩恵を受けられます。
+      </t>
+      <t indent="0" pn="section-1-4">
+      この仕様に従うBGPスピーカーは、ブロックされたコネクションをリモートシステムが閉じることだけに頼るのではなく、ブロックされたコネクションをローカルでも閉じます。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-requirements-language">要件言語</name>
+      <t indent="0" pn="section-2-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-example-of-a-problematic-sc">問題のあるシナリオの例</name>
+      <t indent="0" pn="section-3-1">
+      <tt>SendHoldTimer</tt>の概念を持たない実装では、誤動作している、または過負荷状態にあるリモートスピーカーによって、ローカルシステムのBGPソケット上のデータが際限なく蓄積される可能性があります。
+      過負荷状態のスピーカーは古い経路を使い続けるため、これは転送の失敗やトラフィックの損失につながる可能性があります。
+      </t>
+      <t indent="0" pn="section-3-2">
+      障害状態の例を示します。BGPはTCP <xref target="RFC9293" format="default" sectionFormat="of" derivedContent="RFC9293"/>上で動作するため、Established状態にあるBGPスピーカーが、サイズ0のTCP受信ウィンドウ（RCV.WND）を広告しているBGPスピーカーに遭遇することがあり得ます。このウィンドウのサイズが0であるため、ローカルシステムは、KEEPALIVE、UPDATE、その他の重要なBGPメッセージを、ネットワークソケットを介してリモートスピーカーへ送信できなくなります。
+      </t>
+      <t indent="0" pn="section-3-3">
+      一般に、BGP実装からはTCPのような下位層のサブシステムや、スピーカーの現在の受信ウィンドウサイズは見えません。また、そのようなブロックされたコネクションを認識するための既存のBGPの仕組みはありません。
+      したがって、BGP実装はこの状況を一貫した方法で処理できません。
+      </t>
+      <t indent="0" pn="section-3-4">
+BGPスピーカーがリモートスピーカーへBGPメッセージを送信できない場合に生じる主な問題は、影響を受けたスピーカーが古いルーティング情報で動作し続けることになりかねないという点です。
+      単一のBGPセッション上でBGPスピーカーがBGPメッセージを送信できない（したがってリモートスピーカーが受信できない）ことは、自律システム全体（あるいは自律システムのグループ全体）の収束能力に悪影響を及ぼす可能性があります。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-changes-to-rfc-4271-sendhol">RFC 4271の変更 - <tt>SendHoldTimer</tt></name>
+      <t indent="0" pn="section-4-1">
+    BGPスピーカーは、<xref target="RFC4271" section="8" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8" derivedContent="RFC4271"/>で概説されている「BGP有限状態機械（BGP Finite State Machine、FSM）」という概念モデルに従って実装されます。
+    この仕様は、BGPタイマー<tt>SendHoldTimer</tt>を追加し、以下のサブセクションに示すとおりにBGP FSMを更新します。
+      </t>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-session-attributes">セッション属性</name>
+        <t indent="0" pn="section-4.1-1">
+      コネクションごとの以下の選択可能なセッション属性を、<xref target="RFC4271" section="8" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8" derivedContent="RFC4271"/>の「The optional session attributes support different features of the BGP functionality that have implications for the BGP FSM state transitions」の直前にある一覧に追加します。</t>
+        <t indent="0" pn="section-4.1-2">新規</t>
+        <blockquote pn="section-4.1-3">
+          <ul empty="true" spacing="normal" bare="false" indent="3" pn="section-4.1-3.1">
+            <li pn="section-4.1-3.1.1">
+              <t indent="0" pn="section-4.1-3.1.1.1">
+          14) <tt>SendHoldTimer</tt>
+              </t>
+            </li>
+            <li pn="section-4.1-3.1.2">
+              <t indent="0" pn="section-4.1-3.1.2.1">
+          15) <tt>SendHoldTime</tt>
+              </t>
+            </li>
+          </ul>
+        </blockquote>
+        <t indent="0" pn="section-4.1-4">
+      <tt>SendHoldTime</tt>は、ピアへBGPメッセージを送信できないためにTCPコネクションが切断されるまで、BGPスピーカーがEstablished状態にとどまる時間を決定します。
+      BGPスピーカーは、<tt>SendHoldTime</tt>の値をピアごとに個別に設定できます。
+        </t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-timer-event-sendholdtimer_e">タイマーイベント：<tt>SendHoldTimer_Expires</tt></name>
+        <t indent="0" pn="section-4.2-1">
+    <xref target="RFC4271" section="8.1.3" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8.1.3" derivedContent="RFC4271"/>に、次のとおりタイマーイベントを1つ追加します。
+        </t>
+        <t indent="0" pn="section-4.2-2">新規</t>
+        <blockquote pn="section-4.2-3">
+          <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-4.2-3.1">
+            <li pn="section-4.2-3.1.1">
+              <t indent="0" pn="section-4.2-3.1.1.1">        イベント29：<tt>SendHoldTimer_Expires</tt></t>
+              <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-4.2-3.1.1.2">
+                <li pn="section-4.2-3.1.1.2.1">定義：<tt>SendHoldTimer</tt>が満了したときに生成されるイベントです。</li>
+                <li pn="section-4.2-3.1.1.2.2">ステータス：オプション</li>
+              </ul>
+            </li>
+          </ul>
+        </blockquote>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-changes-to-the-fsm">FSMの変更</name>
+        <t indent="0" pn="section-4.3-1"><xref target="RFC4271" section="8.2.2" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8.2.2" derivedContent="RFC4271"/>に次の変更を加えます。</t>
+        <t indent="0" pn="section-4.3-2">「OpenConfirm State」において、イベント26の処理を次のとおり改訂します。</t>
+        <t indent="0" pn="section-4.3-3">旧</t>
+        <blockquote pn="section-4.3-4">
+          <t indent="0" pn="section-4.3-4.1">
+        ローカルシステムがKEEPALIVEメッセージ（KeepAliveMsg（イベント26））を受信した場合、ローカルシステムは次のことを行います。
+          </t>
+          <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-4.3-4.2">
+            <li pn="section-4.3-4.2.1">
+              <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.3-4.2.1.1">
+                <li pn="section-4.3-4.2.1.1.1"><tt>HoldTimer</tt>を再始動し、</li>
+                <li pn="section-4.3-4.2.1.1.2">状態をEstablishedに変更します。</li>
+              </ul>
+            </li>
+          </ul>
+        </blockquote>
+        <t indent="0" pn="section-4.3-5">新規</t>
+        <blockquote pn="section-4.3-6">
+          <t indent="0" pn="section-4.3-6.1">
+        ローカルシステムがKEEPALIVEメッセージ（KeepAliveMsg（イベント26））を受信した場合、ローカルシステムは次のことを行います。
+          </t>
+          <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-4.3-6.2">
+            <li pn="section-4.3-6.2.1">
+              <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.3-6.2.1.1">
+                <li pn="section-4.3-6.2.1.1.1"><tt>HoldTimer</tt>を再始動し、</li>
+                <li pn="section-4.3-6.2.1.1.2"><tt>SendHoldTime</tt>が0でなければ<tt>SendHoldTimer</tt>を開始し、</li>
+                <li pn="section-4.3-6.2.1.1.3">状態をEstablishedに変更します。</li>
+              </ul>
+            </li>
+          </ul>
+        </blockquote>
+        <t indent="0" pn="section-4.3-7">
+      <xref target="RFC4271" section="8.2.2" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-8.2.2" derivedContent="RFC4271"/>の「Established State」において、「unless the negotiated <tt>HoldTime</tt> value is zero」で終わる段落のあとに、次の段落を追加します。
+        </t>
+        <t indent="0" pn="section-4.3-8">新規</t>
+        <blockquote pn="section-4.3-9">
+          <t indent="0" pn="section-4.3-9.1"><tt>SendHoldTimer_Expires</tt>（イベント29）が発生した場合、ローカルシステムは次のことを行います。
+          </t>
+          <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-4.3-9.2">
+            <li pn="section-4.3-9.2.1">
+              <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.3-9.2.1.1">
+                <li pn="section-4.3-9.2.1.1.1">（オプションで）この段落の以降の動作を遅らせないとローカルシステムが判断できる場合、BGPエラーコード「Send Hold Timer Expired」を含むNOTIFICATIONメッセージを送信し、</li>
+                <li pn="section-4.3-9.2.1.1.2">BGPエラーコード「Send Hold Timer Expired」を含むエラーメッセージをローカルシステムに記録し、</li>
+                <li pn="section-4.3-9.2.1.1.3">すべてのBGPリソースを解放し、</li>
+                <li pn="section-4.3-9.2.1.1.4">ConnectRetryTimerを0に設定し、</li>
+                <li pn="section-4.3-9.2.1.1.5">TCPコネクションを切断し、</li>
+                <li pn="section-4.3-9.2.1.1.6">ConnectRetryCounterを1増やし、</li>
+                <li pn="section-4.3-9.2.1.1.7">（オプションで）DampPeerOscillations属性がTRUEに設定されていれば、ピア振動ダンピングを実行し、</li>
+                <li pn="section-4.3-9.2.1.1.8">状態をIdleに変更します。</li>
+              </ul>
+            </li>
+            <li pn="section-4.3-9.2.2">
+              <t indent="0" pn="section-4.3-9.2.2.1">
+          ローカルシステムは、BGPメッセージを送信するたびに<tt>SendHoldTimer</tt>を再始動します。ただし、<tt>SendHoldTime</tt>の値が0であるか、ネゴシエートされた<tt>HoldTime</tt>の値が0である場合は除きます。その場合、<tt>SendHoldTimer</tt>は停止されます。
+              </t>
+            </li>
+            <li pn="section-4.3-9.2.3">
+              <t indent="0" pn="section-4.3-9.2.3.1">
+          Established状態から遷移するときは常に、「すべてのBGPリソースを解放する（release all BGP resources）」動作の一部として<tt>SendHoldTimer</tt>が停止されます。
+              </t>
+            </li>
+          </ul>
+        </blockquote>
+      </section>
+      <section anchor="timers" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-changes-to-bgp-timers">BGPタイマーの変更</name>
+        <t indent="0" pn="section-4.4-1">
+      <xref target="RFC4271" section="10" format="default" sectionFormat="of" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-10" derivedContent="RFC4271"/>は、BGPタイマーをまとめています。
+      この文書は、オプションのBGPタイマー<tt>SendHoldTimer</tt>を追加します。
+        </t>
+        <t indent="0" pn="section-4.4-2">新規</t>
+        <blockquote pn="section-4.4-3">
+          <t indent="0" pn="section-4.4-3.1">
+        <tt>SendHoldTime</tt>は、<tt>SendHoldTimer</tt>の初期値を保持するFSM属性です。
+        <tt>SendHoldTime</tt>が0でない場合、その値は<tt>HoldTime</tt>の値より大きく<bcp14>なければなりません（MUST）</bcp14>。推奨されるデフォルト値については、[RFC9687]の<xref target="implcons" format="default" sectionFormat="of" derivedContent="Section 6"/>を参照してください。
+          </t>
+        </blockquote>
+      </section>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-send-hold-timer-expired-err">Send Hold Timer Expiredのエラー処理</name>
+      <t indent="0" pn="section-5-1">
+      ローカルシステムが<tt>SendHoldTime</tt>で指定された期間内にBGPメッセージをまったく送信しない場合、「Send Hold Timer Expired」エラーコードを含むNOTIFICATIONメッセージを送信<bcp14>してもよいです（MAY）</bcp14>。そして、BGPコネクションを閉じ<bcp14>なければなりません（MUST）</bcp14>。
+      さらに、「Send Hold Timer Expired」エラーコードを示すエラーをローカルシステムに記録<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+    </section>
+    <section anchor="implcons" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-implementation-consideratio">実装に関する考慮事項</name>
+      <t indent="0" pn="section-6-1">
+      この仕様が対処しようとしている障害モードは比較的まれであり、また、ネットワーク運用者は<tt>HoldTimer</tt>のようなBGPの障害検出の仕組みの正式な仕様になじみがないかもしれません。そのため、多くの運用者は<tt>SendHoldTimer</tt>のような追加の仕組みの必要性に気付いていない可能性が高いです。
+      </t>
+      <t indent="0" pn="section-6-2">
+      したがって、この仕様の実装は、BGPを話すデバイスの追加設定を必要とせずに、デフォルトで<tt>SendHoldTimer</tt>を有効にすることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      </t>
+      <t indent="0" pn="section-6-3">
+      BGPコネクションの<tt>SendHoldTime</tt>のデフォルト値は、次のうち大きいほうである<bcp14>べきです（SHOULD）</bcp14>。
+      </t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6-4">
+        <li pn="section-6-4.1">8分、または</li>
+        <li pn="section-6-4.2">ネゴシエートされた<tt>HoldTime</tt>の2倍</li>
+      </ul>
+      <t indent="0" pn="section-6-5">
+      実装は、<xref target="timers" format="default" sectionFormat="of" derivedContent="Section 4.4"/>に示された制約の範囲内で、<tt>SendHoldTime</tt>の値をグローバルに、またはピアごとに設定可能に<bcp14>してもよいです（MAY）</bcp14>。
+      </t>
+      <t indent="0" pn="section-6-6">
+      NOTIFICATIONメッセージ「Send Hold Timer Expired」のサブコードは0に設定され、使用されません。「Send Hold Timer Expired」NOTIFICATIONメッセージの末尾に追加のデータは付加されません。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-operational-considerations">運用に関する考慮事項</name>
+      <t indent="0" pn="section-7-1">
+      リモートスピーカーが<tt>SendHoldTime</tt>の期間中にBGPメッセージをまったく処理していないことをローカルシステムが認識したとき、ローカルシステムは、コネクションを閉じる理由をNOTIFICATIONメッセージでリモートピアに通知できない可能性が高いです。
+      この文書は、BGPコネクションを閉じるのを遅らせないのであれば、それでも「Send Hold Timer Expired」エラーコードを含むNOTIFICATIONメッセージの送信を試みることを提案します。
+      その一方で、エラーメッセージがローカルシステムに記録されます。
+      </t>
+      <t indent="0" pn="section-7-2">
+      他の仕組みも併用できます。たとえば、BGPスピーカーは、この理由（「Send Hold Timer Expired」）を運用状態の一部（たとえば、BGP MIB <xref target="RFC4273" format="default" sectionFormat="of" derivedContent="RFC4273"/>のbgpPeerLastError）として提供<bcp14>すべきです（SHOULD）</bcp14>。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">
+      この仕様は、BGPのセキュリティー特性を変更しません。この文書で規定されているとおりにBGPの<tt>SendHoldTimer</tt>を実装すると、誤動作している、または過負荷状態にあるリモートピアとのコネクションが終了されるため、ネットワークの回復力が向上します。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">
+      IANAは、「Border Gateway Protocol (BGP) Parameters」レジストリーグループ内の「BGP Error (Notification) Codes」レジストリーに、「Send Hold Timer Expired」として値8を登録しました。
+      </t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4271" target="https://www.rfc-editor.org/info/rfc4271" quoteTitle="true" derivedAnchor="RFC4271">
+          <front>
+            <title>A Border Gateway Protocol 4 (BGP-4)</title>
+            <author fullname="Y. Rekhter" initials="Y." role="editor" surname="Rekhter"/>
+            <author fullname="T. Li" initials="T." role="editor" surname="Li"/>
+            <author fullname="S. Hares" initials="S." role="editor" surname="Hares"/>
+            <date month="January" year="2006"/>
+            <abstract>
+              <t indent="0">This document discusses the Border Gateway Protocol (BGP), which is an inter-Autonomous System routing protocol.</t>
+              <t indent="0">The primary function of a BGP speaking system is to exchange network reachability information with other BGP systems. This network reachability information includes information on the list of Autonomous Systems (ASes) that reachability information traverses. This information is sufficient for constructing a graph of AS connectivity for this reachability from which routing loops may be pruned, and, at the AS level, some policy decisions may be enforced.</t>
+              <t indent="0">BGP-4 provides a set of mechanisms for supporting Classless Inter-Domain Routing (CIDR). These mechanisms include support for advertising a set of destinations as an IP prefix, and eliminating the concept of network "class" within BGP. BGP-4 also introduces mechanisms that allow aggregation of routes, including aggregation of AS paths.</t>
+              <t indent="0">This document obsoletes RFC 1771. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4271"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4271"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC9293" target="https://www.rfc-editor.org/info/rfc9293" quoteTitle="true" derivedAnchor="RFC9293">
+          <front>
+            <title>Transmission Control Protocol (TCP)</title>
+            <author fullname="W. Eddy" initials="W." role="editor" surname="Eddy"/>
+            <date month="August" year="2022"/>
+            <abstract>
+              <t indent="0">This document specifies the Transmission Control Protocol (TCP). TCP is an important transport-layer protocol in the Internet protocol stack, and it has continuously evolved over decades of use and growth of the Internet. Over this time, a number of changes have been made to TCP as it was specified in RFC 793, though these have only been documented in a piecemeal fashion. This document collects and brings those changes together with the protocol specification from RFC 793. This document obsoletes RFC 793, as well as RFCs 879, 2873, 6093, 6429, 6528, and 6691 that updated parts of RFC 793. It updates RFCs 1011 and 1122, and it should be considered as a replacement for the portions of those documents dealing with TCP requirements. It also updates RFC 5961 by adding a small clarification in reset handling while in the SYN-RECEIVED state. The TCP header control bits from RFC 793 have also been updated based on RFC 3168.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="9293"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9293"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="bgpzombies" target="https://labs.ripe.net/author/romain_fontugne/bgp-zombies/" quoteTitle="true" derivedAnchor="bgpzombies">
+          <front>
+            <title>BGP Zombies</title>
+            <author fullname="Romain Fontugne">
+              <organization showOnFrontPage="true">IIJ Research Lab</organization>
+            </author>
+            <date month="April" year="2019"/>
+          </front>
+        </reference>
+        <reference anchor="RFC4273" target="https://www.rfc-editor.org/info/rfc4273" quoteTitle="true" derivedAnchor="RFC4273">
+          <front>
+            <title>Definitions of Managed Objects for BGP-4</title>
+            <author fullname="J. Haas" initials="J." role="editor" surname="Haas"/>
+            <author fullname="S. Hares" initials="S." role="editor" surname="Hares"/>
+            <date month="January" year="2006"/>
+            <abstract>
+              <t indent="0">This memo defines a portion of the Management Information Base (MIB) for use with network management protocols in the Internet community In particular, it describes managed objects used for managing the Border Gateway Protocol Version 4 or lower.</t>
+              <t indent="0">The origin of this memo is from RFC 1269 "Definitions of Managed Objects for the Border Gateway Protocol (Version 3)", which was updated to support BGP-4 in RFC 1657. This memo fixes errors introduced when the MIB module was converted to use the SMIv2 language. This memo also updates references to the current SNMP framework documents.</t>
+              <t indent="0">This memo is intended to document deployed implementations of this MIB module in a historical context, to provide clarifications of some items, and to note errors where the MIB module fails to fully represent the BGP protocol. Work is currently in progress to replace this MIB module with a new one representing the current state of the BGP protocol and its extensions.</t>
+              <t indent="0">This document obsoletes RFC 1269 and RFC 1657. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4273"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4273"/>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">
+      著者らは、この文書の有益なレビューをしていただいた
+      <contact fullname="William McCall"/>、
+      <contact fullname="Theo de Raadt"/>、
+      <contact fullname="John Heasley"/>、
+<contact fullname="Nick Hilliard"/>、
+<contact fullname="Jeffrey Haas"/>、
+<contact fullname="Tom Petch"/>、
+<contact fullname="Susan Hares"/>、
+<contact fullname="Keyur Patel"/>、
+<contact fullname="Ben Maddison"/>、
+<contact fullname="Claudio Jeker"/>、
+<contact fullname="John Scudder"/>
+      に感謝します。
+      </t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Job Snijders" initials="J." surname="Snijders">
+        <organization showOnFrontPage="true">Fastly</organization>
+        <address>
+          <postal>
+            <city>Amsterdam</city>
+            <country>Netherlands</country>
+          </postal>
+          <email>job@fastly.com</email>
+        </address>
+      </author>
+      <author fullname="Ben Cartwright-Cox" initials="B." surname="Cartwright-Cox">
+        <organization abbrev="Port 179" showOnFrontPage="true">Port 179 Ltd</organization>
+        <address>
+          <postal>
+            <city>London</city>
+            <country>United Kingdom</country>
+          </postal>
+          <email>ben@benjojo.co.uk</email>
+        </address>
+      </author>
+      <author fullname="Yingzhen Qu" initials="Y" surname="Qu">
+        <organization abbrev="Futurewei" showOnFrontPage="true">Futurewei Technologies</organization>
+        <address>
+          <postal>
+            <city>San Jose</city>
+            <region>CA</region>
+            <code>95131</code>
+            <country>United States of America</country>
+          </postal>
+          <email>yingzhen.ietf@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

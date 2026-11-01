@@ -254,6 +254,7 @@ all: \
 	docs/rfc9649.html \
 	docs/rfc9637.html \
 	docs/rfc9635.html \
+	docs/rfc9580.html \
 	docs/rfc9564.html \
 	docs/rfc9562.html \
 	docs/rfc9559.html \
@@ -1630,6 +1631,10 @@ src/en/rfc9637.xml: src/rfcs/rfc9637.xml
 docs/rfc9635.html: src/en/rfc9635.xml src/rfcs/rfc9635.json src/ja/rfc9635.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9635
 src/en/rfc9635.xml: src/rfcs/rfc9635.xml
+	cp $< $@
+docs/rfc9580.html: src/en/rfc9580.xml src/rfcs/rfc9580.json src/ja/rfc9580.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9580
+src/en/rfc9580.xml: src/rfcs/rfc9580.xml
 	cp $< $@
 docs/rfc9564.html: src/en/rfc9564.xml src/rfcs/rfc9564.json src/ja/rfc9564.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9564

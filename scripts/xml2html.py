@@ -559,6 +559,10 @@ class HtmlWriter:
         self.render1(div_ja, ja)
         return h
 
+    # 貢献者（Contributors）などのセクション直下の連絡先
+    def render_contact(self, h, en, ja):
+        return self.render_author(h, en, ja)
+
     def render_table(self, h, en, ja):
         parent = build('div')
         h.append(parent)
@@ -1558,6 +1562,9 @@ class HtmlWriter:
             return span
 
     def render1_contact(self, h, x):
+        if x.getparent().tag == 'section':
+            # セクション直下の連絡先は著者情報と同じ形式で表示する
+            return self.render1_author(h, x)
         name, ascii = full_author_name_set(x)
         span = wrap_ascii('span', name, ascii, '', classes='contact-name')
         span.tail = x.tail

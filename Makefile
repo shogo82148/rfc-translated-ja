@@ -242,10 +242,106 @@ all: \
 	docs/rfc9803.html \
 	docs/rfc9802.html \
 	docs/rfc9801.html \
+	docs/rfc9800.html \
+	docs/rfc9799.html \
+	docs/rfc9798.html \
+	docs/rfc9797.html \
+	docs/rfc9796.html \
+	docs/rfc9795.html \
+	docs/rfc9794.html \
+	docs/rfc9793.html \
+	docs/rfc9792.html \
+	docs/rfc9791.html \
+	docs/rfc9790.html \
+	docs/rfc9789.html \
 	docs/rfc9788.html \
+	docs/rfc9787.html \
+	docs/rfc9786.html \
+	docs/rfc9785.html \
+	docs/rfc9784.html \
+	docs/rfc9783.html \
+	docs/rfc9782.html \
+	docs/rfc9781.html \
+	docs/rfc9780.html \
+	docs/rfc9779.html \
+	docs/rfc9778.html \
+	docs/rfc9777.html \
+	docs/rfc9776.html \
+	docs/rfc9775.html \
+	docs/rfc9774.html \
+	docs/rfc9773.html \
+	docs/rfc9772.html \
+	docs/rfc9771.html \
+	docs/rfc9770.html \
 	docs/rfc9769.html \
+	docs/rfc9768.html \
+	docs/rfc9767.html \
+	docs/rfc9766.html \
+	docs/rfc9765.html \
+	docs/rfc9764.html \
+	docs/rfc9763.html \
+	docs/rfc9762.html \
+	docs/rfc9761.html \
+	docs/rfc9760.html \
 	docs/rfc9759.html \
+	docs/rfc9758.html \
+	docs/rfc9757.html \
+	docs/rfc9756.html \
+	docs/rfc9755.html \
+	docs/rfc9754.html \
+	docs/rfc9753.html \
+	docs/rfc9752.html \
+	docs/rfc9751.html \
+	docs/rfc9750.html \
+	docs/rfc9749.html \
 	docs/rfc9748.html \
+	docs/rfc9747.html \
+	docs/rfc9746.html \
+	docs/rfc9745.html \
+	docs/rfc9744.html \
+	docs/rfc9743.html \
+	docs/rfc9742.html \
+	docs/rfc9741.html \
+	docs/rfc9740.html \
+	docs/rfc9739.html \
+	docs/rfc9738.html \
+	docs/rfc9737.html \
+	docs/rfc9736.html \
+	docs/rfc9735.html \
+	docs/rfc9734.html \
+	docs/rfc9733.html \
+	docs/rfc9732.html \
+	docs/rfc9731.html \
+	docs/rfc9730.html \
+	docs/rfc9729.html \
+	docs/rfc9728.html \
+	docs/rfc9727.html \
+	docs/rfc9726.html \
+	docs/rfc9725.html \
+	docs/rfc9724.html \
+	docs/rfc9723.html \
+	docs/rfc9722.html \
+	docs/rfc9721.html \
+	docs/rfc9720.html \
+	docs/rfc9719.html \
+	docs/rfc9718.html \
+	docs/rfc9717.html \
+	docs/rfc9716.html \
+	docs/rfc9715.html \
+	docs/rfc9714.html \
+	docs/rfc9713.html \
+	docs/rfc9712.html \
+	docs/rfc9711.html \
+	docs/rfc9710.html \
+	docs/rfc9709.html \
+	docs/rfc9708.html \
+	docs/rfc9707.html \
+	docs/rfc9706.html \
+	docs/rfc9705.html \
+	docs/rfc9704.html \
+	docs/rfc9703.html \
+	docs/rfc9702.html \
+	docs/rfc9701.html \
 	docs/rfc9692.html \
 	docs/rfc9672.html \
 	docs/rfc9659.html \
@@ -1586,21 +1682,405 @@ docs/rfc9801.html: src/en/rfc9801.xml src/rfcs/rfc9801.json src/ja/rfc9801.xml s
 	scripts/xml2html.py 9801
 src/en/rfc9801.xml: src/rfcs/rfc9801.xml
 	cp $< $@
+docs/rfc9800.html: src/en/rfc9800.xml src/rfcs/rfc9800.json src/ja/rfc9800.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9800
+src/en/rfc9800.xml: src/rfcs/rfc9800.xml
+	cp $< $@
+docs/rfc9799.html: src/en/rfc9799.xml src/rfcs/rfc9799.json src/ja/rfc9799.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9799
+src/en/rfc9799.xml: src/rfcs/rfc9799.xml
+	cp $< $@
+docs/rfc9798.html: src/en/rfc9798.xml src/rfcs/rfc9798.json src/ja/rfc9798.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9798
+src/en/rfc9798.xml: src/rfcs/rfc9798.xml
+	cp $< $@
+docs/rfc9797.html: src/en/rfc9797.xml src/rfcs/rfc9797.json src/ja/rfc9797.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9797
+src/en/rfc9797.xml: src/rfcs/rfc9797.xml
+	cp $< $@
+docs/rfc9796.html: src/en/rfc9796.xml src/rfcs/rfc9796.json src/ja/rfc9796.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9796
+src/en/rfc9796.xml: src/rfcs/rfc9796.xml
+	cp $< $@
+docs/rfc9795.html: src/en/rfc9795.xml src/rfcs/rfc9795.json src/ja/rfc9795.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9795
+src/en/rfc9795.xml: src/rfcs/rfc9795.xml
+	cp $< $@
+docs/rfc9794.html: src/en/rfc9794.xml src/rfcs/rfc9794.json src/ja/rfc9794.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9794
+src/en/rfc9794.xml: src/rfcs/rfc9794.xml
+	cp $< $@
+docs/rfc9793.html: src/en/rfc9793.xml src/rfcs/rfc9793.json src/ja/rfc9793.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9793
+src/en/rfc9793.xml: src/rfcs/rfc9793.xml
+	cp $< $@
+docs/rfc9792.html: src/en/rfc9792.xml src/rfcs/rfc9792.json src/ja/rfc9792.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9792
+src/en/rfc9792.xml: src/rfcs/rfc9792.xml
+	cp $< $@
+docs/rfc9791.html: src/en/rfc9791.xml src/rfcs/rfc9791.json src/ja/rfc9791.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9791
+src/en/rfc9791.xml: src/rfcs/rfc9791.xml
+	cp $< $@
+docs/rfc9790.html: src/en/rfc9790.xml src/rfcs/rfc9790.json src/ja/rfc9790.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9790
+src/en/rfc9790.xml: src/rfcs/rfc9790.xml
+	cp $< $@
+docs/rfc9789.html: src/en/rfc9789.xml src/rfcs/rfc9789.json src/ja/rfc9789.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9789
+src/en/rfc9789.xml: src/rfcs/rfc9789.xml
+	cp $< $@
 docs/rfc9788.html: src/en/rfc9788.xml src/rfcs/rfc9788.json src/ja/rfc9788.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9788
 src/en/rfc9788.xml: src/rfcs/rfc9788.xml
+	cp $< $@
+docs/rfc9787.html: src/en/rfc9787.xml src/rfcs/rfc9787.json src/ja/rfc9787.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9787
+src/en/rfc9787.xml: src/rfcs/rfc9787.xml
+	cp $< $@
+docs/rfc9786.html: src/en/rfc9786.xml src/rfcs/rfc9786.json src/ja/rfc9786.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9786
+src/en/rfc9786.xml: src/rfcs/rfc9786.xml
+	cp $< $@
+docs/rfc9785.html: src/en/rfc9785.xml src/rfcs/rfc9785.json src/ja/rfc9785.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9785
+src/en/rfc9785.xml: src/rfcs/rfc9785.xml
+	cp $< $@
+docs/rfc9784.html: src/en/rfc9784.xml src/rfcs/rfc9784.json src/ja/rfc9784.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9784
+src/en/rfc9784.xml: src/rfcs/rfc9784.xml
+	cp $< $@
+docs/rfc9783.html: src/en/rfc9783.xml src/rfcs/rfc9783.json src/ja/rfc9783.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9783
+src/en/rfc9783.xml: src/rfcs/rfc9783.xml
+	cp $< $@
+docs/rfc9782.html: src/en/rfc9782.xml src/rfcs/rfc9782.json src/ja/rfc9782.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9782
+src/en/rfc9782.xml: src/rfcs/rfc9782.xml
+	cp $< $@
+docs/rfc9781.html: src/en/rfc9781.xml src/rfcs/rfc9781.json src/ja/rfc9781.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9781
+src/en/rfc9781.xml: src/rfcs/rfc9781.xml
+	cp $< $@
+docs/rfc9780.html: src/en/rfc9780.xml src/rfcs/rfc9780.json src/ja/rfc9780.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9780
+src/en/rfc9780.xml: src/rfcs/rfc9780.xml
+	cp $< $@
+docs/rfc9779.html: src/en/rfc9779.xml src/rfcs/rfc9779.json src/ja/rfc9779.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9779
+src/en/rfc9779.xml: src/rfcs/rfc9779.xml
+	cp $< $@
+docs/rfc9778.html: src/en/rfc9778.xml src/rfcs/rfc9778.json src/ja/rfc9778.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9778
+src/en/rfc9778.xml: src/rfcs/rfc9778.xml
+	cp $< $@
+docs/rfc9777.html: src/en/rfc9777.xml src/rfcs/rfc9777.json src/ja/rfc9777.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9777
+src/en/rfc9777.xml: src/rfcs/rfc9777.xml
+	cp $< $@
+docs/rfc9776.html: src/en/rfc9776.xml src/rfcs/rfc9776.json src/ja/rfc9776.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9776
+src/en/rfc9776.xml: src/rfcs/rfc9776.xml
+	cp $< $@
+docs/rfc9775.html: src/en/rfc9775.xml src/rfcs/rfc9775.json src/ja/rfc9775.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9775
+src/en/rfc9775.xml: src/rfcs/rfc9775.xml
+	cp $< $@
+docs/rfc9774.html: src/en/rfc9774.xml src/rfcs/rfc9774.json src/ja/rfc9774.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9774
+src/en/rfc9774.xml: src/rfcs/rfc9774.xml
+	cp $< $@
+docs/rfc9773.html: src/en/rfc9773.xml src/rfcs/rfc9773.json src/ja/rfc9773.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9773
+src/en/rfc9773.xml: src/rfcs/rfc9773.xml
+	cp $< $@
+docs/rfc9772.html: src/en/rfc9772.xml src/rfcs/rfc9772.json src/ja/rfc9772.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9772
+src/en/rfc9772.xml: src/rfcs/rfc9772.xml
+	cp $< $@
+docs/rfc9771.html: src/en/rfc9771.xml src/rfcs/rfc9771.json src/ja/rfc9771.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9771
+src/en/rfc9771.xml: src/rfcs/rfc9771.xml
+	cp $< $@
+docs/rfc9770.html: src/en/rfc9770.xml src/rfcs/rfc9770.json src/ja/rfc9770.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9770
+src/en/rfc9770.xml: src/rfcs/rfc9770.xml
 	cp $< $@
 docs/rfc9769.html: src/en/rfc9769.xml src/rfcs/rfc9769.json src/ja/rfc9769.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9769
 src/en/rfc9769.xml: src/rfcs/rfc9769.xml
 	cp $< $@
+docs/rfc9768.html: src/en/rfc9768.xml src/rfcs/rfc9768.json src/ja/rfc9768.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9768
+src/en/rfc9768.xml: src/rfcs/rfc9768.xml
+	cp $< $@
+docs/rfc9767.html: src/en/rfc9767.xml src/rfcs/rfc9767.json src/ja/rfc9767.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9767
+src/en/rfc9767.xml: src/rfcs/rfc9767.xml
+	cp $< $@
+docs/rfc9766.html: src/en/rfc9766.xml src/rfcs/rfc9766.json src/ja/rfc9766.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9766
+src/en/rfc9766.xml: src/rfcs/rfc9766.xml
+	cp $< $@
+docs/rfc9765.html: src/en/rfc9765.xml src/rfcs/rfc9765.json src/ja/rfc9765.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9765
+src/en/rfc9765.xml: src/rfcs/rfc9765.xml
+	cp $< $@
+docs/rfc9764.html: src/en/rfc9764.xml src/rfcs/rfc9764.json src/ja/rfc9764.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9764
+src/en/rfc9764.xml: src/rfcs/rfc9764.xml
+	cp $< $@
+docs/rfc9763.html: src/en/rfc9763.xml src/rfcs/rfc9763.json src/ja/rfc9763.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9763
+src/en/rfc9763.xml: src/rfcs/rfc9763.xml
+	cp $< $@
+docs/rfc9762.html: src/en/rfc9762.xml src/rfcs/rfc9762.json src/ja/rfc9762.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9762
+src/en/rfc9762.xml: src/rfcs/rfc9762.xml
+	cp $< $@
+docs/rfc9761.html: src/en/rfc9761.xml src/rfcs/rfc9761.json src/ja/rfc9761.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9761
+src/en/rfc9761.xml: src/rfcs/rfc9761.xml
+	cp $< $@
+docs/rfc9760.html: src/en/rfc9760.xml src/rfcs/rfc9760.json src/ja/rfc9760.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9760
+src/en/rfc9760.xml: src/rfcs/rfc9760.xml
+	cp $< $@
 docs/rfc9759.html: src/en/rfc9759.xml src/rfcs/rfc9759.json src/ja/rfc9759.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9759
 src/en/rfc9759.xml: src/rfcs/rfc9759.xml
 	cp $< $@
+docs/rfc9758.html: src/en/rfc9758.xml src/rfcs/rfc9758.json src/ja/rfc9758.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9758
+src/en/rfc9758.xml: src/rfcs/rfc9758.xml
+	cp $< $@
+docs/rfc9757.html: src/en/rfc9757.xml src/rfcs/rfc9757.json src/ja/rfc9757.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9757
+src/en/rfc9757.xml: src/rfcs/rfc9757.xml
+	cp $< $@
+docs/rfc9756.html: src/en/rfc9756.xml src/rfcs/rfc9756.json src/ja/rfc9756.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9756
+src/en/rfc9756.xml: src/rfcs/rfc9756.xml
+	cp $< $@
+docs/rfc9755.html: src/en/rfc9755.xml src/rfcs/rfc9755.json src/ja/rfc9755.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9755
+src/en/rfc9755.xml: src/rfcs/rfc9755.xml
+	cp $< $@
+docs/rfc9754.html: src/en/rfc9754.xml src/rfcs/rfc9754.json src/ja/rfc9754.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9754
+src/en/rfc9754.xml: src/rfcs/rfc9754.xml
+	cp $< $@
+docs/rfc9753.html: src/en/rfc9753.xml src/rfcs/rfc9753.json src/ja/rfc9753.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9753
+src/en/rfc9753.xml: src/rfcs/rfc9753.xml
+	cp $< $@
+docs/rfc9752.html: src/en/rfc9752.xml src/rfcs/rfc9752.json src/ja/rfc9752.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9752
+src/en/rfc9752.xml: src/rfcs/rfc9752.xml
+	cp $< $@
+docs/rfc9751.html: src/en/rfc9751.xml src/rfcs/rfc9751.json src/ja/rfc9751.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9751
+src/en/rfc9751.xml: src/rfcs/rfc9751.xml
+	cp $< $@
+docs/rfc9750.html: src/en/rfc9750.xml src/rfcs/rfc9750.json src/ja/rfc9750.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9750
+src/en/rfc9750.xml: src/rfcs/rfc9750.xml
+	cp $< $@
+docs/rfc9749.html: src/en/rfc9749.xml src/rfcs/rfc9749.json src/ja/rfc9749.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9749
+src/en/rfc9749.xml: src/rfcs/rfc9749.xml
+	cp $< $@
 docs/rfc9748.html: src/en/rfc9748.xml src/rfcs/rfc9748.json src/ja/rfc9748.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9748
 src/en/rfc9748.xml: src/rfcs/rfc9748.xml
+	cp $< $@
+docs/rfc9747.html: src/en/rfc9747.xml src/rfcs/rfc9747.json src/ja/rfc9747.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9747
+src/en/rfc9747.xml: src/rfcs/rfc9747.xml
+	cp $< $@
+docs/rfc9746.html: src/en/rfc9746.xml src/rfcs/rfc9746.json src/ja/rfc9746.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9746
+src/en/rfc9746.xml: src/rfcs/rfc9746.xml
+	cp $< $@
+docs/rfc9745.html: src/en/rfc9745.xml src/rfcs/rfc9745.json src/ja/rfc9745.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9745
+src/en/rfc9745.xml: src/rfcs/rfc9745.xml
+	cp $< $@
+docs/rfc9744.html: src/en/rfc9744.xml src/rfcs/rfc9744.json src/ja/rfc9744.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9744
+src/en/rfc9744.xml: src/rfcs/rfc9744.xml
+	cp $< $@
+docs/rfc9743.html: src/en/rfc9743.xml src/rfcs/rfc9743.json src/ja/rfc9743.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9743
+src/en/rfc9743.xml: src/rfcs/rfc9743.xml
+	cp $< $@
+docs/rfc9742.html: src/en/rfc9742.xml src/rfcs/rfc9742.json src/ja/rfc9742.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9742
+src/en/rfc9742.xml: src/rfcs/rfc9742.xml
+	cp $< $@
+docs/rfc9741.html: src/en/rfc9741.xml src/rfcs/rfc9741.json src/ja/rfc9741.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9741
+src/en/rfc9741.xml: src/rfcs/rfc9741.xml
+	cp $< $@
+docs/rfc9740.html: src/en/rfc9740.xml src/rfcs/rfc9740.json src/ja/rfc9740.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9740
+src/en/rfc9740.xml: src/rfcs/rfc9740.xml
+	cp $< $@
+docs/rfc9739.html: src/en/rfc9739.xml src/rfcs/rfc9739.json src/ja/rfc9739.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9739
+src/en/rfc9739.xml: src/rfcs/rfc9739.xml
+	cp $< $@
+docs/rfc9738.html: src/en/rfc9738.xml src/rfcs/rfc9738.json src/ja/rfc9738.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9738
+src/en/rfc9738.xml: src/rfcs/rfc9738.xml
+	cp $< $@
+docs/rfc9737.html: src/en/rfc9737.xml src/rfcs/rfc9737.json src/ja/rfc9737.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9737
+src/en/rfc9737.xml: src/rfcs/rfc9737.xml
+	cp $< $@
+docs/rfc9736.html: src/en/rfc9736.xml src/rfcs/rfc9736.json src/ja/rfc9736.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9736
+src/en/rfc9736.xml: src/rfcs/rfc9736.xml
+	cp $< $@
+docs/rfc9735.html: src/en/rfc9735.xml src/rfcs/rfc9735.json src/ja/rfc9735.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9735
+src/en/rfc9735.xml: src/rfcs/rfc9735.xml
+	cp $< $@
+docs/rfc9734.html: src/en/rfc9734.xml src/rfcs/rfc9734.json src/ja/rfc9734.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9734
+src/en/rfc9734.xml: src/rfcs/rfc9734.xml
+	cp $< $@
+docs/rfc9733.html: src/en/rfc9733.xml src/rfcs/rfc9733.json src/ja/rfc9733.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9733
+src/en/rfc9733.xml: src/rfcs/rfc9733.xml
+	cp $< $@
+docs/rfc9732.html: src/en/rfc9732.xml src/rfcs/rfc9732.json src/ja/rfc9732.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9732
+src/en/rfc9732.xml: src/rfcs/rfc9732.xml
+	cp $< $@
+docs/rfc9731.html: src/en/rfc9731.xml src/rfcs/rfc9731.json src/ja/rfc9731.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9731
+src/en/rfc9731.xml: src/rfcs/rfc9731.xml
+	cp $< $@
+docs/rfc9730.html: src/en/rfc9730.xml src/rfcs/rfc9730.json src/ja/rfc9730.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9730
+src/en/rfc9730.xml: src/rfcs/rfc9730.xml
+	cp $< $@
+docs/rfc9729.html: src/en/rfc9729.xml src/rfcs/rfc9729.json src/ja/rfc9729.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9729
+src/en/rfc9729.xml: src/rfcs/rfc9729.xml
+	cp $< $@
+docs/rfc9728.html: src/en/rfc9728.xml src/rfcs/rfc9728.json src/ja/rfc9728.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9728
+src/en/rfc9728.xml: src/rfcs/rfc9728.xml
+	cp $< $@
+docs/rfc9727.html: src/en/rfc9727.xml src/rfcs/rfc9727.json src/ja/rfc9727.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9727
+src/en/rfc9727.xml: src/rfcs/rfc9727.xml
+	cp $< $@
+docs/rfc9726.html: src/en/rfc9726.xml src/rfcs/rfc9726.json src/ja/rfc9726.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9726
+src/en/rfc9726.xml: src/rfcs/rfc9726.xml
+	cp $< $@
+docs/rfc9725.html: src/en/rfc9725.xml src/rfcs/rfc9725.json src/ja/rfc9725.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9725
+src/en/rfc9725.xml: src/rfcs/rfc9725.xml
+	cp $< $@
+docs/rfc9724.html: src/en/rfc9724.xml src/rfcs/rfc9724.json src/ja/rfc9724.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9724
+src/en/rfc9724.xml: src/rfcs/rfc9724.xml
+	cp $< $@
+docs/rfc9723.html: src/en/rfc9723.xml src/rfcs/rfc9723.json src/ja/rfc9723.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9723
+src/en/rfc9723.xml: src/rfcs/rfc9723.xml
+	cp $< $@
+docs/rfc9722.html: src/en/rfc9722.xml src/rfcs/rfc9722.json src/ja/rfc9722.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9722
+src/en/rfc9722.xml: src/rfcs/rfc9722.xml
+	cp $< $@
+docs/rfc9721.html: src/en/rfc9721.xml src/rfcs/rfc9721.json src/ja/rfc9721.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9721
+src/en/rfc9721.xml: src/rfcs/rfc9721.xml
+	cp $< $@
+docs/rfc9720.html: src/en/rfc9720.xml src/rfcs/rfc9720.json src/ja/rfc9720.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9720
+src/en/rfc9720.xml: src/rfcs/rfc9720.xml
+	cp $< $@
+docs/rfc9719.html: src/en/rfc9719.xml src/rfcs/rfc9719.json src/ja/rfc9719.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9719
+src/en/rfc9719.xml: src/rfcs/rfc9719.xml
+	cp $< $@
+docs/rfc9718.html: src/en/rfc9718.xml src/rfcs/rfc9718.json src/ja/rfc9718.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9718
+src/en/rfc9718.xml: src/rfcs/rfc9718.xml
+	cp $< $@
+docs/rfc9717.html: src/en/rfc9717.xml src/rfcs/rfc9717.json src/ja/rfc9717.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9717
+src/en/rfc9717.xml: src/rfcs/rfc9717.xml
+	cp $< $@
+docs/rfc9716.html: src/en/rfc9716.xml src/rfcs/rfc9716.json src/ja/rfc9716.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9716
+src/en/rfc9716.xml: src/rfcs/rfc9716.xml
+	cp $< $@
+docs/rfc9715.html: src/en/rfc9715.xml src/rfcs/rfc9715.json src/ja/rfc9715.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9715
+src/en/rfc9715.xml: src/rfcs/rfc9715.xml
+	cp $< $@
+docs/rfc9714.html: src/en/rfc9714.xml src/rfcs/rfc9714.json src/ja/rfc9714.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9714
+src/en/rfc9714.xml: src/rfcs/rfc9714.xml
+	cp $< $@
+docs/rfc9713.html: src/en/rfc9713.xml src/rfcs/rfc9713.json src/ja/rfc9713.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9713
+src/en/rfc9713.xml: src/rfcs/rfc9713.xml
+	cp $< $@
+docs/rfc9712.html: src/en/rfc9712.xml src/rfcs/rfc9712.json src/ja/rfc9712.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9712
+src/en/rfc9712.xml: src/rfcs/rfc9712.xml
+	cp $< $@
+docs/rfc9711.html: src/en/rfc9711.xml src/rfcs/rfc9711.json src/ja/rfc9711.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9711
+src/en/rfc9711.xml: src/rfcs/rfc9711.xml
+	cp $< $@
+docs/rfc9710.html: src/en/rfc9710.xml src/rfcs/rfc9710.json src/ja/rfc9710.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9710
+src/en/rfc9710.xml: src/rfcs/rfc9710.xml
+	cp $< $@
+docs/rfc9709.html: src/en/rfc9709.xml src/rfcs/rfc9709.json src/ja/rfc9709.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9709
+src/en/rfc9709.xml: src/rfcs/rfc9709.xml
+	cp $< $@
+docs/rfc9708.html: src/en/rfc9708.xml src/rfcs/rfc9708.json src/ja/rfc9708.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9708
+src/en/rfc9708.xml: src/rfcs/rfc9708.xml
+	cp $< $@
+docs/rfc9707.html: src/en/rfc9707.xml src/rfcs/rfc9707.json src/ja/rfc9707.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9707
+src/en/rfc9707.xml: src/rfcs/rfc9707.xml
+	cp $< $@
+docs/rfc9706.html: src/en/rfc9706.xml src/rfcs/rfc9706.json src/ja/rfc9706.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9706
+src/en/rfc9706.xml: src/rfcs/rfc9706.xml
+	cp $< $@
+docs/rfc9705.html: src/en/rfc9705.xml src/rfcs/rfc9705.json src/ja/rfc9705.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9705
+src/en/rfc9705.xml: src/rfcs/rfc9705.xml
+	cp $< $@
+docs/rfc9704.html: src/en/rfc9704.xml src/rfcs/rfc9704.json src/ja/rfc9704.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9704
+src/en/rfc9704.xml: src/rfcs/rfc9704.xml
+	cp $< $@
+docs/rfc9703.html: src/en/rfc9703.xml src/rfcs/rfc9703.json src/ja/rfc9703.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9703
+src/en/rfc9703.xml: src/rfcs/rfc9703.xml
+	cp $< $@
+docs/rfc9702.html: src/en/rfc9702.xml src/rfcs/rfc9702.json src/ja/rfc9702.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9702
+src/en/rfc9702.xml: src/rfcs/rfc9702.xml
+	cp $< $@
+docs/rfc9701.html: src/en/rfc9701.xml src/rfcs/rfc9701.json src/ja/rfc9701.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 9701
+src/en/rfc9701.xml: src/rfcs/rfc9701.xml
 	cp $< $@
 docs/rfc9692.html: src/en/rfc9692.xml src/rfcs/rfc9692.json src/ja/rfc9692.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 9692

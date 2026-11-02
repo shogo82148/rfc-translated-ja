@@ -184,7 +184,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | provisioning | プロビジョニング | |
 | bootstrap / fallback | ブートストラップ / フォールバック | |
 | out-of-band / in-band | 帯域外 / 帯域内 | アウトオブバンド / インバンド |
-| pseudo- | 疑似 | 擬似（既存訳でほぼ半々。新規訳では疑似にそろえる） |
+| pseudo- | 疑似 | 擬似 |
 | pseudocode | 疑似コード | 擬似コード |
 | deliver / delivery | 配送する / 配送 | 配信（メディアのストリーミング配信では可） |
 | expire | 期限切れになる | 満了 |
@@ -218,7 +218,7 @@ request / response、connection、content は「プロトコル一般」を参�
 | field section | フィールドセクション | |
 | header field / header section | ヘッダーフィールド / ヘッダーセクション | |
 | trailer field / trailer section | トレーラーフィールド / トレーラーセクション | |
-| pseudo-header field | 疑似ヘッダーフィールド | 擬似ヘッダーフィールド（RFC 9114 など一部の既存訳） |
+| pseudo-header field | 疑似ヘッダーフィールド | 擬似ヘッダーフィールド |
 | control data | 制御データ | |
 | status code | ステータスコード | 理由句は英語のまま（例: 421（Misdirected Request）） |
 | method | メソッド | メソッド名は英語のまま（GET、CONNECT など） |
@@ -450,7 +450,7 @@ request / response、connection、content は「プロトコル一般」を参�
 | initialization vector (IV) | 初期化ベクトル | |
 | nonce / salt | ノンス / ソルト | ナンス |
 | random / random number | ランダム / 乱数 | |
-| pseudorandom / pseudorandom function (PRF) | 疑似乱数 / 疑似ランダム関数 | 擬似乱数、擬似ランダム関数（既存訳では擬似のほうがやや多い） |
+| pseudorandom / pseudorandom function (PRF) | 疑似乱数 / 疑似ランダム関数 | 擬似乱数、擬似ランダム関数 |
 | entropy | エントロピー | |
 | hash / digest / hash value | ハッシュ / ダイジェスト / ハッシュ値 | |
 | hash function / hash algorithm | ハッシュ関数 / ハッシュアルゴリズム | |
@@ -641,7 +641,7 @@ request / response、connection、content は「プロトコル一般」を参�
 既存訳で訳語がそろっていなかったもののうち、機械的に検出できる表記は textlint の辞書に追加してあります。
 次の語は既存訳でも揺れが大きいので、新しく訳すときは上の表の訳語にそろえてください。
 
-- pseudo-（疑似 / 擬似）、credential（クレデンシャル / 資格情報）は既存訳でほぼ半々です。
+- credential（クレデンシャル / 資格情報）は既存訳でほぼ半々です。
 - request / response、connection、component は、古い RFC（RFC 2xxx）の既存訳では「要求」「応答」「接続」「構成要素」が多数派ですが、全体では「リクエスト」「レスポンス」「コネクション」「コンポーネント」が多数派です。
 - route / path（経路 / ルート / パス）は文脈で訳し分けている既存訳が多く、機械的にはそろえられません。
 

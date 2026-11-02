@@ -850,6 +850,20 @@ class HtmlWriter:
         return p
 
     # <xref>
+    # xref の本文（テキストと子要素）を h の末尾に追加する
+    def render1_xref_content(self, h, x):
+        text = (x.text or '').lstrip()
+        if len(x) == 0:
+            text = text.rstrip()
+        if len(h):
+            h[-1].tail = (h[-1].tail or '') + text
+        else:
+            h.text = (h.text or '') + text
+        for c in x:
+            self.render1(h, c)
+        if len(x) and h[-1].tail:
+            h[-1].tail = h[-1].tail.rstrip()
+
     def render1_xref(self, h, x):
         target  = x.get('target')
         format  = x.get('format')
@@ -859,12 +873,26 @@ class HtmlWriter:
         in_name = len(list(x.iterancestors('name'))) > 0
         content = ''.join(x.itertext()).strip()
         if not (section or relative):
-            if target in self.refname_mapping and format != 'title':
+            if format == 'none' and content:
+                # 本文だけをリンクにする
+                a = build('a', href='#%s-%s'%(target, self.lang))
+                self.render1_xref_content(a, x)
+                a.tail = x.tail
+                h.append(a)
+                return a
+            elif target in self.refname_mapping and format != 'title':
                 # 参考文献への参照
                 # e.g. [RFCxxxx]
+                # 本文がある場合は e.g. the text [RFCxxxx]
                 span = build('span')
                 h.append(span)
-                span.text = '['
+                if content and x.get('derivedContent'):
+                    a0 = build('a', href='#%s-%s'%(target, self.lang))
+                    self.render1_xref_content(a0, x)
+                    span.append(a0)
+                    a0.tail = '[' if self.lang == 'ja' else ' ['
+                else:
+                    span.text = '['
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 span.append(a)
                 a.text = reftext
@@ -894,7 +922,12 @@ class HtmlWriter:
                 span.tail = x.tail
                 if self.lang == 'ja':
                     # e.g. [RFCxxxx]のSection x.y.z
-                    span.text = '['
+                    # 本文がある場合は e.g. the text[RFCxxxx]のSection x.y.z
+                    self.render1_xref_content(span, x)
+                    if len(span):
+                        span[-1].tail = (span[-1].tail or '') + '['
+                    else:
+                        span.text = (span.text or '') + '['
                     a1 = build('a', href='#%s-%s'%(target, self.lang))
                     a1.text = reftext
                     span.append(a1)
@@ -907,7 +940,10 @@ class HtmlWriter:
                     a1 = build('a', href=link)
                     span.append(a1)
                     a1.text = '%s %s' % (label, section)
-                    a1.tail = ' of ['
+                    a1.tail = ' of '
+                    # 本文がある場合は e.g. Section x.y.z of the text [RFCxxxx]
+                    self.render1_xref_content(span, x)
+                    span[-1].tail = (span[-1].tail or '') + (' [' if content else '[')
                     a2 = build('a', href='#%s-%s'%(target, self.lang))
                     span.append(a2)
                     a2.text = reftext

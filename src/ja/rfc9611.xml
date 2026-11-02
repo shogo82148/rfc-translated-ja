@@ -1,0 +1,538 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" ipr="trust200902" updates="" obsoletes="" category="std" docName="draft-ietf-ipsecme-multi-sa-performance-09" number="9611" consensus="true" submissionType="IETF" tocInclude="true" tocDepth="4" symRefs="true" sortRefs="true" prepTime="2024-07-19T10:02:33" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-ipsecme-multi-sa-performance-09" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9611" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="IKEv2 Support for Per-Resource Child SAs">リソースごとのChild SA（Security Association）に対するインターネット鍵交換プロトコルバージョン2（IKEv2）のサポート</title>
+    <seriesInfo name="RFC" value="9611" stream="IETF"/>
+    <author fullname="Antony Antony" initials="A." surname="Antony">
+      <organization abbrev="secunet" showOnFrontPage="true">secunet Security Networks AG</organization>
+      <address>
+        <email>antony.antony@secunet.com</email>
+      </address>
+    </author>
+    <author initials="T." surname="Brunner" fullname="Tobias Brunner">
+      <organization abbrev="codelabs" showOnFrontPage="true">codelabs GmbH</organization>
+      <address>
+        <email>tobias@codelabs.ch</email>
+      </address>
+    </author>
+    <author fullname="Steffen Klassert" initials="S." surname="Klassert">
+      <organization abbrev="secunet" showOnFrontPage="true">secunet Security Networks AG</organization>
+      <address>
+        <email>steffen.klassert@secunet.com</email>
+      </address>
+    </author>
+    <author initials="P." surname="Wouters" fullname="Paul Wouters">
+      <organization showOnFrontPage="true">Aiven</organization>
+      <address>
+        <email>paul.wouters@aiven.io</email>
+      </address>
+    </author>
+    <date month="07" year="2024"/>
+    <area>SEC</area>
+    <workgroup>ipsecme</workgroup>
+    <keyword>IKEv2</keyword>
+    <keyword>IPsec</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">
+   ピア間のIPsecトラフィックの帯域幅を増やすために、この文書は、インターネット鍵交換プロトコルバージョン2（IKEv2）向けに、Notify Message Status Typesのペイロードを1つとNotify Message Error Typesのペイロードを1つ定義します。
+   これらは、CPUなどの異なるリソース上で使用される、同じトラフィックセレクター（Traffic Selector）を持つ複数のChild SA（Security Association）のネゴシエーションをサポートするためのものです。
+      </t>
+      <t indent="0" pn="section-abstract-2">
+       SA_RESOURCE_INFO通知は、ネゴシエーションされたChild SAと、同じトラフィックセレクターを持つ後続の新しいChild SAが、Child SAの論理的なグループであり、そのChild SAのほとんどまたはすべてが特定のCPUなどの特定のリソースに結び付けられているという情報を伝えるために使用されます。
+       TS_MAX_QUEUE通知は、この特定のネゴシエーションされたトラフィックセレクターの組み合わせについて、ピアがこれ以上の追加のChild SAを作成するつもりがないことを伝えます。
+      </t>
+      <t indent="0" pn="section-abstract-3">
+       同じトラフィックセレクターを持つ複数のChild SAを使用すると、Child SAを保持する各リソースが独自のシーケンス番号カウンター（Sequence Number Counter）を持つため、CPUが暗号状態を同期したり、パケットのリプレイ保護を無効にしたりする必要がなくなるという利点があります。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9611" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2024 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-performance-bottlenecks">性能のボトルネック</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-negotiation-of-resource-spe">リソース固有のChild SAのネゴシエーション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-consideratio">実装上の考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-payload-format">ペイロードの形式</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sa_resource_info-notify-mes">SA_RESOURCE_INFO Notify Message Status Typeペイロード</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ts_max_queue-notify-message">TS_MAX_QUEUE Notify Message Error Typeペイロード</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations">運用上の考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">
+       現在、ほとんどのIPsec実装は、1つのChild SAに対して1つのハードウェアキュー、または単一のCPUリソースしか使用できません。
+       パケットストリームの暗号化を並列に実行することは可能ですが、暗号化するパケットのシーケンス番号を割り当ててもらうために、ハードウェアのさまざまな部分がロックしたり待機したりするというボトルネックがあります。
+       その結果、そのようなリソースを多数持つマシンでも、Child SAごとにそれらのリソースの1つしか使用できません。
+       これにより、達成できるスループットが大幅に制限されます。
+       たとえば、この文書の執筆時点では、10 Gbps以上の暗号化されていないリンクは、AES-GCMを使用してIPsecでリンクを暗号化すると、一般に2〜5 Gbpsに低下します。
+       この文書で規定する実装を使用することで、総スループットは、1つのCPUを使用した場合の5Gbpsから、25〜30のCPUを使用した場合の40〜60 Gbpsに増加しました。
+      </t>
+      <t indent="0" pn="section-1-2">
+       これは、複数の絞り込まれたChild SAを設定することで（部分的に）緩和できるかもしれませんが（たとえば、IPsecアーキテクチャー<xref target="RFC4301" format="default" sectionFormat="of" derivedContent="RFC4301"/>で規定されているPopulate From Packet（PFP）を使用するなど）、このIPsecの機能では、Child SAが多すぎる（ネットワークフローごとに1つ）か、Child SAが少なすぎる（1つのネットワークフローが複数のCPUで使用される）ことになります。
+       また、PFPは広く実装されていません。
+      </t>
+      <t indent="0" pn="section-1-3">
+       複数のネットワークキューとCPUをより有効に活用するためには、同一のトラフィックセレクターを持つ複数のChild SAをネゴシエーションしてインストールすることが有益な場合があります。
+       IKEv2 <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>では、すでに同一のトラフィックセレクターを持つ複数のChild SAをインストールできますが、追加のChild SAが性能向上のために要求されており、何らかのリソース（キューまたはCPU）に限定されていることを示す方法は提供されていません。
+      </t>
+      <t indent="0" pn="section-1-4">
+       IKEv2ピアは、単一のトラフィックセレクターの組に対して、作成してもよいと考える数を超える追加のChild SAを受け取った場合、TS_MAX_QUEUEのエラー通知を返すことができます。
+      </t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-1.1-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-terminology">用語</name>
+        <t indent="0" pn="section-1.2-1">この文書では、IKEv2 <xref target="RFC7296" format="default" sectionFormat="of" derivedContent="RFC7296"/>で定義されている次の用語を使用します：
+          Notification Data、Traffic Selector（TS）、Traffic Selector initiator（TSi）、Traffic Selector responder（TSr）、Child SA、
+          Configuration Payload（CP）、IKE SA、CREATE_CHILD_SA、NO_ADDITIONAL_SAS。
+        </t>
+        <t indent="0" pn="section-1.2-2">また、この文書では、<xref target="RFC4301" format="default" sectionFormat="of" derivedContent="RFC4301"/>で定義されている次の用語も使用します：
+          Security Policy Database（SPD）、SA。
+        </t>
+      </section>
+    </section>
+    <section anchor="performance" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-performance-bottlenecks">性能のボトルネック</name>
+      <t indent="0" pn="section-2-1">
+      ほとんどの実装がChild SA（Security Association）を単一の特定のハードウェアリソースに限定せざるをえない実用上の理由がいくつかあります。
+      主な制約は、暗号状態、カウンター、シーケンス番号を複数のCPU間で共有することの難しさから生じます。
+      これらのCPUが共有状態を同時に利用しようとすると、大きな性能上のペナルティーを被ることなくそれを行うのは現実的ではありません。
+      そのため、同一のTraffic Selector initiator（TSi）とTraffic Selector responder（TSr）を持つ複数のChild SAを、リソースごとにネゴシエーションして確立する必要があります。
+      </t>
+    </section>
+    <section anchor="neg_cpu" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-negotiation-of-resource-spe">リソース固有のChild SAのネゴシエーション</name>
+      <t indent="0" pn="section-3-1">
+       最初のIKEv2交換は、IKE SAと最初のChild SAを設定するために使用されます。
+       単一のリソースに結び付けられた、同じトラフィックセレクターを持つ複数のChild SAが必要な場合、イニシエーターは、そのChild SAをネゴシエーションする交換（たとえば、IKE_AUTHやCREATE_CHILD_SA）にSA_RESOURCE_INFO通知ペイロードを追加します。
+       この最初のChild SAを特定のリソースに結び付ける場合、イニシエーターはNotification Dataに識別子を含めることで、そのことを示<bcp14>してもよいです（MAY）</bcp14>。
+       同じトラフィックセレクターに対して複数のChild SAを持ってもよいと考えるレスポンダーは、同じくSA_RESOURCE_INFO通知ペイロードを追加して応答します。
+       その際、レスポンダーはゼロ以外のNotification Dataを追加<bcp14>してもよいです（MAY）</bcp14>。
+      </t>
+      <t indent="0" pn="section-3-2">
+       追加のリソース固有のChild SAは、CREATE_CHILD_SA交換を使用して通常のChild SAとしてネゴシエーションされ、同様に、付随するSA_RESOURCE_INFO通知によって識別されます。</t>
+      <t indent="0" pn="section-3-3">
+       インストール時に、各リソース固有のChild SAは、CPUなどの追加のローカルセレクターに関連付けられます。
+       これらのリソース固有のChild SAは、最初のChild SAについてネゴシエーションされたものと同一のChild SAプロパティーでネゴシエーション<bcp14>しなければなりません（MUST）</bcp14>。
+       これには、暗号アルゴリズム、トラフィックセレクター、モード（たとえば、トランスポートモード）、圧縮の使用などが含まれます。
+       ただし、各Child SAは、通常のIKEv2の処理に従って個別に導出された独自の鍵マテリアルを持ちます。
+       SA_RESOURCE_INFO通知ペイロードは空でも<bcp14>よいです（MAY）</bcp14>。また、何らかの識別データを含んでも<bcp14>よいです（MAY）</bcp14>。
+       この識別データは、同じTSペイロードを持つすべてのChild SAの中で一意な識別子である<bcp14>べきです（SHOULD）</bcp14>。また、ピアはそれをデバッグの目的にのみ使用<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t indent="0" pn="section-3-4">
+       追加のChild SAは、必要に応じて開始することも、一度にすべて開始することもできます。
+       また、ピアは、関連付けられたリソースがアイドル状態であると判断した場合、特定のリソースごとのChild SAを削除することもあります。
+      </t>
+      <t indent="0" pn="section-3-5">
+       Child SAの鍵更新のためのCREATE_CHILD_SAの際に、SA_RESOURCE_INFO通知を含めても<bcp14>よいです（MAY）</bcp14>。
+       ただし、それが含まれるかどうかにかかわらず、鍵更新後のChild SAは、鍵更新の対象となるChild SAと同じリソースに結び付けられるべきです。
+      </t>
+    </section>
+    <section anchor="impl_consider" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-implementation-consideratio">実装上の考慮事項</name>
+      <t indent="0" pn="section-4-1">
+       複数のChild SAをインストールする最適な手順を決定するために、実装が利用できるさまざまな考慮事項があります。
+      </t>
+      <t indent="0" pn="section-4-2">
+       単純な手順としては、各CPUに追加のChild SAを1つずつインストールすることが考えられます。
+       実装は、1つのChild SAをすべてのCPUで使用できるようにしておくことができます。そうすれば、新しいCPUごとのChild SAをネゴシエーションしている間（通常1 RTTの遅延がかかります）も、CPU固有のChild SAを持たないCPUは、すべてのCPUで利用可能なChild SAを使用してパケットを暗号化できます。
+       あるいは、実装がパケットを暗号化する必要があるのに、現在のCPUにそのパケットを暗号化するリソースがない場合、性能上のペナルティーは伴いますが、そのパケットを暗号化する能力を持つ特定のCPUにパケットを中継することもできます。
+      </t>
+      <t indent="0" pn="section-4-3">
+       CPUごとのChild SAのネゴシエーションを行うと、両方のピアが同時に追加のChild SAを開始する結果になることがあります。
+       これは、CPUごとのChild SAが個々のSADB_ACQUIREメッセージ<xref target="RFC2367" format="default" sectionFormat="of" derivedContent="RFC2367"/>によってトリガーされる場合に特に起こりやすくなります。
+       レスポンダーは、このTSi/TSrの組に対する追加のChild SAの数が最も少ないCPUに、追加のChild SAをインストールすべきです。
+      </t>
+      <t indent="0" pn="section-4-4">
+       キューやCPUのリソースの数がピア間で異なる場合、リソースが最も少ないピアは、同じリソースに対する2つ目の送信方向のChild SAをインストールしないことを決定するかもしれません。それを使用してトラフィックを送信することは決してないためです。
+       ただし、そのピアは、ネゴシエーションされたこれらのChild SAでトラフィックを受信することを約束しているため、受信方向のChild SAはすべてインストールしなければなりません。
+      </t>
+      <t indent="0" pn="section-4-5">
+       CPUごとのパケットトリガー（たとえば、SADB_ACQUIRE）メッセージが実装されている場合（<xref target="Operations" format="default" sectionFormat="of" derivedContent="Section 6"/>を参照）、IKEv2 <xref target="RFC7296" format="default" section="2.9" sectionFormat="comma" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-2.9" derivedContent="RFC7296"/>で規定されている通常のChild SAと同様に、トリガーとなったパケットの情報を含むトラフィックセレクター（TSi）のエントリーをTSの集合に含めるべきです。
+       トリガーのTSiエントリーに基づいて、実装は追加のChild SAをインストールするのに最適なターゲットCPUを選択できます。
+       たとえば、トリガーとなったパケットがTCPの宛先ポート25（SMTP）宛てであった場合、メールサーバーのプロセスも実行しているCPUにChild SAをインストールできるかもしれません。
+       トリガーパケットのトラフィックセレクターについては、IKEv2 <xref target="RFC7296" format="default" section="2.9" sectionFormat="comma" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-2.9" derivedContent="RFC7296"/>に記載されています。
+      </t>
+      <t indent="0" pn="section-4-6">
+       IKEv2に従い、Child SAの鍵更新では、新しいChild SAが鍵更新前のChild SAが対象とするすべてを対象とするように、同じ（またはより広い）トラフィックセレクターを使用<bcp14>すべきです（SHOULD）</bcp14>。
+       これには、INTERNAL_IP4_ADDRESSなどの構成ペイロード（Configuration Payload）を介してネゴシエーションされたトラフィックセレクターも含まれます。これは、元の広いTSの集合を使用する場合も、絞り込まれたTSの集合を使用する場合もあります。
+      </t>
+    </section>
+    <section anchor="payload_formats" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-payload-format">ペイロードの形式</name>
+      <t indent="0" pn="section-5-1">
+	Notifyペイロードの形式はIKEv2 <xref target="RFC7296" format="default" section="3.10" sectionFormat="comma" derivedLink="https://rfc-editor.org/rfc/rfc7296#section-3.10" derivedContent="RFC7296"/>で定義されており、便宜上ここに転載します。
+      </t>
+      <t indent="0" pn="section-5-2">
+      整数を表すすべての複数オクテットのフィールドは、ビッグエンディアン順（「最上位バイトが先頭（most significant byte first）」または「ネットワークバイト順（network byte order）」とも呼ばれます）で配置されます。
+      </t>
+      <section anchor="payload_info_cpu" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-sa_resource_info-notify-mes">SA_RESOURCE_INFO Notify Message Status Typeペイロード</name>
+        <artwork align="left" name="" type="" alt="" pn="section-5.1-1">
+                    1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-------------------------------+-------------------------------+
+| Next Payload  |C|  RESERVED   |         Payload Length        |
++---------------+---------------+-------------------------------+
+|  Protocol ID  |   SPI Size    |      Notify Message Type      |
++---------------+---------------+-------------------------------+
+|                                                               |
+~               Resource Identifier (optional)                  ~
+|                                                               |
++-------------------------------+-------------------------------+
+            </artwork>
+        <dl indent="3" newline="false" spacing="normal" pn="section-5.1-2">
+          <dt pn="section-5.1-2.1">(C)ritical flag -</dt>
+          <dd pn="section-5.1-2.2">
+            0で<bcp14>なければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.1-2.3">Protocol ID（1オクテット）-</dt>
+          <dd pn="section-5.1-2.4">
+            0で<bcp14>なければなりません（MUST）</bcp14>。0でない場合は無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.1-2.5">SPI Size（1オクテット）-</dt>
+          <dd pn="section-5.1-2.6">
+            0で<bcp14>なければなりません（MUST）</bcp14>。0でない場合は無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.1-2.7">Notify Status Message Type value（2オクテット）-</dt>
+          <dd pn="section-5.1-2.8">16444に設定します。</dd>
+          <dt pn="section-5.1-2.9">Resource Identifier（選択可能）-</dt>
+          <dd pn="section-5.1-2.10">この不透明なデータは、リソースのローカルな識別情報を伝えるために設定されることがあります。</dd>
+        </dl>
+      </section>
+      <section anchor="payload_max_q" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-ts_max_queue-notify-message">TS_MAX_QUEUE Notify Message Error Typeペイロード</name>
+        <artwork align="left" name="" type="" alt="" pn="section-5.2-1">
+                    1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++---------------+---------------+-------------------------------+
+| Next Payload  |C|  RESERVED   |         Payload Length        |
++---------------+---------------+-------------------------------+
+|  Protocol ID  |   SPI Size    |      Notify Message Type      |
++---------------+---------------+-------------------------------+
+            </artwork>
+        <dl indent="3" newline="false" spacing="normal" pn="section-5.2-2">
+          <dt pn="section-5.2-2.1">(C)ritical flag -</dt>
+          <dd pn="section-5.2-2.2">
+            0で<bcp14>なければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.2-2.3">Protocol ID（1オクテット）-</dt>
+          <dd pn="section-5.2-2.4">
+            0で<bcp14>なければなりません（MUST）</bcp14>。0でない場合は無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.2-2.5">SPI Size（1オクテット）-</dt>
+          <dd pn="section-5.2-2.6">
+            0で<bcp14>なければなりません（MUST）</bcp14>。0でない場合は無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-5.2-2.7">Notify Message Error Type（2オクテット）-</dt>
+          <dd pn="section-5.2-2.8">48に設定します。</dd>
+        </dl>
+        <t indent="0" pn="section-5.2-3">このNotifyタイプに関連付けられたデータはありません。</t>
+      </section>
+    </section>
+    <section anchor="Operations" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-operational-considerations">運用上の考慮事項</name>
+      <t indent="0" pn="section-6-1">
+      CPUごとのSAをサポートする実装は、ローカルのSPDセレクターと、トラフィックによってトリガーされるオンデマンドのネゴシエーションの仕組みを拡張し、SPDからIKEデーモンへのパケットトリガー（たとえば、SADB_ACQUIRE）メッセージにCPU（またはキュー）の識別子を含める<bcp14>べきです（SHOULD）</bcp14>。
+      CPUごとのパケットトリガーメッセージの受信をサポートしない実装は、IPsecスタックから受け取る（唯一の）パケットトリガーメッセージを受信した時点で、すべてのChild SAを直ちに開始<bcp14>してもよいです（MAY）</bcp14>。
+      このような実装は、CPUごとのChild SAに対するDelete Notifyリクエストを受信した際にも注意する必要があります。そのようなCPUごとのChild SAを後でいつ再び確立すべきかを検出する方法がないためです。
+      また、Delete Notifyを受信した直後に、削除されたCPUごとのChild SAを再び確立すると、ピア間で無限ループが発生する可能性があります。
+      CPUごとのChild SAをすべて確立しないことのもう1つの問題は、ピアも同様に振る舞う場合、2つのピアが最初のChild SAだけを持ち、CPUごとのChild SAを1つも有効化しないままになるかもしれないことです。
+      したがって、CPUごとのパケットトリガーメッセージを実装することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      </t>
+      <t indent="0" pn="section-6-2">
+      ピアは、コーナーケースに対応するために、特定のTSi/TSrの組み合わせに対して許可するChild SAの最大数について柔軟である<bcp14>べきです（SHOULD）</bcp14>。
+      たとえば、Child SAの鍵更新中には、古いChild SAが破棄される前に多数の追加のChild SAが作成されることがあります。
+      同様に、オンデマンドのChild SAを使用する場合、Child SAのネゴシエーションを引き起こした最初のパケットが最初のChild SAを介してピアに転送され、その応答パケットもオンデマンドのChild SAネゴシエーションの開始をトリガーすることがあるため、両端が複数のChild SAリクエストをトリガーする可能性があります。
+      追加のChild SAが消費する追加リソースはわずかなので、少なくとも利用可能なCPU数の2倍を許可することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      実装は、追加のChild SAを無制限に許可し、COOKIEを要求したり新しいIKEまたはChild SAのネゴシエーションを拒否したりするために使用する汎用的なリソース保護戦略に基づいてのみ、この数を制限<bcp14>してもよいです（MAY）</bcp14>。
+      ただし、非常に多数（たとえば、数百や数千）のSAを持つと、パケットごとのSAD検索が遅くなる可能性があります。
+      </t>
+      <t indent="0" pn="section-6-3">
+     実装は、CPUごとのChild SAをあるCPUから別のCPUへ動的に移動することをサポートするかもしれません。
+     この方法をサポートする場合、実装は受信方向と送信方向の両方のSAを移動するように注意しなければなりません。
+     IPsecエンドポイントがゲートウェイである場合は、受信方向のSAと送信方向のSAを互いに独立して移動できます。
+     ゲートウェイでは、IPsecトラフィックは非対称になる可能性が高いです。
+     IPsecエンドポイントがトラフィックの生成を担当するホストと同じである場合、受信方向と送信方向のSAは、同じCPU上でペアのままである<bcp14>べきです（SHOULD）</bcp14>。
+     ホストが以前に、未使用の重複した送信方向のSAになるという理由で送信方向のSAのインストールを省略していた場合、そのホストは、省略していた送信方向のSAを作成し、新しいCPU IDとともにSADに追加する必要があります。
+     受信方向のSAは、SAD内にCPU IDを持たない場合があります。
+     送信方向のSAをSADに追加するには鍵マテリアルへのアクセスが必要ですが、既存の送信方向のSAのCPUセレクターを更新する場合は鍵マテリアルへのアクセスが不要な場合があります。
+     これをサポートするために、IKEソフトウェアは、通常よりも長く鍵マテリアルを保持しておく必要があるかもしれません。IKEソフトウェアは、IKEデーモンがもはやアクセスする必要のない鍵マテリアルをメモリーから積極的に破棄しようとすることがあるためです。
+      </t>
+      <t indent="0" pn="section-6-4">
+   それ以上のリソース固有のChild SAを受け入れない実装は、NO_ADDITIONAL_SASエラーを返しては<bcp14>なりません（MUST NOT）</bcp14>。これは、異なるTSiやTSrを持つ他のChild SAも許可されないという意味だとピアに誤解される可能性があるためです。
+   代わりに、その実装はTS_MAX_QUEUEを返さ<bcp14>なければなりません（MUST）</bcp14>。
+      </t>
+    </section>
+    <section anchor="Security" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">
+      サービス拒否攻撃の影響を抑えるために実装がハーフオープンのSAの数を制限すべきであるのと同様に、実装が一意なTSi/TSrごとに許可する追加のChild SAの最大数を制限することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      </t>
+      <t indent="0" pn="section-7-2">
+      複数のリソース固有のChild SAを使用することは、IPsecゲートウェイマシン上の大容量のIPsecコネクションにおいて意味があります。そこでは、管理者がピアの管理者との信頼関係を持っており、悪用は起こりにくく、たとえ起こっても容易にエスカレーションして解決できます。
+      </t>
+      <t indent="0" pn="section-7-3">
+      この信頼関係は、リモートアクセスVPNの展開には通常存在しないため、このようなシナリオでCPUごとのChild SAを許可することは<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>。
+      したがって、デフォルトでCPUごとのChild SAを許可することも<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>。
+      </t>
+      <t indent="0" pn="section-7-4">
+      SA_RESOURCE_INFO通知には、特定のリソースに属するChild SAを識別するためにピアが使用できる、選択可能なデータペイロードが含まれます。
+      通知データは、ハードウェアに関する情報を得るために使用できる識別子である<bcp14>べきではありません（SHOULD NOT）</bcp14>。
+      たとえば、CPU番号そのものを識別子として使用すると、どのパケットがどのCPU IDで処理されるかを攻撃者に知られてしまい、システムに対するブルートフォース攻撃を最適化されるおそれがあります。
+      </t>
+    </section>
+    <section anchor="IANA" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">
+        IANAは、「IKEv2 Notify Message Status Types」レジストリーに新しい値を1つ登録しました。
+      </t>
+      <table anchor="iana_requests_i" align="center" pn="table-1">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">値</th>
+            <th align="left" colspan="1" rowspan="1">Notify Message Status Type</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">16444</td>
+            <td align="left" colspan="1" rowspan="1">SA_RESOURCE_INFO</td>
+            <td align="left" colspan="1" rowspan="1">RFC 9611</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-8-3">
+        IANAは、「IKEv2 Notify Message Error Types」レジストリーに新しい値を1つ登録しました。
+      </t>
+      <table anchor="iana_requests_e" align="center" pn="table-2">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">値</th>
+            <th align="left" colspan="1" rowspan="1">Notify Message Error Type</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">48</td>
+            <td align="left" colspan="1" rowspan="1">TS_MAX_QUEUE</td>
+            <td align="left" colspan="1" rowspan="1">RFC 9611</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7296" target="https://www.rfc-editor.org/info/rfc7296" quoteTitle="true" derivedAnchor="RFC7296">
+          <front>
+            <title>Internet Key Exchange Protocol Version 2 (IKEv2)</title>
+            <author fullname="C. Kaufman" initials="C." surname="Kaufman"/>
+            <author fullname="P. Hoffman" initials="P." surname="Hoffman"/>
+            <author fullname="Y. Nir" initials="Y." surname="Nir"/>
+            <author fullname="P. Eronen" initials="P." surname="Eronen"/>
+            <author fullname="T. Kivinen" initials="T." surname="Kivinen"/>
+            <date month="October" year="2014"/>
+            <abstract>
+              <t indent="0">This document describes version 2 of the Internet Key Exchange (IKE) protocol. IKE is a component of IPsec used for performing mutual authentication and establishing and maintaining Security Associations (SAs). This document obsoletes RFC 5996, and includes all of the errata for it. It advances IKEv2 to be an Internet Standard.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="79"/>
+          <seriesInfo name="RFC" value="7296"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7296"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC2367" target="https://www.rfc-editor.org/info/rfc2367" quoteTitle="true" derivedAnchor="RFC2367">
+          <front>
+            <title>PF_KEY Key Management API, Version 2</title>
+            <author fullname="D. McDonald" initials="D." surname="McDonald"/>
+            <author fullname="C. Metz" initials="C." surname="Metz"/>
+            <author fullname="B. Phan" initials="B." surname="Phan"/>
+            <date month="July" year="1998"/>
+            <abstract>
+              <t indent="0">A generic key management API that can be used not only for IP Security but also for other network security services is presented in this document. This memo provides information for the Internet community. It does not specify an Internet standard of any kind.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2367"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2367"/>
+        </reference>
+        <reference anchor="RFC4301" target="https://www.rfc-editor.org/info/rfc4301" quoteTitle="true" derivedAnchor="RFC4301">
+          <front>
+            <title>Security Architecture for the Internet Protocol</title>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="K. Seo" initials="K." surname="Seo"/>
+            <date month="December" year="2005"/>
+            <abstract>
+              <t indent="0">This document describes an updated version of the "Security Architecture for IP", which is designed to provide security services for traffic at the IP layer. This document obsoletes RFC 2401 (November 1998). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4301"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4301"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acks" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">次の方々がレビューと貴重なフィードバックを提供してくれました：
+      <contact fullname="Roman Danyliw"/>、<contact fullname="Warren Kumari"/>、
+      <contact fullname="Tero Kivinen"/>、<contact fullname="Murray Kucherawy"/>、
+      <contact fullname="John Scudder"/>、<contact fullname="Valery Smyslov"/>、
+      <contact fullname="Gunter van de Velde"/>、<contact fullname="Éric Vyncke"/>。
+      </t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Antony Antony" initials="A." surname="Antony">
+        <organization abbrev="secunet" showOnFrontPage="true">secunet Security Networks AG</organization>
+        <address>
+          <email>antony.antony@secunet.com</email>
+        </address>
+      </author>
+      <author initials="T." surname="Brunner" fullname="Tobias Brunner">
+        <organization abbrev="codelabs" showOnFrontPage="true">codelabs GmbH</organization>
+        <address>
+          <email>tobias@codelabs.ch</email>
+        </address>
+      </author>
+      <author fullname="Steffen Klassert" initials="S." surname="Klassert">
+        <organization abbrev="secunet" showOnFrontPage="true">secunet Security Networks AG</organization>
+        <address>
+          <email>steffen.klassert@secunet.com</email>
+        </address>
+      </author>
+      <author initials="P." surname="Wouters" fullname="Paul Wouters">
+        <organization showOnFrontPage="true">Aiven</organization>
+        <address>
+          <email>paul.wouters@aiven.io</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

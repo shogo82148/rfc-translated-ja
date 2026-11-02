@@ -137,10 +137,10 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 |---|---|---|
 | protocol | プロトコル | |
 | message | メッセージ | |
-| request / response | リクエスト / レスポンス | 要求 / 応答。一般動詞としての「要求する」「応答する」は可。古い RFC の既存訳には「要求」「応答」も多い |
+| request / response | リクエスト / レスポンス | 要求 / 応答。一般動詞としての「要求する」「応答する」、require や reply の訳としての「要求」「応答」は可 |
 | request message / response message | リクエストメッセージ / レスポンスメッセージ | 要求メッセージ / 応答メッセージ |
 | error code / error message | エラーコード / エラーメッセージ | |
-| connection | コネクション | 接続（物理的な接続や「接続性」などは可） |
+| connection | コネクション | 接続（物理的な接続、「相手先固定接続（PVC）」などの定着した用語、connect や connectivity の訳としては可） |
 | connection establishment | コネクションの確立 | |
 | session | セッション | |
 | header / payload | ヘッダー / ペイロード | |
@@ -151,7 +151,8 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | operation | 操作 | |
 | capability | 能力 | ケイパビリティー（feature、function は「機能」） |
 | feature / functionality | 機能 | フィーチャー |
-| component | コンポーネント | 構成要素（古い RFC の既存訳に多い） |
+| component | コンポーネント | 構成要素（element、constituent の訳としては可） |
+| response time / acknowledgment | 応答時間 / 確認応答 | |
 | item | 項目 | アイテム（Structured Fields の Item は「アイテム」） |
 | layer | 層 | レイヤー |
 | format | 形式 | フォーマット |
@@ -641,7 +642,6 @@ request / response、connection、content は「プロトコル一般」を参�
 既存訳で訳語がそろっていなかったもののうち、機械的に検出できる表記は textlint の辞書に追加してあります。
 次の語は既存訳でも揺れが大きいので、新しく訳すときは上の表の訳語にそろえてください。
 
-- request / response、connection、component は、古い RFC（RFC 2xxx）の既存訳では「要求」「応答」「接続」「構成要素」が多数派ですが、全体では「リクエスト」「レスポンス」「コネクション」「コンポーネント」が多数派です。
 - route / path（経路 / ルート / パス）は文脈で訳し分けている既存訳が多く、機械的にはそろえられません。
 
-暗号の key（鍵／キー）のように文脈で訳し分ける語は lint で検出できないので、上の表に従って訳してください。
+暗号の key（鍵／キー）や、request / response / connection / component（「要求」「応答」「接続」「構成要素」は require、reply などの訳としても使う）のように文脈で訳し分ける語は lint で検出できないので、上の表に従って訳してください。

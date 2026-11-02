@@ -471,7 +471,7 @@ request / response、connection、content は「プロトコル一般」を参�
 | public key infrastructure (PKI) | 公開鍵基盤（PKI） | |
 | authentication / authorization | 認証 / 認可 | |
 | mutual authentication / client authentication | 相互認証 / クライアント認証 | |
-| credential | クレデンシャル | 資格情報（既存訳でほぼ半々） |
+| credential | クレデンシャル | 資格情報 |
 | password | パスワード | |
 | security association (SA) | セキュリティーアソシエーション（SA） | |
 | security model / security policy / security level | セキュリティーモデル / セキュリティーポリシー / セキュリティーレベル | |
@@ -641,7 +641,6 @@ request / response、connection、content は「プロトコル一般」を参�
 既存訳で訳語がそろっていなかったもののうち、機械的に検出できる表記は textlint の辞書に追加してあります。
 次の語は既存訳でも揺れが大きいので、新しく訳すときは上の表の訳語にそろえてください。
 
-- credential（クレデンシャル / 資格情報）は既存訳でほぼ半々です。
 - request / response、connection、component は、古い RFC（RFC 2xxx）の既存訳では「要求」「応答」「接続」「構成要素」が多数派ですが、全体では「リクエスト」「レスポンス」「コネクション」「コンポーネント」が多数派です。
 - route / path（経路 / ルート / パス）は文脈で訳し分けている既存訳が多く、機械的にはそろえられません。
 

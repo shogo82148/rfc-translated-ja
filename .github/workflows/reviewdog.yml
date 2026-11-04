@@ -7,13 +7,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          # HEAD^1 (the base branch) of the merge commit is needed to list changed files
+          fetch-depth: 2
+      - name: List changed translation files
+        id: changed
+        run: |
+          # Linting all of src/ja/*.xml runs out of heap, so lint only the files changed in this PR.
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 HEAD -- 'src/ja/*.xml' \
+            | grep -E '^src/ja/rfc[0-9]+\.xml$' | tr '\n' ' ' || true)
+          echo "files=${files}" >> "$GITHUB_OUTPUT"
       - name: Setup node/npm
+        if: steps.changed.outputs.files != ''
         uses: actions/setup-node@v7.1.0
         with:
           node-version-file: ".node-version"
       - name: textlint
+        if: steps.changed.outputs.files != ''
         uses: tsuyoshicho/action-textlint@v3.11.2
         with:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review
-          textlint_flags: "src/ja/*.xml"
+          textlint_flags: ${{ steps.changed.outputs.files }}

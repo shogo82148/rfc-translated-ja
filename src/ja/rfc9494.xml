@@ -1,0 +1,1259 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" submissionType="IETF" category="std" consensus="true" docName="draft-ietf-idr-long-lived-gr-06" number="9494" ipr="trust200902" updates="6368" obsoletes="" xml:lang="en" tocInclude="true" tocDepth="4" symRefs="true" sortRefs="true" prepTime="2023-11-29T14:41:12" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-idr-long-lived-gr-06" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9494" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Long-Lived Graceful Restart">BGPのための長期グレースフルリスタート</title>
+    <seriesInfo name="RFC" value="9494" stream="IETF"/>
+    <author fullname="James Uttaro" initials="J." surname="Uttaro">
+      <organization showOnFrontPage="true">Independent Contributor</organization>
+      <address>
+        <email>juttaro@ieee.org</email>
+      </address>
+    </author>
+    <author fullname="Enke Chen" initials="E." surname="Chen">
+      <organization showOnFrontPage="true">Palo Alto Networks</organization>
+      <address>
+        <email>enchen@paloaltonetworks.com</email>
+      </address>
+    </author>
+    <author fullname="Bruno Decraene" initials="B." surname="Decraene">
+      <organization showOnFrontPage="true">Orange</organization>
+      <address>
+        <email>bruno.decraene@orange.com</email>
+      </address>
+    </author>
+    <author fullname="John G. Scudder" initials="J." surname="Scudder">
+      <organization showOnFrontPage="true">Juniper Networks</organization>
+      <address>
+        <email>jgs@juniper.net</email>
+      </address>
+    </author>
+    <date month="11" year="2023"/>
+    <area>rtg</area>
+    <workgroup>idr</workgroup>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">
+この文書では、「長期グレースフルリスタートケイパビリティー（Long-Lived Graceful Restart Capability）」（または「LLGRケイパビリティー」）と呼ばれるBGPケイパビリティーを導入します。
+このケイパビリティーの利点は、セッション障害時に、（RFC 4724で説明されている）BGPグレースフルリスタートで提供されるよりも長い時間、古い経路を保持できることです。
+長い時間保持される古い経路をマークするために、「LLGR_STALE」と呼ばれるウェルノウンBGPコミュニティーを導入します。
+これらの手順を適用すべきでない経路をマークするために、2つ目のウェルノウンBGPコミュニティー「NO_LLGR」を導入します。
+また、このような長期間保持される古い経路は最も優先度の低いものとして扱い、その広告はこのケイパビリティーを広告したBGPスピーカーに限定することも規定します。
+この拡張の使用は、すべての場合に推奨できるものではないので、推奨できるかどうかの判断に役立つガイドラインを示します。
+      </t>
+      <t indent="0" pn="section-abstract-2">
+このメモは、LLGR_STALEコミュニティーを、プロバイダーエッジ（PE）ルーターと顧客エッジ（CE）ルーターの間で交換されるパス属性へ、またはそのパス属性から伝播させなければならないと規定することで、RFC 6368を更新します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9494" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2023 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-definitions">定義</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-abbreviations">略語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.3">
+                <t indent="0" pn="section-toc.1-1.2.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protocol-extensions">プロトコル拡張</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-long-lived-graceful-restart">長期グレースフルリスタートケイパビリティー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-llgr_stale-community">LLGR_STALEコミュニティー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-no_llgr-community">NO_LLGRコミュニティー</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-theory-of-operation">動作原理</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-use-of-the-graceful-restart">グレースフルリスタートケイパビリティーの使用</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-session-resets">セッションのリセット</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-processing-llgr_stale-route">LLGR_STALE経路の処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-route-selection">経路選択</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-errors">エラー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.6">
+                <t indent="0" pn="section-toc.1-1.4.2.6.1"><xref derivedContent="4.6" format="counter" sectionFormat="of" target="section-4.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-optional-partial-deployment">任意の部分展開手順</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.7">
+                <t indent="0" pn="section-toc.1-1.4.2.7.1"><xref derivedContent="4.7" format="counter" sectionFormat="of" target="section-4.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-procedures-when-bgp-is-the-">VPNでBGPがPE-CEプロトコルである場合の手順</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.7.2">
+                  <li pn="section-toc.1-1.4.2.7.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.7.2.1.1"><xref derivedContent="4.7.1" format="counter" sectionFormat="of" target="section-4.7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-procedures-when-ebgp-is-the">VPNでEBGPがPE-CEプロトコルである場合の手順</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.7.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.7.2.2.1"><xref derivedContent="4.7.2" format="counter" sectionFormat="of" target="section-4.7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-procedures-when-ibgp-is-the">VPNでIBGPがPE-CEプロトコルである場合の手順</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-considerations">展開に関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-when-bgp-is-the-pe-ce-proto">VPNでBGPがPE-CEプロトコルである場合</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-risks-of-depreferencing-rou">経路の優先度を下げることのリスク</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-examples-of-operation">動作の例</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="intro" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">
+ルーティングプロトコル全般、特にBGPは、歴史的に「正しさ」に重点を置いて設計されてきました。
+ここでの正しさの重要な部分は、各ネットワーク要素の転送状態が、ネットワークの現在の状態にできるだけ速く収束することです。
+このため、このプロトコルは、（BGPの観点から）ダウンしたルーターが広告した状態をできるだけ速く削除するように設計されました。
+時がたつにつれて、これは、特にBGPグレースフルリスタート（GR）<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>によっていくらか緩和されてきましたが、ネットワークから古い状態を速やかに削除しようとするパラダイムは変わっていません。
+      </t>
+      <t indent="0" pn="section-1-2">
+時がたつにつれて、このパラダイムの根底にある前提に疑問を投げかける2つの現象が生じてきました。</t>
+      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-1-3"><li pn="section-1-3.1" derivedCounter="1.">トンネル化された転送インフラストラクチャー（たとえば、MPLS）が広く採用されたこと。
+このようなインフラストラクチャーは、ホップバイホップ転送で生じうる、ある種の転送ループのリスクを排除します。
+したがって、転送要素間の強い一貫性を求める動機の1つを弱めます。</li>
+        <li pn="section-1-3.2" derivedCounter="2.">パケット転送との関係が当初よりも薄いデータを運ぶためのトランスポートとして、BGPを使用することが増えていること。
+例としては、自動検出（<xref target="RFC4761" format="default" sectionFormat="of" derivedContent="RFC4761">Virtual Private LAN Service (VPLS)</xref>）やフィルターのプログラミング（<xref target="RFC8955" format="default" sectionFormat="of" derivedContent="RFC8955">Flow Specification (FLOWSPEC)</xref>）へのBGPの使用があります。
+これらの場合、BGPのデータは、従来のルーティングよりも設定に近い性質を帯びます。</li>
+      </ol>
+      <t indent="0" pn="section-1-4">
+上記の考察から、何らかの理由でBGPコントロールプレーンに障害が発生したときに、これまで可能だったよりも長い期間BGPのデータを保持することを、ネットワーク運用者が選択できるようにしたいという要望が生まれます。
+BGPグレースフルリスタート<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>のセマンティクスは望ましいものに近いですが、いくつかのギャップがあります。
+最も顕著なのは、古い情報を保持できる最大時間です。
+グレースフルリスタートは4095秒という上限を課しています。
+      </t>
+      <t indent="0" pn="section-1-5">
+この文書では、「長期グレースフルリスタートケイパビリティー（Long-Lived Graceful Restart Capability）」と呼ばれるBGPケイパビリティーを導入します。
+このケイパビリティーの目的は、セッションのリセットをまたいで、古い情報をより長い時間保持できるようにすることです。
+また、2つのBGPウェルノウンコミュニティーも導入します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-6">
+        <li pn="section-1-6.1">LLGR_STALE：このような情報をマークするためのもの</li>
+        <li pn="section-1-6.2">NO_LLGR：マークされた経路にこれらの手順を適用すべきでないことを示すためのもの</li>
+      </ul>
+      <t indent="0" pn="section-1-7">長期間保持される古い情報は、最も優先度の低いものとして扱い、その広告はこのケイパビリティーをサポートするBGPスピーカーに限定することになります。
+可能な場合は、同様のセマンティクスをこの文書で規定するのではなく、BGPグレースフルリスタート<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>のセマンティクスを参照します。
+      </t>
+      <t indent="0" pn="section-1-8">
+この拡張の展開モデルとしては、特定のアドレスファミリーに対してのみ発動されることを想定しています。
+これについては、<xref target="deploy" format="default" sectionFormat="of" derivedContent="Section 5"/>で詳しく説明します。
+
+この拡張の使用は、従来のグレースフルリスタートの使用と組み合わせることができます。
+その場合、この拡張は従来のグレースフルリスタートの期間が経過した後に発動されます。
+組み合わせない場合、LLGRはただちに発動されます。
+
+タイマーを大幅に延長できる可能性を除くと、LLGRと従来のグレースフルリスタートの最も明らかな違いは、LLGRでは経路の「優先度が下げられる（depreferenced）」こと、つまり、経路が最も優先度の低いものとして扱われることです。
+これに対して、従来のGRでは、経路の優先度は影響を受けません。
+長期間保持される古い経路を最も優先度の低いものとして扱うという設計上の選択は、そのような経路が（潜在的に）ほぼ無制限の期間保持される可能性があるという予想に基づいています。
+一方、従来のグレースフルリスタートの場合、古い経路が保持されるのは短い期間だけです。
+グレースフルリスタートの場合、新しい経路の状態を広告すること（ルーティングの変動というコストを伴う）と、広告しないこと（最適でない、または誤った経路選択というコストを伴う）の間のトレードオフは、広告しない方向で解決されます。
+LLGRの場合は、新しい状態を広告し、古い情報は最後の手段としてのみ使用する方向で解決されます。
+      </t>
+      <t indent="0" pn="section-1-9">
+<xref target="examples" format="default" sectionFormat="of" derivedContent="Section 7"/>では、この拡張の動作を説明する簡単な例をいくつか示します。
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-2.1">
+        <name slugifiedName="name-definitions">定義</name>
+        <dl newline="false" spacing="normal" indent="2" pn="section-2.1-1">
+          <dt pn="section-2.1-1.1">優先度の引き下げ（Depreference）：</dt>
+          <dd pn="section-2.1-1.2">
+何らかのイベントに反応して経路選択の優先度が引き下げられた場合、その経路は優先度が下げられた（depreferenced）といいます。
+	</dd>
+          <dt pn="section-2.1-1.3">ヘルパー（Helper）：</dt>
+          <dd pn="section-2.1-1.4">
+「ヘルパールーター」と呼ばれることもあります。
+グレースフルリスタートまたは長期グレースフルリスタートの間に、セッション障害を検出し、記載された手順を適用するルーターです。
+<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>では、これを「受信スピーカー（receiving speaker）」と呼んでいます。
+	</dd>
+          <dt pn="section-2.1-1.5">経路（Route）：</dt>
+          <dd pn="section-2.1-1.6">
+この文書では、「経路」は、BGPのネットワーク層到達可能性情報（NLRI）とパス属性の集合としてエンコードされるあらゆる情報を意味します。
+上で説明したように、このような経路と転送状態のインストールとの結び付きは、非常に薄い場合があります。
+ 	</dd>
+        </dl>
+        <t indent="0" pn="section-2.1-2">さらに、簡潔にするために、この文書で従来のグレースフルリスタートに言及するときは、その基本仕様である<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>を引用することに注意してください。
+この仕様は<xref target="RFC8538" format="default" sectionFormat="of" derivedContent="RFC8538"/>によって更新されています。
+<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>の引用は、対象を限定することを意図したものではありません。</t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-2.2">
+        <name slugifiedName="name-abbreviations">略語</name>
+        <dl newline="false" spacing="normal" indent="2" pn="section-2.2-1">
+          <dt pn="section-2.2-1.1">CE:</dt>
+          <dd pn="section-2.2-1.2">Customer Edge（顧客エッジ）（顧客エッジルーターの詳細については、<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>を参照してください。）
+        </dd>
+          <dt pn="section-2.2-1.3">EoR:</dt>
+          <dd pn="section-2.2-1.4">
+End-of-RIB（End-of-RIBマーカーの詳細については、<xref target="RFC4724" sectionFormat="of" section="2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4724#section-2" derivedContent="RFC4724"/>を参照してください。）
+	</dd>
+          <dt pn="section-2.2-1.5">GR:</dt>
+          <dd pn="section-2.2-1.6">
+Graceful Restart（グレースフルリスタート）（GRの詳細については、<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>を参照してください。）
+この文書で定義する「長期グレースフルリスタート」または「LLGR」と区別するために、この用語を「従来のグレースフルリスタート」または「従来のGR」と呼ぶこともあります。
+	</dd>
+          <dt pn="section-2.2-1.7">LLGR:</dt>
+          <dd pn="section-2.2-1.8">
+Long-Lived Graceful Restart（長期グレースフルリスタート）
+	</dd>
+          <dt pn="section-2.2-1.9">LLST:</dt>
+          <dd pn="section-2.2-1.10">
+Long-Lived Stale Time（長期の古い経路の保持時間）
+	</dd>
+          <dt pn="section-2.2-1.11">PE:</dt>
+          <dd pn="section-2.2-1.12">
+Provider Edge（プロバイダーエッジ）（プロバイダーエッジルーターの詳細については、<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>を参照してください。）
+        </dd>
+          <dt pn="section-2.2-1.13">VRF:</dt>
+          <dd pn="section-2.2-1.14">
+VPN Routing and Forwarding（VPNルーティング・転送）（VRFテーブルの詳細については、<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>を参照してください。）
+        </dd>
+        </dl>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-2.3">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-2.3-1">
+キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-protocol-extensions">プロトコル拡張</name>
+      <t indent="0" pn="section-3-1">
+以降のサブセクションでは、1つのBGPケイパビリティーと2つのBGPコミュニティーを導入します。
+      </t>
+      <section anchor="llgr_cap" numbered="true" toc="include" removeInRFC="false" pn="section-3.1">
+        <name slugifiedName="name-long-lived-graceful-restart">長期グレースフルリスタートケイパビリティー</name>
+        <t indent="0" pn="section-3.1-1">
+「長期グレースフルリスタートケイパビリティー（Long-Lived Graceful Restart Capability）」、または「LLGRケイパビリティー」（値：71）は、BGPスピーカーがこの文書の手順に従って自身の状態を保持する能力を示すために使用できるBGPケイパビリティー<xref target="RFC5492" format="default" sectionFormat="of" derivedContent="RFC5492"/>です。
+LLGRケイパビリティーを広告する場合は、グレースフルリスタートケイパビリティー<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>も広告<bcp14>しなければなりません（MUST）</bcp14>。
+<xref target="use_of_gr" format="default" sectionFormat="of" derivedContent="Section 4.1"/>を参照してください。
+        </t>
+        <t indent="0" pn="section-3.1-2">
+ケイパビリティーの値は、次のような0個以上の&lt;AFI, SAFI, Flags, LLST&gt;のタプルで構成されます。
+        </t>
+        <artwork align="left" name="" type="" alt="" pn="section-3.1-3">
++--------------------------------------------------+
+| Address Family Identifier (16 bits)              |
++--------------------------------------------------+
+| Subsequent Address Family Identifier (8 bits)    |
++--------------------------------------------------+
+| Flags for Address Family (8 bits)                |
++--------------------------------------------------+
+| Long-Lived Stale Time (24 bits)                  |
++--------------------------------------------------+
+| ...                                              |
++--------------------------------------------------+
+| Address Family Identifier (16 bits)              |
++--------------------------------------------------+
+| Subsequent Address Family Identifier (8 bits)    |
++--------------------------------------------------+
+| Flags for Address Family (8 bits)                |
++--------------------------------------------------+
+| Long-Lived Stale Time (24 bits)                  |
++--------------------------------------------------+
+</artwork>
+        <t indent="0" pn="section-3.1-4">
+各フィールドの意味は次のとおりです。
+</t>
+        <dl newline="true" spacing="normal" indent="3" pn="section-3.1-5">
+          <dt pn="section-3.1-5.1">
+アドレスファミリー識別子（Address Family Identifier、AFI）、後続アドレスファミリー識別子（Subsequent Address Family Identifier、SAFI）：
+          </dt>
+          <dd pn="section-3.1-5.2">
+            <t indent="0" pn="section-3.1-5.2.1">
+AFIとSAFIの組み合わせは、そのBGPスピーカーが、以降のBGPの再起動の間、そのアドレスファミリーの転送状態を保持する能力を持つことを示します。
+経路は、次のいずれかです。</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.1-5.2.2">
+              <li pn="section-3.1-5.2.2.1"><xref target="RFC4760" format="default" sectionFormat="of" derivedContent="RFC4760"/>で説明されているエンコーディングを使用する場合は、特定のAFIとSAFIに明示的に関連付けられます。</li>
+              <li pn="section-3.1-5.2.2.2"><xref target="RFC4271" format="default" sectionFormat="of" derivedContent="RFC4271"/>で説明されているエンコーディングを使用する場合は、&lt;AFI=IPv4, SAFI=Unicast&gt;に暗黙的に関連付けられます。</li>
+            </ul>
+          </dd>
+          <dt pn="section-3.1-5.3">
+アドレスファミリーのフラグ（Flags for Address Family）：</dt>
+          <dd pn="section-3.1-5.4">
+このフィールドには、指定されたAFIとSAFIで広告された経路に関するビットフラグが含まれます。</dd>
+        </dl>
+        <artwork name="" type="" align="center" alt="" pn="section-3.1-6">
+ 0 1 2 3 4 5 6 7
++-+-+-+-+-+-+-+-+
+|F|   Reserved  |
++-+-+-+-+-+-+-+-+
+</artwork>
+        <ul empty="true" spacing="compact" bare="false" indent="3" pn="section-3.1-7">
+          <li pn="section-3.1-7.1">
+最上位ビットは、指定されたAFIとSAFIで広告された経路の状態が、直前のBGPの再起動の間に実際に保持されたかどうかを示すために使用されます。
+このビットがセットされている（値が1）場合、状態が保持されたことを示します。
+このビットは、歴史的に転送状態の保持を示すために使用されていたため、「Fビット」と呼ばれます。
+Fビットの使用方法については、<xref target="session_resets" format="default" sectionFormat="of" derivedContent="Section 4.2"/>で詳しく説明します。
+残りのビットは予約済みです。
+送信者はこれらのビットをゼロに設定し、受信者はこれらのビットを無視<bcp14>しなければなりません（MUST）</bcp14>。
+</li>
+        </ul>
+        <dl newline="true" indent="3" spacing="normal" pn="section-3.1-8">
+          <dt pn="section-3.1-8.1">
+Long-Lived Stale Time：</dt>
+          <dd pn="section-3.1-8.2">
+この時間（秒単位）は、（グレースフルリスタートケイパビリティーの「Restart Time」で指定される期間に加えて）受信者が（このAFI/SAFIの）古い情報を保持してもよい期間を指定します。
+この拡張の潜在的なユースケースは多岐にわたるため、LLSTの推奨デフォルト値はありません。
+          </dd>
+        </dl>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-3.2">
+        <name slugifiedName="name-llgr_stale-community">LLGR_STALEコミュニティー</name>
+        <t indent="0" pn="section-3.2-1">
+ウェルノウンBGPコミュニティーLLGR_STALE（値：0xFFFF0006）は、より長い期間保持される古い経路をマークするために使用できます（BGPコミュニティーの詳細については、<xref target="RFC1997" format="default" sectionFormat="of" derivedContent="RFC1997"/>を参照してください）。
+このような長期間保持される古い経路は、<xref target="operation" format="default" sectionFormat="of" derivedContent="Section 4"/>で規定する手順に従って処理されます。
+</t>
+        <t indent="0" pn="section-3.2-2">
+実装は、このコミュニティーの有無に基づいて経路を受け入れる、拒否する、または変更するポリシーを、ユーザーが設定できるように<bcp14>してもよいです（MAY）</bcp14>。
+</t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-3.3">
+        <name slugifiedName="name-no_llgr-community">NO_LLGRコミュニティー</name>
+        <t indent="0" pn="section-3.3-1">
+ウェルノウンBGPコミュニティーNO_LLGR（値：0xFFFF0007）は、<xref target="operation" format="default" sectionFormat="of" derivedContent="Section 4"/>で詳しく説明するこれらの手順に従って扱われることを、BGPスピーカーが望まない経路をマークするために使用できます。
+</t>
+        <t indent="0" pn="section-3.3-2">
+実装は、このコミュニティーの有無に基づいて経路を受け入れる、拒否する、または変更するポリシーを、ユーザーが設定できるように<bcp14>してもよいです（MAY）</bcp14>。
+</t>
+      </section>
+    </section>
+    <section anchor="operation" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-theory-of-operation">動作原理</name>
+      <t indent="0" pn="section-4-1">
+BGPスピーカーがこの文書の手順をサポートするように設定されている場合、そのBGPスピーカーは、<xref target="RFC5492" format="default" sectionFormat="of" derivedContent="RFC5492">BGPケイパビリティー広告（BGP Capabilities Advertisement）</xref>を使用して長期グレースフルリスタートケイパビリティーを広告<bcp14>しなければなりません（MUST）</bcp14>。
+AFI/SAFIに対するパラメーターの設定は、BGPスピーカーの特性、ネットワークの規模、およびローカルの設定によって異なります。
+      </t>
+      <t indent="0" pn="section-4-2">
+長期グレースフルリスタートケイパビリティーが存在する場合、<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>で規定されている手順は、この文書で明示的に改訂されない限り、引き続き適用されます。
+      </t>
+      <section anchor="use_of_gr" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-use-of-the-graceful-restart">グレースフルリスタートケイパビリティーの使用</name>
+        <t indent="0" pn="section-4.1-1">
+LLGRケイパビリティーを広告する場合は、グレースフルリスタートケイパビリティーも広告<bcp14>しなければなりません（MUST）</bcp14>。
+そのように広告されていない場合、LLGRケイパビリティーは無視<bcp14>しなければなりません（MUST）</bcp14>。
+これを必須とする目的は、両方の「方式」に共通する特定の基本メカニズムを再利用できるようにすることです。
+特に、EoRの生成、収集、処理や、GRで導入された有限状態機械の変更とコネクションリセットのロジックがこれに当たります。
+        </t>
+        <t indent="0" pn="section-4.1-2">
+そのセッションで従来のグレースフルリスタートのサポートが望まれない場合は、GRケイパビリティーからすべてのAFI/SAFIを省略するか、Restart Timeにゼロを広告するか、またはその両方を行うことで、従来のGRの段階を省略できることに留意します。
+<xref target="session_resets" format="default" sectionFormat="of" derivedContent="Section 4.2"/>では、従来のGRとLLGRの相互作用について説明します。
+        </t>
+      </section>
+      <section anchor="session_resets" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-session-resets">セッションのリセット</name>
+        <t indent="0" pn="section-4.2-1">
+<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724">BGPグレースフルリスタート</xref>は、BGPセッションがリセットされても、関連する経路を保持できる条件を定義しています。
+LLGRケイパビリティーも交換されたセッションでこのようなリセットが発生した場合は、次の手順が適用されます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-2">
+          <li pn="section-4.2-2.1">
+受信したグレースフルリスタートケイパビリティーが、そのセッションでサポートされるすべてのAFI/SAFIを列挙していない場合、列挙されていないAFI/SAFIについては、GRのRestart Timeはゼロとみなされます。</li>
+          <li pn="section-4.2-2.2">同様に、受信したLLGRケイパビリティーが、そのセッションでサポートされるすべてのAFI/SAFIを列挙していない場合、列挙されていないAFI/SAFIについては、Long-Lived Stale Timeはゼロとみなされます。
+        </li>
+        </ul>
+        <t indent="0" pn="section-4.2-3">
+<xref target="RFC4724" sectionFormat="of" section="4.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4724#section-4.2" derivedContent="RFC4724"/>の次の記述は、もはや適用されません。
+        </t>
+        <blockquote pn="section-4.2-4">
+ピアが以前に広告した「Restart Time」以内にセッションが再確立されない場合、受信スピーカー（Receiving Speaker）は、保持しているそのピアからの古い経路をすべて削除<bcp14>しなければなりません（MUST）</bcp14>。
+	</blockquote>
+        <t indent="0" pn="section-4.2-5">
+代わりに、次の手順を規定します。
+        </t>
+        <t indent="0" pn="section-4.2-6">
+セッションがダウンした後、セッションが再確立されるまでの間、AFI/SAFIの古い経路を保持<bcp14>しなければなりません（MUST）</bcp14>。
+それらを保持する期間は、受信したグレースフルリスタートケイパビリティーのRestart Timeと、受信した長期グレースフルリスタートケイパビリティーのLong-Lived Stale Timeの合計に制限されます。
+長期グレースフルリスタートケイパビリティーで受信したタイマーは、ローカルの設定によって変更できる<bcp14>べきです（SHOULD）</bcp14>。
+ローカルの設定では、それぞれの値に上限、下限、またはその両方を課すことができます。
+        </t>
+        <t indent="0" pn="section-4.2-7">
+Restart TimeまたはLong-Lived Stale Timeの値がゼロの場合、対応する期間の長さはゼロ秒になります。
+たとえば、Restart Timeがゼロで、Long-Lived Stale Timeがゼロでない場合は、LLGR固有の手順のみが適用されます。
+逆に、Long-Lived Stale Timeがゼロで、Restart Timeがゼロでない場合は、GRの手順のみが適用されます。
+両方がゼロの場合、これらの手順はいずれも適用されず、基本のBGP仕様<xref target="RFC4271" format="default" sectionFormat="of" derivedContent="RFC4271"/>の手順のみが適用されます（ただし、EoRは<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>で詳しく説明されているとおり引き続き使用されます）。
+そして最後に、両方がゼロでない場合は、手順が順番に適用されます。
+まずGRの手順が適用され、次にLLGRの手順が適用されます。
+最初の期間、つまりGRの手順が有効な間は、経路の優先度は影響を受けないことに留意します。
+2番目の期間、つまりLLGRの手順が有効な間は、この文書の別の箇所で規定しているとおり、経路は最も優先度の低いものとして扱われます。
+        </t>
+        <t indent="0" pn="section-4.2-8">
+Restart Timeの期間が終了すると（Restart Timeがゼロの場合を含む）、LLGRの期間が始まったとみなされ、次の手順を実行<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2-9">
+          <li pn="section-4.2-9.1">
+ゼロでないLong-Lived Stale Timeを受信した各AFI/SAFIについて、ヘルパールーターはそのLong-Lived Stale Timeのタイマーを開始<bcp14>しなければなりません（MUST）</bcp14>。
+あるAFI/SAFIのLong-Lived Stale Timeのタイマーが、セッションが再確立される前に期限切れになった場合、ヘルパーは、保持しているその近隣からのそのAFI/SAFIの古い経路をすべて削除<bcp14>しなければなりません（MUST）</bcp14>。
+      	</li>
+          <li pn="section-4.2-9.2">
+ヘルパールーターは、保持している古い経路にLLGR_STALEコミュニティーを付加<bcp14>しなければなりません（MUST）</bcp14>。
+この要件は、変更されたコミュニティーを広めるために、経路を再広告する必要があることを意味することに注意してください。
+      	</li>
+          <li pn="section-4.2-9.3">ピアからの経路のいずれかが、ピアから送信されたものとして、または設定されたポリシーの結果として、NO_LLGRコミュニティーでマークされている場合、それらの経路は保持しては<bcp14>なりません（MUST NOT）</bcp14>。
+それらの経路は、<xref target="RFC4271" format="default" sectionFormat="of" derivedContent="RFC4271"/>の通常の動作に従って削除<bcp14>しなければなりません（MUST）</bcp14>。
+	</li>
+          <li pn="section-4.2-9.4">
+ヘルパールーターは、<xref target="processing_lls" format="default" sectionFormat="of" derivedContent="Section 4.3"/>に記載されている手順を実行<bcp14>しなければなりません（MUST）</bcp14>。
+        </li>
+        </ul>
+        <t indent="0" pn="section-4.2-10">
+セッションが再確立されると、古い経路がRestart Timeの期間に保持されたか、Long-Lived Stale Timeの期間に保持されたかにかかわらず、その古い経路には<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>で規定されている手順が適用されます。
+ただし、再起動が連続する場合、以前に古いとマークされた経路は、Long-Lived Stale Timeのタイマーが期限切れになる前に削除しては<bcp14>なりません（MUST NOT）</bcp14>。
+        </t>
+        <t indent="0" pn="section-4.2-11">
+<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>と同様に、LLGRの期間が始まった後に次のいずれかが発生した場合、ヘルパーは、そのアドレスファミリーについて保持しているそのピアからの古い経路をすべて、ただちに削除<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-12">
+          <li pn="section-4.2-12.1">新たに受信したLLGRケイパビリティーで、特定のアドレスファミリーのFビットがセットされていない</li>
+          <li pn="section-4.2-12.2">新たに受信したLLGRケイパビリティーに、特定のアドレスファミリーが含まれていない</li>
+          <li pn="section-4.2-12.3">再確立されたセッションで、LLGRケイパビリティーとそれに付随するGRケイパビリティーがまったく受信されない</li>
+        </ul>
+        <t indent="0" pn="section-4.2-13">
+ピアから受信した、あるAFI/SAFIの経路に対してLong-Lived Stale Timeのタイマーが動作している場合、そのピアが新しいセッションを確立して同期するまで、（運用者の手動による介入以外では）そのタイマーを更新しては<bcp14>なりません（MUST NOT）</bcp14>。
+あるAFI/SAFIについて、そのAFI/SAFIのEoRをピアから受信したとき、または<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>で説明されているSelection_Deferral_Timerが期限切れになったとき、そのセッションは「同期した」といいます。
+        </t>
+        <t indent="0" pn="section-4.2-14">
+近隣から受信したケイパビリティーのLong-Lived Stale Timeの値は、ローカルの設定によって短く<bcp14>してもよいです（MAY）</bcp14>。
+        </t>
+        <t indent="0" pn="section-4.2-15">
+セッションがダウンしている間、Long-Lived Stale Timeのタイマーの期限切れは、それが付随するAFI/SAFIにのみ適用されることを除いて、<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>のRestart Timeのタイマーの期限切れと同様に扱われます。
+ただし、このタイマーは、セッションが再確立された後も動作し続けます。
+このタイマーは、該当するAFI/SAFIのEoRマーカーをピアから受信するまで、停止も更新もされません。
+ピアとの同期中にタイマーが期限切れになった場合、ピアが更新していない古い経路はすべて削除されます。
+その後、同期する前にセッションが再びリセットされた場合は、（LLSTのタイマーが期限切れになったAFI/SAFIについて）残っている経路をすべてただちに削除<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+      <section anchor="processing_lls" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-processing-llgr_stale-route">LLGR_STALE経路の処理</name>
+        <t indent="0" pn="section-4.3-1">
+長期グレースフルリスタートケイパビリティーを近隣に広告したBGPスピーカーは、その近隣からLLGR_STALEコミュニティー付きの経路を受信したとき、または<xref target="session_resets" format="default" sectionFormat="of" derivedContent="Section 4.2"/>に従って自身でLLGR_STALEコミュニティーを付加したときに、次のことを実行<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.3-2">
+          <li pn="section-4.3-2.1">
+経路選択において、その経路を最も優先度の低いものとして扱います（下記参照）。
+これを行うことに内在する潜在的なリスクについては、<xref target="depref" format="default" sectionFormat="of" derivedContent="Section 5.2"/>を参照してください。
+          </li>
+          <li pn="section-4.3-2.2">
+その経路は、長期グレースフルリスタートケイパビリティーを受信していない近隣には広告す<bcp14>べきではありません（SHOULD NOT）</bcp14>。
+例外については、<xref target="partial_deploy" format="default" sectionFormat="of" derivedContent="Section 4.6"/>で説明します。
+この要件は、そのような経路をそのような近隣から取り下げるべきであることを意味することに注意してください。
+          </li>
+          <li pn="section-4.3-2.3">
+経路をさらに広告するときに、LLGR_STALEコミュニティーを削除しては<bcp14>なりません（MUST NOT）</bcp14>。
+          </li>
+        </ul>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-4.4">
+        <name slugifiedName="name-route-selection">経路選択</name>
+        <t indent="0" pn="section-4.4-1">
+最も優先度の低い経路は、同じく最も優先度の低いものではない他のどの経路よりも優先度が低いものとして扱わ<bcp14>なければなりません（MUST）</bcp14>。
+どちらも最も優先度の低い2つの経路の間で経路選択を行う場合は、通常のタイブレークが適用されます。
+これが起こると予想されるのは、選択に使用できる経路が最も優先度の低いものだけである場合に限られることに注意してください。
+それ以外のすべての場合には、そのような経路は検討対象から除外されているはずです。
+        </t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-4.5">
+        <name slugifiedName="name-errors">エラー</name>
+        <t indent="0" pn="section-4.5-1">
+LLGRケイパビリティーを、それに付随するGRケイパビリティーなしで受信した場合、そのLLGRケイパビリティーは無視<bcp14>しなければなりません（MUST）</bcp14>。
+つまり、実装はLLGRケイパビリティーを受信しなかったかのように振る舞わ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+      <section anchor="partial_deploy" numbered="true" toc="include" removeInRFC="false" pn="section-4.6">
+        <name slugifiedName="name-optional-partial-deployment">任意の部分展開手順</name>
+        <t indent="0" pn="section-4.6-1">
+理想的には、自律システム（AS）内のすべてのルーターが、この仕様を有効にする前にこの仕様をサポートしていることが望まれます。
+しかし、段階的な展開を容易にするために、次の条件の下で、長期グレースフルリスタートケイパビリティーを広告していない近隣に古い経路を広告<bcp14>してもよいです（MAY）</bcp14>。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.6-2">
+          <li pn="section-4.6-2.1">
+近隣は内部（内部BGP（IBGP）またはコンフェデレーション）の近隣で<bcp14>なければなりません（MUST）</bcp14>。
+	  </li>
+          <li pn="section-4.6-2.2">古い経路には、NO_EXPORTコミュニティー<xref target="RFC1997" format="default" sectionFormat="of" derivedContent="RFC1997"/>を付加<bcp14>しなければなりません（MUST）</bcp14>。
+	  </li>
+          <li pn="section-4.6-2.3">古い経路のLOCAL_PREFはゼロに設定<bcp14>しなければなりません（MUST）</bcp14>。
+これを行うことに内在する潜在的なリスクについては、<xref target="depref" format="default" sectionFormat="of" derivedContent="Section 5.2"/>を参照してください。
+	  </li>
+        </ul>
+        <t indent="0" pn="section-4.6-3">
+部分展開のためにこの戦略を使用する場合、ネットワーク運用者は、自律システム全体で、長期間保持されるすべての古い経路のLOCAL_PREFをゼロに設定すべきです。
+これは、柔軟性のわずかな低下（競合する長期間保持される古い経路の間で順序が保たれない場合がある）と引き換えに、この仕様をサポートするルーターとサポートしないルーターの間の一貫性を得るものです。
+経路選択の一貫性は転送ループを防ぐために重要になりうるので、後者の考慮事項が優先されます。
+        </t>
+      </section>
+      <section anchor="pe_ce" numbered="true" toc="include" removeInRFC="false" pn="section-4.7">
+        <name slugifiedName="name-procedures-when-bgp-is-the-">VPNでBGPがPE-CEプロトコルである場合の手順</name>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.7.1">
+          <name slugifiedName="name-procedures-when-ebgp-is-the">VPNでEBGPがPE-CEプロトコルである場合の手順</name>
+          <t indent="0" pn="section-4.7.1-1">
+VPNの展開（たとえば、<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>）では、外部BGP（EBGP）がPE-CEプロトコルとしてよく使用されます。
+このような展開では、この仕様のような仕様をサポートするように容易にアップグレードできないピアルーターとの相互運用に対応することが、実際上必要になる場合があります。
+これは問題につながります。
+この文書の別の箇所で定義している手順は、一般に、LLGRの古い経路がLLGRをサポートしないEBGPセッションを越えて送信されることを防ぎますが、これによりVPNの経路が本来の目的に使用できなくなる可能性があります。
+          </t>
+          <t indent="0" pn="section-4.7.1-2">
+「古い」ルーティング情報の伝播を制限する主な動機は、それが「安全な」境界の外に出たときに無制限に広がるのを防ぎたいという要望であることに留意します。
+さらに、VPNの展開は通常、トポロジー的に制約されているため、この懸念は意味をなさないことにも留意します。
+このため、実装は、明示的にそのように設定されている場合、PE-CEセッションを介して古い経路を広告<bcp14>してもよいです（MAY）</bcp14>。
+つまり、このような場合は、<xref target="processing_lls" format="default" sectionFormat="of" derivedContent="Section 4.3"/>に記載されている2番目の規則を無視<bcp14>してもよいです（MAY）</bcp14>。
+他のすべての規則は引き続き適用されます。
+最後に、この例外を使用する場合、実装は、古い経路が無制限に広がることに対する追加の保護として、デフォルトで、該当する経路にNO_EXPORTコミュニティーを付加す<bcp14>べきです（SHOULD）</bcp14>。
+例外的な場合に対応するために、明示的な設定によってNO_EXPORTコミュニティーの付加を無効に<bcp14>してもよいです（MAY）</bcp14>。
+          </t>
+          <t indent="0" pn="section-4.7.1-3">
+明示的に設定されたポリシーを使用してこの問題を緩和することについては、<xref target="deploy_pe_ce" format="default" sectionFormat="of" derivedContent="Section 5.1"/>のさらなる議論を参照してください。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.7.2">
+          <name slugifiedName="name-procedures-when-ibgp-is-the">VPNでIBGPがPE-CEプロトコルである場合の手順</name>
+          <t indent="0" pn="section-4.7.2-1">
+<xref target="RFC6368" format="default" sectionFormat="of" derivedContent="RFC6368"/>の手順に従ってIBGPをPE-CEプロトコルとして使用する場合、PEルーターがATTR_SET属性を含むVPN経路を宛先VRFにインポートし、その後その経路をCEルーターに広告するときは、次のようになります。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.7.2-2">
+            <li pn="section-4.7.2-2.1">
+              <t indent="0" pn="section-4.7.2-2.1.1">CEルーターがこの文書の手順をサポートする場合（言い換えれば、CEルーターがLLGRケイパビリティーを広告している場合）：</t>
+              <t indent="3" pn="section-4.7.2-2.1.2">PEルーターは、<xref target="RFC6368" format="default" sectionFormat="of" derivedContent="RFC6368"/>に従ってATTR_SET属性から導出したパス属性を広告する経路に含めることに加えて、インポートした経路のパス属性にLLGR_STALEコミュニティーが存在する場合は、それがATTR_SET属性に存在しない場合でも、LLGR_STALEコミュニティーも含め<bcp14>なければなりません（MUST）</bcp14>。
+              </t>
+            </li>
+            <li pn="section-4.7.2-2.2">
+              <t indent="0" pn="section-4.7.2-2.2.1">CEルーターがこの文書の手順をサポートしない場合：</t>
+              <t indent="3" pn="section-4.7.2-2.2.2">その場合は、<xref target="partial_deploy" format="default" sectionFormat="of" derivedContent="Section 4.6"/>の任意の手順に従い、NO_EXPORTコミュニティーを付加して、ATTR_SETにある値を上書きしてLOCAL_PREFの値をゼロに設定<bcp14>してもよいです（MAY）</bcp14>。
+              </t>
+            </li>
+          </ul>
+          <t indent="0" pn="section-4.7.2-3">
+同様に、PEルーターがCEから自身のVRFに経路を受信し、その後その経路をVPNアドレスファミリーにエクスポートするときは、次のようになります。
+          </t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.7.2-4">
+            <li pn="section-4.7.2-4.1">
+              <t indent="0" pn="section-4.7.2-4.1.1">PEルーターがこの文書の手順をサポートする場合（言い換えれば、PEルーターがLLGRケイパビリティーを広告している場合）：</t>
+              <t indent="3" pn="section-4.7.2-4.1.2">PEルーターは、<xref target="RFC6368" format="default" sectionFormat="of" derivedContent="RFC6368"/>に従ってパス属性から導出したATTR_SETをVPN経路に含めることに加えて、CEから受信した経路のパス属性にLLGR_STALEコミュニティーが存在する場合は、VPN経路にLLGR_STALEコミュニティーも含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+            </li>
+            <li pn="section-4.7.2-4.2">
+              <t indent="0" pn="section-4.7.2-4.2.1">PEルーターがこの文書の手順をサポートしない場合：</t>
+              <t indent="3" pn="section-4.7.2-4.2.2">理想的な解決策は存在しません。
+CEは、PE上に適切なポリシー設定が存在する場合にのみ、プロバイダーネットワークがLLGR_STALEのマーキングを尊重することを理解したうえで、LLGR_STALE付きの経路を広告できます（<xref target="deploy_pe_ce" format="default" sectionFormat="of" derivedContent="Section 5.1"/>を参照）。
+少なくとも、経路がプロバイダーネットワークを越えて伝播されるときにLLGR_STALEが伝播されることは保証されます。
+あるいは、CEは、対応していないPEにLLGR_STALE経路を広告しないようにすることもできます。
+              </t>
+            </li>
+          </ul>
+        </section>
+      </section>
+    </section>
+    <section anchor="deploy" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-deployment-considerations">展開に関する考慮事項</name>
+      <t indent="0" pn="section-5-1"><xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>で説明されている展開に関する考慮事項は、この文書にも適用されます。
+加えて、ネットワーク運用者は、特定のAFI/SAFIに対してこれらの手順を展開することの潜在的な欠点を慎重に検討するよう注意してください。
+最も顕著なのは、従来の到達可能性情報を運ぶAFI/SAFIに使用した場合、長期間保持される古い経路を使用すると、対象となるプレフィックスへの接続性が失われる可能性があることです。
+この仕様では、そのような経路を最も優先度の低いものとし、そのような経路の範囲をこれらの手順をサポートするルーター（または任意で、単一の自律システム。<xref target="partial_deploy" format="default" sectionFormat="of" derivedContent="Section 4.6"/>を参照）に制限することで、可能な限りこのリスクを緩和するよう努めています。
+しかし、あるプレフィックスに対して古い経路が最良として選択された場合、IP転送の通常の規則に従って、古くない、より具体的でない一致する経路も利用可能であっても、一致する宛先にはその経路が使用されます。
+これらの手順の展開が特に懸念されるネットワークには、「トンネル化された」転送を使用しないネットワーク（言い換えれば、従来のホップバイホップ転送を使用するネットワーク）が含まれます。
+      </t>
+      <t indent="0" pn="section-5-2">
+実装は、これらの手順をデフォルトで有効にしては<bcp14>なりません（MUST NOT）</bcp14>。
+実装は、これらの手順を有効にするために、AFI/SAFIごとに明示的な設定を要求<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t indent="0" pn="section-5-3">
+この文書の手順は、<xref target="RFC4271" sectionFormat="of" section="9.1.2.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-9.1.2.1" derivedContent="RFC4271"/>の経路の解決可能性の要件を変更しません。
+このため、一般に、「古い」IBGP経路が引き続き使用されるのは、ネクストホップで示されるルーターが、そのBGPコンポーネントがダウンしていても、解決可能なままである場合に限られます。
+IGPの耐障害性戦略の詳細は、この文書の範囲外です。
+上記に加えて、たとえば<xref target="RFC5880" format="default" sectionFormat="of" derivedContent="RFC5880">双方向転送検出（Bidirectional Forwarding Detection、BFD）</xref>などの他の手段によって、ネクストホップの実行可能性を確認することが望ましい場合があります。
+これは、ネクストホップがネットワーク層で直接わかっている場合、特にEBGPの場合に有用です。
+      </t>
+      <t indent="0" pn="section-5-4">
+この文書で説明したように、BGPセッションがダウンした後、セッションが再確立されるまでの間、古い経路は、それぞれRestart TimeとLong-Lived Stale Timeによって制御される、最大2つの連続した期間保持される場合があります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-5">
+        <li pn="section-5-5.1">最初の期間中は、ルーティングの変動は防止されますが、持続的なパケット損失が発生する可能性があります。</li>
+        <li pn="section-5-5.2">2番目の期間中は、持続的なパケット損失の可能性は低減される場合がありますが、ルーティングの変動がネットワーク全体で見えるようになります。</li>
+      </ul>
+      <t indent="0" pn="section-5-6">特定のアプリケーションに対する関連パラメーターの設定では、トレードオフ、ネットワークの動態、および潜在的な障害シナリオを考慮すべきです。
+必要に応じて、ローカルの設定によって、またはグレースフルリスタートケイパビリティーのRestart Timeをゼロに設定するか、そのケイパビリティーにAFI/SAFIを列挙しないか、あるいはその両方によって、最初の期間を省略できます。
+      </t>
+      <t indent="0" pn="section-5-7">
+Fビット（および付随するGRケイパビリティーのForwarding Stateビット）の設定は、部分的には展開に関する考慮事項に依存します。
+Fビットは、（ビットがクリアされたままの場合）ヘルパーが関連する経路を消去すべきであることを示すものと理解できます。
+<xref target="intro" format="default" sectionFormat="of" derivedContent="Section 1"/>で説明したように、LLGRの重要なユースケースは、従来のルーティングよりも設定に近い経路です。
+そのような経路では、他の考慮事項にかかわらず、常にFビットをセットすることが理にかなっている場合があります。
+同様に、転送プレーンに参加しない専用のルートリフレクターなど、コントロールプレーンのみのエンティティーでは、常にFビットをセットすることが理にかなっています。
+全体として、経験則としては、再起動するルーターでの状態の喪失が転送ループや持続的なパケット損失を引き起こすことが合理的に予想される場合は、状態が保持されたかどうかに応じて、Fビットを厳密に設定すべきです。
+Fビットをセットするかどうかの詳細は実装に依存し、設定によって制御される場合もあります。
+また、LLGRケイパビリティーに含まれるAFI/SAFIのうち、GRケイパビリティーにも含まれるものについては、対応するFビットが2つ、すなわちLLGRのFビットとGRのFビットが存在します。
+LLGRのFビットがセットされている場合は、対応するGRのFビットもセットすべきです。
+そうしないと、GRの通常の規則に従って受信ルーターで状態がクリアされ、LLGRのビットをセットした意図に反することになるためです。
+      </t>
+      <section anchor="deploy_pe_ce" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-when-bgp-is-the-pe-ce-proto">VPNでBGPがPE-CEプロトコルである場合</name>
+        <t indent="0" pn="section-5.1-1">
+<xref target="pe_ce" format="default" sectionFormat="of" derivedContent="Section 4.7"/>で説明したように、一部のVPNの展開では、CEがこの仕様をサポートしていなくても、PEがCEに古い経路を広告する必要がある場合があります。
+その場合、そのような経路を広告するように自身のPEを設定する運用者は、経路を受信するCEの運用者に通知すべきであり、CEはそれらの経路の優先度を下げるように設定されるべきです。
+        </t>
+        <t indent="0" pn="section-5.1-2">
+同様に、PEがこの仕様をサポートしていなくても、CEがPEに古い経路を広告する必要がある場合があります。
+その場合、そのような経路を広告するように自身のCEを設定する運用者は、経路を受信するPEの運用者に通知すべきであり、PEはそれらの経路の優先度を下げるように設定されるべきです。
+        </t>
+        <t indent="0" pn="section-5.1-3">
+一般的なBGP実装では、<xref target="partial_deploy" format="default" sectionFormat="of" derivedContent="Section 4.6"/>で説明されている手順と同様に、LLGR_STALEコミュニティーに一致させ、一致した経路のLOCAL_PREFをゼロに設定することで、経路の優先度を下げるように設定できます。
+        </t>
+      </section>
+      <section anchor="depref" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-risks-of-depreferencing-rou">経路の優先度を下げることのリスク</name>
+        <t indent="0" pn="section-5.2-1">
+EBGP経路の優先度を下げることは安全であると考えられており、EBGPセッションにルーティングポリシーを適用する一般的な慣行と変わりません。
+しかし、IBGPについては同じことが常に当てはまるわけではありません。
+        </t>
+        <t indent="0" pn="section-5.2-2">
+一貫した経路選択は、ホップバイホップでルーティングされるネットワークにおけるIBGPの正しさと安全な運用の基本原則です。
+AS内のルーターが経路の選択に異なる基準を適用すると、一貫性のない経路選択に至る可能性があります。
+何らかの形のトンネル化された転送を使用して、「コア」ルーターがIPヘッダーに基づいて（一貫性がない可能性のある）転送の判断を行うことを防がない限り、これは転送ループの形成につながる可能性があります。
+        </t>
+        <t indent="0" pn="section-5.2-3">
+この仕様では、ピアリングセッションの状態を選択基準への入力として使用し、ダウンしたもののまだエージアウトしていないセッションに関連付けられた経路の優先度を下げます。
+AS内の異なるルーターは、特定のピアとのそれぞれのセッションがアップしているかダウンしているかについて異なる認識を持つ可能性があるため、そのピアからの経路に異なる選択基準を適用する可能性があります。
+これにより、そのようなルーター間で転送ループが形成される可能性があります。
+        </t>
+        <t indent="0" pn="section-5.2-4">
+このような転送ループの例として、次の単純なトポロジーを考えます。
+</t>
+        <figure align="left" suppress-title="false" pn="figure-1">
+          <artwork align="left" name="" type="" alt="" pn="section-5.2-5.1">
+	  
+A ---- B ---- C ------------------------- D
+^                                         ^
+|                                         |
+R1                                        R2
+</artwork>
+        </figure>
+        <t indent="0" pn="section-5.2-6">
+この例では、AからDは、相互にIBGPセッションのフルメッシュを持つルーターです（セッションは図示していません）。
+短いリンクのコストは1単位で、長いリンクのコストは5です。
+ルーターAとDはASの境界ルーターであり、それぞれある経路Rを同じLOCAL_PREFでASに広告しています。
+これを図ではR1とR2で示しています。
+通常の運用では、ルーターBとCは転送にR1を選択し、Aに向けて転送することがわかります。
+        </t>
+        <t indent="0" pn="section-5.2-7">
+AとBの間のセッションが何らかの理由でダウンし、BでLLGRの処理が発動されるのに十分な時間ダウンしたままだったとします。
+すると、Bでは経路R1の優先度が下げられ、BはR2を選択することになります。
+しかし、Cは引き続きR1を優先します。
+この場合、Rを宛先とするパケットの転送ループがBとCの間に形成されることがわかります。
+（従来のGRについても他の転送ループのシナリオを構成できることに留意しますが、GRが有効でいられる期間ははるかに限られているため、これらは一般に深刻度が低いと考えられています。）
+        </t>
+        <t indent="0" pn="section-5.2-8">
+展開において注意を払う限り、この仕様の潜在的な利点は、上で説明したリスクを上回る場合があります。
+従うべき基本原則は、ある経路の集合がAS内でホップバイホップ転送に使用されている場合、LLGRの手順を有効にすることは推奨されないということです。
+AS内でトンネル化された転送（MPLSなど）が使用されている場合、または経路がホップバイホップ転送以外の目的に使用されている場合は、それほど注意する必要はありません。
+ただし、運用者は、それでもLLGRを有効にすることの結果を慎重に検討すべきです。
+        </t>
+      </section>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">
+この文書で定義するLLGRメカニズムのセキュリティー上の影響は、ネットワーク内で古いルーティング情報を維持することによって生じる影響と同様です。
+しかし、保持時間がはるかに長くなる可能性があるため、特定の攻撃が実行可能な時間枠が大幅に広がる可能性があります。
+これは、MPLSラベルエントリーなど、サービスの分離に使用されるルーティング情報の維持を考える場合に特に関係します。
+      </t>
+      <t indent="0" pn="section-6-2">
+MPLS VPNサービスでは、VPN間のトラフィック分離の有効性は、入口PEと出口PEの間のMPLSラベルの正しさに依存します。
+特に、出口PEがVPN1の経路に割り当てられたラベルL1を取り下げた場合、L1を使用する古いVPN1の経路をすべての入口PEが使用しなくなるまで、このラベルを別のVPNのVPN経路に割り当ててはなりません。
+      </t>
+      <t indent="0" pn="section-6-3">
+このようなまれなケースは、PE間のBGPメッセージによるVPN経路の伝播が、PE上でのラベルの再割り当ての遅延よりも長い時間がかかる場合に、現在でも発生する可能性があります。
+一般に、最悪の場合のBGPの伝播時間は数分（たとえば、2〜5分）に制限できることを考えると、以前に使用されて取り下げられたラベルを数分以内に再割り当てしないようにPEが設計されていれば、セキュリティー侵害は発生しません。
+      </t>
+      <t indent="0" pn="section-6-4">
+PE間でBGP GRを使用すると、VPN経路がより長い期間（たとえば、20分）停滞する可能性があるため、この問題は悪化します。
+      </t>
+      <t indent="0" pn="section-6-5">
+この文書で規定するLLGR拡張では、VPN経路がはるかに長い期間（たとえば、2時間や1日）停滞する可能性があるため、この問題はさらに悪化します。
+      </t>
+      <t indent="0" pn="section-6-6">
+上記の脆弱性を悪用するには、攻撃者は2つのPEデバイスの間に特定のLLGR状態を作り出し、さらに2つのトポロジーが重なるようにラベルの再割り当てを発生させる必要があります。
+VPN侵害の可能性を回避するために、運用者は、VPNアドレスファミリーに対してLLGRを有効にする前に、ラベル再利用の下限がLLSTの上限よりも大きいことを確認すべきです。
+<xref target="session_resets" format="default" sectionFormat="of" derivedContent="Section 4.2"/>では、LLSTの上限の設定について説明しています。
+ラベル再利用時間の下限を設定するための機能の詳細はこの文書の範囲外ですが、この値を設定する際に考慮する必要がある要因には次のものがあります。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-6-7">
+        <li pn="section-6-7.1">
+PE上のBGP経路の変動の負荷（広告されるVPNラベルの数と変動率の観点から）。
+	</li>
+        <li pn="section-6-7.2">PE上のラベル割り当てポリシー。
+これは、VPNラベルのプールのサイズ（ハードウェア上の考慮事項やMPLSの他の用途によって制限される可能性がある）、ラベル割り当て方式（たとえば、経路ごと、またはVRF/CEごと）、および再割り当てポリシー（たとえば、最も長く使用されていないラベル）に依存する可能性があります。</li>
+      </ul>
+      <t indent="0" pn="section-6-8">
+MPLSを使用するBGPのグレースフルリスタートメカニズムを定義する<xref target="RFC4781" format="default" sectionFormat="of" derivedContent="RFC4781"/>は、LLGRにも適用できることに注意してください。
+      </t>
+    </section>
+    <section anchor="examples" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-examples-of-operation">動作の例</name>
+      <t indent="0" pn="section-7-1">
+説明のために、この仕様を実際にどのように使用できるかの例をいくつか示します。
+これらの例は網羅的なものでも規範的なものでもありません。
+      </t>
+      <t indent="0" pn="section-7-2">
+次のシナリオを考えます。
+境界ルーターASBR1は、ルートリフレクターRR1とのIBGPピアリングを持ち、そこから経路を学習します。
+ASBR1は、外部ピアEXTとのEBGPピアリングを持ち、EXTにそれらの経路を広告します。
+外部ピアは、ASBR1にGRケイパビリティーとLLGRケイパビリティーを広告しています。
+ASBR1は、RR1およびEXTとのセッションでGRとLLGRをサポートするように設定されています。
+RR1は、GRのRestart Timeとして1（秒）を、LLSTとして3600（秒）を広告します。
+      </t>
+      <table align="center" pn="table-1">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">時刻</th>
+            <th align="left" colspan="1" rowspan="1">イベント</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t</td>
+            <td align="left" colspan="1" rowspan="1">ASBR1とRRとのIBGPセッションに障害が発生します。ASBR1は、GR<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>の規則に従ってRRの経路を保持します。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1</td>
+            <td align="left" colspan="1" rowspan="1">GRのRestart Timeが期限切れになります。ASBR1は、LLGR_STALEコミュニティーを付加して優先度を下げることで、RRの経路を長期間保持される古い経路に移行させます。ただし、バックアップ経路がないため、ASBR1はそれらの経路を引き続き使用します。ASBR1は、LLGR_STALEコミュニティーを付加してそれらの経路をEXTに再アナウンスします。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1+3600</td>
+            <td align="left" colspan="1" rowspan="1">LLSTが期限切れになります。ASBR1は、RRの古い経路を自身のRIBから削除し、それらの経路をEXTから取り下げるためにBGPのUPDATEを送信します。</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-7-4">
+次に、同じシナリオで、RR1がGRのRestart Timeとしてゼロを広告し、実質的にGRを無効にした場合を考えます。
+同様に、ASBR1がローカルの設定を使用してRR1が提示したRestart Timeを上書きし、ローカルに設定した値であるゼロにすることもできたでしょう。
+      </t>
+      <table align="center" pn="table-2">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">時刻</th>
+            <th align="left" colspan="1" rowspan="1">イベント</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t</td>
+            <td align="left" colspan="1" rowspan="1">ASBR1とRRとのIBGPセッションに障害が発生します。ASBR1は、LLGR_STALEコミュニティーを付加して優先度を下げることで、RRの経路を長期間保持される古い経路に移行させます。ただし、バックアップ経路がないため、ASBR1はそれらの経路を引き続き使用します。ASBR1は、LLGR_STALEコミュニティーを付加してそれらの経路をEXTに再アナウンスします。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+0+3600</td>
+            <td align="left" colspan="1" rowspan="1">LLSTが期限切れになります。ASBR1は、RRの古い経路を自身のRIBから削除し、それらの経路をEXTから取り下げるためにBGPのUPDATEを送信します。</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-7-6">
+次に、元のシナリオで、障害が検出されてから180秒後にASBR1とRR1のセッションが復旧して同期した場合を考えます。
+      </t>
+      <table align="center" pn="table-3">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">時刻</th>
+            <th align="left" colspan="1" rowspan="1">イベント</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t</td>
+            <td align="left" colspan="1" rowspan="1">ASBR1とRRとのIBGPセッションに障害が発生します。ASBR1は、GR<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>の規則に従ってRRの経路を保持します。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1</td>
+            <td align="left" colspan="1" rowspan="1">GRのRestart Timeが期限切れになります。ASBR1は、LLGR_STALEコミュニティーを付加して優先度を下げることで、RRの経路を長期間保持される古い経路に移行させます。ただし、バックアップ経路がないため、ASBR1はそれらの経路を引き続き使用します。ASBR1は、LLGR_STALEコミュニティーを付加してそれらの経路をEXTに再アナウンスします。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1+179</td>
+            <td align="left" colspan="1" rowspan="1">セッションが再確立され、再同期します。ASBR1は、RR1の経路からLLGR_STALEコミュニティーを削除し、LLGR_STALEコミュニティーを削除した状態でそれらの経路をEXTに再アナウンスします。</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-7-8">
+最後に、元のシナリオで、EXTがASBR1にLLGRケイパビリティーを広告していない場合を考えます。
+      </t>
+      <table align="center" pn="table-4">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">時刻</th>
+            <th align="left" colspan="1" rowspan="1">イベント</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t</td>
+            <td align="left" colspan="1" rowspan="1">ASBR1とRRとのIBGPセッションに障害が発生します。ASBR1は、GR<xref target="RFC4724" format="default" sectionFormat="of" derivedContent="RFC4724"/>の規則に従ってRRの経路を保持します。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1</td>
+            <td align="left" colspan="1" rowspan="1">GRのRestart Timeが期限切れになります。ASBR1は、LLGR_STALEコミュニティーを付加して優先度を下げることで、RRの経路を長期間保持される古い経路に移行させます。ただし、バックアップ経路がないため、ASBR1はそれらの経路を引き続き使用します。ASBR1は、それらの経路をEXTから取り下げます。</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">t+1+3600</td>
+            <td align="left" colspan="1" rowspan="1">LLSTが期限切れになります。ASBR1は、RRの古い経路を自身のRIBから削除します。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section anchor="IANA" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">
+この文書では、「長期グレースフルリスタートケイパビリティー（Long-Lived Graceful Restart Capability）」と呼ばれるBGPケイパビリティーを定義します。
+IANAは、「Capability Codes」レジストリーから値71を割り当てました。
+      </t>
+      <t indent="0" pn="section-8-2">
+この文書では、2つのBGPウェルノウンコミュニティーを導入します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-8-3">
+        <li pn="section-8-3.1">1つ目は「LLGR_STALE」と呼ばれ、長期間保持される古い経路をマークするためのものです。</li>
+        <li pn="section-8-3.2">2つ目は「NO_LLGR」と呼ばれ、古くなった場合に保持すべきでない経路をマークするためのものです。</li>
+      </ul>
+      <t indent="0" pn="section-8-4">IANAは、「BGP Well-known Communities」レジストリーから、これらのウェルノウンコミュニティーにそれぞれ値0xFFFF0006と0xFFFF0007を割り当てました。
+</t>
+      <t indent="0" pn="section-8-5">
+IANAは、「Border Gateway Protocol (BGP) Parameters」グループの下に、「Long-Lived Graceful Restart Flags for Address Family」レジストリーと呼ばれるレジストリーを設置しました。
+登録手続きはStandards Actionです（<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>を参照）。
+このレジストリーの初期内容は次のとおりです。
+      </t>
+      <table align="center" pn="table-5">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">ビット位置</th>
+            <th align="left" colspan="1" rowspan="1">名前</th>
+            <th align="left" colspan="1" rowspan="1">略称</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">0</td>
+            <td align="left" colspan="1" rowspan="1">Preservation of state</td>
+            <td align="left" colspan="1" rowspan="1">F</td>
+            <td align="left" colspan="1" rowspan="1">RFC 9494</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">1-7</td>
+            <td align="left" colspan="1" rowspan="1">未割り当て</td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1997" target="https://www.rfc-editor.org/info/rfc1997" quoteTitle="true" derivedAnchor="RFC1997">
+          <front>
+            <title>BGP Communities Attribute</title>
+            <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+            <author fullname="P. Traina" initials="P." surname="Traina"/>
+            <author fullname="T. Li" initials="T." surname="Li"/>
+            <date month="August" year="1996"/>
+            <abstract>
+              <t indent="0">This document describes an extension to BGP which may be used to pass additional information to both neighboring and remote BGP peers. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1997"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1997"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4271" target="https://www.rfc-editor.org/info/rfc4271" quoteTitle="true" derivedAnchor="RFC4271">
+          <front>
+            <title>A Border Gateway Protocol 4 (BGP-4)</title>
+            <author fullname="Y. Rekhter" initials="Y." role="editor" surname="Rekhter"/>
+            <author fullname="T. Li" initials="T." role="editor" surname="Li"/>
+            <author fullname="S. Hares" initials="S." role="editor" surname="Hares"/>
+            <date month="January" year="2006"/>
+            <abstract>
+              <t indent="0">This document discusses the Border Gateway Protocol (BGP), which is an inter-Autonomous System routing protocol.</t>
+              <t indent="0">The primary function of a BGP speaking system is to exchange network reachability information with other BGP systems. This network reachability information includes information on the list of Autonomous Systems (ASes) that reachability information traverses. This information is sufficient for constructing a graph of AS connectivity for this reachability from which routing loops may be pruned, and, at the AS level, some policy decisions may be enforced.</t>
+              <t indent="0">BGP-4 provides a set of mechanisms for supporting Classless Inter-Domain Routing (CIDR). These mechanisms include support for advertising a set of destinations as an IP prefix, and eliminating the concept of network "class" within BGP. BGP-4 also introduces mechanisms that allow aggregation of routes, including aggregation of AS paths.</t>
+              <t indent="0">This document obsoletes RFC 1771. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4271"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4271"/>
+        </reference>
+        <reference anchor="RFC4724" target="https://www.rfc-editor.org/info/rfc4724" quoteTitle="true" derivedAnchor="RFC4724">
+          <front>
+            <title>Graceful Restart Mechanism for BGP</title>
+            <author fullname="S. Sangli" initials="S." surname="Sangli"/>
+            <author fullname="E. Chen" initials="E." surname="Chen"/>
+            <author fullname="R. Fernando" initials="R." surname="Fernando"/>
+            <author fullname="J. Scudder" initials="J." surname="Scudder"/>
+            <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+            <date month="January" year="2007"/>
+            <abstract>
+              <t indent="0">This document describes a mechanism for BGP that would help minimize the negative effects on routing caused by BGP restart. An End-of-RIB marker is specified and can be used to convey routing convergence information. A new BGP capability, termed "Graceful Restart Capability", is defined that would allow a BGP speaker to express its ability to preserve forwarding state during BGP restart. Finally, procedures are outlined for temporarily retaining routing information across a TCP session termination/re-establishment.</t>
+              <t indent="0">The mechanisms described in this document are applicable to all routers, both those with the ability to preserve forwarding state during BGP restart and those without (although the latter need to implement only a subset of the mechanisms described in this document). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4724"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4724"/>
+        </reference>
+        <reference anchor="RFC4760" target="https://www.rfc-editor.org/info/rfc4760" quoteTitle="true" derivedAnchor="RFC4760">
+          <front>
+            <title>Multiprotocol Extensions for BGP-4</title>
+            <author fullname="T. Bates" initials="T." surname="Bates"/>
+            <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+            <author fullname="D. Katz" initials="D." surname="Katz"/>
+            <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+            <date month="January" year="2007"/>
+            <abstract>
+              <t indent="0">This document defines extensions to BGP-4 to enable it to carry routing information for multiple Network Layer protocols (e.g., IPv6, IPX, L3VPN, etc.). The extensions are backward compatible - a router that supports the extensions can interoperate with a router that doesn't support the extensions. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4760"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4760"/>
+        </reference>
+        <reference anchor="RFC5492" target="https://www.rfc-editor.org/info/rfc5492" quoteTitle="true" derivedAnchor="RFC5492">
+          <front>
+            <title>Capabilities Advertisement with BGP-4</title>
+            <author fullname="J. Scudder" initials="J." surname="Scudder"/>
+            <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+            <date month="February" year="2009"/>
+            <abstract>
+              <t indent="0">This document defines an Optional Parameter, called Capabilities, that is expected to facilitate the introduction of new capabilities in the Border Gateway Protocol (BGP) by providing graceful capability advertisement without requiring that BGP peering be terminated.</t>
+              <t indent="0">This document obsoletes RFC 3392. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5492"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5492"/>
+        </reference>
+        <reference anchor="RFC6368" target="https://www.rfc-editor.org/info/rfc6368" quoteTitle="true" derivedAnchor="RFC6368">
+          <front>
+            <title>Internal BGP as the Provider/Customer Edge Protocol for BGP/MPLS IP Virtual Private Networks (VPNs)</title>
+            <author fullname="P. Marques" initials="P." surname="Marques"/>
+            <author fullname="R. Raszuk" initials="R." surname="Raszuk"/>
+            <author fullname="K. Patel" initials="K." surname="Patel"/>
+            <author fullname="K. Kumaki" initials="K." surname="Kumaki"/>
+            <author fullname="T. Yamagata" initials="T." surname="Yamagata"/>
+            <date month="September" year="2011"/>
+            <abstract>
+              <t indent="0">This document defines protocol extensions and procedures for BGP Provider/Customer Edge router iteration in BGP/MPLS IP VPNs. These extensions and procedures have the objective of making the usage of the BGP/MPLS IP VPN transparent to the customer network, as far as routing information is concerned. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6368"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6368"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8538" target="https://www.rfc-editor.org/info/rfc8538" quoteTitle="true" derivedAnchor="RFC8538">
+          <front>
+            <title>Notification Message Support for BGP Graceful Restart</title>
+            <author fullname="K. Patel" initials="K." surname="Patel"/>
+            <author fullname="R. Fernando" initials="R." surname="Fernando"/>
+            <author fullname="J. Scudder" initials="J." surname="Scudder"/>
+            <author fullname="J. Haas" initials="J." surname="Haas"/>
+            <date month="March" year="2019"/>
+            <abstract>
+              <t indent="0">The BGP Graceful Restart mechanism defined in RFC 4724 limits the usage of BGP Graceful Restart to BGP messages other than BGP NOTIFICATION messages. This document updates RFC 4724 by defining an extension that permits the Graceful Restart procedures to be performed when the BGP speaker receives a BGP NOTIFICATION message or the Hold Time expires. This document also defines a new subcode for BGP Cease NOTIFICATION messages; this new subcode requests a full session restart instead of a Graceful Restart.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8538"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8538"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC4364" target="https://www.rfc-editor.org/info/rfc4364" quoteTitle="true" derivedAnchor="RFC4364">
+          <front>
+            <title>BGP/MPLS IP Virtual Private Networks (VPNs)</title>
+            <author fullname="E. Rosen" initials="E." surname="Rosen"/>
+            <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+            <date month="February" year="2006"/>
+            <abstract>
+              <t indent="0">This document describes a method by which a Service Provider may use an IP backbone to provide IP Virtual Private Networks (VPNs) for its customers. This method uses a "peer model", in which the customers' edge routers (CE routers) send their routes to the Service Provider's edge routers (PE routers); there is no "overlay" visible to the customer's routing algorithm, and CE routers at different sites do not peer with each other. Data packets are tunneled through the backbone, so that the core routers do not need to know the VPN routes. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4364"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4364"/>
+        </reference>
+        <reference anchor="RFC4761" target="https://www.rfc-editor.org/info/rfc4761" quoteTitle="true" derivedAnchor="RFC4761">
+          <front>
+            <title>Virtual Private LAN Service (VPLS) Using BGP for Auto-Discovery and Signaling</title>
+            <author fullname="K. Kompella" initials="K." role="editor" surname="Kompella"/>
+            <author fullname="Y. Rekhter" initials="Y." role="editor" surname="Rekhter"/>
+            <date month="January" year="2007"/>
+            <abstract>
+              <t indent="0">Virtual Private LAN Service (VPLS), also known as Transparent LAN Service and Virtual Private Switched Network service, is a useful Service Provider offering. The service offers a Layer 2 Virtual Private Network (VPN); however, in the case of VPLS, the customers in the VPN are connected by a multipoint Ethernet LAN, in contrast to the usual Layer 2 VPNs, which are point-to-point in nature.</t>
+              <t indent="0">This document describes the functions required to offer VPLS, a mechanism for signaling a VPLS, and rules for forwarding VPLS frames across a packet switched network. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4761"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4761"/>
+        </reference>
+        <reference anchor="RFC4781" target="https://www.rfc-editor.org/info/rfc4781" quoteTitle="true" derivedAnchor="RFC4781">
+          <front>
+            <title>Graceful Restart Mechanism for BGP with MPLS</title>
+            <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+            <author fullname="R. Aggarwal" initials="R." surname="Aggarwal"/>
+            <date month="January" year="2007"/>
+            <abstract>
+              <t indent="0">A mechanism for BGP that helps minimize the negative effects on routing caused by BGP restart has already been developed and is described in a separate document ("Graceful Restart Mechanism for BGP"). This document extends this mechanism to minimize the negative effects on MPLS forwarding caused by the Label Switching Router's (LSR's) control plane restart, and specifically by the restart of its BGP component when BGP is used to carry MPLS labels and the LSR is capable of preserving the MPLS forwarding state across the restart.</t>
+              <t indent="0">The mechanism described in this document is agnostic with respect to the types of the addresses carried in the BGP Network Layer Reachability Information (NLRI) field. As such, it works in conjunction with any of the address families that could be carried in BGP (e.g., IPv4, IPv6, etc.). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4781"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4781"/>
+        </reference>
+        <reference anchor="RFC5880" target="https://www.rfc-editor.org/info/rfc5880" quoteTitle="true" derivedAnchor="RFC5880">
+          <front>
+            <title>Bidirectional Forwarding Detection (BFD)</title>
+            <author fullname="D. Katz" initials="D." surname="Katz"/>
+            <author fullname="D. Ward" initials="D." surname="Ward"/>
+            <date month="June" year="2010"/>
+            <abstract>
+              <t indent="0">This document describes a protocol intended to detect faults in the bidirectional path between two forwarding engines, including interfaces, data link(s), and to the extent possible the forwarding engines themselves, with potentially very low latency. It operates independently of media, data protocols, and routing protocols. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5880"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5880"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author fullname="M. Cotton" initials="M." surname="Cotton"/>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <author fullname="T. Narten" initials="T." surname="Narten"/>
+            <date month="June" year="2017"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters. To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper. For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed. This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8955" target="https://www.rfc-editor.org/info/rfc8955" quoteTitle="true" derivedAnchor="RFC8955">
+          <front>
+            <title>Dissemination of Flow Specification Rules</title>
+            <author fullname="C. Loibl" initials="C." surname="Loibl"/>
+            <author fullname="S. Hares" initials="S." surname="Hares"/>
+            <author fullname="R. Raszuk" initials="R." surname="Raszuk"/>
+            <author fullname="D. McPherson" initials="D." surname="McPherson"/>
+            <author fullname="M. Bacher" initials="M." surname="Bacher"/>
+            <date month="December" year="2020"/>
+            <abstract>
+              <t indent="0">This document defines a Border Gateway Protocol Network Layer Reachability Information (BGP NLRI) encoding format that can be used to distribute (intra-domain and inter-domain) traffic Flow Specifications for IPv4 unicast and IPv4 BGP/MPLS VPN services. This allows the routing system to propagate information regarding more specific components of the traffic aggregate defined by an IP destination prefix.</t>
+              <t indent="0">It also specifies BGP Extended Community encoding formats, which can be used to propagate Traffic Filtering Actions along with the Flow Specification NLRI. Those Traffic Filtering Actions encode actions a routing system can take if the packet matches the Flow Specification.</t>
+              <t indent="0">This document obsoletes both RFC 5575 and RFC 7674.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8955"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8955"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="Acknowledgements" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">
+議論と解決策に貴重な意見と貢献をいただいた<contact fullname="Nabil Bitar"/>、<contact fullname="Martin Djernaes"/>、<contact fullname="Roberto Fragassi"/>、<contact fullname="Jeffrey Haas"/>、<contact fullname="Jakob Heitz"/>、<contact fullname="Daniam Henriques"/>、<contact fullname="Nicolai Leymann"/>、<contact fullname="Mike McBride"/>、<contact fullname="Paul Mattes"/>、<contact fullname="John Medamana"/>、<contact fullname="Pranav Mehta"/>、<contact fullname="Han Nguyen"/>、<contact fullname="Saikat Ray"/>、<contact fullname="Valery Smyslov"/>、<contact fullname="Bo Wu"/>に感謝します。
+      </t>
+    </section>
+    <section numbered="false" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <contact fullname="Clarence Filsfils">
+        <organization showOnFrontPage="true">Cisco Systems</organization>
+        <address>
+          <postal>
+            <street/>
+            <city>Brussels</city>
+            <region/>
+            <code>1150</code>
+            <country>Belgium</country>
+          </postal>
+          <email>cf@cisco.com</email>
+        </address>
+      </contact>
+      <contact fullname="Pradosh Mohapatra">
+        <organization showOnFrontPage="true">Sproute Networks</organization>
+        <address>
+          <email>mpradosh@yahoo.com</email>
+        </address>
+      </contact>
+      <contact fullname="Yakov Rekhter">
+        <organization showOnFrontPage="true"/>
+        <address>
+          <email/>
+        </address>
+      </contact>
+      <contact fullname="Eric Rosen">
+        <organization showOnFrontPage="true"/>
+        <address>
+          <email>erosen52@gmail.com</email>
+        </address>
+      </contact>
+      <contact fullname="Rob Shakir">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <postal>
+            <street>1600 Amphitheatre Parkway</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>robjs@google.com</email>
+        </address>
+      </contact>
+      <contact fullname="Adam Simpson">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <email>adam.1.simpson@nokia.com</email>
+        </address>
+      </contact>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="James Uttaro" initials="J." surname="Uttaro">
+        <organization showOnFrontPage="true">Independent Contributor</organization>
+        <address>
+          <email>juttaro@ieee.org</email>
+        </address>
+      </author>
+      <author fullname="Enke Chen" initials="E." surname="Chen">
+        <organization showOnFrontPage="true">Palo Alto Networks</organization>
+        <address>
+          <email>enchen@paloaltonetworks.com</email>
+        </address>
+      </author>
+      <author fullname="Bruno Decraene" initials="B." surname="Decraene">
+        <organization showOnFrontPage="true">Orange</organization>
+        <address>
+          <email>bruno.decraene@orange.com</email>
+        </address>
+      </author>
+      <author fullname="John G. Scudder" initials="J." surname="Scudder">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <email>jgs@juniper.net</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

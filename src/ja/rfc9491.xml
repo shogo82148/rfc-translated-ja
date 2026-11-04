@@ -1,0 +1,960 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" submissionType="IETF" category="std" consensus="true" docName="draft-ietf-spring-nsh-sr-15" number="9491" ipr="trust200902" obsoletes="" updates="" xml:lang="en" tocInclude="true" tocDepth="3" symRefs="true" sortRefs="true" prepTime="2023-11-07T07:04:29" indexInclude="true" scripts="Common,Latin">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-spring-nsh-sr-15" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9491" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="NSH SR SFC">サービス機能チェイニング（SFC）のためのネットワークサービスヘッダー（NSH）とセグメントルーティングの統合</title>
+    <seriesInfo name="RFC" value="9491" stream="IETF"/>
+    <author fullname="James N Guichard" initials="J" surname="Guichard" role="editor">
+      <organization showOnFrontPage="true">Futurewei Technologies</organization>
+      <address>
+        <postal>
+          <street>2330 Central Expressway</street>
+          <city>Santa Clara</city>
+          <region>CA</region>
+          <country>United States of America</country>
+        </postal>
+        <email>james.n.guichard@futurewei.com</email>
+      </address>
+    </author>
+    <author fullname="Jeff Tantsura" initials="J" surname="Tantsura" role="editor">
+      <organization showOnFrontPage="true">Nvidia</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <country>United States of America</country>
+        </postal>
+        <email>jefftant.ietf@gmail.com</email>
+      </address>
+    </author>
+    <date month="11" year="2023"/>
+    <area>RTG</area>
+    <workgroup>SPRING</workgroup>
+    <keyword>NSH</keyword>
+    <keyword>SR</keyword>
+    <keyword>MPLS-SR</keyword>
+    <keyword>SRv6</keyword>
+    <keyword>SFC</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書では、SFCアーキテクチャーが本来意図していたとおりにサービスプレーンとトランスポートプレーンの分離を維持しつつ、サービス機能チェイニング（Service Function Chaining、SFC）を効率的にサポートするための、ネットワークサービスヘッダー（Network Service Header、NSH）とセグメントルーティング（Segment Routing、SR）の統合について、カプセル化の詳細とともに説明します。
+      </t>
+      <t indent="0" pn="section-abstract-2">これらの技術を組み合わせることで、与えられたサービス機能パス（Service Function Path、SFP）に沿ってサービス機能フォワーダー（Service Function Forwarder、SFF）間でパケットをステアリングするためにSRを使用できるようになり、一方でNSHは、サービスプレーンの完全性、SFCインスタンスのコンテキスト、および関連するメタデータを維持する役割を担います。
+      </t>
+      <t indent="0" pn="section-abstract-3">この統合は、NSHとSRが協調して動作できることを示しており、NSHを使用してエンドツーエンドのサービスプレーンを維持しながら、ネットワークインフラストラクチャーの特定の領域で意味のあるトランスポート技術をどれでも使用できる柔軟性をネットワーク運用者に提供します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9491" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2023 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sfc-overview-and-rationale">SFCの概要と論拠</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sfc-within-segment-routing-">セグメントルーティングネットワークにおけるSFC</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-nsh-based-sfc-with-sr-mpls-">SR-MPLSまたはSRv6トランスポートトンネルを用いたNSHベースのSFC</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sr-based-sfc-with-the-integ">統合されたNSHサービスプレーンを用いたSRベースのSFC</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-packet-processing-for-sr-ba">SRベースのSFCのパケット処理</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sr-based-sfc-sr-mpls-packet">SRベースのSFC（SR-MPLS）のパケット処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sr-based-sfc-srv6-packet-pr">SRベースのSFC（SRv6）のパケット処理</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encapsulation">カプセル化</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-nsh-using-sr-mpls-transport">SR-MPLSトランスポートを使用するNSH</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-nsh-using-srv6-transport">SRv6トランスポートを使用するNSH</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-backwards-compatibility">後方互換性</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-caching-considerations">キャッシュに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-mtu-considerations">MTUに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="11.1" format="counter" sectionFormat="of" target="section-11.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protocol-number-for-the-nsh">NSHのプロトコル番号</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="11.2" format="counter" sectionFormat="of" target="section-11.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-srv6-endpoint-behavior-for-">NSHのためのSRv6エンドポイントの振る舞い</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.12.2">
+              <li pn="section-toc.1-1.12.2.1">
+                <t indent="0" pn="section-toc.1-1.12.2.1.1"><xref derivedContent="12.1" format="counter" sectionFormat="of" target="section-12.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.12.2.2">
+                <t indent="0" pn="section-toc.1-1.12.2.2.1"><xref derivedContent="12.2" format="counter" sectionFormat="of" target="section-12.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">
+
+      </t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-sfc-overview-and-rationale">SFCの概要と論拠</name>
+        <t indent="0" pn="section-1.1-1">高度なサービス機能（Service Function、SF）をサポートするネットワークに入ってくるパケットに対して、サービスから導出された適切な転送ポリシーを動的に適用することは、ネットワーク運用者にとって重要な課題となっています。
+        たとえば、第3世代パートナーシッププロジェクト（3GPP）のGiインターフェイス（5GアーキテクチャーにおけるN6インターフェイス）でSFを数珠つなぎにすると、次のような制限があることがわかっています。
+        1）多くのSFが自身の機能を実行するためにサポートしなければならない冗長な分類機能、2）処理することになっていないトラフィックを受信する一部のSF（たとえば、UDPトラフィックを受信するTCPプロキシー）があり、必然的にその規模設計と性能に影響すること、3）複数のSFを適切な順序で呼び出すことに関連する設計の複雑さの増大です。
+        </t>
+        <t indent="0" pn="section-1.1-2">これらの問題を解決し、サービス提供を簡素化しながらサービスのトポロジーを下位の物理ネットワークから切り離すために、SFC技術が導入されました<xref target="RFC7665" format="default" sectionFormat="of" derivedContent="RFC7665"/>。
+        </t>
+        <t indent="0" pn="section-1.1-3">SFC技術は、要求の厳しさを増し続ける顧客の要件によりよく対応するために、より機敏なサービス提供手順を必要とする運用者向けに、サービスの有効化にかかる時間サイクルを最適化しつつ、サービス提供のロジックを合理化し、その結果生じる複雑さを軽減することを目的としています。
+        SFCにより、ネットワーク運用者は、特定のトラフィックフローが使用できるサービスプレーンを動的に作成できます。
+        各サービスプレーンは、関連するサービス機能を正しい順序で呼び出し、チェインすることで実現されます。
+        <xref target="RFC7498" format="default" sectionFormat="of" derivedContent="RFC7498"/>はSFCの問題領域全体の概要を示しており、<xref target="RFC7665" format="default" sectionFormat="of" derivedContent="RFC7665"/>はSFCのデータプレーンアーキテクチャーを規定しています。
+        SFCアーキテクチャーは、ドメイン内で高度な機能（たとえば、負荷分散、ルーズまたはストリクトなサービスパス）をどのように有効にできるかについて、前提を置いていません。
+        SFCアーキテクチャーでは、さまざまな展開オプションを運用者が利用できるようになっています。
+        このアプローチは、多様で異種混在の展開状況に対応するための基本となるものです。
+        </t>
+        <t indent="0" pn="section-1.1-4">SFCの目的に必要な情報をエンコードする方法としては、多くのアプローチが考えられます（たとえば、サービスチェーンのポインターを伝える、ルーズ/明示的なパスのリストをエンコードする、サービスチェーンの識別子をコンテキスト情報の集合とともに配布する、など）。
+        同様に、SFC固有の情報を運ぶために使用するチャネルについても、多くのアプローチが考えられます（たとえば、新しいヘッダーを定義する、既存のパケットヘッダーのフィールドを再利用する、IPv6拡張ヘッダーを定義する、など）。
+        これらすべてのアプローチの中から、IETFはトランスポートに依存しないSFCのカプセル化方式であるNSH<xref target="RFC8300" format="default" sectionFormat="of" derivedContent="RFC8300"/>を作成しました。
+        この設計は、下位のトランスポートのカプセル化ごとに同じ仕様策定の労力を繰り返す必要がないため、実用的です。
+        さらに、この設計アプローチは、さまざまなネットワークセグメントで異なるトランスポートプロトコルを有効にしているネットワークや、SFF間とSF-SFF間のホップとで異なるトランスポートプロトコルを有効にしているネットワークにおいても、SFCに基づく一貫したサービス提供を促進します。
+        </t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-1.2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+        「<bcp14>要求されています（REQUIRED）</bcp14>」、
+        「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+        「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+        「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+        「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+        BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+        ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-sfc-within-segment-routing-">セグメントルーティングネットワークにおけるSFC</name>
+      <t indent="0" pn="section-2-1"><xref target="RFC8300" format="default" sectionFormat="of" derivedContent="RFC8300"/>は、リンク層ヘッダー内にNSHを直接カプセル化する方法を規定しています。
+      この文書では、NSHをIPヘッダー内にも直接カプセル化できるように、IANAはNSHにIPプロトコル番号145を割り当てました。
+      以降の手順では、この性質を利用します。
+      </t>
+      <t indent="0" pn="section-2-2"><xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>で説明されているように、SRはソースルーティング技術を活用します。
+      具体的には、ノードは、セグメントと呼ばれる命令の順序付きリストとしてインスタンス化されたSRポリシーを通じてパケットをステアリングします。
+      SRは当初ポリシーベースのソースルーティングのために設計されましたが、SFCのサポートにも応用されています<xref target="I-D.ietf-spring-sr-service-programming" format="default" sectionFormat="of" derivedContent="SERVICE-PROGRAMMING"/>。
+      </t>
+      <t indent="0" pn="section-2-3">2つのSRデータプレーンのカプセル化、すなわち<xref target="RFC8660" format="default" sectionFormat="of" derivedContent="RFC8660">SR-MPLS</xref>と<xref target="RFC8754" format="default" sectionFormat="of" derivedContent="RFC8754">IPv6上のセグメントルーティング（SRv6）</xref>は、SFをセグメントとしてエンコードできるため、サービス機能チェインをセグメントリストとして指定できます。
+      とはいえ、<xref target="RFC7498" format="default" sectionFormat="of" derivedContent="RFC7498"/>で議論されているように、トラフィックステアリングは、SFCアーキテクチャーの設計の動機となった問題の一部にすぎません。
+      SFCのデータプレーンのソリューションを設計する際には、中間のSFでの分類を簡素化することや、コンテキスト情報（別名メタデータ）を提供することによってSF間の協調した振る舞いを可能にすることなど、さらなる考慮事項を検討すべきです。
+      </t>
+      <t indent="0" pn="section-2-4">それぞれの方式（つまり、NSHベースのSFCとSRベースのSFC）は独立して動作できますが、この文書では、2つの代表的な適用シナリオを通じて、両者を協調させて一緒に使用し、互いに補完させる方法を説明します。
+      どちらの適用シナリオも、SR-MPLSとSRv6のどちらを使用してもサポートできます。
+      </t>
+      <dl spacing="normal" newline="true" indent="3" pn="section-2-5">
+        <dt pn="section-2-5.1">SRベースのトランスポートプレーンを用いたNSHベースのSFC：</dt>
+        <dd pn="section-2-5.2">このシナリオでは、SR-MPLSまたはSRv6がSFF間のトランスポートのカプセル化を提供し、NSHはSFCポリシーを伝達し、起動するために使用されます。</dd>
+        <dt pn="section-2-5.3">統合されたNSHサービスプレーンを用いたSRベースのSFC：</dt>
+        <dd pn="section-2-5.4">このシナリオでは、サービス機能チェインの各サービスホップが、SRセグメントリストのセグメントとして表現されます。
+	したがって、SRはセグメントルーティングパスの一部として必要なSFFを経由するようにトラフィックをステアリングする役割を担い、NSHはサービスプレーンを維持し、SFCインスタンスのコンテキスト（関連するメタデータを含む）を保持する役割を担います。</dd>
+      </dl>
+      <t indent="0" pn="section-2-6">もちろん、特定の展開要件やユースケースをサポートするために、これら2つのシナリオを組み合わせることも可能です。
+      </t>
+      <t indent="0" pn="section-2-7">異なるトラフィックフローが同じNSHサービス機能パス（SFP）を使用でき、かつ、異なるSRポリシーがSFFの処理中に衝突することなく同じSFP上に共存できるように、分類器はSRポリシーごとに1つのNSHサービスパス識別子（Service Path Identifier、SPI）を使用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-nsh-based-sfc-with-sr-mpls-">SR-MPLSまたはSRv6トランスポートトンネルを用いたNSHベースのSFC</name>
+      <t indent="0" pn="section-3-1">NSHベースのサービス機能チェインはトランスポートに依存しない性質を持つため、NSHはさまざまなネットワークドメイン（たとえば、アクセス、コア）にわたって幅広く適用できると期待されます。
+      例として、サービス機能チェインに関与するさまざまなSFは、ネットワーク運用者の好みやサービスリソースの可用性に応じて、単一のデータセンターで利用できる場合もあれば、複数の場所（たとえば、データセンター、異なるPoint of Presence（POP））に分散している場合もあります。
+      SFがどこに展開されているかにかかわらず、SFFの集合を通るトラフィックステアリングを提供する必要があり、NSHとSRが統合されている場合は、これをSR-MPLSまたはSRv6が提供します。</t>
+      <t indent="0" pn="section-3-2">次の3つの図は、異なるデータセンターDC1とDC2にSFインスタンスが配置されている、SFCが確立されたフローFの例を示しています。
+      説明のために、SFCのNSH SPIを100、初期のサービスインデックス（Service Index、SI）を255とします。
+      </t>
+      <t indent="0" pn="section-3-3"><xref target="figure_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>を参照すると、DC1内のフローFのパケットはNSHベースのサービス機能チェインに分類され、分類後に&lt;Inner Pkt&gt;&lt;NSH: SPI 100, SI 255&gt;&lt;Outer-transport&gt;としてカプセル化され、SFF1（このサービス機能チェインにおける最初のSFFホップ）に転送されます。</t>
+      <t indent="0" pn="section-3-4">外側のトランスポートのカプセル化を取り除いた後、SFF1はNSHのカプセル化内で運ばれるSPIとSIを使用して、パケットをSF1に転送すべきであると判断します。
+      SF1は自身のサービスを適用し、SIを1減らして、パケットをSFF1に返します。
+      したがって、パケットがSF1から戻ってきたとき、SFF1は&lt;SPI 100, SI 254&gt;を持っています。
+      SFF1は&lt;SPI 100, SI 254&gt;で検索を行い、その結果&lt;next-hop: DC1-GW1&gt;が得られ、パケットをDC1-GW1に転送します。
+      </t>
+      <figure anchor="figure_1" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-sr-for-inter-dc-sfc-part-1">DC間SFCのためのSR - パート1</name>
+        <artwork name="" type="" align="left" alt="" pn="section-3-5.1">
++--------------------------- DC1 ----------------------------+
+|                          +-----+                           |
+|                          | SF1 |                           |
+|                          +--+--+                           |
+|                             |                              |
+|                             |                              |
+|        +------------+       |    +------------+            |
+|        | N(100,255) |       |    | N(100,254) |            |
+|        +------------+       |    +------------+            |
+|        | F:Inner Pkt|       |    | F:Inner Pkt|            |
+|        +------------+  ^    |  | +------------+            |      
+|                    (2) |    |  | (3)                       |
+|                        |    |  v                           |
+|                  (1)        |         (4)                  |
+|+------------+   ----&gt;    +--+---+    ----&gt;     +---------+ |
+||            |    NSH     |      |     NSH      |         | |
+|| Classifier +------------+ SFF1 +--------------+ DC1-GW1 + |
+||            |            |      |              |         | |
+|+------------+            +------+              +---------+ |
+|                                                            |
+|             +------------+       +------------+            |
+|             | N(100,255) |       | N(100,254) |            |
+|             +------------+       +------------+            |
+|             | F:Inner Pkt|       | F:Inner Pkt|            |
+|             +------------+       +------------+            |
+|                                                            |
++------------------------------------------------------------+
+</artwork>
+      </figure>
+      <t indent="0" pn="section-3-6">次に<xref target="figure_2" format="default" sectionFormat="of" derivedContent="Figure 2"/>を参照すると、DC1-GW1はNSHで伝達された情報を使用して検索を行い、その結果&lt;next-hop: DC2-GW1, encapsulation: SR&gt;が得られます。
+      SRのカプセル化は、SR-MPLSまたはSRv6のいずれかであり、DC間ネットワークを越えてDC2にパケットを転送するためのSRセグメントリストを持っています。
+      </t>
+      <figure anchor="figure_2" align="left" suppress-title="false" pn="figure-2">
+        <name slugifiedName="name-sr-for-inter-dc-sfc-part-2">DC間SFCのためのSR - パート2</name>
+        <artwork name="" type="" align="left" alt="" pn="section-3-7.1">
+                  +----------- Inter DC ----------------+
+           (4)    |                (5)                  |
++------+  ----&gt;   | +---------+   ----&gt;     +---------+ |
+|      |   NSH    | |         |     SR      |         | |
++ SFF1 +----------|-+ DC1-GW1 +-------------+ DC2-GW1 + |
+|      |          | |         |             |         | |
++------+          | +---------+             +---------+ |
+                  |                                     |
+                  |          +------------+             |
+                  |          | S(DC2-GW1) |             |
+                  |          +------------+             |
+                  |          | N(100,254) |             |
+                  |          +------------+             |
+                  |          | F:Inner Pkt|             |
+                  |          +------------+             |
+                  +-------------------------------------+
+</artwork>
+      </figure>
+      <t indent="0" pn="section-3-8"><xref target="figure_3" format="default" sectionFormat="of" derivedContent="Figure 3"/>に示すように、パケットがDC2に到着すると、SRのカプセル化が取り除かれ、DC2-GW1はNSHで検索を行い、その結果ネクストホップとしてSFF2が得られます。
+      SFF2はパケットを受信すると、&lt;NSH: SPI 100, SI 254&gt;で検索を行い、パケットをSF2に転送することを決定します。
+      SF2は自身のサービスを適用し、SIを1減らして、パケットをSFF2に返します。
+      したがって、パケットがSF2から戻ってきたとき、SFF2は&lt;NSH: SPI 100, SI 253&gt;を持っています。
+      SFF2は&lt;NSH: SPI 100, SI 253&gt;で検索を行い、その結果、サービス機能チェインの終わりであることがわかります。
+      </t>
+      <figure anchor="figure_3" align="left" suppress-title="false" pn="figure-3">
+        <name slugifiedName="name-sr-for-inter-dc-sfc-part-3">DC間SFCのためのSR - パート3</name>
+        <artwork name="" type="" align="left" alt="" pn="section-3-9.1">
+                   +------------------------ DC2 ----------------------+ 
+                   |                         +-----+                   |
+                   |                         | SF2 |                   |
+                   |                         +--+--+                   |
+                   |                            |                      |
+                   |                            |                      |
+                   |        +------------+      |    +------------+    |
+                   |        | N(100,254) |      |    | N(100,253) |    |
+                   |        +------------+      |    +------------+    |
+                   |        | F:Inner Pkt|      |    | F:Inner Pkt|    |
+                   |        +------------+  ^   |  | +------------+    |
+                   |                    (7) |   |  | (8)               |
+                   |                        |   |  v                   |
+             (5)   |                 (6)        |     (9)              |
++---------+  ---&gt;  | +----------+   ----&gt;    +--+---+ ----&gt;            |
+|         |   SR   | |          |    NSH     |      |  IP              |
++ DC1-GW1 +--------|-+ DC2-GW1  +------------+ SFF2 |                  |
+|         |        | |          |            |      |                  |
++---------+        | +----------+            +------+                  |
+                   |                                                   |
+                   |           +------------+      +------------+      |
+                   |           | N(100,254) |      | F:Inner Pkt|      |
+                   |           +------------+      +------------+      |
+                   |           | F:Inner Pkt|                          |
+                   |           +------------+                          |
+                   +---------------------------------------------------+
+</artwork>
+      </figure>
+      <t indent="0" pn="section-3-10">この方式の利点を以下に挙げます。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-11">
+        <li pn="section-3-11.1">ネットワーク運用者は、サービスをエンドツーエンドでプロビジョニングしながら、NSHのカプセル化がトランスポートに依存しないという性質を活用できます。</li>
+        <li pn="section-3-11.2">ネットワーク運用者は、適切な場面でSRのトラフィックステアリング（トラフィックエンジニアリング）能力を活用できます。</li>
+        <li pn="section-3-11.3">NSHとSRの間で責任の分担と範囲が明確です。</li>
+      </ul>
+      <t indent="0" pn="section-3-12">このシナリオは、サービス機能チェインの複数のセグメントが複数のドメインにまたがって分散している場合や、SFF間でトラフィックエンジニアリングされたパス（たとえば、ストリクトな転送パス）が必要な場合に適用できることに注意してください。
+      さらに、上記の例は、SFF1とSFF2の間のエンドツーエンドのセグメントルーティングを使用して実装することもできることに注意してください。
+      （その場合、DC-GW1とDC-GW2はセグメントルーティングの命令に基づいてパケットを転送しており、転送のためにNSHヘッダーを参照することはありません。）
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-sr-based-sfc-with-the-integ">統合されたNSHサービスプレーンを用いたSRベースのSFC</name>
+      <t indent="0" pn="section-4-1">このシナリオでは、SFがNSHを認識できる（NSH-aware）ことを前提とします。
+      したがって、SFCを実現するためにSFCプロキシーを実装する必要はないはずです。
+      この操作は、SFF-SFF間のトランスポートを行うためにSR-MPLSまたはSRv6に依存し、SF間のサービスプレーンを提供するためにNSHに依存します。
+      これにより、SFCコンテキスト（たとえば、SPIによって参照されるサービスプレーンのパス）と関連するメタデータが維持されます。
+      </t>
+      <t indent="0" pn="section-4-2">サービス機能チェインが確立されると、そのチェインに関連付けられたパケットは、まずNSHを運びます。
+      このNSHは、SFCコンテキストを使用してエンドツーエンドのサービスプレーンを維持するために使用されます。
+      SFCコンテキストは、パケットをネクストホップのSFFに転送するためのSRセグメントリストを決定するために、SFFによって使用されます。
+      その後、パケットはSRヘッダーを使用してカプセル化され、通常のSRの操作に従ってSRドメイン内で転送されます。
+      </t>
+      <t indent="0" pn="section-4-3">SFFに接続されたSFにパケットを転送しなければならない場合、SFFはそのSFに関連付けられたセグメント識別子（Segment Identifier、SID）で検索を行います。
+      SR-MPLSの場合、これはPrefix-SID<xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>になります。
+      SRv6の場合、この文書で説明する振る舞いにはEND.NSHという名前が割り当てられており、IANAによるコードポイントの割り当てについては<xref target="NSHEPB" format="default" sectionFormat="of" derivedContent="Section 11.2"/>で説明します。
+      この検索の結果により、SFFはSFFとSFの間のネクストホップのコンテキスト（たとえば、SFFとSFの間でイーサネットのカプセル化が使用されている場合は、宛先のメディアアクセス制御（Media Access Control、MAC）アドレス）を取得できます。
+      さらに、SFFはパケットからSR情報を取り除き、そのSR情報を更新して、NSHのサービスパス識別子（SPI）と1減らしたサービスインデックス（SI）をインデックスとするキャッシュに保存します。
+      この保存されたSR情報は、SFから戻ってくるパケットをカプセル化して転送するために使用されます。
+      </t>
+      <t indent="0" pn="section-4-4">SRセグメントリストを記憶する振る舞いは、通常定義されているロジックの最後に行われます。
+      セグメントリストを再付加する振る舞いは、セグメントリストの次のエントリーにパケットを転送するSRの処理の前に行われます。
+      どちらの振る舞いについても、<xref target="sec-5" format="default" sectionFormat="of" derivedContent="Section 5"/>で詳しく説明します。
+      </t>
+      <t indent="0" pn="section-4-5">SFはパケットを受信すると、通常どおりに処理します。
+      SFが分類器と同じ場所に存在する場合、すでに処理されたパケットが再分類されることがあります。
+      SFはパケットをSFFに送り返します。
+      SFFはこのパケットを受信すると、NSHのSPIとSIをキャッシュへのインデックスとして使用してSR情報を取り出します。
+      次に、SFFは取り出したSRヘッダーをNSHヘッダーの上にプッシュし、セグメントリストの次のセグメントにパケットを転送します。
+      SFでの再分類によって、NSHのSPIとSIの一方または両方がSFFのキャッシュに存在しない値に変更された場合、SFFのキャッシュでの検索が失敗することがあります。
+      そのような場合、SFFはエラーを生成し、パケットを破棄しなければなりません。
+      </t>
+      <t indent="0" pn="section-4-6"><xref target="figure_4" format="default" sectionFormat="of" derivedContent="Figure 4"/>は、このシナリオの例を示しています。</t>
+      <figure anchor="figure_4" align="left" suppress-title="false" pn="figure-4">
+        <name slugifiedName="name-nsh-over-sr-for-sfc">SFCのためのSR上のNSH</name>
+        <artwork name="" type="" align="left" alt="" pn="section-4-7.1">
+                        +-----+                       +-----+
+                        | SF1 |                       | SF2 |
+                        +--+--+                       +--+--+
+                           |                             |
+                           |                             |
+             +-----------+ | +-----------+ +-----------+ | +-----------+
+             |N(100,255) | | |N(100,254) | |N(100,254) | | |N(100,253) |
+             +-----------+ | +-----------+ +-----------+ | +-----------+
+             |F:Inner Pkt| | |F:Inner Pkt| |F:Inner Pkt| | |F:Inner Pkt|
+             +-----------+ | +-----------+ +-----------+ | +-----------+
+                     (2) ^ | (3) |                 (5) ^ | (6) |
+                         | |     |                     | |     |
+                         | |     |                     | |     |
+                 (1)     | |     v      (4)            | |     v (7)
++------------+   ---&gt;    +-+----+      ----&gt;          +---+--+   --&gt;
+|            | NSHoverSR |      |    NSHoverSR        |      |    IP
+| Classifier +-----------+ SFF1 +---------------------+ SFF2 |
+|            |           |      |                     |      |
++------------+           +------+                     +------+
+
+             +------------+        +------------+        +------------+
+             |   S(SF1)   |        |   S(SF2)   |        | F:Inner Pkt|
+             +------------+        +------------+        +------------+
+             |   S(SFF2)  |        | N(100,254) |
+             +------------+        +------------+
+             |   S(SF2)   |        | F:Inner Pkt|
+             +------------+        +------------+
+             | N(100,255) |
+             +------------+
+             | F:Inner Pkt|
+             +------------+
+</artwork>
+      </figure>
+      <t indent="0" pn="section-4-8">この方式の利点には、次のものがあります。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4-9">
+        <li pn="section-4-9.1">SFベンダーにとって、統一された1つのSFCソリューションだけをサポートすればよいので経済的に合理的です。
+        SFはSRを認識しません。</li>
+        <li pn="section-4-9.2">再分類とSRプロキシーの必要性をなくすことで、SFF（つまり、SRルーター）を簡素化します。</li>
+        <li pn="section-4-9.3">SFF間を含め、転送の目的にもSRが使用されます。</li>
+        <li pn="section-4-9.4">SRを活用して、SFFにおけるNSHの転送状態をなくします。
+        これは、ストリクトまたはルーズなSFPが使用されるたびに当てはまります。</li>
+        <li pn="section-4-9.5">SR-MPLSベースのSFCとNSHベースのSFCがネットワークの異なる部分で独立したメカニズムとして展開された場合に必要となるような、相互接続（interworking）が必要ありません。</li>
+      </ul>
+    </section>
+    <section numbered="true" toc="include" anchor="sec-5" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-packet-processing-for-sr-ba">SRベースのSFCのパケット処理</name>
+      <t indent="0" pn="section-5-1">このセクションでは、End.NSHの振る舞い（SRv6）、Prefix-SIDの振る舞い（SR-MPLS）、およびNSHの処理ロジックについて説明します。</t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-sr-based-sfc-sr-mpls-packet">SRベースのSFC（SR-MPLS）のパケット処理</name>
+        <t indent="0" pn="section-5.1-1">SFFがSを宛先とするパケットを受信し、SがSFに関連付けられたローカルのPrefix-SIDである場合、SFFはパケットからSRセグメントリスト（ラベルスタック）を取り除き、そのSR情報を更新して、NSHのサービスパス識別子（SPI）と1減らしたサービスインデックス（SI）をインデックスとするキャッシュに保存します。
+        この保存されたSR情報は、SFから戻ってくるパケットを再カプセル化して転送するために使用されます。</t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-sr-based-sfc-srv6-packet-pr">SRベースのSFC（SRv6）のパケット処理</name>
+        <t indent="0" pn="section-5.2-1">このセクションでは、SRv6におけるEnd.NSHの振る舞いとNSHの処理ロジックについて説明します。
+        疑似コードを以下に示します。</t>
+        <t indent="0" pn="section-5.2-2">NがSを宛先とするパケットを受信し、SがローカルのEnd.NSH SIDである場合、S15行目までの処理は<xref target="RFC8754" sectionFormat="comma" section="4.3.1.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8754#section-4.3.1.1" derivedContent="RFC8754"/>で規定されているものと同じです。</t>
+        <t indent="0" pn="section-5.2-3">S15の後、SがローカルのEnd.NSH SIDである場合は、次のようにします。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-5.2-4">
+S15.1.         Remove and store IPv6 and SRH headers in local cache
+               indexed by &lt;NSH: service-path-id, service-index -1&gt;
+S15.2.         Submit the packet to the NSH FIB lookup and transmit
+               to the destination associated with &lt;NSH:
+               service-path-id, service-index&gt;
+</sourcecode>
+        <aside pn="section-5.2-5">
+          <t indent="0" pn="section-5.2-5.1">注：End.NSHの振る舞いは、<xref target="RFC8754" sectionFormat="comma" section="4.3.1.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8754#section-4.3.1.1" derivedContent="RFC8754"/>で説明されている通常のSRHパケット処理を中断し、この時点ではS16に進みません。</t>
+        </aside>
+        <t indent="0" pn="section-5.2-6">パケットがSFからSFFに戻されたときは、NSHヘッダーの&lt;NSH: service-path-id, service-index&gt;に基づいて、キャッシュされたIPv6ヘッダーとSRHを再付加します。
+          その後、<xref target="RFC8754" sectionFormat="comma" section="4.3.1.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8754#section-4.3.1.1" derivedContent="RFC8754"/>のS16行目から処理を再開します。</t>
+      </section>
+    </section>
+    <section anchor="Encapsulation" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-encapsulation">カプセル化</name>
+      <t indent="0" pn="section-6-1">
+				
+      </t>
+      <section anchor="MPLS-SR" numbered="true" toc="include" removeInRFC="false" pn="section-6.1">
+        <name slugifiedName="name-nsh-using-sr-mpls-transport">SR-MPLSトランスポートを使用するNSH</name>
+        <t indent="0" pn="section-6.1-1">SR-MPLSはセグメント識別子（SID）をMPLSラベルとしてインスタンス化します。
+        したがって、セグメントルーティングヘッダーはMPLSラベルのスタックです。
+        </t>
+        <t indent="0" pn="section-6.1-2">SR-MPLSトランスポート内でNSHを運ぶ場合、カプセル化ヘッダー全体は<xref target="figure_5" format="default" sectionFormat="of" derivedContent="Figure 5"/>に示すとおりです。
+        </t>
+        <figure anchor="figure_5" align="left" suppress-title="false" pn="figure-5">
+          <name slugifiedName="name-nsh-using-sr-mpls-transport-2">SR-MPLSトランスポートを使用するNSH</name>
+          <artwork name="" type="" align="left" alt="" pn="section-6.1-3.1">
+		       +------------------+
+		       ~   SR-MPLS Labels ~
+		       +------------------+
+		       |   NSH Base Hdr   |
+		       +------------------+
+		       | Service Path Hdr |
+		       +------------------+
+		       ~     Metadata     ~
+		       +------------------+
+</artwork>
+        </figure>
+        <t indent="0" pn="section-6.1-4"><xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>で説明されているように、「IGP-PrefixセグメントのためのIGPシグナリング拡張には、プレフィックスが接続されているノードに直接接続された近隣が、SIDを処理する際にNEXT操作とCONTINUE操作のどちらを実行すべきかを示すフラグが含まれます」。
+        NSHがSR-MPLSの下で運ばれる場合、SR-MPLSラベルスタックの末端（tail-end）ノードでNSHベースのSFCを終端する必要があります。
+        これは、NEXT操作またはCONTINUE操作のいずれかを使用して実現できます。
+        </t>
+        <t indent="0" pn="section-6.1-5">NEXT操作を使用する場合は、<xref target="RFC8596" format="default" sectionFormat="of" derivedContent="RFC8596"/>で説明されているように、SR-MPLSパスの終端において、NSHがSR-MPLSラベルスタックの後に続くことを末端に示す必要があります。
+        </t>
+        <t indent="0" pn="section-6.1-6">CONTINUE操作を使用する場合、これはMPLSの最終ホップでのポップ（Ultimate Hop Popping、UHP）と同等です。
+        したがって、最後から2番目のホップのノードがSR-MPLSラベルスタックの最上位のラベルをポップし、その結果、誤ったSFFにNSHをさらしてしまうことがないようにする必要があります。
+        これは、Prefix-SIDサブTLV<xref target="RFC8667" format="default" sectionFormat="of" derivedContent="RFC8667"/> <xref target="RFC8665" format="default" sectionFormat="of" derivedContent="RFC8665"/>のNo Penultimate Hop Popping（No-PHP）フラグを設定することで実現されます。
+        この目的のためにSFCアプリケーションが使用する特定のPrefix-SIDを各ノードで割り当てることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+        </t>
+      </section>
+      <section anchor="SRv6" numbered="true" toc="include" removeInRFC="false" pn="section-6.2">
+        <name slugifiedName="name-nsh-using-srv6-transport">SRv6トランスポートを使用するNSH</name>
+        <t indent="0" pn="section-6.2-1">SRv6トランスポート内でNSHを運ぶ場合、カプセル化全体は<xref target="figure_6" format="default" sectionFormat="of" derivedContent="Figure 6"/>に示すとおりです。
+        </t>
+        <figure anchor="figure_6" align="left" suppress-title="false" pn="figure-6">
+          <name slugifiedName="name-nsh-using-srv6-transport-2">SRv6トランスポートを使用するNSH</name>
+          <artwork name="" type="" align="left" alt="" pn="section-6.2-2.1">
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Next Header   |  Hdr Ext Len  | Routing Type  | Segments Left |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Last Entry   |     Flags     |              Tag              | S
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ e
+|                                                               | g
+|            Segment List[0] (128-bit IPv6 address)             | m
+|                                                               | e
+|                                                               | n
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ t
+|                                                               |
+|                                                               | R
+~                              ...                              ~ o
+|                                                               | u
+|                                                               | t
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ i
+|                                                               | n
+|            Segment List[n] (128-bit IPv6 address)             | g
+|                                                               |
+|                                                               | S
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ R
+//                                                             // H
+//         Optional Type Length Value objects (variable)       //
+//                                                             //
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Ver|O|U|    TTL    |   Length  |U|U|U|U|MD Type| Next Protocol |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ N
+|          Service Path Identifier              | Service Index | S
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ H
+|                                                               |
+~              Variable-Length Context Headers  (opt.)          ~
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</artwork>
+        </figure>
+        <t indent="0" pn="section-6.2-3">SRv6の後にNSHがカプセル化されていることは、SRHのNext HeaderにおけるNSHのIPプロトコル番号によって示されます。</t>
+      </section>
+    </section>
+    <section anchor="Security" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">SFC関連の一般的なセキュリティーに関する考慮事項については、<xref target="RFC7665" format="default" sectionFormat="of" derivedContent="RFC7665"/>で議論されています。</t>
+      <t indent="0" pn="section-7-2">NSH固有のセキュリティーに関する考慮事項については、<xref target="RFC8300" format="default" sectionFormat="of" derivedContent="RFC8300"/>で議論されています。</t>
+      <t indent="0" pn="section-7-3">セグメントルーティングに関連する一般的なセキュリティーに関する考慮事項については、<xref target="RFC8754" sectionFormat="of" section="7" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8754#section-7" derivedContent="RFC8754"/>と<xref target="RFC8663" sectionFormat="of" section="5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8663#section-5" derivedContent="RFC8663"/>で議論されています。
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-backwards-compatibility">後方互換性</name>
+      <t indent="0" pn="section-8-1">SRv6/IPv6の場合、処理ノードがNSHを認識しないときは、<xref target="RFC8200" sectionFormat="of" section="4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8200#section-4" derivedContent="RFC8200"/>で説明されている手順に従うべきです。
+      SR-MPLSの場合、処理ノードがNSHを認識しないときは、<xref target="RFC3031" sectionFormat="of" section="3.18" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3031#section-3.18" derivedContent="RFC3031"/>で定められている手順に従うべきです。
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-9">
+      <name slugifiedName="name-caching-considerations">キャッシュに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">キャッシュのメカニズムは、実装によって決定される適切な時点で、キャッシュされたエントリーを削除しなければなりません。
+      さらに、実装は、ネットワーク運用者がその時間の値を設定できるように<bcp14>してもよいです（MAY）</bcp14>。
+      SFから到着したパケットに一致するキャッシュされたエントリーがない場合、SFFはこのイベントをログに記録<bcp14>すべきです（SHOULD）</bcp14>。
+      また、その場合、SFFはパケットを破棄<bcp14>しなければなりません（MUST）</bcp14>。</t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-10">
+      <name slugifiedName="name-mtu-considerations">MTUに関する考慮事項</name>
+      <t indent="0" pn="section-10-1"><xref target="RFC8300" sectionFormat="of" section="5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8300#section-5" derivedContent="RFC8300"/>および<xref target="RFC8754" sectionFormat="of" section="5.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8754#section-5.3" derivedContent="RFC8754"/>と整合させ、SR/NSHトラフィックがSRドメイン内で断片化されずに転送されるように、ネットワーク運用者が下位のMTUを増やすことが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      </t>
+    </section>
+    <section anchor="IANA" numbered="true" toc="include" removeInRFC="false" pn="section-11">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="NSHPROTO" numbered="true" toc="include" removeInRFC="false" pn="section-11.1">
+        <name slugifiedName="name-protocol-number-for-the-nsh">NSHのプロトコル番号</name>
+        <t indent="0" pn="section-11.1-1">IANAは、「Assigned Internet Protocol Numbers」レジストリー<eref target="https://www.iana.org/assignments/protocol-numbers/" brackets="angle"/>において、NSH<xref target="RFC8300" format="default" sectionFormat="of" derivedContent="RFC8300"/>にプロトコル番号145を割り当てました。</t>
+        <table anchor="iana-1" align="center" pn="table-1">
+          <name slugifiedName="name-assigned-internet-protocol-">「Assigned Internet Protocol Numbers」レジストリー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">10進数</th>
+              <th align="left" colspan="1" rowspan="1">キーワード</th>
+              <th align="left" colspan="1" rowspan="1">プロトコル</th>
+              <th align="left" colspan="1" rowspan="1">IPv6拡張ヘッダー</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">145</td>
+              <td align="left" colspan="1" rowspan="1">NSH</td>
+              <td align="left" colspan="1" rowspan="1">Network Service Header</td>
+              <td align="left" colspan="1" rowspan="1">N</td>
+              <td align="left" colspan="1" rowspan="1">RFC 9491</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="NSHEPB" numbered="true" toc="include" removeInRFC="false" pn="section-11.2">
+        <name slugifiedName="name-srv6-endpoint-behavior-for-">NSHのためのSRv6エンドポイントの振る舞い</name>
+        <t indent="0" pn="section-11.2-1">IANAは、「Segment Routing」レジストリーの下にある「SRv6 Endpoint Behaviors」サブレジストリーにおいて、次の値を割り当てました。</t>
+        <table anchor="iana-2" align="center" pn="table-2">
+          <name slugifiedName="name-srv6-endpoint-behaviors-sub">「SRv6 Endpoint Behaviors」サブレジストリー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">値</th>
+              <th align="left" colspan="1" rowspan="1">16進数</th>
+              <th align="left" colspan="1" rowspan="1">エンドポイントの振る舞い</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+              <th align="left" colspan="1" rowspan="1">変更管理者</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">84</td>
+              <td align="left" colspan="1" rowspan="1">0x0054</td>
+              <td align="left" colspan="1" rowspan="1">End.NSH - NSH Segment</td>
+              <td align="left" colspan="1" rowspan="1">RFC 9491</td>
+              <td align="left" colspan="1" rowspan="1">IETF</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.ietf-spring-sr-service-programming" to="SERVICE-PROGRAMMING"/>
+    <references pn="section-12">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-12.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification. These words are often capitalized. This document defines these words as they should be interpreted in IETF documents. This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3031" target="https://www.rfc-editor.org/info/rfc3031" quoteTitle="true" derivedAnchor="RFC3031">
+          <front>
+            <title>Multiprotocol Label Switching Architecture</title>
+            <author fullname="E. Rosen" initials="E." surname="Rosen"/>
+            <author fullname="A. Viswanathan" initials="A." surname="Viswanathan"/>
+            <author fullname="R. Callon" initials="R." surname="Callon"/>
+            <date month="January" year="2001"/>
+            <abstract>
+              <t indent="0">This document specifies the architecture for Multiprotocol Label Switching (MPLS). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3031"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3031"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications. This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8200" target="https://www.rfc-editor.org/info/rfc8200" quoteTitle="true" derivedAnchor="RFC8200">
+          <front>
+            <title>Internet Protocol, Version 6 (IPv6) Specification</title>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <author fullname="R. Hinden" initials="R." surname="Hinden"/>
+            <date month="July" year="2017"/>
+            <abstract>
+              <t indent="0">This document specifies version 6 of the Internet Protocol (IPv6). It obsoletes RFC 2460.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="86"/>
+          <seriesInfo name="RFC" value="8200"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8200"/>
+        </reference>
+        <reference anchor="RFC8300" target="https://www.rfc-editor.org/info/rfc8300" quoteTitle="true" derivedAnchor="RFC8300">
+          <front>
+            <title>Network Service Header (NSH)</title>
+            <author fullname="P. Quinn" initials="P." role="editor" surname="Quinn"/>
+            <author fullname="U. Elzur" initials="U." role="editor" surname="Elzur"/>
+            <author fullname="C. Pignataro" initials="C." role="editor" surname="Pignataro"/>
+            <date month="January" year="2018"/>
+            <abstract>
+              <t indent="0">This document describes a Network Service Header (NSH) imposed on packets or frames to realize Service Function Paths (SFPs). The NSH also provides a mechanism for metadata exchange along the instantiated service paths. The NSH is the Service Function Chaining (SFC) encapsulation required to support the SFC architecture (defined in RFC 7665).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8300"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8300"/>
+        </reference>
+        <reference anchor="RFC8402" target="https://www.rfc-editor.org/info/rfc8402" quoteTitle="true" derivedAnchor="RFC8402">
+          <front>
+            <title>Segment Routing Architecture</title>
+            <author fullname="C. Filsfils" initials="C." role="editor" surname="Filsfils"/>
+            <author fullname="S. Previdi" initials="S." role="editor" surname="Previdi"/>
+            <author fullname="L. Ginsberg" initials="L." surname="Ginsberg"/>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+            <author fullname="R. Shakir" initials="R." surname="Shakir"/>
+            <date month="July" year="2018"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) leverages the source routing paradigm. A node steers a packet through an ordered list of instructions, called "segments". A segment can represent any instruction, topological or service based. A segment can have a semantic local to an SR node or global within an SR domain. SR provides a mechanism that allows a flow to be restricted to a specific topological path, while maintaining per-flow state only at the ingress node(s) to the SR domain.</t>
+              <t indent="0">SR can be directly applied to the MPLS architecture with no change to the forwarding plane. A segment is encoded as an MPLS label. An ordered list of segments is encoded as a stack of labels. The segment to process is on the top of the stack. Upon completion of a segment, the related label is popped from the stack.</t>
+              <t indent="0">SR can be applied to the IPv6 architecture, with a new type of routing header. A segment is encoded as an IPv6 address. An ordered list of segments is encoded as an ordered list of IPv6 addresses in the routing header. The active segment is indicated by the Destination Address (DA) of the packet. The next active segment is indicated by a pointer in the new routing header.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8402"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8402"/>
+        </reference>
+        <reference anchor="RFC8660" target="https://www.rfc-editor.org/info/rfc8660" quoteTitle="true" derivedAnchor="RFC8660">
+          <front>
+            <title>Segment Routing with the MPLS Data Plane</title>
+            <author fullname="A. Bashandy" initials="A." role="editor" surname="Bashandy"/>
+            <author fullname="C. Filsfils" initials="C." role="editor" surname="Filsfils"/>
+            <author fullname="S. Previdi" initials="S." surname="Previdi"/>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+            <author fullname="R. Shakir" initials="R." surname="Shakir"/>
+            <date month="December" year="2019"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) leverages the source-routing paradigm. A node steers a packet through a controlled set of instructions, called segments, by prepending the packet with an SR header. In the MPLS data plane, the SR header is instantiated through a label stack. This document specifies the forwarding behavior to allow instantiating SR over the MPLS data plane (SR-MPLS).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8660"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8660"/>
+        </reference>
+        <reference anchor="RFC8663" target="https://www.rfc-editor.org/info/rfc8663" quoteTitle="true" derivedAnchor="RFC8663">
+          <front>
+            <title>MPLS Segment Routing over IP</title>
+            <author fullname="X. Xu" initials="X." surname="Xu"/>
+            <author fullname="S. Bryant" initials="S." surname="Bryant"/>
+            <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+            <author fullname="S. Hassan" initials="S." surname="Hassan"/>
+            <author fullname="W. Henderickx" initials="W." surname="Henderickx"/>
+            <author fullname="Z. Li" initials="Z." surname="Li"/>
+            <date month="December" year="2019"/>
+            <abstract>
+              <t indent="0">MPLS Segment Routing (SR-MPLS) is a method of source routing a packet through an MPLS data plane by imposing a stack of MPLS labels on the packet to specify the path together with any packet-specific instructions to be executed on it. SR-MPLS can be leveraged to realize a source-routing mechanism across MPLS, IPv4, and IPv6 data planes by using an MPLS label stack as a source-routing instruction set while making no changes to SR-MPLS specifications and interworking with SR-MPLS implementations.</t>
+              <t indent="0">This document describes how SR-MPLS-capable routers and IP-only routers can seamlessly coexist and interoperate through the use of SR-MPLS label stacks and IP encapsulation/tunneling such as MPLS-over-UDP as defined in RFC 7510.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8663"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8663"/>
+        </reference>
+        <reference anchor="RFC8665" target="https://www.rfc-editor.org/info/rfc8665" quoteTitle="true" derivedAnchor="RFC8665">
+          <front>
+            <title>OSPF Extensions for Segment Routing</title>
+            <author fullname="P. Psenak" initials="P." role="editor" surname="Psenak"/>
+            <author fullname="S. Previdi" initials="S." role="editor" surname="Previdi"/>
+            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
+            <author fullname="H. Gredler" initials="H." surname="Gredler"/>
+            <author fullname="R. Shakir" initials="R." surname="Shakir"/>
+            <author fullname="W. Henderickx" initials="W." surname="Henderickx"/>
+            <author fullname="J. Tantsura" initials="J." surname="Tantsura"/>
+            <date month="December" year="2019"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) allows a flexible definition of end-to-end paths within IGP topologies by encoding paths as sequences of topological subpaths called "segments". These segments are advertised by the link-state routing protocols (IS-IS and OSPF).</t>
+              <t indent="0">This document describes the OSPFv2 extensions required for Segment Routing.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8665"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8665"/>
+        </reference>
+        <reference anchor="RFC8667" target="https://www.rfc-editor.org/info/rfc8667" quoteTitle="true" derivedAnchor="RFC8667">
+          <front>
+            <title>IS-IS Extensions for Segment Routing</title>
+            <author fullname="S. Previdi" initials="S." role="editor" surname="Previdi"/>
+            <author fullname="L. Ginsberg" initials="L." role="editor" surname="Ginsberg"/>
+            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
+            <author fullname="A. Bashandy" initials="A." surname="Bashandy"/>
+            <author fullname="H. Gredler" initials="H." surname="Gredler"/>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <date month="December" year="2019"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) allows for a flexible definition of end-to-end paths within IGP topologies by encoding paths as sequences of topological sub-paths, called "segments". These segments are advertised by the link-state routing protocols (IS-IS and OSPF).</t>
+              <t indent="0">This document describes the IS-IS extensions that need to be introduced for Segment Routing operating on an MPLS data plane.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8667"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8667"/>
+        </reference>
+        <reference anchor="RFC8754" target="https://www.rfc-editor.org/info/rfc8754" quoteTitle="true" derivedAnchor="RFC8754">
+          <front>
+            <title>IPv6 Segment Routing Header (SRH)</title>
+            <author fullname="C. Filsfils" initials="C." role="editor" surname="Filsfils"/>
+            <author fullname="D. Dukes" initials="D." role="editor" surname="Dukes"/>
+            <author fullname="S. Previdi" initials="S." surname="Previdi"/>
+            <author fullname="J. Leddy" initials="J." surname="Leddy"/>
+            <author fullname="S. Matsushima" initials="S." surname="Matsushima"/>
+            <author fullname="D. Voyer" initials="D." surname="Voyer"/>
+            <date month="March" year="2020"/>
+            <abstract>
+              <t indent="0">Segment Routing can be applied to the IPv6 data plane using a new type of Routing Extension Header called the Segment Routing Header (SRH). This document describes the SRH and how it is used by nodes that are Segment Routing (SR) capable.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8754"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8754"/>
+        </reference>
+      </references>
+      <references pn="section-12.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC7498" target="https://www.rfc-editor.org/info/rfc7498" quoteTitle="true" derivedAnchor="RFC7498">
+          <front>
+            <title>Problem Statement for Service Function Chaining</title>
+            <author fullname="P. Quinn" initials="P." role="editor" surname="Quinn"/>
+            <author fullname="T. Nadeau" initials="T." role="editor" surname="Nadeau"/>
+            <date month="April" year="2015"/>
+            <abstract>
+              <t indent="0">This document provides an overview of the issues associated with the deployment of service functions (such as firewalls, load balancers, etc.) in large-scale environments. The term "service function chaining" is used to describe the definition and instantiation of an ordered list of instances of such service functions, and the subsequent "steering" of traffic flows through those service functions.</t>
+              <t indent="0">The set of enabled service function chains reflects operator service offerings and is designed in conjunction with application delivery and service and network policy.</t>
+              <t indent="0">This document also identifies several key areas that the Service Function Chaining (SFC) working group will investigate to guide its architectural and protocol work and associated documents.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7498"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7498"/>
+        </reference>
+        <reference anchor="RFC7665" target="https://www.rfc-editor.org/info/rfc7665" quoteTitle="true" derivedAnchor="RFC7665">
+          <front>
+            <title>Service Function Chaining (SFC) Architecture</title>
+            <author fullname="J. Halpern" initials="J." role="editor" surname="Halpern"/>
+            <author fullname="C. Pignataro" initials="C." role="editor" surname="Pignataro"/>
+            <date month="October" year="2015"/>
+            <abstract>
+              <t indent="0">This document describes an architecture for the specification, creation, and ongoing maintenance of Service Function Chains (SFCs) in a network. It includes architectural concepts, principles, and components used in the construction of composite services through deployment of SFCs, with a focus on those to be standardized in the IETF. This document does not propose solutions, protocols, or extensions to existing protocols.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7665"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7665"/>
+        </reference>
+        <reference anchor="RFC8596" target="https://www.rfc-editor.org/info/rfc8596" quoteTitle="true" derivedAnchor="RFC8596">
+          <front>
+            <title>MPLS Transport Encapsulation for the Service Function Chaining (SFC) Network Service Header (NSH)</title>
+            <author fullname="A. Malis" initials="A." surname="Malis"/>
+            <author fullname="S. Bryant" initials="S." surname="Bryant"/>
+            <author fullname="J. Halpern" initials="J." surname="Halpern"/>
+            <author fullname="W. Henderickx" initials="W." surname="Henderickx"/>
+            <date month="June" year="2019"/>
+            <abstract>
+              <t indent="0">This document describes how to use a Service Function Forwarder (SFF) Label (similar to a pseudowire label or VPN label) to indicate the presence of a Service Function Chaining (SFC) Network Service Header (NSH) between an MPLS label stack and the packet original packet/ frame. This allows SFC packets using the NSH to be forwarded between SFFs over an MPLS network, and to select one of multiple SFFs in the destination MPLS node.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8596"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8596"/>
+        </reference>
+        <reference anchor="I-D.ietf-spring-sr-service-programming" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-spring-sr-service-programming-08" derivedAnchor="SERVICE-PROGRAMMING">
+          <front>
+            <title>Service Programming with Segment Routing</title>
+            <author fullname="Francois Clad" initials="F." surname="Clad" role="editor">
+              <organization showOnFrontPage="true">Cisco Systems, Inc.</organization>
+            </author>
+            <author fullname="Xiaohu Xu" initials="X." surname="Xu" role="editor">
+              <organization showOnFrontPage="true">China Mobile</organization>
+            </author>
+            <author fullname="Clarence Filsfils" initials="C." surname="Filsfils">
+              <organization showOnFrontPage="true">Cisco Systems, Inc.</organization>
+            </author>
+            <author fullname="Daniel Bernier" initials="D." surname="Bernier">
+              <organization showOnFrontPage="true">Bell Canada</organization>
+            </author>
+            <author fullname="Cheng Li" initials="C." surname="Li">
+              <organization showOnFrontPage="true">Huawei</organization>
+            </author>
+            <author fullname="Bruno Decraene" initials="B." surname="Decraene">
+              <organization showOnFrontPage="true">Orange</organization>
+            </author>
+            <author fullname="Shaowen Ma" initials="S." surname="Ma">
+              <organization showOnFrontPage="true">Mellanox</organization>
+            </author>
+            <author fullname="Chaitanya Yadlapalli" initials="C." surname="Yadlapalli">
+              <organization showOnFrontPage="true">AT&amp;T</organization>
+            </author>
+            <author fullname="Wim Henderickx" initials="W." surname="Henderickx">
+              <organization showOnFrontPage="true">Nokia</organization>
+            </author>
+            <author fullname="Stefano Salsano" initials="S." surname="Salsano">
+              <organization showOnFrontPage="true">Universita di Roma "Tor Vergata"</organization>
+            </author>
+            <date day="21" month="August" year="2023"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-spring-sr-service-programming-08"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="Contributors" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <t indent="0" pn="section-appendix.a-1">以下の共著者は、この文書に貴重な意見とテキストを提供しました。</t>
+      <contact fullname="Mohamed Boucadair">
+        <organization showOnFrontPage="true">Orange</organization>
+        <address>
+          <email>mohamed.boucadair@orange.com</email>
+        </address>
+      </contact>
+      <contact fullname="Joel Halpern">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <email>joel.halpern@ericsson.com</email>
+        </address>
+      </contact>
+      <contact fullname="Syed Hassan">
+        <organization showOnFrontPage="true">Cisco System, inc.</organization>
+        <address>
+          <email>shassan@cisco.com</email>
+        </address>
+      </contact>
+      <contact fullname="Wim Henderickx">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <email>wim.henderickx@nokia.com</email>
+        </address>
+      </contact>
+      <contact fullname="Haoyu Song">
+        <organization showOnFrontPage="true">Futurewei Technologies</organization>
+        <address>
+          <email>haoyu.song@futurewei.com</email>
+        </address>
+      </contact>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="James N Guichard" initials="J" surname="Guichard" role="editor">
+        <organization showOnFrontPage="true">Futurewei Technologies</organization>
+        <address>
+          <postal>
+            <street>2330 Central Expressway</street>
+            <city>Santa Clara</city>
+            <region>CA</region>
+            <country>United States of America</country>
+          </postal>
+          <email>james.n.guichard@futurewei.com</email>
+        </address>
+      </author>
+      <author fullname="Jeff Tantsura" initials="J" surname="Tantsura" role="editor">
+        <organization showOnFrontPage="true">Nvidia</organization>
+        <address>
+          <postal>
+            <street/>
+            <city/>
+            <country>United States of America</country>
+          </postal>
+          <email>jefftant.ietf@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

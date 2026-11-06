@@ -1,0 +1,1125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-avtcore-cryptex-08" indexInclude="true" ipr="trust200902" number="9335" prepTime="2023-01-25T11:20:29" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" updates="3711" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-avtcore-cryptex-08" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9335" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Completely Encrypting RTP Header Extensions and CSRCs">RTPヘッダー拡張と寄与送信元の完全な暗号化</title>
+    <seriesInfo name="RFC" value="9335" stream="IETF"/>
+    <author initials="J." surname="Uberti" fullname="Justin Uberti">
+      <organization showOnFrontPage="true"/>
+      <address>
+        <email>justin@uberti.name</email>
+      </address>
+    </author>
+    <author initials="C." surname="Jennings" fullname="Cullen Jennings">
+      <organization showOnFrontPage="true">Cisco</organization>
+      <address>
+        <email>fluffy@iii.ca</email>
+      </address>
+    </author>
+    <author initials="S." surname="Garcia Murillo" fullname="Sergio Garcia Murillo">
+      <organization showOnFrontPage="true">Millicast</organization>
+      <address>
+        <email>sergio.garcia.murillo@cosmosoftware.io</email>
+      </address>
+    </author>
+    <date month="01" year="2023"/>
+    <area>ART</area>
+    <workgroup>AVTCORE</workgroup>
+    <keyword>SRTP</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">Secure Real-time Transport Protocol（SRTP）はメディアパケットの内容の機密性を提供しますが、RTPヘッダー拡張や寄与送信元（contributing source、CSRC）など、かなりの量のメタデータが保護されないまま残っています。
+しかし、多くのアプリケーションでは、このデータはある程度の機密性を持つことがあります。
+これまでにもこのデータを保護する試みはありましたが、複雑さと技術的な制約のために、展開は限られていました。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、SRTPの仕様であるRFC 3711を更新し、展開を容易にすることを目的として、ヘッダー拡張とCSRCを完全に暗号化し、より単純なSession Description Protocol（SDP）シグナリングを用いる新しいメカニズムとしてCryptexを定義します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9335" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2023 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-problem-statement">問題の記述</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-previous-solutions">従来の解決策</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.3.1"><xref derivedContent="1.3" format="counter" sectionFormat="of" target="section-1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-goals">目標</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design">設計</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sdp-considerations">SDPに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-header-processing">RTPヘッダーの処理</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sending">送信</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-receiving">受信</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encryption-and-decryption">暗号化と復号</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-packet-structure">パケット構造</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encryption-procedure">暗号化手順</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.3">
+                <t indent="0" pn="section-toc.1-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-decryption-procedure">復号手順</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-backward-compatibility">後方互換性</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-test-vectors">テストベクター</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="A.1" format="counter" sectionFormat="of" target="section-appendix.a.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-aes-ctr">AES-CTR</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2.1.2">
+                  <li pn="section-toc.1-1.11.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.1.1"><xref derivedContent="A.1.1" format="counter" sectionFormat="of" target="section-appendix.a.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-one-byte-he">1バイトヘッダー拡張を持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.2.1"><xref derivedContent="A.1.2" format="counter" sectionFormat="of" target="section-appendix.a.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-two-byte-he">2バイトヘッダー拡張を持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.3.1"><xref derivedContent="A.1.3" format="counter" sectionFormat="of" target="section-appendix.a.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-one-byte-hea">1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.1.2.4">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.4.1"><xref derivedContent="A.1.4" format="counter" sectionFormat="of" target="section-appendix.a.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-two-byte-hea">2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.1.2.5">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.5.1"><xref derivedContent="A.1.5" format="counter" sectionFormat="of" target="section-appendix.a.1.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-empty-one-b">空の1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.1.2.6">
+                    <t indent="0" pn="section-toc.1-1.11.2.1.2.6.1"><xref derivedContent="A.1.6" format="counter" sectionFormat="of" target="section-appendix.a.1.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-empty-two-b">空の2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="A.2" format="counter" sectionFormat="of" target="section-appendix.a.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-aes-gcm">AES-GCM</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2.2.2">
+                  <li pn="section-toc.1-1.11.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.1.1"><xref derivedContent="A.2.1" format="counter" sectionFormat="of" target="section-appendix.a.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-one-byte-head">1バイトヘッダー拡張を持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.2.1"><xref derivedContent="A.2.2" format="counter" sectionFormat="of" target="section-appendix.a.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-two-byte-head">2バイトヘッダー拡張を持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.3.1"><xref derivedContent="A.2.3" format="counter" sectionFormat="of" target="section-appendix.a.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-one-byte-heade">1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.4.1"><xref derivedContent="A.2.4" format="counter" sectionFormat="of" target="section-appendix.a.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-two-byte-heade">2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.5">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.5.1"><xref derivedContent="A.2.5" format="counter" sectionFormat="of" target="section-appendix.a.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-empty-one-by">空の1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.6">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.6.1"><xref derivedContent="A.2.6" format="counter" sectionFormat="of" target="section-appendix.a.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-packet-with-empty-two-by">空の2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <section anchor="problem-statement" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-problem-statement">問題の記述</name>
+        <t indent="0" pn="section-1.1-1">Secure Real-time Transport Protocol（SRTP）<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>のメカニズムは、RTPパケット全体のメッセージ認証を提供しますが、暗号化するのはRTPペイロードだけです。
+ヘッダーで運ばれる情報の多くは機密性が最小限であるため（たとえば、RTPタイムスタンプ）、これまでこれは問題になってきませんでした。
+加えて、特定のフィールドは鍵スケジューリングに使用されるため、平文のまま残す必要があります（たとえば、RTPの同期送信元（synchronization source、SSRC）やシーケンス番号）。</t>
+        <t indent="0" pn="section-1.1-2">しかし、<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>で述べられているように、RTPヘッダー拡張で運ばれる情報については、セキュリティー要件が異なることがあります。
+これには<xref target="RFC6464" format="default" sectionFormat="of" derivedContent="RFC6464"/>と<xref target="RFC6465" format="default" sectionFormat="of" derivedContent="RFC6465"/>で定義されているパケットごとの音声レベルが含まれ、これらのRFCの「セキュリティーに関する考慮事項」のセクションでは、とくに機密であると明記されています。</t>
+        <t indent="0" pn="section-1.1-3">ヘッダー拡張の内容に加えて、現在では実際に使用されているヘッダー拡張が十分に多くなったため、ヘッダー拡張識別子そのものが、エンドポイントやアプリケーションを特定するうえで意味のある情報を提供しうるようになっています。
+したがって、これらの識別子はフィンガープリントの問題とみなすことができます。</t>
+        <t indent="0" pn="section-1.1-4">最後に、RTPパケットに含まれるCSRCも機密である場合があり、ネットワーク上の盗聴者が、ほかの点では安全な電話会議において、誰がいつ話していたかを特定できてしまう可能性があります。</t>
+      </section>
+      <section anchor="previous-solutions" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-previous-solutions">従来の解決策</name>
+        <t indent="0" pn="section-1.2-1">SRTPにおけるヘッダー拡張の暗号化<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>は、ヘッダー拡張の値が保護されないという問題の解決策として2013年に提案されました。
+しかし、これはあまり採用されておらず、いくつかの技術的な欠点があります。</t>
+        <t indent="0" pn="section-1.2-2">第一に、このメカニズムは複雑です。
+拡張ごとに暗号化をネゴシエートできるため、かなりの量のシグナリングロジックが必要です。
+また、SRTP層では、選択されたヘッダー拡張の値だけを暗号化できるようにするために、やや複雑な変換が必要です。
+最も普及しているSRTP実装の1つには、この部分に重大なバグがあり、それが5年間も検出されませんでした。</t>
+        <t indent="0" pn="section-1.2-3">第二に、このメカニズムはヘッダー拡張の値だけを保護し、その識別子や長さは保護しません。
+また、CSRCも保護しません。
+上で述べたように、これでは機密である可能性のあるかなりの量の情報が露出したままになります。</t>
+        <t indent="0" pn="section-1.2-4">第三に、このメカニズムはヘッダー拡張の空間を肥大化させます。
+各拡張を暗号化されていない形式と暗号化された形式の両方で提示しなければならないため、2倍の数のヘッダー拡張を提示する必要があり、多くの場合、<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>で定義されている1バイト拡張ヘッダーを使用する場合の14拡張という上限を実装が超えてしまいます。
+したがって、多くの場合、実装は2バイトヘッダーを使用する必要がありますが、これは一部の既存実装では十分にサポートされていません。</t>
+        <t indent="0" pn="section-1.2-5">最後に、ヘッダー拡張の肥大化と後方互換性の必要性が組み合わさることで、ワイヤー上のオーバーヘッドが増加します。
+2バイト拡張ヘッダーは既存の実装でうまく扱われない可能性があるため、暗号化されていない（後方互換の）形式には1バイト拡張識別子を、暗号化された形式には2バイトのものを使用する必要があります。
+このため、ヘッダー拡張の暗号化<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>を展開すると、通常、現状と比べて各RTPパケットに複数バイトの余分なデータが加わることになります。</t>
+      </section>
+      <section anchor="goals" numbered="true" removeInRFC="false" toc="include" pn="section-1.3">
+        <name slugifiedName="name-goals">目標</name>
+        <t indent="0" pn="section-1.3-1">これまでの分析から、解決策に望まれる特性は次のとおりです。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-1.3-2">
+          <li pn="section-1.3-2.1">既存のSRTPフレームワーク<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>の上に構築されていること（理解しやすい）</li>
+          <li pn="section-1.3-2.2">既存のヘッダー拡張フレームワーク<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>の上に構築されていること（実装しやすい）</li>
+          <li pn="section-1.3-2.3">ヘッダー拡張の識別子、長さ、値の保護</li>
+          <li pn="section-1.3-2.4">CSRCが存在する場合はその保護</li>
+          <li pn="section-1.3-2.5">単純なシグナリング</li>
+          <li pn="section-1.3-2.6">単純な暗号変換とSRTPとの相互作用</li>
+          <li pn="section-1.3-2.7">必要に応じて、暗号化を行わないエンドポイントとの後方互換性</li>
+          <li pn="section-1.3-2.8">既存のRTPツールとの後方互換性</li>
+        </ul>
+        <t indent="0" pn="section-1.3-3">最後の点については、さらに議論する価値があります。
+RTPヘッダーのより多くの部分（たとえば、CSRCの数）を暗号化するほかの解決策も検討されましたが、それらの解決策では、生成されたパケットを現在のツールで解析できないことと、全般的に複雑さが増すことが、わずかな機密性の向上を上回りました。
+そのため、<xref target="problem-statement" format="default" sectionFormat="of" derivedContent="Section 1.1"/>で説明した問題を解決するために、より実用的なアプローチが採用されました。</t>
+      </section>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">
+    この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、ここに示すようにすべて大文字で表示される場合に限り、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>で説明されているように解釈されます。
+      </t>
+    </section>
+    <section anchor="design" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-design">設計</name>
+      <t indent="0" pn="section-3-1">この仕様は、すべてのRTPヘッダー拡張（ID、長さ、値）とCSRCの値の暗号化をネゴシエートするメカニズムを提案します。
+このメカニズムは既存のSRTPフレームワークを再利用するため、実装が単純であり、このメカニズムのサポートがネゴシエートされている場合でも、既存のRTPパケット解析コードと後方互換性があります。</t>
+      <t indent="0" pn="section-3-2">明示的に別段の記載がある場合を除き、Cryptexは<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>で説明されているフレームワークの手順、変換、考慮事項をすべて再利用します。</t>
+    </section>
+    <section anchor="sdp-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-sdp-considerations">SDPに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">Cryptexのサポートは、この仕様で定義する新しいSDP属性「a=cryptex」によって示されます。</t>
+      <t indent="0" pn="section-4-2">新しい「a=cryptex」属性は、<xref target="RFC8866" sectionFormat="of" section="5.13" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8866#section-5.13" derivedContent="RFC8866"/>で定義されているプロパティー属性です。
+したがって、この属性は値をとらず、セッションレベルでもメディアレベルでも使用できます。</t>
+      <t indent="0" pn="section-4-3">SDP内に（オファーとアンサーのどちらかで）「a=cryptex」属性が存在することは、そのエンドポイントが、後述するCryptexで暗号化されたRTPパケットを受信できることを示します。</t>
+      <t indent="0" pn="section-4-4">各ピアが、相手側がCryptexで暗号化されたRTPパケットの受信をサポートしていることを確認したら、送信者はパケットごとにCryptexメカニズムを使用するかどうかを一方的に決定できます。</t>
+      <t indent="0" pn="section-4-5"><xref target="RFC9143" format="default" sectionFormat="of" derivedContent="RFC9143"/>に従ってBUNDLEが使用されており、あるメディア行に「a=cryptex」属性が存在する場合、その属性は同じバンドルグループに属するRTPベースのすべての「m=」セクションに存在<bcp14>しなければなりません（MUST）</bcp14>。
+これにより、暗号化されたメディア識別子（Media Identifier、MID）ヘッダー拡張を処理できることが保証され、<xref target="RFC9143" sectionFormat="of" section="9.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9143#section-9.2" derivedContent="RFC9143"/>で規定されているように、RTPストリームを各BUNDLEグループ内の正しい「m=」セクションに関連付けられるようになります。
+BUNDLEとともに使用する場合、この属性はTRANSPORTカテゴリー<xref target="RFC8859" format="default" sectionFormat="of" derivedContent="RFC8859"/>に割り当てられます。</t>
+      <t indent="0" pn="section-4-6">どちらのエンドポイントも、<xref target="RFC3264" sectionFormat="of" section="8" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3264#section-8" derivedContent="RFC3264"/>で規定されているようにセッションを変更することで、Cryptexのサポート状況を変更できます。
+後続のSDPオファーとアンサーを生成する際には、「a=cryptex」属性を含めるために、最初のオファーとアンサーと同じ手順を使用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+    </section>
+    <section anchor="rtp-header-processing" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-rtp-header-processing">RTPヘッダーの処理</name>
+      <t indent="0" pn="section-5-1">RTPヘッダー拡張の汎用メカニズム<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>は、1バイトヘッダー拡張と2バイトヘッダー拡張を運ぶために、「defined by profile」フィールドに2つの値を定義しています。
+受信者が、受信したRTPパケットがこの仕様の暗号化方式を使用しているかどうかを判断できるようにするために、2つの新しい値を定義します。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5-2">
+        <li pn="section-5-2.1">0xC0DE：暗号化されたバージョンの1バイトヘッダー拡張用（0xBEDEの代わり）。</li>
+        <li pn="section-5-2.2">0xC2DE：暗号化されたバージョンの2バイトヘッダー拡張用（0x100の代わり）。</li>
+      </ul>
+      <t indent="0" pn="section-5-3">2バイトヘッダー拡張を使用する場合、値256の拡張識別子をネゴシエート<bcp14>してはなりません（MUST NOT）</bcp14>。
+この識別子の値は「defined by profile」フィールドの「appbits」に含めることを意図したものですが、上記の値を使用する場合、appbitsは利用できないためです。</t>
+      <t indent="0" pn="section-5-4"><xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>によれば、同じRTPパケット内で1バイトヘッダーと2バイトヘッダーを混在させることはできないことに注意してください。
+同じRTPストリーム上で1バイトヘッダーと2バイトヘッダーを混在させるには、<xref target="RFC8285" sectionFormat="of" section="6" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8285#section-6" derivedContent="RFC8285"/>で定義されている「extmap-allow-mixed」SDP属性のネゴシエーションが必要です。</t>
+      <t indent="0" pn="section-5-5">ピアは、<xref target="sdp-considerations" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明したSDPのオファー/アンサーによって、Cryptexと<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>で定義されているヘッダー拡張の暗号化メカニズムの両方をネゴシエート<bcp14>してもよいです（MAY）</bcp14>。
+両方のメカニズムがサポートされている場合、任意のパケットにどちらを使用してもかまいません。
+ただし、パケットをCryptexで暗号化する場合、そのパケットにヘッダー拡張の暗号化<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>を併用<bcp14>してはなりません（MUST NOT）</bcp14>。その逆も同様です。</t>
+      <t indent="0" pn="section-5-6"> SDPの交換において、一方のピアが、Cryptexと<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>に従って暗号化されたヘッダー拡張の両方を受信できることを広告している場合、もう一方のピアは、すべてのヘッダー拡張とCSRCが暗号化されるように、RTPパケットを送信する際に<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>のメカニズムではなくCryptexを使用することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+ただし、<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>のメカニズムを使用するやむを得ない理由がある場合（たとえば、RTPミドルボックスが処理できるように、一部のヘッダー拡張を平文で送信する必要がある場合）、もう一方のピアは代わりに<xref target="RFC6904" format="default" sectionFormat="of" derivedContent="RFC6904"/>のメカニズムを使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <section anchor="sending" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-sending">送信</name>
+        <t indent="0" pn="section-5.1-1">この仕様で定義するメカニズムがネゴシエートされている場合、CSRCを持つRTPパケット、またはヘッダー拡張<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>を含むRTPパケットの送信は、以下の手順に従います。
+このメカニズムを、<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>で説明されている種類以外のヘッダー拡張とともに使用<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+        <t indent="0" pn="section-5.1-2">RTPパケットが1バイトヘッダーを含む場合、暗号化が適用され、1バイトのフレーミングが使用されていることを示すために、16ビットのRTPヘッダー拡張タグを0xC0DEに設定<bcp14>しなければなりません（MUST）</bcp14>。
+RTPパケットが2バイトヘッダーを含む場合、暗号化が適用され、2バイトのフレーミングが使用されていることを示すために、ヘッダー拡張タグを0xC2DEに設定<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-5.1-3">パケットがCSRCを含むもののヘッダー拡張を含まない場合、0xC0DEタグとゼロに設定された16ビットの長さフィールドからなる空の拡張ブロック（<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>で明示的に許可されています）を付加<bcp14>しなければなりません（MUST）</bcp14>。
+また、拡張ブロックが存在することを示すために、Xビットを1に設定<bcp14>しなければなりません（MUST）</bcp14>。
+これは、パケット内のCSRCが暗号化されていることを受信者に示すために必要です。</t>
+        <t indent="0" pn="section-5.1-4">その後、RTPパケットを<xref target="encryption-procedure" format="default" sectionFormat="of" derivedContent="Section 6.2"/>（「暗号化手順」）で説明されているように暗号化<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="receiving" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-receiving">受信</name>
+        <t indent="0" pn="section-5.2-1">ヘッダー拡張を含むRTPパケットを受信した場合、ペイロードがこの仕様に従った形式であることを確認するために、「defined by profile」フィールドをチェック<bcp14>しなければなりません（MUST）</bcp14>。
+このフィールドが上で定義した値のいずれにも一致しない場合、実装は代わりに、その値を定義する仕様に従ってパケットを処理<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.2-2">あるいは、実装がこの仕様の使用を必須とみなしており、「defined by profile」フィールドが上で定義した値のいずれにも一致しない場合、実装はそのRTPパケットの処理を停止し、そのRTPストリームについてエラーを報告<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.2-3">RTPパケットがこのチェックに合格した場合、そのパケットは<xref target="decryption-procedure" format="default" sectionFormat="of" derivedContent="Section 6.3"/>（「復号手順」）で説明されているように復号され、パケットとその拡張を処理するために次の層に渡されます。
+上で示したように長さゼロの拡張ブロックが追加されている場合、それはそのまま残しておいてかまわず、通常どおり処理されます。</t>
+      </section>
+    </section>
+    <section anchor="encryption-and-decryption" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-encryption-and-decryption">暗号化と復号</name>
+      <section anchor="packet-structure" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-packet-structure">パケット構造</name>
+        <t indent="0" pn="section-6.1-1">このメカニズムが有効な場合、SRTPパケットは次のように保護されます。</t>
+        <figure anchor="srtp-packet" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-a-protected-srtp-packet">保護されたSRTPパケット</name>
+          <artwork align="center" pn="section-6.1-2.1">
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+&lt;+
+  |V=2|P|X|  CC   |M|     PT      |       sequence number         | |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |                           timestamp                           | |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |           synchronization source (SSRC) identifier            | |
++&gt;+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+ |
+| |            contributing source (CSRC) identifiers             | |
+| |                               ....                            | |
++&gt;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+X |  0xC0 or 0xC2 |    0xDE       |           length              | |
++&gt;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+| |                  RFC 8285 header extensions                   | |
+| +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+| |                          payload  ...                         | |
+| |                               +-------------------------------+ |
+| |                               | RTP padding   | RTP pad count | |
++&gt;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+&lt;+
+| ~          SRTP Master Key Identifier (MKI) (OPTIONAL)          ~ |
+| +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+| :                 authentication tag (RECOMMENDED)              : |
+| +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+|                                                                   |
++- Encrypted Portion                       Authenticated Portion ---+
+</artwork>
+        </figure>
+        <t indent="0" pn="section-6.1-3"><xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>が要求しているとおり、拡張ブロックの先頭の4バイトは暗号化されないことに注意してください。</t>
+        <t indent="0" pn="section-6.1-4">具体的には、暗号化部分（Encrypted Portion）には、すべてのCSRC識別子、すべてのRTPヘッダー拡張（最初の4バイトを除く）、RTPペイロードを含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="encryption-procedure" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-encryption-procedure">暗号化手順</name>
+        <t indent="0" pn="section-6.2-1">暗号化手順は、SRTPパケットの暗号化部分を除いて、<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>のものと同一です。
+暗号への平文入力は次のとおりです。</t>
+        <artwork align="left" pn="section-6.2-2">
+Plaintext = CSRC identifiers (if used) || header extension data || 
+     RTP payload || RTP padding (if used) || RTP pad count (if used)
+</artwork>
+        <t indent="0" pn="section-6.2-3">ここで「header extension data」は、RTP拡張フィールドの内容から最初の4バイト（拡張ヘッダー<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>）を除いたものを指します。
+暗号文の最初の<tt>4 * CSRC count (CC)</tt>バイトは、RTPヘッダーのCSRCフィールドに配置されます。
+暗号文の残りの部分は、暗号化されたパケットのRTPペイロードとなります。</t>
+        <t indent="0" pn="section-6.2-4">周辺のコードへの変更を最小限にするために、暗号化メカニズムは、<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>の「defined by profile」フィールドを、<xref target="rtp-header-processing" format="default" sectionFormat="of" derivedContent="Section 5"/>（「RTPヘッダーの処理」）で定義されている対応する値に置き換え、同時に暗号化することを選択できます。</t>
+        <t indent="0" pn="section-6.2-5">関連データ付き認証付き暗号（Authenticated Encryption with Associated Data、AEAD）の暗号（たとえば、AES-GCM）では、12バイトの固定ヘッダーと4バイトのヘッダー拡張ヘッダー（「defined by profile」フィールドと長さ）は、CSRCが存在する場合にはパケット内で連続していないにもかかわらず、追加認証データ（additional authenticated data、AAD）とみなされます。</t>
+        <artwork align="left" pn="section-6.2-6">
+Associated Data: fixed header || extension header (if X=1)
+</artwork>
+        <t indent="0" pn="section-6.2-7">ここで「fixed header」はRTPヘッダーの12バイトの固定部分を指し、「extension header」は4バイトの拡張ヘッダー<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>（「defined by profile」と拡張の長さ）を指します。</t>
+        <t indent="0" pn="section-6.2-8">実装は、拡張ヘッダーとCSRC識別子の順序を入れ替えることで、AADと平文が連続するようにパケットを並べ替え、<xref target="intermediate-packet" format="default" sectionFormat="of" derivedContent="Figure 2"/>に示す形式の中間表現を作ることができます。
+暗号化の後、（暗号化された）CSRCと拡張ヘッダーを元の位置に戻す必要があります。
+復号時にも同様の操作を行って、連続した暗号文とAADの入力を作ることができます。</t>
+        <figure anchor="intermediate-packet" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-an-rtp-packet-transformed-t">Cryptexの暗号入力を連続させるために変換されたRTPパケット</name>
+          <artwork align="center" pn="section-6.2-9.1">
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+&lt;+
+  |V=2|P|X|  CC   |M|     PT      |       sequence number         | |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |                           timestamp                           | |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |           synchronization source (SSRC) identifier            | |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+  |  0xC0 or 0xC2 |    0xDE       |           length              | |
++&gt;+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+&lt;+
+| |            contributing source (CSRC) identifiers             | |
+| |                               ....                            | |
+| +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+| |                  RFC 8285 header extensions                   | |
+| +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+| |                          payload  ...                         | |
+| |                               +-------------------------------+ |
+| |                               | RTP padding   | RTP pad count | |
++&gt;+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |
+|                                                                   |
++- Plaintext Input                                     AAD Input ---+
+</artwork>
+        </figure>
+        <t indent="0" pn="section-6.2-10">この中間表現は、実装のための参考として示しているだけであり、ワイヤー上で送信することを意図したものではないことに注意してください。</t>
+      </section>
+      <section anchor="decryption-procedure" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-decryption-procedure">復号手順</name>
+        <t indent="0" pn="section-6.3-1">復号手順は、SRTPパケットの暗号化部分を除いて、<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>のものと同一です。暗号化部分は上のセクションで示したとおりです。</t>
+        <t indent="0" pn="section-6.3-2">周辺のコードへの変更を最小限にするために、復号メカニズムは、「defined by profile」フィールドを<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>の暗号化なしの対応する値に置き換え、同時に復号することを選択できます。</t>
+      </section>
+    </section>
+    <section anchor="backwards-compatibility" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-backward-compatibility">後方互換性</name>
+      <t indent="0" pn="section-7-1">この仕様は、RTPv2パケットに特定の構造を期待するシステム（パケットヘッダーに基づいて逆多重化を行うシステムを含む）との後方互換性を妨げることなく、できるかぎり多くを暗号化しようとしています。
+したがって、RTPパケットの最初の2バイトは暗号化されません。</t>
+      <t indent="0" pn="section-7-2">この仕様はまた、RTPパケットのシーケンス番号とSSRC識別子に依存するSRTPの鍵スケジューリングを再利用しようとしています。
+したがって、これらの値も暗号化されません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1"><xref target="RFC3711" sectionFormat="of" section="9" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3711#section-9" derivedContent="RFC3711"/>のセキュリティーに関する考慮事項はすべてこの仕様に適用されます。
+ただし、セクション<xref target="RFC3711" sectionFormat="bare" section="9.4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3711#section-9.4" derivedContent="RFC3711"/>は例外です。RTPヘッダーの機密性こそがこの仕様の目的だからです。</t>
+      <t indent="0" pn="section-8-2"><xref target="RFC3711" sectionFormat="of" section="9.5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3711#section-9.5" derivedContent="RFC3711"/>で説明されている、SRTPで弱い認証やNULL認証を使用することのリスクは、暗号化されたヘッダー拡張にも同様に当てはまります。</t>
+      <t indent="0" pn="section-8-3">この仕様は、<xref target="packet-structure" format="default" sectionFormat="of" derivedContent="Section 6.1"/>（「パケット構造」）に示すように、RTPパケットの暗号化部分を拡大することでSRTPを拡張します。
+この仕様は、SRTPの認証の仕組みをまったく変更しません。
+以前よりもパケットの多くの部分が暗号化されることから、これは必然的に改善となります。</t>
+      <t indent="0" pn="section-8-4">暗号化されないまま残るRTPフィールド（理由は上記を参照）は次のとおりです。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-8-5">
+        <li pn="section-8-5.1">RTPバージョン</li>
+        <li pn="section-8-5.2">パディングビット</li>
+        <li pn="section-8-5.3">拡張ビット</li>
+        <li pn="section-8-5.4">CSRCの数</li>
+        <li pn="section-8-5.5">マーカービット</li>
+        <li pn="section-8-5.6">ペイロードタイプ</li>
+        <li pn="section-8-5.7">シーケンス番号</li>
+        <li pn="section-8-5.8">タイムスタンプ</li>
+        <li pn="section-8-5.9">SSRC識別子</li>
+        <li pn="section-8-5.10">ヘッダー拡張<xref target="RFC8285" format="default" sectionFormat="of" derivedContent="RFC8285"/>の数</li>
+      </ul>
+      <t indent="0" pn="section-8-6">これらの値は、固定された（つまり、拡張によって変更されることのない）一連の情報からなり、現時点では機密性が低いとみなされています。
+これらの値のいずれかを暗号化する必要がある場合、SRTPは使用すべきプロトコルではない可能性が高く、（パケットごとのオーバーヘッドを伴いますが）DTLSのような完全にカプセル化するプロトコルのほうが望ましいです。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">この文書は、「Session Description Protocol (SDP) Parameters」レジストリーの「attribute-name (formerly "att-field")」サブレジストリーを更新します（<xref target="RFC8866" sectionFormat="of" section="8.2.4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8866#section-8.2.4" derivedContent="RFC8866"/>を参照）。
+具体的には、メディアレベルとセッションレベルの両方で使用するSDP属性「a=cryptex」を追加します。</t>
+      <dl spacing="normal" indent="3" newline="false" pn="section-9-2">
+        <dt pn="section-9-2.1">連絡先の名前：</dt>
+        <dd pn="section-9-2.2">IETF AVTワーキンググループ、またはAVTワーキンググループが閉鎖されている場合はIESG</dd>
+        <dt pn="section-9-2.3">連絡先のメールアドレス：</dt>
+        <dd pn="section-9-2.4">avt@ietf.org</dd>
+        <dt pn="section-9-2.5">属性名：</dt>
+        <dd pn="section-9-2.6">cryptex</dd>
+        <dt pn="section-9-2.7">属性の構文：</dt>
+        <dd pn="section-9-2.8">この属性は値をとりません。</dd>
+        <dt pn="section-9-2.9">属性のセマンティクス：</dt>
+        <dd pn="section-9-2.10">該当なし</dd>
+        <dt pn="section-9-2.11">属性値：</dt>
+        <dd pn="section-9-2.12">該当なし</dd>
+        <dt pn="section-9-2.13">使用レベル：</dt>
+        <dd pn="section-9-2.14">session, media</dd>
+        <dt pn="section-9-2.15">文字セット依存：</dt>
+        <dd pn="section-9-2.16">いいえ</dd>
+        <dt pn="section-9-2.17">目的：</dt>
+        <dd pn="section-9-2.18">SDP内にこの属性が存在することは、そのエンドポイントが、この文書で説明されているCryptexで暗号化されたRTPパケットを受信できることを示します。</dd>
+        <dt pn="section-9-2.19">O/A手順：</dt>
+        <dd pn="section-9-2.20">SDPのO/A手順は、この文書のセクション<xref target="sdp-considerations" format="counter" sectionFormat="of" derivedContent="4"/>で説明されています。</dd>
+        <dt pn="section-9-2.21">多重化カテゴリー：</dt>
+        <dd pn="section-9-2.22">TRANSPORT</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized.  This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+          <format target="https://www.rfc-editor.org/info/rfc2119" type="TXT"/>
+        </reference>
+        <reference anchor="RFC3264" target="https://www.rfc-editor.org/info/rfc3264" quoteTitle="true" derivedAnchor="RFC3264">
+          <front>
+            <title>An Offer/Answer Model with Session Description Protocol (SDP)</title>
+            <author fullname="J. Rosenberg" initials="J." surname="Rosenberg"/>
+            <author fullname="H. Schulzrinne" initials="H." surname="Schulzrinne"/>
+            <date month="June" year="2002"/>
+            <abstract>
+              <t indent="0">This document defines a mechanism by which two entities can make use of the Session Description Protocol (SDP) to arrive at a common view of a multimedia session between them.  In the model, one participant offers the other a description of the desired session from their perspective, and the other participant answers with the desired session from their perspective.  This offer/answer model is most useful in unicast sessions where information from both participants is needed for the complete view of the session.  The offer/answer model is used by protocols like the Session Initiation Protocol (SIP). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3264"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3264"/>
+          <format target="https://www.rfc-editor.org/info/rfc3264" type="TXT"/>
+        </reference>
+        <reference anchor="RFC3550" target="https://www.rfc-editor.org/info/rfc3550" quoteTitle="true" derivedAnchor="RFC3550">
+          <front>
+            <title>RTP: A Transport Protocol for Real-Time Applications</title>
+            <author fullname="H. Schulzrinne" initials="H." surname="Schulzrinne"/>
+            <author fullname="S. Casner" initials="S." surname="Casner"/>
+            <author fullname="R. Frederick" initials="R." surname="Frederick"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <date month="July" year="2003"/>
+            <abstract>
+              <t indent="0">This memorandum describes RTP, the real-time transport protocol.  RTP provides end-to-end network transport functions suitable for applications transmitting real-time data, such as audio, video or simulation data, over multicast or unicast network services.  RTP does not address resource reservation and does not guarantee quality-of- service for real-time services.  The data transport is augmented by a control protocol (RTCP) to allow monitoring of the data delivery in a manner scalable to large multicast networks, and to provide minimal control and identification functionality.  RTP and RTCP are designed to be independent of the underlying transport and network layers.  The protocol supports the use of RTP-level translators and mixers.  Most of the text in this memorandum is identical to RFC 1889 which it obsoletes.  There are no changes in the packet formats on the wire, only changes to the rules and algorithms governing how the protocol is used.  The biggest change is an enhancement to the scalable timer algorithm for calculating when to send RTCP packets in order to minimize transmission in excess of the intended rate when many participants join a session simultaneously. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="64"/>
+          <seriesInfo name="RFC" value="3550"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3550"/>
+          <format target="https://www.rfc-editor.org/info/rfc3550" type="TXT"/>
+        </reference>
+        <reference anchor="RFC3711" target="https://www.rfc-editor.org/info/rfc3711" quoteTitle="true" derivedAnchor="RFC3711">
+          <front>
+            <title>The Secure Real-time Transport Protocol (SRTP)</title>
+            <author fullname="M. Baugher" initials="M." surname="Baugher"/>
+            <author fullname="D. McGrew" initials="D." surname="McGrew"/>
+            <author fullname="M. Naslund" initials="M." surname="Naslund"/>
+            <author fullname="E. Carrara" initials="E." surname="Carrara"/>
+            <author fullname="K. Norrman" initials="K." surname="Norrman"/>
+            <date month="March" year="2004"/>
+            <abstract>
+              <t indent="0">This document describes the Secure Real-time Transport Protocol (SRTP), a profile of the Real-time Transport Protocol (RTP), which can provide confidentiality, message authentication, and replay protection to the RTP traffic and to the control traffic for RTP, the Real-time Transport Control Protocol (RTCP). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3711"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3711"/>
+          <format target="https://www.rfc-editor.org/info/rfc3711" type="TXT"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+          <format target="https://www.rfc-editor.org/info/rfc8174" type="TXT"/>
+        </reference>
+        <reference anchor="RFC8285" target="https://www.rfc-editor.org/info/rfc8285" quoteTitle="true" derivedAnchor="RFC8285">
+          <front>
+            <title>A General Mechanism for RTP Header Extensions</title>
+            <author fullname="D. Singer" initials="D." surname="Singer"/>
+            <author fullname="H. Desineni" initials="H." surname="Desineni"/>
+            <author fullname="R. Even" initials="R." role="editor" surname="Even"/>
+            <date month="October" year="2017"/>
+            <abstract>
+              <t indent="0">This document provides a general mechanism to use the header extension feature of RTP (the Real-time Transport Protocol).  It provides the option to use a small number of small extensions in each RTP packet, where the universe of possible extensions is large and registration is decentralized.  The actual extensions in use in a session are signaled in the setup information for that session.  This document obsoletes RFC 5285.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8285"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8285"/>
+          <format target="https://www.rfc-editor.org/info/rfc8285" type="TXT"/>
+        </reference>
+        <reference anchor="RFC8859" target="https://www.rfc-editor.org/info/rfc8859" quoteTitle="true" derivedAnchor="RFC8859">
+          <front>
+            <title>A Framework for Session Description Protocol (SDP) Attributes When Multiplexing</title>
+            <author fullname="S. Nandakumar" initials="S." surname="Nandakumar"/>
+            <date month="January" year="2021"/>
+            <abstract>
+              <t indent="0">The purpose of this specification is to provide a framework for analyzing the multiplexing characteristics of Session Description Protocol (SDP) attributes when SDP is used to negotiate the usage of a single 5-tuple for sending and receiving media associated with multiple media descriptions.</t>
+              <t indent="0">This specification also categorizes the existing SDP attributes based on the framework described herein.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8859"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8859"/>
+          <format target="https://www.rfc-editor.org/info/rfc8859" type="TXT"/>
+        </reference>
+        <reference anchor="RFC8866" target="https://www.rfc-editor.org/info/rfc8866" quoteTitle="true" derivedAnchor="RFC8866">
+          <front>
+            <title>SDP: Session Description Protocol</title>
+            <author fullname="A. Begen" initials="A." surname="Begen"/>
+            <author fullname="P. Kyzivat" initials="P." surname="Kyzivat"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <date month="January" year="2021"/>
+            <abstract>
+              <t indent="0">This memo defines the Session Description Protocol (SDP).  SDP is intended for describing multimedia sessions for the purposes of session announcement, session invitation, and other forms of multimedia session initiation.  This document obsoletes RFC 4566.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8866"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8866"/>
+          <format target="https://www.rfc-editor.org/info/rfc8866" type="TXT"/>
+        </reference>
+        <reference anchor="RFC9143" target="https://www.rfc-editor.org/info/rfc9143" quoteTitle="true" derivedAnchor="RFC9143">
+          <front>
+            <title>Negotiating Media Multiplexing Using the Session Description Protocol (SDP)</title>
+            <author fullname="C. Holmberg" initials="C." surname="Holmberg"/>
+            <author fullname="H. Alvestrand" initials="H." surname="Alvestrand"/>
+            <author fullname="C. Jennings" initials="C." surname="Jennings"/>
+            <date month="February" year="2022"/>
+            <abstract>
+              <t indent="0">This specification defines a new Session Description Protocol (SDP) Grouping Framework extension called 'BUNDLE'. The extension can be used with the SDP offer/answer mechanism to negotiate the usage of a single transport (5-tuple) for sending and receiving media described by multiple SDP media descriptions ("m=" sections). Such transport is referred to as a "BUNDLE transport", and the media is referred to as "bundled media". The "m=" sections that use the BUNDLE transport form a BUNDLE group.</t>
+              <t indent="0">This specification defines a new RTP Control Protocol (RTCP) Source Description (SDES) item and a new RTP header extension.</t>
+              <t indent="0">This specification updates RFCs 3264, 5888, and 7941.</t>
+              <t indent="0">This specification obsoletes RFC 8843.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9143"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9143"/>
+          <format target="https://www.rfc-editor.org/info/rfc9143" type="TXT"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC6464" target="https://www.rfc-editor.org/info/rfc6464" quoteTitle="true" derivedAnchor="RFC6464">
+          <front>
+            <title>A Real-time Transport Protocol (RTP) Header Extension for Client-to-Mixer Audio Level Indication</title>
+            <author fullname="J. Lennox" initials="J." role="editor" surname="Lennox"/>
+            <author fullname="E. Ivov" initials="E." surname="Ivov"/>
+            <author fullname="E. Marocco" initials="E." surname="Marocco"/>
+            <date month="December" year="2011"/>
+            <abstract>
+              <t indent="0">This document defines a mechanism by which packets of Real-time Transport Protocol (RTP) audio streams can indicate, in an RTP header extension, the audio level of the audio sample carried in the RTP packet.  In large conferences, this can reduce the load on an audio mixer or other middlebox that wants to forward only a few of the loudest audio streams, without requiring it to decode and measure every stream that is received. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6464"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6464"/>
+          <format target="https://www.rfc-editor.org/info/rfc6464" type="TXT"/>
+        </reference>
+        <reference anchor="RFC6465" target="https://www.rfc-editor.org/info/rfc6465" quoteTitle="true" derivedAnchor="RFC6465">
+          <front>
+            <title>A Real-time Transport Protocol (RTP) Header Extension for Mixer-to-Client Audio Level Indication</title>
+            <author fullname="E. Ivov" initials="E." role="editor" surname="Ivov"/>
+            <author fullname="E. Marocco" initials="E." role="editor" surname="Marocco"/>
+            <author fullname="J. Lennox" initials="J." surname="Lennox"/>
+            <date month="December" year="2011"/>
+            <abstract>
+              <t indent="0">This document describes a mechanism for RTP-level mixers in audio conferences to deliver information about the audio level of individual participants.  Such audio level indicators are transported in the same RTP packets as the audio data they pertain to. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6465"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6465"/>
+          <format target="https://www.rfc-editor.org/info/rfc6465" type="TXT"/>
+        </reference>
+        <reference anchor="RFC6904" target="https://www.rfc-editor.org/info/rfc6904" quoteTitle="true" derivedAnchor="RFC6904">
+          <front>
+            <title>Encryption of Header Extensions in the Secure Real-time Transport Protocol (SRTP)</title>
+            <author fullname="J. Lennox" initials="J." surname="Lennox"/>
+            <date month="April" year="2013"/>
+            <abstract>
+              <t indent="0">The Secure Real-time Transport Protocol (SRTP) provides authentication, but not encryption, of the headers of Real-time Transport Protocol (RTP) packets. However, RTP header extensions may carry sensitive information for which participants in multimedia sessions want confidentiality. This document provides a mechanism, extending the mechanisms of SRTP, to selectively encrypt RTP header extensions in SRTP.</t>
+              <t indent="0">This document updates RFC 3711, the Secure Real-time Transport Protocol specification, to require that all future SRTP encryption transforms specify how RTP header extensions are to be encrypted.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6904"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6904"/>
+          <format target="https://www.rfc-editor.org/info/rfc6904" type="TXT"/>
+        </reference>
+        <reference anchor="RFC7714" target="https://www.rfc-editor.org/info/rfc7714" quoteTitle="true" derivedAnchor="RFC7714">
+          <front>
+            <title>AES-GCM Authenticated Encryption in the Secure Real-time Transport Protocol (SRTP)</title>
+            <author fullname="D. McGrew" initials="D." surname="McGrew"/>
+            <author fullname="K. Igoe" initials="K." surname="Igoe"/>
+            <date month="December" year="2015"/>
+            <abstract>
+              <t indent="0">This document defines how the AES-GCM Authenticated Encryption with Associated Data family of algorithms can be used to provide confidentiality and data authentication in the Secure Real-time Transport Protocol (SRTP).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7714"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7714"/>
+          <format target="https://www.rfc-editor.org/info/rfc7714" type="TXT"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="test-vectors" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-test-vectors">テストベクター</name>
+      <t indent="0" pn="section-appendix.a-1">すべての値は16進数で、ネットワークバイトオーダー（ビッグエンディアン）で表されています。</t>
+      <section anchor="aes-ctr" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1">
+        <name slugifiedName="name-aes-ctr">AES-CTR</name>
+        <t indent="0" pn="section-appendix.a.1-1">以下のサブセクションでは、<xref target="RFC3711" format="default" sectionFormat="of" derivedContent="RFC3711"/>に従ってCryptexをAES-CTRとともに使用する場合のテストベクターを示します。</t>
+        <t indent="0" pn="section-appendix.a.1-2">共通の値は次のとおりです。</t>
+        <artwork align="left" pn="section-appendix.a.1-3">
+Rollover Counter:          00000000
+Master Key:                e1f97a0d3e018be0d64fa32c06de4139
+Master Salt:               0ec675ad498afeebb6960b3aabe6
+Crypto Suite:              AES_CM_128_HMAC_SHA1_80
+Session Key:               c61e7a93744f39ee10734afe3ff7a087
+Session Salt:              30cbbc08863d8c85d49db34a9ae1
+Authentication Key:        cebe321f6ff7716b6fd4ab49af256a156d38baa4
+</artwork>
+        <section anchor="rtp-packet-with-1-byte-header-extension" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.1">
+          <name slugifiedName="name-rtp-packet-with-one-byte-he">1バイトヘッダー拡張を持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.1-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.1-2">
+    900f1235
+    decafbad
+    cafebabe
+    bede0001
+    51000200
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.1-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.1-4">
+    900f1235
+    decafbad
+    cafebabe
+    c0de0001
+    eb923652
+    51c3e036
+    f8de27e9
+    c27ee3e0
+    b4651d9f
+    bc4218a7
+    0244522f
+    34a5
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-2-byte-header-extension" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.2">
+          <name slugifiedName="name-rtp-packet-with-two-byte-he">2バイトヘッダー拡張を持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.2-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.2-2">
+    900f1236
+    decafbad
+    cafebabe
+    10000001
+    05020002
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.2-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.2-4">
+    900f1236
+    decafbad
+    cafebabe
+    c2de0001
+    4ed9cc4e
+    6a712b30
+    96c5ca77
+    339d4204
+    ce0d7739
+    6cab6958
+    5fbce381
+    94a5
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-1-byte-header-extension-and-csrc-fields" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.3">
+          <name slugifiedName="name-rtp-packet-with-one-byte-hea">1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.3-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.3-2">
+    920f1238
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    bede0001
+    51000200
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.3-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.3-4">
+    920f1238
+    decafbad
+    cafebabe
+    8bb6e12b
+    5cff16dd
+    c0de0001
+    92838c8c
+    09e58393
+    e1de3a9a
+    74734d67
+    45671338
+    c3acf11d
+    a2df8423
+    bee0
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-2-byte-header-extension-and-csrc-fields" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.4">
+          <name slugifiedName="name-rtp-packet-with-two-byte-hea">2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.4-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.4-2">
+    920f1239
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    10000001
+    05020002
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.4-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.4-4">
+    920f1239
+    decafbad
+    cafebabe
+    f70e513e
+    b90b9b25
+    c2de0001
+    bbed4848
+    faa64466
+    5f3d7f34
+    125914e9
+    f4d0ae92
+    3c6f479b
+    95a0f7b5
+    3133
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-empty-1-byte-header-extension-and-csrc-fields" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.5">
+          <name slugifiedName="name-rtp-packet-with-empty-one-b">空の1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.5-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.5-2">
+    920f123a
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    bede0000
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.5-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.5-4">
+    920f123a
+    decafbad
+    cafebabe
+    7130b6ab
+    fe2ab0e3
+    c0de0000
+    e3d9f64b
+    25c9e74c
+    b4cf8e43
+    fb92e378
+    1c2c0cea
+    b6b3a499
+    a14c
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-empty-2-byte-header-extension-and-csrc-fields" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.1.6">
+          <name slugifiedName="name-rtp-packet-with-empty-two-b">空の2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.1.6-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.6-2">
+    920f123b
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    10000000
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.1.6-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.1.6-4">
+    920f123b
+    decafbad
+    cafebabe
+    cbf24c12
+    4330e1c8
+    c2de0000
+    599dd45b
+    c9d687b6
+    03e8b59d
+    771fd38e
+    88b170e0
+    cd31e125
+    eabe
+</sourcecode>
+        </section>
+      </section>
+      <section anchor="aes-gcm" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2">
+        <name slugifiedName="name-aes-gcm">AES-GCM</name>
+        <t indent="0" pn="section-appendix.a.2-1">以下のサブセクションでは、<xref target="RFC7714" format="default" sectionFormat="of" derivedContent="RFC7714"/>に従ってCryptexをAES-GCMとともに使用する場合のテストベクターを示します。</t>
+        <t indent="0" pn="section-appendix.a.2-2">共通の値は次のとおりです。</t>
+        <artwork align="left" pn="section-appendix.a.2-3">
+    Rollover Counter:          00000000
+    Master Key:                000102030405060708090a0b0c0d0e0f
+    Master Salt:               a0a1a2a3a4a5a6a7a8a9aaab
+    Crypto Suite:              AEAD_AES_128_GCM
+    Session Key:               077c6143cb221bc355ff23d5f984a16e
+    Session Salt:              9af3e95364ebac9c99c5a7c4
+</artwork>
+        <section anchor="rtp-packet-with-1-byte-header-extension-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.1">
+          <name slugifiedName="name-rtp-packet-with-one-byte-head">1バイトヘッダー拡張を持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.1-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.1-2">
+    900f1235
+    decafbad
+    cafebabe
+    bede0001
+    51000200
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.1-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.1-4">
+    900f1235
+    decafbad
+    cafebabe
+    c0de0001
+    39972dc9
+    572c4d99
+    e8fc355d
+    e743fb2e
+    94f9d8ff
+    54e72f41
+    93bbc5c7
+    4ffab0fa
+    9fa0fbeb
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-2-byte-header-extension-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.2">
+          <name slugifiedName="name-rtp-packet-with-two-byte-head">2バイトヘッダー拡張を持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.2-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.2-2">
+    900f1236
+    decafbad
+    cafebabe
+    10000001
+    05020002
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.2-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.2-4">
+    900f1236
+    decafbad
+    cafebabe
+    c2de0001
+    bb75a4c5
+    45cd1f41
+    3bdb7daa
+    2b1e3263
+    de313667
+    c9632490
+    81b35a65
+    f5cb6c88
+    b394235f
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-1-byte-header-extension-and-csrc-fields-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.3">
+          <name slugifiedName="name-rtp-packet-with-one-byte-heade">1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.3-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.3-2">
+    920f1238
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    bede0001
+    51000200
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.3-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.3-4">
+    920f1238
+    decafbad
+    cafebabe
+    63bbccc4
+    a7f695c4
+    c0de0001
+    8ad7c71f
+    ac70a80c
+    92866b4c
+    6ba98546
+    ef913586
+    e95ffaaf
+    fe956885
+    bb0647a8
+    bc094ac8
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-2-byte-header-extension-and-csrc-fields-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.4">
+          <name slugifiedName="name-rtp-packet-with-two-byte-heade">2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.4-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.4-2">
+    920f1239
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    10000001
+    05020002
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.4-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.4-4">
+    920f1239
+    decafbad
+    cafebabe
+    3680524f
+    8d312b00
+    c2de0001
+    c78d1200
+    38422bc1
+    11a7187a
+    18246f98
+    0c059cc6
+    bc9df8b6
+    26394eca
+    344e4b05
+    d80fea83
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-empty-1-byte-header-extension-and-csrc-fields-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.5">
+          <name slugifiedName="name-rtp-packet-with-empty-one-by">空の1バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.5-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.5-2">
+    920f123a
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    bede0000
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.5-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.5-4">
+    920f123a
+    decafbad
+    cafebabe
+    15b6bb43
+    37906fff
+    c0de0000
+    b7b96453
+    7a2b03ab
+    7ba5389c
+    e9331712
+    6b5d974d
+    f30c6884
+    dcb651c5
+    e120c1da
+</sourcecode>
+        </section>
+        <section anchor="rtp-packet-with-empty-2-byte-header-extension-and-csrc-fields-1" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a.2.6">
+          <name slugifiedName="name-rtp-packet-with-empty-two-by">空の2バイトヘッダー拡張とCSRCフィールドを持つRTPパケット</name>
+          <t indent="0" pn="section-appendix.a.2.6-1">RTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.6-2">
+    920f123b
+    decafbad
+    cafebabe
+    0001e240
+    0000b26e
+    10000000
+    abababab
+    abababab
+    abababab
+    abababab
+</sourcecode>
+          <t indent="0" pn="section-appendix.a.2.6-3">暗号化されたRTPパケット：</t>
+          <sourcecode type="test-vectors" markers="false" pn="section-appendix.a.2.6-4">
+    920f123b
+    decafbad
+    cafebabe
+    dcb38c9e
+    48bf95f4
+    c2de0000
+    61ee432c
+    f9203170
+    76613258
+    d3ce4236
+    c06ac429
+    681ad084
+    13512dc9
+    8b5207d8
+</sourcecode>
+        </section>
+      </section>
+    </section>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.b-1">著者らは、既存のヘッダー暗号化メカニズムの多くの問題点を指摘し、この提案に助言をしてくれた<contact fullname="Lennart Grahl"/>に感謝します。
+また、レビューと提案をしてくれた<contact fullname="Jonathan Lennox"/>、<contact fullname="Inaki       Castillo"/>、<contact fullname="Bernard Aboba"/>にも感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="J." surname="Uberti" fullname="Justin Uberti">
+        <organization showOnFrontPage="true"/>
+        <address>
+          <email>justin@uberti.name</email>
+        </address>
+      </author>
+      <author initials="C." surname="Jennings" fullname="Cullen Jennings">
+        <organization showOnFrontPage="true">Cisco</organization>
+        <address>
+          <email>fluffy@iii.ca</email>
+        </address>
+      </author>
+      <author initials="S." surname="Garcia Murillo" fullname="Sergio Garcia Murillo">
+        <organization showOnFrontPage="true">Millicast</organization>
+        <address>
+          <email>sergio.garcia.murillo@cosmosoftware.io</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

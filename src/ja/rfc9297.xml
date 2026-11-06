@@ -1,0 +1,755 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-masque-h3-datagram-latest" indexInclude="true" ipr="trust200902" number="9297" prepTime="2022-08-24T10:10:42" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true">
+  <link href="https://dx.doi.org/10.17487/rfc9297" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-masque-h3-datagram-latest" rel="prev"/>
+  <front>
+    <title abbrev="HTTP Datagrams">HTTPデータグラムとカプセルプロトコル</title>
+    <seriesInfo name="RFC" value="9297" stream="IETF"/>
+    <author initials="D." surname="Schinazi" fullname="David Schinazi">
+      <organization showOnFrontPage="true">Google LLC</organization>
+      <address>
+        <postal>
+          <street>1600 Amphitheatre Parkway</street>
+          <city>Mountain View</city>
+          <region>CA</region>
+          <code>94043</code>
+          <country>United States of America</country>
+        </postal>
+        <email>dschinazi.ietf@gmail.com</email>
+      </address>
+    </author>
+    <author initials="L." surname="Pardue" fullname="Lucas Pardue">
+      <organization showOnFrontPage="true">Cloudflare</organization>
+      <address>
+        <email>lucaspardue.24.7@gmail.com</email>
+      </address>
+    </author>
+    <date month="08" year="2022"/>
+    <area>Transport</area>
+    <workgroup>MASQUE</workgroup>
+    <keyword>quic</keyword>
+    <keyword>http</keyword>
+    <keyword>datagram</keyword>
+    <keyword>fast</keyword>
+    <keyword>tunnels</keyword>
+    <keyword>turtles all the way down</keyword>
+    <keyword>masque</keyword>
+    <keyword>http-ng</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、HTTPコネクション内で多重化された、信頼性が保証されない可能性のあるデータグラムを運ぶための規約であるHTTPデータグラムについて説明します。</t>
+      <t indent="0" pn="section-abstract-2">HTTP/3では、HTTPデータグラムはQUIC DATAGRAM拡張を使用して信頼性なしで送信できます。QUIC DATAGRAMフレームが利用できない場合や望ましくない場合は、HTTPコネクションでデータを運ぶためのより汎用的な規約であるカプセルプロトコル（Capsule Protocol）を使用してHTTPデータグラムを送信できます。</t>
+      <t indent="0" pn="section-abstract-3">HTTPデータグラムとカプセルプロトコルは、アプリケーションではなく、HTTP拡張による使用を意図しています。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9297" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-definitions">表記規則と定義</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-datagrams">HTTPデータグラム</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-3-datagrams">HTTP/3データグラム</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.1.2">
+                  <li pn="section-toc.1-1.2.2.1.2.1">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.2.1.1"><xref derivedContent="2.1.1" format="counter" sectionFormat="of" target="section-2.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-settings_h3_datagram-ht">SETTINGS_H3_DATAGRAM HTTP/3設定</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-datagrams-using-capsul">カプセルを使用したHTTPデータグラム</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-capsules">カプセル</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-data-streams">HTTPデータストリーム</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-capsule-protocol">カプセルプロトコル</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-error-handling">エラー処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-capsule-protocol-header">Capsule-Protocolヘッダーフィールド</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.5">
+                <t indent="0" pn="section-toc.1-1.3.2.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-datagram-capsule">DATAGRAMカプセル</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-3-setting">HTTP/3設定</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-3-error-code">HTTP/3エラーコード</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-header-field-name">HTTPヘッダーフィールド名</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-capsule-types">カプセルタイプ</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="intro" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">HTTP拡張（<xref section="16" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-16" derivedContent="HTTP"/>で定義されているもの）は、望ましい機能を実現するために、信頼性のない配送（<xref target="RFC9221" format="default" sectionFormat="of" derivedContent="QUIC-DGRAM"/>が提供するものなど）のような下位のトランスポートプロトコルの機能にアクセスする必要がある場合があります。たとえば、これにより、信頼性のないバージョンのCONNECTメソッドの導入や、WebSocket <xref target="RFC6455" format="default" sectionFormat="of" derivedContent="WEBSOCKET"/> への信頼性のない配送の追加が可能になります。</t>
+      <t indent="0" pn="section-1-2"><xref target="datagrams" format="default" sectionFormat="of" derivedContent="Section 2"/>で、この文書はHTTPデータグラムについて説明します。HTTPデータグラムは、HTTPコネクション内で、可能な場合は多重化して、双方向で信頼性が保証されない可能性のあるデータグラムを運ぶための規約です。HTTPデータグラムはHTTPリクエストに関連付けられますが、メッセージコンテンツの一部ではありません。その代わりに、HTTPデータグラムは（CONNECTメソッドなどの）HTTP拡張による使用を意図しており、すべてのバージョンのHTTPと互換性があります。</t>
+      <t indent="0" pn="section-1-3">信頼性のない配送をサポートするトランスポートプロトコル上でHTTPが動作している場合（HTTP/3 <xref target="RFC9114" format="default" sectionFormat="of" derivedContent="HTTP/3"/> でQUIC DATAGRAM拡張 <xref target="RFC9221" format="default" sectionFormat="of" derivedContent="QUIC-DGRAM"/> が利用可能な場合など）、HTTPデータグラムはその能力を利用できます。</t>
+      <t indent="0" pn="section-1-4"><xref target="capsule" format="default" sectionFormat="of" derivedContent="Section 3"/>で、この文書はHTTPカプセルプロトコルについて説明します。カプセルプロトコルは、信頼性のある配送を使用してHTTPデータグラムを運ぶことを可能にします。これは、HTTP/3でQUIC DATAGRAMフレームの使用が利用できない場合や望ましくない場合、またはTCP <xref target="RFC9293" format="default" sectionFormat="of" derivedContent="TCP"/> 上のHTTP/1.1 <xref target="RFC9112" format="default" sectionFormat="of" derivedContent="HTTP/1.1"/> やHTTP/2 <xref target="RFC9113" format="default" sectionFormat="of" derivedContent="HTTP/2"/> のように、トランスポートプロトコルが信頼性のある配送しか提供しない場合に対処するものです。</t>
+      <section anchor="defs" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-and-definitions">表記規則と定義</name>
+        <t indent="0" pn="section-1.1-1">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、ここに示すようにすべて大文字で表示される場合にのみ、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/> で説明されているように解釈されます。</t>
+        <t indent="0" pn="section-1.1-2">この文書は<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="QUIC"/>の用語を使用します。</t>
+        <t indent="0" pn="section-1.1-3">この文書でプロトコルの型を定義する場合、その定義形式には<xref section="1.3" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-1.3" derivedContent="QUIC"/>の表記法を使用します。型の中のフィールドが整数である場合、それらは<xref section="16" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-16" derivedContent="QUIC"/>の可変長整数エンコーディングを使用してエンコードされます。整数値は、必要最小限のバイト数でエンコードする必要はありません。</t>
+        <t indent="0" pn="section-1.1-4">この文書では、「仲介者（intermediary）」という用語は、<xref section="3.7" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-3.7" derivedContent="HTTP"/>で定義されているHTTP仲介者を指します。</t>
+      </section>
+    </section>
+    <section anchor="datagrams" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-http-datagrams">HTTPデータグラム</name>
+      <t indent="0" pn="section-2-1">HTTPデータグラムは、HTTPコネクション内で、可能な場合は多重化して、双方向で信頼性が保証されない可能性のあるデータグラムを運ぶための規約です。すべてのHTTPデータグラムは、HTTPリクエストに関連付けられます。</t>
+      <t indent="0" pn="section-2-2">HTTPデータグラムがHTTP/3コネクション上で運ばれる場合、QUIC DATAGRAMフレームを使用して逆多重化と信頼性のない配送を提供できます。<xref target="format" format="default" sectionFormat="of" derivedContent="Section 2.1"/>を参照してください。HTTPデータグラムのためのQUIC DATAGRAMフレームの使用のネゴシエーションは、HTTP/3設定の交換によって行われます。<xref target="setting" format="default" sectionFormat="of" derivedContent="Section 2.1.1"/>を参照してください。</t>
+      <t indent="0" pn="section-2-3">HTTP/2上で動作する場合、逆多重化はHTTP/2のフレーミング層によって提供されますが、信頼性のない配送は利用できません。HTTPデータグラムは、カプセルプロトコルを使用してネゴシエートされ、運ばれます。<xref target="datagram-capsule" format="default" sectionFormat="of" derivedContent="Section 3.5"/>を参照してください。</t>
+      <t indent="0" pn="section-2-4">HTTP/1.x上で動作する場合、リクエストはコネクション内で厳密に順番に処理されます。したがって、逆多重化は利用できません。信頼性のない配送も同様に利用できません。HTTPデータグラムは、カプセルプロトコルを使用してネゴシエートされ、運ばれます。<xref target="datagram-capsule" format="default" sectionFormat="of" derivedContent="Section 3.5"/>を参照してください。</t>
+      <t indent="0" pn="section-2-5">HTTPデータグラムは、HTTPデータグラムを明示的にサポートするHTTPリクエストに関連付けた場合にのみ送信<bcp14>しなければなりません（MUST）</bcp14>。たとえば、既存のHTTPメソッドであるGETやPOSTは、関連付けられたHTTPデータグラムのセマンティクスを定義していません。したがって、GETリクエストやPOSTリクエストのストリームに関連付けられたHTTPデータグラムは送信できません。</t>
+      <t indent="0" pn="section-2-6">HTTPデータグラムを受信し、それがHTTPデータグラムについての既知のセマンティクスを持たないリクエストに関連付けられている場合、受信者はそのリクエストを終了<bcp14>しなければなりません（MUST）</bcp14>。HTTP/3を使用している場合、リクエストストリームはH3_DATAGRAM_ERROR（0x33）で中断<bcp14>しなければなりません（MUST）</bcp14>。HTTP拡張は、HTTPデータグラムのためのネゴシエーションメカニズムとセマンティクスを定義することによって、これらの要件を上書き<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <section anchor="format" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-http-3-datagrams">HTTP/3データグラム</name>
+        <t indent="0" pn="section-2.1-1">HTTP/3で使用する場合、QUIC DATAGRAMフレームのDatagram Dataフィールドは次の形式を使用します：</t>
+        <figure anchor="h3-datagram-format" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-http-3-datagram-format">HTTP/3データグラムの形式</name>
+          <artwork align="left" pn="section-2.1-2.1">
+HTTP/3 Datagram {
+  Quarter Stream ID (i),
+  HTTP Datagram Payload (..),
+}
+</artwork>
+        </figure>
+        <dl indent="3" newline="false" spacing="normal" pn="section-2.1-3">
+          <dt pn="section-2.1-3.1">Quarter Stream ID:</dt>
+          <dd pn="section-2.1-3.2">
+            <t indent="0" pn="section-2.1-3.2.1">このデータグラムが関連付けられているクライアント開始の双方向ストリームの値を4で割った値を含む可変長整数です（4で割るのは、HTTPリクエストがクライアント開始の双方向ストリームで送信され、そのストリームIDが4で割り切れるという事実に由来します）。QUICストリームIDの最大の正当な値は<sup>62</sup>-1なので、Quarter Stream IDフィールドの最大の正当な値は<sup>60</sup>-1です。それより大きな値を含むHTTP/3データグラムを受信した場合は、H3_DATAGRAM_ERROR（0x33）タイプのHTTP/3コネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          </dd>
+          <dt pn="section-2.1-3.3">HTTP Datagram Payload:</dt>
+          <dd pn="section-2.1-3.4">
+            <t indent="0" pn="section-2.1-3.4.1">データグラムのペイロードです。そのセマンティクスは、HTTPデータグラムを使用する拡張によって定義されます。このフィールドは空になる可能性があることに注意してください。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-2.1-4">ペイロードが短すぎてQuarter Stream IDフィールドを解析できないQUIC DATAGRAMフレームを受信した場合は、H3_DATAGRAM_ERROR（0x33）タイプのHTTP/3コネクションエラーとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-5">HTTP/3データグラムは、対応するストリームの送信側が開いていない限り、送信<bcp14>してはなりません（MUST NOT）</bcp14>。対応するストリームの受信側が閉じた後にデータグラムを受信した場合、受信したデータグラムは黙って破棄<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-6">HTTP/3データグラムを受信し、そのQuarter Stream IDフィールドがまだ作成されていないストリームに対応する場合、受信者はそのデータグラムを黙って破棄するか、対応するストリームの作成を待つ間（1往復程度の時間）一時的にバッファリング<bcp14>することになります（SHALL）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-7">HTTP/3データグラムを受信し、そのQuarter Stream IDフィールドが、クライアント開始の双方向ストリームの制限のために作成できないストリームに対応する場合、H3_ID_ERRORタイプのHTTP/3コネクションエラーとして扱う<bcp14>べきです（SHOULD）</bcp14>。QUICのストリーム制限はHTTP/3層からはわからない可能性があるため、エラーの生成は必須ではありません。</t>
+        <t indent="0" pn="section-2.1-8">HTTP/3データグラムの優先度付けは、この文書では定義しません。将来の拡張は、データグラムの優先度付けの方法を定義<bcp14>してもよいです（MAY）</bcp14>。また、優先度付けの希望を伝えるためのシグナリングを定義<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <section anchor="setting" numbered="true" removeInRFC="false" toc="include" pn="section-2.1.1">
+          <name slugifiedName="name-the-settings_h3_datagram-ht">SETTINGS_H3_DATAGRAM HTTP/3設定</name>
+          <t indent="0" pn="section-2.1.1-1">エンドポイントは、値1のSETTINGS_H3_DATAGRAM（0x33）設定を送信することによって、HTTP/3データグラムを受信する意思があることをピアに示すことができます。</t>
+          <t indent="0" pn="section-2.1.1-2">SETTINGS_H3_DATAGRAM設定の値は、0または1のいずれかで<bcp14>なければなりません（MUST）</bcp14>。値0は、実装がHTTPデータグラムを受信する意思がないことを示します。SETTINGS_H3_DATAGRAM設定を0でも1でもない値で受信した場合、受信者はエラーH3_SETTINGS_ERRORでコネクションを終了<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.1.1-3">QUIC DATAGRAMフレームは、SETTINGS_H3_DATAGRAM設定が値1で送信と受信の両方が行われるまで、送信<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+          <t indent="0" pn="section-2.1.1-4">クライアントが0-RTTを使用する場合、クライアントはサーバーのSETTINGS_H3_DATAGRAM設定の値を保存<bcp14>してもよいです（MAY）</bcp14>。そうすることで、クライアントは0-RTTパケットでQUIC DATAGRAMフレームを送信できるようになります。サーバーが0-RTTデータを受け入れると決定した場合、サーバーは、NewSessionTicketメッセージを送信したコネクションでクライアントに送信した値以上のSETTINGS_H3_DATAGRAM設定を送信<bcp14>しなければなりません（MUST）</bcp14>。クライアントがSETTINGS_H3_DATAGRAM設定の値を0-RTT状態とともに保存する場合、クライアントは、ハンドシェイクでサーバーが送信したSETTINGS_H3_DATAGRAM設定の新しい値が保存した値以上であることを検証<bcp14>しなければなりません（MUST）</bcp14>。そうでない場合、クライアントはエラーH3_SETTINGS_ERRORでコネクションを終了<bcp14>しなければなりません（MUST）</bcp14>。いずれの場合も、SETTINGS_H3_DATAGRAM設定パラメーターの許容される最大値は1です。</t>
+          <t indent="0" pn="section-2.1.1-5">HTTP/3データグラムの受信をサポートする実装は、アプリケーションがHTTP/3データグラムを使用するつもりがない場合でも、常に値1のSETTINGS_H3_DATAGRAM設定を送信することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。これは「目立つ」ことを避けるのに役立ちます。<xref target="security" format="default" sectionFormat="of" derivedContent="Section 4"/>を参照してください。</t>
+        </section>
+      </section>
+      <section anchor="http-datagrams-using-capsules" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-http-datagrams-using-capsul">カプセルを使用したHTTPデータグラム</name>
+        <t indent="0" pn="section-2.2-1">HTTP/3データグラムが利用できない場合や望ましくない場合、HTTPデータグラムはカプセルプロトコルを使用して送信できます。<xref target="datagram-capsule" format="default" sectionFormat="of" derivedContent="Section 3.5"/>を参照してください。</t>
+      </section>
+    </section>
+    <section anchor="capsule" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-capsules">カプセル</name>
+      <t indent="0" pn="section-3-1">HTTPを拡張する1つのメカニズムは、新しいHTTPアップグレードトークンを導入することです。<xref section="16.7" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-16.7" derivedContent="HTTP"/>を参照してください。HTTP/1.xでは、これらのトークンはUpgradeメカニズムを介して使用されます。<xref section="7.8" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-7.8" derivedContent="HTTP"/>を参照してください。HTTP/2とHTTP/3では、これらのトークンは拡張CONNECT（Extended CONNECT）メカニズムを介して使用されます。<xref target="RFC8441" format="default" sectionFormat="of" derivedContent="EXT-CONNECT2"/>と<xref target="RFC9220" format="default" sectionFormat="of" derivedContent="EXT-CONNECT3"/>を参照してください。</t>
+      <t indent="0" pn="section-3-2">この仕様は、カプセルプロトコルを導入します。カプセルプロトコルはタイプ・長さ・値（type-length-value）の組のシーケンスであり、新しいHTTPアップグレードトークンの定義はこれを使用することを選択できます。カプセルプロトコルにより、エンドポイントは、HTTP仲介者が存在する場合でも、HTTPリクエストストリーム上でリクエストに関連する情報をエンドツーエンドで確実に伝達できます。カプセルプロトコルはHTTPデータグラムの交換に使用でき、これはQUIC DATAGRAMフレームをサポートしないトランスポート上でHTTPが動作している場合に必要です。カプセルプロトコルは、HTTP/3データグラムが使用されている場合でも、データグラムベースのプロトコルに関連付けられた、信頼性のある双方向の制御メッセージを伝達するために使用することもできます。</t>
+      <section anchor="data-stream" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-http-data-streams">HTTPデータストリーム</name>
+        <t indent="0" pn="section-3.1-1">この仕様では、HTTPリクエストの「データストリーム（data stream）」を、リクエストメッセージのヘッダーセクションと、成功した（すなわち2xx）またはアップグレードされた（すなわち101）最終レスポンスメッセージのヘッダーセクションに続く、双方向のバイトストリームとして定義します。</t>
+        <t indent="0" pn="section-3.1-2">HTTP/1.xでは、データストリームは、リクエストヘッダーセクションまたは最終レスポンスヘッダーセクションを締めくくる空行に続く、コネクション上のすべてのバイトで構成されます。その結果、HTTP/1.xコネクション上の最後のHTTPリクエストだけがカプセルプロトコルを開始できます。</t>
+        <t indent="0" pn="section-3.1-3">HTTP/2とHTTP/3では、あるHTTPリクエストのデータストリームは、対応するストリームIDを持つDATAフレームで送信されるすべてのバイトで構成されます。</t>
+        <t indent="0" pn="section-3.1-4">データストリームの概念は、ヘッダーの後にHTTPメッセージコンテンツがないCONNECTのようなメソッドに特に関係します。</t>
+        <t indent="0" pn="section-3.1-5">データストリームは、ストリームやリクエストの優先度付けに適した任意の手段を使用して優先度付けできます。たとえば、<xref section="11" sectionFormat="of" target="RFC9218" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9218#section-11" derivedContent="PRIORITY"/>を参照してください。</t>
+        <t indent="0" pn="section-3.1-6">データストリームは、下位層のフロー制御メカニズムの対象となります。例としては、HTTP/2のストリームフロー制御、HTTP/2のコネクションフロー制御、TCPのフロー制御があります。</t>
+      </section>
+      <section anchor="capsule-protocol" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-the-capsule-protocol">カプセルプロトコル</name>
+        <t indent="0" pn="section-3.2-1">新しいHTTPアップグレードトークンの定義では、関連付けられたリクエストのデータストリームがカプセルプロトコルを使用することを規定できます。その場合、関連付けられたリクエストのデータストリームの内容は、次の形式を使用します：</t>
+        <figure anchor="capsule-stream-format" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-capsule-protocol-stream-for">カプセルプロトコルのストリーム形式</name>
+          <artwork align="left" pn="section-3.2-2.1">
+Capsule Protocol {
+  Capsule (..) ...,
+}
+</artwork>
+        </figure>
+        <figure anchor="capsule-format" align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-capsule-format">カプセルの形式</name>
+          <artwork align="left" pn="section-3.2-3.1">
+Capsule {
+  Capsule Type (i),
+  Capsule Length (i),
+  Capsule Value (..),
+}
+</artwork>
+        </figure>
+        <dl indent="3" newline="false" spacing="normal" pn="section-3.2-4">
+          <dt pn="section-3.2-4.1">Capsule Type:</dt>
+          <dd pn="section-3.2-4.2">
+            <t indent="0" pn="section-3.2-4.2.1">カプセルのタイプを示す可変長整数です。カプセルタイプの割り当ての管理にはIANAレジストリーを使用します。<xref target="iana-types" format="default" sectionFormat="of" derivedContent="Section 5.4"/>を参照してください。</t>
+          </dd>
+          <dt pn="section-3.2-4.3">Capsule Length:</dt>
+          <dd pn="section-3.2-4.4">
+            <t indent="0" pn="section-3.2-4.4.1">このフィールドに続くCapsule Valueフィールドのバイト単位の長さで、可変長整数としてエンコードされます。このフィールドの値は0になる可能性があることに注意してください。</t>
+          </dd>
+          <dt pn="section-3.2-4.5">Capsule Value:</dt>
+          <dd pn="section-3.2-4.6">
+            <t indent="0" pn="section-3.2-4.6.1">このカプセルのペイロードです。そのセマンティクスは、Capsule Typeフィールドの値によって決まります。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-3.2-5">仲介者は、Capsule-Protocolヘッダーフィールド（<xref target="hdr" format="default" sectionFormat="of" derivedContent="Section 3.4"/>）の存在によって、または選択されたHTTPアップグレードトークンを理解することによって、カプセルプロトコルの使用を識別できます。</t>
+        <t indent="0" pn="section-3.2-6">新しいプロトコルや拡張が新しいカプセルタイプを定義する可能性があるため、将来の拡張性を確保したい仲介者は、使用中のカプセルタイプの定義が仲介者による追加の処理を規定していない限り、カプセルを変更せずに転送<bcp14>すべきです（SHOULD）</bcp14>。そのようなカプセルタイプの1つがDATAGRAMカプセルです。<xref target="datagram-capsule" format="default" sectionFormat="of" derivedContent="Section 3.5"/>を参照してください。特に、仲介者は、未知のカプセルタイプを持つカプセルを変更せずに転送<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-3.2-7">未知のカプセルタイプを持つカプセルを受信したエンドポイントは、そのカプセルを黙って破棄し、それを読み飛ばして次のカプセルを解析<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.2-8">データストリームの定義により、次のことが言えます：</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2-9">
+          <li pn="section-3.2-9.1">レスポンスに2xx（Successful）または101（Switching Protocols）ステータスコードが含まれていない限り、カプセルプロトコルは使用されません。</li>
+          <li pn="section-3.2-9.2">カプセルプロトコルが使用されている場合、関連付けられたHTTPリクエストとレスポンスはHTTPコンテンツを運びません。将来の拡張は、HTTPコンテンツを運ぶための新しいカプセルタイプを定義<bcp14>してもよいです（MAY）</bcp14>。</li>
+        </ul>
+        <t indent="0" pn="section-3.2-10">カプセルプロトコルは新しいHTTPアップグレードトークンの定義にのみ適用されます。したがって、HTTP/2とHTTP/3では、CONNECTメソッドでのみ使用できます。そのため、両方のエンドポイントがカプセルプロトコルの使用に合意すると、ストリームのフレーム使用に関する要件は、<xref section="8.5" sectionFormat="of" target="RFC9113" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9113#section-8.5" derivedContent="HTTP/2"/>と<xref section="4.4" sectionFormat="of" target="RFC9114" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9114#section-4.4" derivedContent="HTTP/3"/>で規定されているとおりに変わります。</t>
+        <t indent="0" pn="section-3.2-11">カプセルプロトコルは、Content-Length、Content-Type、またはTransfer-Encodingヘッダーフィールドを含むメッセージで使用<bcp14>してはなりません（MUST NOT）</bcp14>。さらに、HTTPステータスコード204（No Content）、205（Reset Content）、206（Partial Content）は、カプセルプロトコルを使用するレスポンスで送信<bcp14>してはなりません（MUST NOT）</bcp14>。これらの要件への違反を観測した受信者は、そのHTTPメッセージを不正な形式として扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.2-12">カプセルを処理する際、受信者は、Capsule Valueフィールドの全長をデータストリーム内に蓄積してから処理したくなるかもしれません。このアプローチは避ける<bcp14>べきです（SHOULD）</bcp14>。なぜなら、下位層のフロー制御を消費する可能性があり、カプセルのデータがフロー制御ウィンドウを使い果たした場合にデッドロックにつながる可能性があるからです。</t>
+      </section>
+      <section anchor="error-handling" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-error-handling">エラー処理</name>
+        <t indent="0" pn="section-3.3-1">受信者がカプセルプロトコルの処理中にエラーに遭遇した場合、受信者はそれを、不正な形式または不完全なHTTPメッセージを受信したかのように扱わ<bcp14>なければなりません（MUST）</bcp14>。HTTP/3については、不正な形式のメッセージの処理は<xref section="4.1.2" sectionFormat="of" target="RFC9114" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9114#section-4.1.2" derivedContent="HTTP/3"/>で説明されています。HTTP/2については、不正な形式のメッセージの処理は<xref section="8.1.1" sectionFormat="of" target="RFC9113" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9113#section-8.1.1" derivedContent="HTTP/2"/>で説明されています。HTTP/1.xについては、不完全なメッセージの処理は<xref section="8" sectionFormat="of" target="RFC9112" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9112#section-8" derivedContent="HTTP/1.1"/>で説明されています。</t>
+        <t indent="0" pn="section-3.3-2">各カプセルのペイロードは、その説明で特定されたフィールドを過不足なく含ま<bcp14>なければなりません（MUST）</bcp14>。特定されたフィールドの後に追加のバイトを含むカプセルペイロードや、特定されたフィールドの終わりの前で終了するカプセルペイロードは、不正な形式または不完全なメッセージであるかのように扱わ<bcp14>なければなりません（MUST）</bcp14>。特に、冗長な長さのエンコーディングは、自己矛盾がないことを検証<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.3-3">カプセルを運ぶストリームの受信側が正常に終了し（たとえば、HTTP/3では、これはFINビットが設定されたQUIC STREAMフレームを受信することとして定義されます）、ストリーム上の最後のカプセルが途中で切れていた場合、これは不正な形式または不完全なメッセージであるかのように扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="hdr" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-the-capsule-protocol-header">Capsule-Protocolヘッダーフィールド</name>
+        <t indent="0" pn="section-3.4-1">「Capsule-Protocol」ヘッダーフィールドは、アイテム（Item）型のStructured Fieldです。<xref section="3.3" sectionFormat="of" target="RFC8941" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8941#section-3.3" derivedContent="STRUCTURED-FIELDS"/>を参照してください。その値はBoolean（真偽値）で<bcp14>なければなりません（MUST）</bcp14>。それ以外の値の型は、受信者がそのフィールドが存在しないかのように扱わ<bcp14>なければなりません（MUST）</bcp14>（たとえば、このフィールドが複数回含まれている場合、その型はリスト（List）になり、フィールドは無視されます）。この文書はCapsule-Protocolヘッダーフィールドの値のパラメーターを定義しませんが、将来の文書でパラメーターが定義される可能性があります。受信者は未知のパラメーターを無視<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.4-2">エンドポイントは、値がtrueのCapsule-Protocolヘッダーフィールドを送信することによって、データストリーム上でカプセルプロトコルが使用されていることを示します。値がfalseのCapsule-Protocolヘッダーフィールドは、そのヘッダーが存在しない場合と同じセマンティクスを持ちます。</t>
+        <t indent="0" pn="section-3.4-3">仲介者は、未知のHTTPアップグレードトークンについてHTTPデータグラムの処理を可能にするために、このヘッダーフィールドを使用<bcp14>してもよいです（MAY）</bcp14>。これはHTTP Upgradeまたは拡張CONNECTでのみ可能であることに注意してください。</t>
+        <t indent="0" pn="section-3.4-4">Capsule-Protocolヘッダーフィールドは、101（Switching Protocols）とは異なり、かつ2xx（Successful）の範囲外であるステータスコードを持つHTTPレスポンスで使用<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+        <t indent="0" pn="section-3.4-5">カプセルプロトコルを使用する場合、HTTPエンドポイントは、仲介者の処理を簡単にするためにCapsule-Protocolヘッダーフィールドを送信<bcp14>すべきです（SHOULD）</bcp14>。カプセルプロトコルを使用する新しいHTTPアップグレードトークンの定義は、この推奨事項を変更<bcp14>してもよいです（MAY）</bcp14>。</t>
+      </section>
+      <section anchor="datagram-capsule" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-the-datagram-capsule">DATAGRAMカプセル</name>
+        <t indent="0" pn="section-3.5-1">この文書は、DATAGRAM（0x00）カプセルタイプを定義します。このカプセルにより、カプセルプロトコルを使用してストリーム上でHTTPデータグラムを送信できます。これは、QUIC DATAGRAMフレームをサポートしないトランスポート上でHTTPが動作している場合に特に有用です。</t>
+        <figure anchor="datagram-capsule-format" align="left" suppress-title="false" pn="figure-4">
+          <name slugifiedName="name-datagram-capsule-format">DATAGRAMカプセルの形式</name>
+          <artwork type="ascii-art" align="left" pn="section-3.5-2.1">
+Datagram Capsule {
+  Type (i) = 0x00,
+  Length (i),
+  HTTP Datagram Payload (..),
+}
+</artwork>
+        </figure>
+        <dl indent="3" newline="false" spacing="normal" pn="section-3.5-3">
+          <dt pn="section-3.5-3.1">HTTP Datagram Payload:</dt>
+          <dd pn="section-3.5-3.2">
+            <t indent="0" pn="section-3.5-3.2.1">データグラムのペイロードです。そのセマンティクスは、HTTPデータグラムを使用する拡張によって定義されます。このフィールドは空になる可能性があることに注意してください。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-3.5-4">DATAGRAMカプセルを使用して送信されたHTTPデータグラムは、QUIC DATAGRAMフレームで送信されたものと同じセマンティクスを持ちます。特に、HTTPデータグラムの送信が許可される条件とその処理方法に関する（<xref target="format" format="default" sectionFormat="of" derivedContent="Section 2.1"/>の）制限は、DATAGRAMカプセルを使用して送受信されるHTTPデータグラムにも適用されます。</t>
+        <t indent="0" pn="section-3.5-5">仲介者は、HTTPデータグラムを転送する際に再エンコードできます。言い換えると、仲介者は、QUIC DATAGRAMフレームで受信したHTTPデータグラムを転送するためにDATAGRAMカプセルを送信<bcp14>してもよいです（MAY）</bcp14>。その逆も同様です。仲介者は、対応するリクエストストリーム上でカプセルプロトコルの使用を識別していない限り、この再エンコードを実行<bcp14>してはなりません（MUST NOT）</bcp14>。<xref target="capsule-protocol" format="default" sectionFormat="of" derivedContent="Section 3.2"/>を参照してください。</t>
+        <t indent="0" pn="section-3.5-6">ストリーム上で送信されるDATAGRAMカプセルは、信頼性をもって順序どおりに配送されますが、仲介者はメッセージを転送する際にDATAGRAMカプセルをQUIC DATAGRAMフレームに再エンコードでき、その結果として損失や順序の入れ替わりが発生する可能性があることに注意してください。</t>
+        <t indent="0" pn="section-3.5-7">仲介者がQUIC DATAGRAMフレームでHTTPデータグラムを受信し、それをQUIC DATAGRAMフレームをサポートするコネクション上で転送する場合、仲介者はそのHTTPデータグラムをDATAGRAMカプセルに変換<bcp14>すべきではありません（SHOULD NOT）</bcp14>。HTTPデータグラムが大きすぎてDATAGRAMフレームに収まらない場合（たとえば、そのQUICコネクションのパスMTU（PMTU）が小さすぎる場合や、そのコネクションで広告された最大UDPペイロードサイズが小さすぎる場合）、仲介者は、HTTPデータグラムをDATAGRAMカプセルに変換するのではなく、破棄<bcp14>すべきです（SHOULD）</bcp14>。これにより、データグラムパケット化層パスMTU探索（Datagram Packetization Layer PMTU Discovery、DPLPMTUD）などの手法が依存している、エンドツーエンドで信頼性がないという特性が保たれます <xref target="RFC8899" format="default" sectionFormat="of" derivedContent="DPLPMTUD"/>。QUIC DATAGRAMフレームをDATAGRAMカプセルに変換する仲介者は、HTTPデータグラムが損失をまったく受けずに任意の大きさになることを許してしまいます。これにより、実際の経路の特性が誤って伝えられ、DPLPMTUDなどの手法が機能しなくなる可能性があります。</t>
+        <t indent="0" pn="section-3.5-8">DATAGRAMカプセルは理論上は長さ<sup>62</sup>-1のペイロードを運ぶことができますが、HTTPデータグラムを使用するほとんどのHTTP拡張には、実用的なデータグラムペイロードサイズについての独自の制限があります。実装は、DATAGRAMカプセルを解析する際にそれらの制限を考慮<bcp14>すべきです（SHOULD）</bcp14>。受信したDATAGRAMカプセルの長さが、使用できないほど大きいとわかっている場合、実装はその内容をメモリーにバッファリングせずにカプセルを破棄<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-3.5-9">QUIC DATAGRAMフレームはQUICパケット内に収まる必要があるため、DATAGRAMカプセルをQUIC DATAGRAMフレームに再エンコードする実装は、再エンコードする前にカプセル全体をストリーム内に蓄積したくなるかもしれません。これはフロー制御の問題を引き起こす可能性があるため、避ける<bcp14>べきです（SHOULD）</bcp14>。<xref target="capsule-protocol" format="default" sectionFormat="of" derivedContent="Section 3.2"/>を参照してください。</t>
+        <t indent="0" pn="section-3.5-10">HTTP拡張が、カプセルプロトコルを使用せずにHTTPデータグラムを使用することも可能であることに注意してください。たとえば、HTTPデータグラムを使用するHTTP拡張がQUIC DATAGRAMフレームをサポートするトランスポート上でのみ定義されている場合、ストリームでのエンコーディングは必要ないかもしれません。さらに、HTTP拡張は、独自のデータストリームプロトコルとともにHTTPデータグラムを使用できます。ただし、HTTPデータグラムを使用したい新しいHTTP拡張は、カプセルプロトコルを使用<bcp14>すべきです（SHOULD）</bcp14>。そうしないと、HTTP拡張がHTTP/3以外のバージョンのHTTPをサポートすることが難しくなり、カプセルプロトコルしかサポートしない仲介者との相互運用性が妨げられるからです。</t>
+      </section>
+    </section>
+    <section anchor="security" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">QUIC DATAGRAMフレームを使用してHTTPデータグラムを送信するにはHTTP/3のSETTINGS_H3_DATAGRAM設定を送信する必要があるため、それは「目立ち」ます。言い換えると、探りを入れるクライアントは、サーバーがQUIC DATAGRAMフレーム上のHTTPデータグラムをサポートしているかどうかを知ることができます。サーバーによっては、HTTPデータグラムを使用するアプリケーションサービスを提供しているという事実を隠したい場合があるため、この機能をサポートするすべての実装が常にこの設定を送信することが最善です。<xref target="setting" format="default" sectionFormat="of" derivedContent="Section 2.1.1"/>を参照してください。</t>
+      <t indent="0" pn="section-4-2">カプセルプロトコルの使用は新しいHTTPアップグレードトークンに制限されているため、WebプラットフォームAPI（Webブラウザーで一般にJavaScriptからアクセスされるものなど）から直接アクセスすることはできません。</t>
+      <t indent="0" pn="section-4-3">カプセルプロトコルを使用する新しいHTTPアップグレードトークンの定義には、そのプロトコルの文脈におけるHTTPデータグラムとカプセルの影響を考慮したセキュリティー分析を含める必要があります。</t>
+    </section>
+    <section anchor="iana" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="iana-setting" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-http-3-setting">HTTP/3設定</name>
+        <t indent="0" pn="section-5.1-1">IANAは、&lt;<eref target="https://www.iana.org/assignments/http3-parameters" brackets="none"/>&gt;で管理されている「HTTP/3 Settings」レジストリーに次のエントリーを登録しました：</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-5.1-2">
+          <dt pn="section-5.1-2.1">値：</dt>
+          <dd pn="section-5.1-2.2">
+            <t indent="0" pn="section-5.1-2.2.1">0x33</t>
+          </dd>
+          <dt pn="section-5.1-2.3">設定名：</dt>
+          <dd pn="section-5.1-2.4">
+            <t indent="0" pn="section-5.1-2.4.1">SETTINGS_H3_DATAGRAM</t>
+          </dd>
+          <dt pn="section-5.1-2.5">デフォルト：</dt>
+          <dd pn="section-5.1-2.6">
+            <t indent="0" pn="section-5.1-2.6.1">0</t>
+          </dd>
+          <dt pn="section-5.1-2.7">ステータス：</dt>
+          <dd pn="section-5.1-2.8">
+            <t indent="0" pn="section-5.1-2.8.1">permanent</t>
+          </dd>
+          <dt pn="section-5.1-2.9">参照：</dt>
+          <dd pn="section-5.1-2.10">
+            <t indent="0" pn="section-5.1-2.10.1">RFC 9297</t>
+          </dd>
+          <dt pn="section-5.1-2.11">変更管理者：</dt>
+          <dd pn="section-5.1-2.12">
+            <t indent="0" pn="section-5.1-2.12.1">IETF</t>
+          </dd>
+          <dt pn="section-5.1-2.13">連絡先：</dt>
+          <dd pn="section-5.1-2.14">
+            <t indent="0" pn="section-5.1-2.14.1">HTTP_WG; HTTP working group; ietf-http-wg@w3.org</t>
+          </dd>
+          <dt pn="section-5.1-2.15">注：</dt>
+          <dd pn="section-5.1-2.16">
+            <t indent="0" pn="section-5.1-2.16.1">None</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="iana-error" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-http-3-error-code">HTTP/3エラーコード</name>
+        <t indent="0" pn="section-5.2-1">IANAは、&lt;<eref target="https://www.iana.org/assignments/http3-parameters" brackets="none"/>&gt;で管理されている「HTTP/3 Error Codes」レジストリーに次のエントリーを登録しました：</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-5.2-2">
+          <dt pn="section-5.2-2.1">値：</dt>
+          <dd pn="section-5.2-2.2">
+            <t indent="0" pn="section-5.2-2.2.1">0x33</t>
+          </dd>
+          <dt pn="section-5.2-2.3">名前：</dt>
+          <dd pn="section-5.2-2.4">
+            <t indent="0" pn="section-5.2-2.4.1">H3_DATAGRAM_ERROR</t>
+          </dd>
+          <dt pn="section-5.2-2.5">説明：</dt>
+          <dd pn="section-5.2-2.6">
+            <t indent="0" pn="section-5.2-2.6.1">Datagram or Capsule Protocol parse error</t>
+          </dd>
+          <dt pn="section-5.2-2.7">ステータス：</dt>
+          <dd pn="section-5.2-2.8">
+            <t indent="0" pn="section-5.2-2.8.1">permanent</t>
+          </dd>
+          <dt pn="section-5.2-2.9">参照：</dt>
+          <dd pn="section-5.2-2.10">
+            <t indent="0" pn="section-5.2-2.10.1">RFC 9297</t>
+          </dd>
+          <dt pn="section-5.2-2.11">変更管理者：</dt>
+          <dd pn="section-5.2-2.12">
+            <t indent="0" pn="section-5.2-2.12.1">IETF</t>
+          </dd>
+          <dt pn="section-5.2-2.13">連絡先：</dt>
+          <dd pn="section-5.2-2.14">
+            <t indent="0" pn="section-5.2-2.14.1">HTTP_WG; HTTP working group; ietf-http-wg@w3.org</t>
+          </dd>
+          <dt pn="section-5.2-2.15">注：</dt>
+          <dd pn="section-5.2-2.16">
+            <t indent="0" pn="section-5.2-2.16.1">None</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="iana-hdr" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-http-header-field-name">HTTPヘッダーフィールド名</name>
+        <t indent="0" pn="section-5.3-1">IANAは、&lt;<eref target="https://www.iana.org/assignments/http-fields" brackets="none"/>&gt;で管理されている「Hypertext Transfer Protocol (HTTP) Field Name Registry」に次のエントリーを登録しました：</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-5.3-2">
+          <dt pn="section-5.3-2.1">フィールド名：</dt>
+          <dd pn="section-5.3-2.2">
+            <t indent="0" pn="section-5.3-2.2.1">Capsule-Protocol</t>
+          </dd>
+          <dt pn="section-5.3-2.3">テンプレート：</dt>
+          <dd pn="section-5.3-2.4">
+            <t indent="0" pn="section-5.3-2.4.1">None</t>
+          </dd>
+          <dt pn="section-5.3-2.5">ステータス：</dt>
+          <dd pn="section-5.3-2.6">
+            <t indent="0" pn="section-5.3-2.6.1">permanent</t>
+          </dd>
+          <dt pn="section-5.3-2.7">参照：</dt>
+          <dd pn="section-5.3-2.8">
+            <t indent="0" pn="section-5.3-2.8.1">RFC 9297</t>
+          </dd>
+          <dt pn="section-5.3-2.9">コメント：</dt>
+          <dd pn="section-5.3-2.10">
+            <t indent="0" pn="section-5.3-2.10.1">None</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="iana-types" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-capsule-types">カプセルタイプ</name>
+        <t indent="0" pn="section-5.4-1">この文書は、HTTPカプセルタイプのコードのためのレジストリーを設立します。「HTTP Capsule Types」レジストリーは62ビットの空間を管理し、<xref section="22.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-22.1" derivedContent="QUIC"/>に記載されているQUICの登録ポリシーに従って運用されます。この新しいレジストリーには、<xref section="22.1.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-22.1.1" derivedContent="QUIC"/>に列挙されている共通のフィールドのセットが含まれます。これらの共通フィールドに加えて、このレジストリーのすべての登録には、カプセルタイプの短い名前またはラベルを含む「Capsule Type」フィールドを含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.4-2">このレジストリーへの恒久的な登録は、Specification Requiredポリシー（<xref section="4.6" sectionFormat="of" target="RFC8126" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.6" derivedContent="IANA-POLICY"/>）を使用して割り当てられます。ただし、0x00から0x3f（16進数、両端を含む）までの値は例外で、<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="IANA-POLICY"/>のセクション<xref target="RFC8126" section="4.9" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.9" derivedContent="IANA-POLICY"/>および<xref target="RFC8126" section="4.10" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.10" derivedContent="IANA-POLICY"/>で定義されているStandards ActionまたはIESG Approvalを使用して割り当てられます。</t>
+        <t indent="0" pn="section-5.4-3">整数値Nに対して0x29 * N + 0x17の形式の値を持つカプセルタイプは、未知のカプセルタイプを無視するという要件を実地に試すために予約されています。これらのカプセルはセマンティクスを持たず、任意の値を運ぶことができます。これらの値はIANAによって割り当てられては<bcp14>なりません（MUST NOT）</bcp14>。また、割り当て済みの値の一覧に記載されては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+        <t indent="0" pn="section-5.4-4">このレジストリーには、最初に次のエントリーが含まれます：</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-5.4-5">
+          <dt pn="section-5.4-5.1">値：</dt>
+          <dd pn="section-5.4-5.2">
+            <t indent="0" pn="section-5.4-5.2.1">0x00</t>
+          </dd>
+          <dt pn="section-5.4-5.3">Capsule Type:</dt>
+          <dd pn="section-5.4-5.4">
+            <t indent="0" pn="section-5.4-5.4.1">DATAGRAM</t>
+          </dd>
+          <dt pn="section-5.4-5.5">ステータス：</dt>
+          <dd pn="section-5.4-5.6">
+            <t indent="0" pn="section-5.4-5.6.1">permanent</t>
+          </dd>
+          <dt pn="section-5.4-5.7">参照：</dt>
+          <dd pn="section-5.4-5.8">
+            <t indent="0" pn="section-5.4-5.8.1">RFC 9297</t>
+          </dd>
+          <dt pn="section-5.4-5.9">変更管理者：</dt>
+          <dd pn="section-5.4-5.10">
+            <t indent="0" pn="section-5.4-5.10.1">IETF</t>
+          </dd>
+          <dt pn="section-5.4-5.11">連絡先：</dt>
+          <dd pn="section-5.4-5.12">
+            <t indent="0" pn="section-5.4-5.12.1">MASQUE Working Group <eref target="mailto:masque@ietf.org" brackets="none">masque@ietf.org</eref></t>
+          </dd>
+          <dt pn="section-5.4-5.13">注：</dt>
+          <dd pn="section-5.4-5.14">
+            <t indent="0" pn="section-5.4-5.14.1">None</t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="RFC9221" to="QUIC-DGRAM"/>
+    <displayreference target="RFC9110" to="HTTP"/>
+    <displayreference target="RFC9112" to="HTTP/1.1"/>
+    <displayreference target="RFC9113" to="HTTP/2"/>
+    <displayreference target="RFC9114" to="HTTP/3"/>
+    <displayreference target="RFC8126" to="IANA-POLICY"/>
+    <displayreference target="RFC9000" to="QUIC"/>
+    <displayreference target="RFC8941" to="STRUCTURED-FIELDS"/>
+    <displayreference target="RFC9293" to="TCP"/>
+    <displayreference target="RFC8899" to="DPLPMTUD"/>
+    <displayreference target="RFC8441" to="EXT-CONNECT2"/>
+    <displayreference target="RFC9220" to="EXT-CONNECT3"/>
+    <displayreference target="RFC9218" to="PRIORITY"/>
+    <displayreference target="RFC6455" to="WEBSOCKET"/>
+    <references pn="section-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-6.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC9110" target="https://www.rfc-editor.org/info/rfc9110" quoteTitle="true" derivedAnchor="HTTP">
+          <front>
+            <title>HTTP Semantics</title>
+            <author fullname="R. Fielding" initials="R" role="editor" surname="Fielding"/>
+            <author fullname="M. Nottingham" initials="M" role="editor" surname="Nottingham"/>
+            <author fullname="J. Reschke" initials="J" role="editor" surname="Reschke"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems. This document describes the overall architecture of HTTP, establishes common terminology, and defines aspects of the protocol that are shared by all versions. In this definition are core protocol elements, extensibility mechanisms, and the "http" and "https" Uniform Resource Identifier (URI) schemes.</t>
+              <t indent="0">This document updates RFC 3864 and obsoletes RFCs 2818, 7231, 7232, 7233, 7235, 7538, 7615, 7694, and portions of 7230.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="97"/>
+          <seriesInfo name="RFC" value="9110"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9110"/>
+        </reference>
+        <reference anchor="RFC9112" target="https://www.rfc-editor.org/info/rfc9112" quoteTitle="true" derivedAnchor="HTTP/1.1">
+          <front>
+            <title>HTTP/1.1</title>
+            <author fullname="R. Fielding" initials="R" role="editor" surname="Fielding"/>
+            <author fullname="M. Nottingham" initials="M" role="editor" surname="Nottingham"/>
+            <author fullname="J. Reschke" initials="J" role="editor" surname="Reschke"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems. This document specifies the HTTP/1.1 message syntax, message parsing, connection management, and related security concerns.</t>
+              <t indent="0">This document obsoletes portions of RFC 7230.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="99"/>
+          <seriesInfo name="RFC" value="9112"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9112"/>
+        </reference>
+        <reference anchor="RFC9113" target="https://www.rfc-editor.org/info/rfc9113" quoteTitle="true" derivedAnchor="HTTP/2">
+          <front>
+            <title>HTTP/2</title>
+            <author fullname="M. Thomson" initials="M" role="editor" surname="Thomson"/>
+            <author fullname="C. Benfield" initials="C" role="editor" surname="Benfield"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">This specification describes an optimized expression of the semantics of the Hypertext Transfer Protocol (HTTP), referred to as HTTP version 2 (HTTP/2). HTTP/2 enables a more efficient use of network resources and a reduced latency by introducing field compression and allowing multiple concurrent exchanges on the same connection.</t>
+              <t indent="0">This document obsoletes RFCs 7540 and 8740.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9113"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9113"/>
+        </reference>
+        <reference anchor="RFC9114" target="https://www.rfc-editor.org/info/rfc9114" quoteTitle="true" derivedAnchor="HTTP/3">
+          <front>
+            <title>HTTP/3</title>
+            <author fullname="M. Bishop" initials="M" role="editor" surname="Bishop"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">The QUIC transport protocol has several features that are desirable in a transport for HTTP, such as stream multiplexing, per-stream flow control, and low-latency connection establishment.  This document describes a mapping of HTTP semantics over QUIC.  This document also identifies HTTP/2 features that are subsumed by QUIC and describes how HTTP/2 extensions can be ported to HTTP/3.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9114"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9114"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="IANA-POLICY">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author fullname="M. Cotton" initials="M" surname="Cotton"/>
+            <author fullname="B. Leiba" initials="B" surname="Leiba"/>
+            <author fullname="T. Narten" initials="T" surname="Narten"/>
+            <date month="June" year="2017"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters. To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper. For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed. This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC9000" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="QUIC">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author fullname="J. Iyengar" initials="J" role="editor" surname="Iyengar"/>
+            <author fullname="M. Thomson" initials="M" role="editor" surname="Thomson"/>
+            <date month="May" year="2021"/>
+            <abstract>
+              <t indent="0">This document defines the core of the QUIC transport protocol.  QUIC provides applications with flow-controlled streams for structured communication, low-latency connection establishment, and network path migration.  QUIC includes security measures that ensure confidentiality, integrity, and availability in a range of deployment circumstances.  Accompanying documents describe the integration of TLS for key negotiation, loss detection, and an exemplary congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC9221" target="https://www.rfc-editor.org/info/rfc9221" quoteTitle="true" derivedAnchor="QUIC-DGRAM">
+          <front>
+            <title>An Unreliable Datagram Extension to QUIC</title>
+            <author fullname="T. Pauly" initials="T" surname="Pauly"/>
+            <author fullname="E. Kinnear" initials="E" surname="Kinnear"/>
+            <author fullname="D. Schinazi" initials="D" surname="Schinazi"/>
+            <date month="March" year="2022"/>
+            <abstract>
+              <t indent="0">This document defines an extension to the QUIC transport protocol to add support for sending and receiving unreliable datagrams over a QUIC connection.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9221"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9221"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S" surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized.  This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B" surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8941" target="https://www.rfc-editor.org/info/rfc8941" quoteTitle="true" derivedAnchor="STRUCTURED-FIELDS">
+          <front>
+            <title>Structured Field Values for HTTP</title>
+            <author fullname="M. Nottingham" initials="M" surname="Nottingham"/>
+            <author fullname="P-H. Kamp" initials="P-H" surname="Kamp"/>
+            <date month="February" year="2021"/>
+            <abstract>
+              <t indent="0">This document describes a set of data types and associated algorithms that are intended to make it easier and safer to define and handle HTTP header and trailer fields, known as "Structured Fields", "Structured Headers", or "Structured Trailers".  It is intended for use by specifications of new HTTP fields that wish to use a common syntax that is more restrictive than traditional HTTP field values.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8941"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8941"/>
+        </reference>
+        <reference anchor="RFC9293" target="https://www.rfc-editor.org/info/rfc9293" quoteTitle="true" derivedAnchor="TCP">
+          <front>
+            <title>Transmission Control Protocol (TCP)</title>
+            <author initials="W." surname="Eddy" fullname="W. Eddy" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies the Transmission Control Protocol (TCP).  TCP is an important transport-layer protocol in the Internet protocol stack, and it has continuously evolved over decades of use and growth of the Internet.  Over this time, a number of changes have been made to TCP as it was specified in RFC 793, though these have only been documented in a piecemeal fashion.  This document collects and brings those changes together with the protocol specification from RFC 793.  This document obsoletes RFC 793, as well as RFCs 879, 2873, 6093, 6429, 6528, and 6691 that updated parts of RFC 793.  It updates RFCs 1011 and 1122, and it should be considered as a replacement for the portions of those documents dealing with TCP requirements.  It also updates RFC 5961 by adding a small clarification in reset handling while in the SYN-RECEIVED state.  The TCP header control bits from RFC 793 have also been updated based on RFC 3168.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="9293"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9293"/>
+        </reference>
+      </references>
+      <references pn="section-6.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC8899" target="https://www.rfc-editor.org/info/rfc8899" quoteTitle="true" derivedAnchor="DPLPMTUD">
+          <front>
+            <title>Packetization Layer Path MTU Discovery for Datagram Transports</title>
+            <author fullname="G. Fairhurst" initials="G" surname="Fairhurst"/>
+            <author fullname="T. Jones" initials="T" surname="Jones"/>
+            <author fullname="M. Tüxen" initials="M" surname="Tüxen"/>
+            <author fullname="I. Rüngeler" initials="I" surname="Rüngeler"/>
+            <author fullname="T. Völker" initials="T" surname="Völker"/>
+            <date month="September" year="2020"/>
+            <abstract>
+              <t indent="0">This document specifies Datagram Packetization Layer Path MTU Discovery (DPLPMTUD). This is a robust method for Path MTU Discovery (PMTUD) for datagram Packetization Layers (PLs). It allows a PL, or a datagram application that uses a PL, to discover whether a network path can support the current size of datagram. This can be used to detect and reduce the message size when a sender encounters a packet black hole. It can also probe a network path to discover whether the maximum packet size can be increased. This provides functionality for datagram transports that is equivalent to the PLPMTUD specification for TCP, specified in RFC 4821, which it updates. It also updates the UDP Usage Guidelines to refer to this method for use with UDP datagrams and updates SCTP.</t>
+              <t indent="0">The document provides implementation notes for incorporating Datagram PMTUD into IETF datagram transports or applications that use datagram transports.</t>
+              <t indent="0">This specification updates RFC 4960, RFC 4821, RFC 6951, RFC 8085, and RFC 8261.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8899"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8899"/>
+        </reference>
+        <reference anchor="RFC8441" target="https://www.rfc-editor.org/info/rfc8441" quoteTitle="true" derivedAnchor="EXT-CONNECT2">
+          <front>
+            <title>Bootstrapping WebSockets with HTTP/2</title>
+            <author fullname="P. McManus" initials="P" surname="McManus"/>
+            <date month="September" year="2018"/>
+            <abstract>
+              <t indent="0">This document defines a mechanism for running the WebSocket Protocol (RFC 6455) over a single stream of an HTTP/2 connection.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8441"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8441"/>
+        </reference>
+        <reference anchor="RFC9220" target="https://www.rfc-editor.org/info/rfc9220" quoteTitle="true" derivedAnchor="EXT-CONNECT3">
+          <front>
+            <title>Bootstrapping WebSockets with HTTP/3</title>
+            <author fullname="R. Hamilton" initials="R" surname="Hamilton"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">The mechanism for running the WebSocket Protocol over a single stream of an HTTP/2 connection is equally applicable to HTTP/3, but the HTTP-version-specific details need to be specified.  This document describes how the mechanism is adapted for HTTP/3.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9220"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9220"/>
+        </reference>
+        <reference anchor="RFC9218" target="https://www.rfc-editor.org/info/rfc9218" quoteTitle="true" derivedAnchor="PRIORITY">
+          <front>
+            <title>Extensible Prioritization Scheme for HTTP</title>
+            <author fullname="K. Oku" initials="K" surname="Oku"/>
+            <author fullname="L. Pardue" initials="L" surname="Pardue"/>
+            <date month="June" year="2022"/>
+            <abstract>
+              <t indent="0">This document describes a scheme that allows an HTTP client to communicate its preferences for how the upstream server prioritizes responses to its requests, and also allows a server to hint to a downstream intermediary how its responses should be prioritized when they are forwarded.  This document defines the Priority header field for communicating the initial priority in an HTTP version-independent manner, as well as HTTP/2 and HTTP/3 frames for reprioritizing responses.  These share a common format structure that is designed to provide future extensibility.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9218"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9218"/>
+        </reference>
+        <reference anchor="RFC6455" target="https://www.rfc-editor.org/info/rfc6455" quoteTitle="true" derivedAnchor="WEBSOCKET">
+          <front>
+            <title>The WebSocket Protocol</title>
+            <author fullname="I. Fette" initials="I" surname="Fette"/>
+            <author fullname="A. Melnikov" initials="A" surname="Melnikov"/>
+            <date month="December" year="2011"/>
+            <abstract>
+              <t indent="0">&lt;p&gt;The WebSocket Protocol enables two-way communication between a client running untrusted code in a controlled environment to a remote host that has opted-in to communications from that code.  The security model used for this is the origin-based security model commonly used by web browsers.  The protocol consists of an opening handshake followed by basic message framing, layered over TCP.  The goal of this technology is to provide a mechanism for browser-based applications that need two-way communication with servers that does not rely on opening multiple HTTP connections (e.g., using XMLHttpRequest or &lt;iframe&gt;s and long polling). [STANDARDS-TRACK]&lt;/p&gt;</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6455"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6455"/>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" anchor="acks" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書の一部は、以前はQUIC DATAGRAMフレームの定義自体の一部でした。著者らは、その文書の著者と、提案をくださったIETF MASQUEワーキンググループのメンバーに謝意を表します。また、著者らは、HTTP/3設定の使用を提案してくれた<contact fullname="Martin Thomson"/>に感謝します。さらに、著者らは、実質的な意見をくれた<contact fullname="Ben Schwartz"/>に感謝します。この文書の最終的な設計は、HTTP Datagrams Design Teamから生まれたものであり、そのメンバーは<contact fullname="Alan Frindell"/>、<contact fullname="Alex Chernyakhovsky"/>、<contact fullname="Ben Schwartz"/>、<contact fullname="Eric Rescorla"/>、<contact fullname="Marcus Ihlar"/>、<contact fullname="Martin Thomson"/>、<contact fullname="Mike Bishop"/>、<contact fullname="Tommy Pauly"/>、<contact fullname="Victor Vasiliev"/>、およびこの文書の著者らです。著者らは、有益なコメントをくれた<contact fullname="Mark Nottingham"/>と<contact fullname="Philipp Tiesel"/>に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="D." surname="Schinazi" fullname="David Schinazi">
+        <organization showOnFrontPage="true">Google LLC</organization>
+        <address>
+          <postal>
+            <street>1600 Amphitheatre Parkway</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>dschinazi.ietf@gmail.com</email>
+        </address>
+      </author>
+      <author initials="L." surname="Pardue" fullname="Lucas Pardue">
+        <organization showOnFrontPage="true">Cloudflare</organization>
+        <address>
+          <email>lucaspardue.24.7@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

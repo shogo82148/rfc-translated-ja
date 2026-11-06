@@ -1,0 +1,1721 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-bier-te-arch-13" indexInclude="true" ipr="trust200902" number="9262" prepTime="2022-10-14T22:07:07" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="4" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-bier-te-arch-13" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9262" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="BIER-TE ARCH">ビットインデックス明示的複製のツリーエンジニアリング（BIER-TE）</title>
+    <seriesInfo name="RFC" value="9262" stream="IETF"/>
+    <author role="editor" fullname="Toerless Eckert" initials="T." surname="Eckert">
+      <organization abbrev="Futurewei" showOnFrontPage="true">Futurewei Technologies Inc.</organization>
+      <address>
+        <postal>
+          <street>2330 Central Expy</street>
+          <city>Santa Clara</city>
+          <code>95050</code>
+          <region>CA</region>
+          <country>United States of America</country>
+        </postal>
+        <email>tte@cs.fau.de</email>
+      </address>
+    </author>
+    <author fullname="Michael Menth" initials="M." surname="Menth">
+      <organization showOnFrontPage="true">University of Tuebingen</organization>
+      <address>
+        <postal>
+          <country>Germany</country>
+        </postal>
+        <email>menth@uni-tuebingen.de</email>
+      </address>
+    </author>
+    <author fullname="Gregory Cauchie" initials="G." surname="Cauchie">
+      <organization showOnFrontPage="true">KOEVOO</organization>
+      <address>
+        <postal>
+          <country>France</country>
+        </postal>
+        <email>gregory@koevoo.tech</email>
+      </address>
+    </author>
+    <date month="10" year="2022"/>
+    <area>rtg</area>
+    <workgroup>bier</workgroup>
+    <keyword>BIER</keyword>
+    <keyword>BIER-TE</keyword>
+    <keyword>controller</keyword>
+    <keyword>ECMP</keyword>
+    <keyword>forwarding</keyword>
+    <keyword>traffic-engineering</keyword>
+    <keyword>multicast</keyword>
+    <keyword>pseudocode</keyword>
+    <keyword>routing</keyword>
+    <keyword>traffic-steering</keyword>
+    <keyword>tree-steering</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このメモは、「ビットインデックス明示的複製（Bit Index Explicit Replication）」（BIER）パケット（RFC 8279）のための、パケットごとのステートレスな厳密（strict）および緩い（loose）経路誘導型の複製と転送について説明します。これは「ビットインデックス明示的複製のツリーエンジニアリング（Tree Engineering for Bit Index Explicit Replication）」（BIER-TE）と呼ばれ、BIERによるトラフィックエンジニアリングのための経路誘導メカニズムとして使用することを意図しています。</t>
+      <t indent="0" pn="section-abstract-2">BIER-TEは、「ビット位置（bit position）」（BP）に新しいセマンティクスを導入します。これらのBPはネットワークトポロジーの隣接（adjacency）を示します。これに対し、（TEでない）BIERでは、BPは「ビット転送出口ルーター（Bit-Forwarding Egress Router）」（BFER）を示します。したがって、BIER-TEの「パケットのBitString」は、BIER-TEによってパケットが転送される（ループのない）ツリーのエッジを示します。BIER-TEは、わずかな変更でBIER転送エンジンを活用できます。同じドメイン内でBIERとBIER-TEの転送を共存させることが可能です。たとえば、別々のBIER「サブドメイン」（SD）を使用することで共存できます。オプションのルーテッド隣接を除き、BIER-TEはBIERのルーティングアンダーレイを必要としないため、「内部ゲートウェイプロトコル（Interior Gateway Protocol）」（IGP）などのルーティングプロトコルに依存せずに動作できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9262" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">Table of Contents</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-basic-examples">基本的な例</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.3">
+                <t indent="0" pn="section-toc.1-1.2.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-topology-and-adjace">BIER-TEトポロジーと隣接</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.4">
+                <t indent="0" pn="section-toc.1-1.2.2.4.1"><xref derivedContent="2.4" format="counter" sectionFormat="of" target="section-2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relationship-to-bier">BIERとの関係</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.5">
+                <t indent="0" pn="section-toc.1-1.2.2.5.1"><xref derivedContent="2.5" format="counter" sectionFormat="of" target="section-2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-accelerated-hardware-forwar">ハードウェアによる高速転送の比較</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-components">コンポーネント</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-multicast-flow-overlay">マルチキャストフローオーバーレイ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-te-control-plane">BIER-TEコントロールプレーン</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2">
+                  <li pn="section-toc.1-1.3.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.2.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-te-controller">BIER-TEコントローラー</xref></t>
+                    <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2.1.2">
+                      <li pn="section-toc.1-1.3.2.2.2.1.2.1">
+                        <t indent="0" pn="section-toc.1-1.3.2.2.2.1.2.1.1"><xref derivedContent="3.2.1.1" format="counter" sectionFormat="of" target="section-3.2.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-topology-discovery-">BIER-TEトポロジーの発見と作成</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.3.2.2.2.1.2.2">
+                        <t indent="0" pn="section-toc.1-1.3.2.2.2.1.2.2.1"><xref derivedContent="3.2.1.2" format="counter" sectionFormat="of" target="section-3.2.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-engineered-trees-via-bitstr">BitStringによるツリーのエンジニアリング</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.3.2.2.2.1.2.3">
+                        <t indent="0" pn="section-toc.1-1.3.2.2.2.1.2.3.1"><xref derivedContent="3.2.1.3" format="counter" sectionFormat="of" target="section-3.2.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-in-the-network-topo">ネットワークトポロジーの変更</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.3.2.2.2.1.2.4">
+                        <t indent="0" pn="section-toc.1-1.3.2.2.2.1.2.4.1"><xref derivedContent="3.2.1.4" format="counter" sectionFormat="of" target="section-3.2.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-link-node-failures-and-reco">リンク／ノードの障害と回復</xref></t>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-te-forwarding-plan">BIER-TE転送プレーン</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-routing-underlay">ルーティングアンダーレイ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.5">
+                <t indent="0" pn="section-toc.1-1.3.2.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-traffic-engineering-conside">トラフィックエンジニアリングに関する考慮事項</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-forwarding">BIER-TE転送</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-te-bit-index-forwa">BIER-TEビットインデックス転送テーブル（BIFT）</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-adjacency-types">隣接の種類</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                  <li pn="section-toc.1-1.4.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-forward-connected">Forward Connected</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.2.1"><xref derivedContent="4.2.2" format="counter" sectionFormat="of" target="section-4.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-forward-routed">Forward Routed</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.3.1"><xref derivedContent="4.2.3" format="counter" sectionFormat="of" target="section-4.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ecmp">ECMP</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.4.1"><xref derivedContent="4.2.4" format="counter" sectionFormat="of" target="section-4.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-decapsulation">ローカルでのカプセル化解除（Local Decap(sulation)）</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encapsulation-co-existence-">カプセル化／BIERとの共存</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-forwarding-pseudoco">BIER-TE転送の疑似コード</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfr-requirements-for-bier-t">BIER-TE転送に対するBFRの要件</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-controller-operatio">BIER-TEコントローラーの運用上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bit-position-assignments">ビット位置の割り当て</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.1.2">
+                  <li pn="section-toc.1-1.5.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.1.1"><xref derivedContent="5.1.1" format="counter" sectionFormat="of" target="section-5.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-p2p-links">P2Pリンク</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.2.1"><xref derivedContent="5.1.2" format="counter" sectionFormat="of" target="section-5.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfers">BFER</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.3.1"><xref derivedContent="5.1.3" format="counter" sectionFormat="of" target="section-5.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-leaf-bfers">リーフBFER</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.4">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.4.1"><xref derivedContent="5.1.4" format="counter" sectionFormat="of" target="section-5.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-lans">LAN</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.5">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.5.1"><xref derivedContent="5.1.5" format="counter" sectionFormat="of" target="section-5.1.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-hub-and-spoke">ハブアンドスポーク</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.6">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.6.1"><xref derivedContent="5.1.6" format="counter" sectionFormat="of" target="section-5.1.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rings">リング</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.7">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.7.1"><xref derivedContent="5.1.7" format="counter" sectionFormat="of" target="section-5.1.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-equal-cost-multipath-ecmp">等コストマルチパス（ECMP）</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.8">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.8.1"><xref derivedContent="5.1.8" format="counter" sectionFormat="of" target="section-5.1.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-forward-routed-adjacencies">Forward Routed隣接</xref></t>
+                    <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.1.2.8.2">
+                      <li pn="section-toc.1-1.5.2.1.2.8.2.1">
+                        <t indent="0" pn="section-toc.1-1.5.2.1.2.8.2.1.1"><xref derivedContent="5.1.8.1" format="counter" sectionFormat="of" target="section-5.1.8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reducing-bit-positions">ビット位置の削減</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.5.2.1.2.8.2.2">
+                        <t indent="0" pn="section-toc.1-1.5.2.1.2.8.2.2.1"><xref derivedContent="5.1.8.2" format="counter" sectionFormat="of" target="section-5.1.8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-supporting-nodes-without-bi">BIER-TEを持たないノードのサポート</xref></t>
+                      </li>
+                    </ul>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.9">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.9.1"><xref derivedContent="5.1.9" format="counter" sectionFormat="of" target="section-5.1.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reuse-of-bit-positions-with">ビット位置の再利用（DNCなし）</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.1.2.10">
+                    <t indent="0" pn="section-toc.1-1.5.2.1.2.10.1"><xref derivedContent="5.1.10" format="counter" sectionFormat="of" target="section-5.1.10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-summary-of-bp-optimizations">BPの最適化のまとめ</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-avoiding-duplicates-and-loo">重複とループの回避</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.2.2">
+                  <li pn="section-toc.1-1.5.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.5.2.2.2.1.1"><xref derivedContent="5.2.1" format="counter" sectionFormat="of" target="section-5.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-loops">ループ</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.5.2.2.2.2.1"><xref derivedContent="5.2.2" format="counter" sectionFormat="of" target="section-5.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-duplicates">重複</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-managing-sis-subdomains-and">SI、サブドメイン、BFR-idの管理</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.3.2">
+                  <li pn="section-toc.1-1.5.2.3.2.1">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.1.1"><xref derivedContent="5.3.1" format="counter" sectionFormat="of" target="section-5.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-why-sis-and-subdomains">なぜSIとサブドメインなのか</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.2">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.2.1"><xref derivedContent="5.3.2" format="counter" sectionFormat="of" target="section-5.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-assigning-bits-for-the-bier">BIER-TEトポロジーへのビットの割り当て</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.3">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.3.1"><xref derivedContent="5.3.3" format="counter" sectionFormat="of" target="section-5.3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-assigning-bfr-ids-with-bier">BIER-TEにおけるBFR-idの割り当て</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.4">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.4.1"><xref derivedContent="5.3.4" format="counter" sectionFormat="of" target="section-5.3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mapping-from-bfrs-to-bitstr">BIER-TEにおけるBFRからBitStringへのマッピング</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.5">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.5.1"><xref derivedContent="5.3.5" format="counter" sectionFormat="of" target="section-5.3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-assigning-bfr-ids-for-bier-">BIER-TEのためのBFR-idの割り当て</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.6">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.6.1"><xref derivedContent="5.3.6" format="counter" sectionFormat="of" target="section-5.3.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-bit-allocations">ビット割り当ての例</xref></t>
+                    <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.3.2.6.2">
+                      <li pn="section-toc.1-1.5.2.3.2.6.2.1">
+                        <t indent="0" pn="section-toc.1-1.5.2.3.2.6.2.1.1"><xref derivedContent="5.3.6.1" format="counter" sectionFormat="of" target="section-5.3.6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-with-bier">BIERの場合</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.5.2.3.2.6.2.2">
+                        <t indent="0" pn="section-toc.1-1.5.2.3.2.6.2.2.1"><xref derivedContent="5.3.6.2" format="counter" sectionFormat="of" target="section-5.3.6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-with-bier-te">BIER-TEの場合</xref></t>
+                      </li>
+                    </ul>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.3.2.7">
+                    <t indent="0" pn="section-toc.1-1.5.2.3.2.7.1"><xref derivedContent="5.3.7" format="counter" sectionFormat="of" target="section-5.3.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-summary">まとめ</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-te-and-segment-routing">BIER-TEとセグメントルーティング（SR）</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="overview" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-overview">概要</name>
+      <t indent="0" pn="section-1-1">「ビットインデックス明示的複製のツリーエンジニアリング（Tree Engineering for Bit Index Explicit Replication）」（BIER-TE）は、<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>と<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>で説明されている（TEでない）BIERのアーキテクチャー、用語、パケット形式に基づいています。この文書は、読者がこれら2つの文書に精通していることを前提としてBIER-TEについて説明します。</t>
+      <t indent="0" pn="section-1-2">BIER-TEは、「ビット位置（bit position）」（BP）に新しいセマンティクスを導入します。これらのBPはネットワークトポロジーの隣接（adjacency）を示します。これに対し、（TEでない）BIERでは、BPは「ビット転送出口ルーター（Bit-Forwarding Egress Router）」（BFER）を示します。したがって、BIER-TEの「パケットのBitString」は、BIER-TEによってパケットが転送される（ループのない）ツリーのエッジを示します。BIER-TEでは、各「ビット転送ルーター（Bit-Forwarding Router）」（BFR）の「ビットインデックス転送テーブル（Bit Index Forwarding Table）」（BIFT）には、BIER-TEトポロジーにおいてそのBFRに隣接するBPだけが格納されます。その他のBPはBIFT内で空です。BFRは、パケット内でセットされている隣接BPに対してBIERパケットを複製して転送します。また、重複やループを避けるために、BPは通常、転送時にクリアされます。</t>
+      <t indent="0" pn="section-1-3">BIER-TEは、BIER転送エンジンをほとんど、またはまったく変更せずに活用できます。また、同じドメイン内でBIER転送と共存することもできます。たとえば、別々のBIERサブドメインを使用することで共存できます。オプションのルーテッド隣接を除き、BIER-TEはBIERのルーティングアンダーレイを必要としないため、「内部ゲートウェイプロトコル（Interior Gateway Protocol）」（IGP）などのルーティングプロトコルに依存せずに動作できます。</t>
+      <t indent="0" pn="section-1-4">この文書の構成は次のとおりです。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-1-5">
+        <li pn="section-1-5.1"><xref target="introduction" format="default" sectionFormat="of" derivedContent="Section 2"/>では、2つの転送の例を使ってBIER-TEを紹介し、続いてBIER-TE（オーバーレイ）トポロジーという新しい概念を紹介し、最後にBIERとBIER-TEの関係の要約と、ハードウェアによる高速転送についての議論を示します。</li>
+        <li pn="section-1-5.2"><xref target="components" format="default" sectionFormat="of" derivedContent="Section 3"/>では、BIER-TEアーキテクチャーのコンポーネント、すなわちマルチキャストフローオーバーレイ、BIER-TEコントロールプレーン（BIER-TEコントローラーを含む）を持つBIER-TE層、BIER-TE転送プレーン、ルーティングアンダーレイについて説明します。</li>
+        <li pn="section-1-5.3"><xref target="forwarding" format="default" sectionFormat="of" derivedContent="Section 4"/>では、さまざまな種類の隣接を伴うBIER-TE転送プレーンの振る舞いと、BIER-TE転送の疑似コードのバリエーションを規定し、最後に必須および任意の要件を規定します。</li>
+        <li pn="section-1-5.4"><xref target="controller-ops" format="default" sectionFormat="of" derivedContent="Section 5"/>では、BIER-TEコントローラーの運用上の考慮事項について説明します。主に、さまざまな種類のトポロジー上の状況に対して特定の種類のBIER-TE隣接を使用することで、BIER-TEコントローラーがBPの使用を最適化する方法を説明します。また、ループや重複（BIER-TEでは「無償で」手に入るものではありません）を避けるためのビットの割り当て方法についても説明します。最後に、「セット識別子（Set Identifier）」（SI）、「サブドメイン」（SD）、BFR-idをBIER-TEコントローラーがどのように管理できるかを議論し、例と要約を示します。</li>
+        <li pn="section-1-5.5"><xref target="SR" format="default" sectionFormat="of" derivedContent="Appendix A"/>でこの文書を締めくくり、BIER-TEと「セグメントルーティング（Segment Routing）」（SR）の関係の詳細について議論します。</li>
+      </ul>
+      <t indent="0" pn="section-1-6">関連する研究<xref target="I-D.ietf-roll-ccast" format="default" sectionFormat="of" derivedContent="CONSTRAINED-CAST"/>では、意図した配送ツリーのリーフやエッジを表すためにブルームフィルター<xref target="Bloom70" format="default" sectionFormat="of" derivedContent="Bloom70"/>を使用していることに注意してください。ブルームフィルターは一般に、明示的なBitStringよりも少ないアドレス指定ビットでより大きなツリーやトポロジーをサポートできますが、偽陽性というヒューリスティックなリスクを伴い、またループを避けるために転送中にBitString内のビットをクリアすることができません。これらの理由から、BIER-TEはBIERと同様に明示的なBitStringを使用します。BIER-TEで使用される明示的なBitStringは、特殊な種類のブルームフィルターと見なすこともでき、別の関連研究<xref target="ICC" format="default" sectionFormat="of" derivedContent="ICC"/>ではそのように説明しています。</t>
+    </section>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <section anchor="boilerplate" numbered="true" toc="include" removeInRFC="false" pn="section-2.1">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-2.1-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      </section>
+      <section anchor="examples" numbered="true" toc="include" removeInRFC="false" pn="section-2.2">
+        <name slugifiedName="name-basic-examples">基本的な例</name>
+        <t indent="0" pn="section-2.2-1">BIER-TE転送は、簡単な例で紹介するのが最適です。これらの例では、forward_connected()、forward_routed()、local_decap()など、この文書の後半（<xref target="btft" format="default" sectionFormat="of" derivedContent="Section 4.1"/>の<xref target="adjacencies" format="default" sectionFormat="of" derivedContent="Figure 4"/>）で定義する正式な用語を使用します。</t>
+        <t indent="0" pn="section-2.2-2"><xref target="basic-example" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示すBIER-TEの概要の例にある、6つのBFRを持つ単純なネットワークを考えます。p1...p15は使用されるビット位置です。すべてのBFRは「ビット転送入口ルーター（Bit-Forwarding Ingress Router）」（BFIR）として動作でき、BFR1、BFR3、BFR4、BFR6はBFERにもなれます。「Forward_connected()」は、ネットワークのサブネット隣接を表す隣接に使用される名前です。「Local_decap()」は、BIER-TEパケットのカプセル化を解除し、そのペイロードを上位層の処理に渡す隣接に使用される名前です。</t>
+        <figure anchor="basic-example" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-bier-te-basic-example">BIER-TEの基本的な例</name>
+          <artwork align="left" name="" type="" alt="" pn="section-2.2-3.1">
+BIER-TE Topology:
+
+   Diagram:
+
+                    p5    p6
+                  --- BFR3 ---
+               p3/    p13     \p7          p15
+   BFR1 ---- BFR2              BFR5 ----- BFR6
+      p1   p2  p4\    p14     /p10 p11   p12
+                  --- BFR4 ---
+                    p8    p9
+
+   (simplified) BIER-TE Bit Index Forwarding Tables (BIFTs):
+
+   BFR1:   p1  -&gt; local_decap()
+           p2  -&gt; forward_connected() to BFR2
+
+   BFR2:   p1  -&gt; forward_connected() to BFR1
+           p5  -&gt; forward_connected() to BFR3
+           p8  -&gt; forward_connected() to BFR4
+
+   BFR3:   p3  -&gt; forward_connected() to BFR2
+           p7  -&gt; forward_connected() to BFR5
+           p13 -&gt; local_decap()
+
+   BFR4:   p4  -&gt; forward_connected() to BFR2
+           p10 -&gt; forward_connected() to BFR5
+           p14 -&gt; local_decap()
+
+   BFR5:   p6  -&gt; forward_connected() to BFR3
+           p9  -&gt; forward_connected() to BFR4
+           p12 -&gt; forward_connected() to BFR6
+
+   BFR6:   p11 -&gt; forward_connected() to BFR5
+           p15 -&gt; local_decap()
+</artwork>
+        </figure>
+        <t indent="0" pn="section-2.2-4">BFR1からのパケットをBFR4経由でBFR6に送信すべきであるとします。これには、BitString (p2,p8,p10,p12,p15) が必要です。このパケットをBFR1でBIER-TEが調べると、BitStringのビット位置のうちBIFTでもセットされているのはp2だけです。これにより、BFR1はパケットの唯一のコピーをBFR2に送信します。同様に、p8によってBFR2はBFR4に転送し、p10によってBFR4はBFR5に転送し、p12によってBFR5はBFR6に転送します。最後に、p15によってBFR6はパケットを受信してカプセル化を解除します。</t>
+        <t indent="0" pn="section-2.2-5">BFR4経由でBFR6にコピーを送信し、さらにBFR3にもコピーを送信するには、BitStringは (p2,p5,p8,p10,p12,p13,p15) である必要があります。このパケットをBFR2が調べると、p5によって1つのコピーがBFR3に送信され、p8によって1つのコピーがBFR4に送信されます。BFR3がパケットを受信すると、p13によってBFR3はパケットを受信してカプセル化を解除します。</t>
+        <t indent="0" pn="section-2.2-6">代わりにBitStringが (p2,p6,p8,p10,p12,p13,p15) であった場合、前のケースのようにp5によってBFR2がBFR3にコピーするのではなく、p6によってBFR5がBFR3に向けてパケットをコピーします。これは、<xref target="basic-example" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示すようなBIER-TEトポロジーが、トラフィックに任意の可能な経路を通過させ、望む場所で複製させることができることを示しています。</t>
+        <t indent="0" pn="section-2.2-7">BIER-TEには、BPの割り当てを最小化するためのさまざまな選択肢があり、その多くは、たとえば展開前の計画から得られる、ネットワーク内で必要なマルチキャストトラフィックの経路や帯域幅の消費に関する帯域外の知識に基づいています。</t>
+        <t indent="0" pn="section-2.2-8"><xref target="basic-overlay" format="default" sectionFormat="of" derivedContent="Figure 2"/>は変更した例を示しています。ここではRtr2とRtr5がBIER-TEをサポートしていないと仮定しているため、トラフィックはそれらを越えてユニキャストでカプセル化される必要があります。BIER-TEパケットのルーティング／トンネリングによる転送をレイヤー2転送（forward_connected()）と明示的に区別するため、これらの隣接は「forward_routed()」隣接と呼ばれます。それ以外の点では、前述のforward_connected()隣接との処理の違いはありません。</t>
+        <t indent="0" pn="section-2.2-9">さらに、次の例では、BFR1はBFIRでありさえすればよく、BFERや中継BFRである必要はないと仮定することで、ビットを節約しています。</t>
+        <figure anchor="basic-overlay" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-bier-te-basic-overlay-examp">BIER-TEの基本的なオーバーレイの例</name>
+          <artwork align="left" name="" type="" alt="" pn="section-2.2-10.1">
+BIER-TE Topology:
+
+   Diagram:
+
+                   p1  p3  p7
+                ....&gt; BFR3 &lt;....       p5
+        ........                ........&gt;  
+   BFR1       (Rtr2)          (Rtr5)      BFR6
+        ........                ........&gt; p9
+                ....&gt; BFR4 &lt;....       p6
+                   p2  p4  p8
+
+   (simplified) BIER-TE Bit Index Forwarding Tables (BIFTs):
+
+   BFR1:   p1  -&gt; forward_routed() to BFR3
+           p2  -&gt; forward_routed() to BFR4
+
+   BFR3:   p3  -&gt; local_decap()
+           p5  -&gt; forward_routed() to BFR6
+
+   BFR4:   p4  -&gt; local_decap()
+           p6  -&gt; forward_routed() to BFR6
+
+   BFR6:   p7  -&gt; forward_routed() to BFR3
+           p8  -&gt; forward_routed() to BFR4
+           p9  -&gt; local_decap()
+</artwork>
+        </figure>
+        <t indent="0" pn="section-2.2-11">BFR1からBFR3経由でBIER-TEパケットを送信してBFR6で受信させるには、BitStringは (p1,p5,p9) です。BFR1からBFR4経由でBFR6で受信させるパケットは、BitString (p2,p6,p9) を使用します。BFR1からBFR3、BFR4で受信させ、さらにBFR3からBFR6で受信させるパケットは、(p1,p2,p3,p4,p5,p9) を使用します。BFR1からBFR3、BFR4で受信させ、さらにBFR4からBFR6で受信させるパケットは、(p1,p2,p3,p4,p6,p9) を使用します。BFR1からBFR4で受信させ、次にBFR4からBFR6で受信させ、最後にBFR6からBFR3で受信させるパケットは、(p2,p3,p4,p6,p7,p9) を使用します。BFR1からBFR3で受信させ、次にBFR3からBFR6で受信させ、最後にBFR6からBFR4で受信させるパケットは、(p1,p3,p4,p5,p8,p9) を使用します。</t>
+      </section>
+      <section anchor="topology" numbered="true" toc="include" removeInRFC="false" pn="section-2.3">
+        <name slugifiedName="name-bier-te-topology-and-adjace">BIER-TEトポロジーと隣接</name>
+        <t indent="0" pn="section-2.3-1">（TEでない）BIERと比較したBIER-TEの重要な新しいコンポーネントは、<xref target="examples" format="default" sectionFormat="of" derivedContent="Section 2.2"/>の2つの例で紹介したBIER-TEトポロジーです。これは、どこで複製が行われうるか、あるいは行われるべきかを制御し、隣接に必要なBPの数を最小化する方法を制御するために使用されます。</t>
+        <t indent="0" pn="section-2.3-2">BIER-TEトポロジーは、すべてのBFRのBIFTで構成され、BFR間の隣接をエッジとし、そのエッジに隣接に使用されるBPのラベルを付けた有向グラフとして表現することもできます。隣接は本来、単方向です。<xref target="avoiding" format="default" sectionFormat="of" derivedContent="Section 5.2"/>で説明するように、望ましくない重複やループにつながらない限り、1つのBPを複数の隣接で再利用できます。</t>
+        <t indent="0" pn="section-2.3-3">最初の例のように、BIER-TEトポロジーがネットワークの基盤となる（レイヤー2）トポロジー（の一部）を表す場合、これを「アンダーレイ」BIER-TEトポロジーと呼ぶことがあります。2番目の例のように「forward_routed()」隣接だけで構成されるトポロジーは、「オーバーレイ」BIER-TEトポロジーと呼ぶことがあります。forward_connected()隣接とforward_routed()隣接の両方を持つBIER-TEトポロジーは、「ハイブリッド」BIER-TEトポロジーと呼ぶことがあります。</t>
+      </section>
+      <section anchor="comparison" numbered="true" toc="include" removeInRFC="false" pn="section-2.4">
+        <name slugifiedName="name-relationship-to-bier">BIERとの関係</name>
+        <t indent="0" pn="section-2.4-1">BIER-TEは、その転送プレーンが（TEでない）BIER転送プレーンの単純な拡張となるように設計されており、そのため、BIER-TEが有益となりうるBIERの展開に追加できます。</t>
+        <t indent="0" pn="section-2.4-2">BIER-TEは、経路誘導を必要とするものの分散ルーティングプロトコルを望まない、静的にプロビジョニングされたネットワークなど、（TEでない）BIERが最適ではない可能性がある展開へとBIERアーキテクチャーを拡大するための選択肢としても意図されています。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-2.4-3"><li pn="section-2.4-3.1" derivedCounter="1.">
+            <t indent="0" pn="section-2.4-3.1.1">BIER-TEは、BIERから次の側面を変更せずに継承します。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-2.4-3.1.2"><li pn="section-2.4-3.1.2.1" derivedCounter="1.a">BitStringを介した、パケットごとにシグナリングされる複製と配送という基本的な目的。</li>
+              <li pn="section-2.4-3.1.2.2" derivedCounter="1.b">フローオーバーレイ、BIER(-TE)層、ルーティングアンダーレイの3つの層で構成される全体的なアーキテクチャー。</li>
+              <li pn="section-2.4-3.1.2.3" derivedCounter="1.c">サポートされるカプセル化<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>。</li>
+              <li pn="section-2.4-3.1.2.4" derivedCounter="1.d">BitString内のBPのセマンティクスを除く、BIER-TE転送プレーンで使用されるすべてのBIERヘッダー要素<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>のセマンティクス。</li>
+              <li pn="section-2.4-3.1.2.5" derivedCounter="1.e">複製時にビットをどのようにクリアしなければならないかを除く、BIER転送プレーン。</li>
+            </ol>
+          </li>
+          <li pn="section-2.4-3.2" derivedCounter="2.">
+            <t indent="0" pn="section-2.4-3.2.1">BIER-TEには、BIERに対して次の重要な変更点があります。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-2.4-3.2.2"><li pn="section-2.4-3.2.2.1" derivedCounter="2.a">BIERでは、BIERパケットヘッダーのBitString内のビットはBFERを示し、BIFT内のビットはそのBFERに向けてBIERコントロールプレーンが計算したネクストホップを示します。BIER-TEでは、BIERパケットヘッダーのBitString内のビットはBIER-TEトポロジー内の隣接を示し、その隣接の上流であるBFRだけが、自身のBIFT内でそのBPにその隣接を格納します。</li>
+              <li pn="section-2.4-3.2.2.2" derivedCounter="2.b">BIERでは、BIER層のコントロールプレーンの中核部分に対して暗黙に想定される参照オプションは、分散ルーティングプロトコルのためのBIER拡張です。これには、それぞれ<xref target="RFC8401" format="default" sectionFormat="of" derivedContent="RFC8401"/>と<xref target="RFC8444" format="default" sectionFormat="of" derivedContent="RFC8444"/>で規定されている、BIERのためのIS-IS拡張とOSPF拡張が含まれます。</li>
+              <li pn="section-2.4-3.2.2.3" derivedCounter="2.c">BIER-TEコントロールプレーンの中核部分の参照オプションは、BIER-TEコントローラーです。とはいえ、BIERとBIER-TEのどちらのBIFTの転送プレーン状態も、同様に任意のメカニズムによって格納できます。</li>
+              <li pn="section-2.4-3.2.2.4" derivedCounter="2.d">コントロールプレーンの参照オプションを前提とすると、BIER-TEは、ネットワーク内での自律的な経路計算を、BIER-TEコントローラーが計算した明示的な経路に置き換えます。</li>
+            </ol>
+          </li>
+          <li pn="section-2.4-3.3" derivedCounter="3.">
+            <t indent="0" pn="section-2.4-3.3.1">BIERアーキテクチャーで説明されている次の要素や機能は、BIER-TEアーキテクチャーでは必要ありません。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-2.4-3.3.2"><li pn="section-2.4-3.3.2.1" derivedCounter="3.a">BIER-TEコントローラーを使用する場合、コントローラーがBIFTを直接格納できるため、BIER-TEのBFRには「ビットインデックスルーティングテーブル（Bit Index Routing Table）」（BIRT）は必要ありません。BIERでは、BIRTはBIERのための分散ルーティングプロトコルのサポートによって格納され、BFRは自身のBIRTからローカルにBIFTを格納できます。BIER-TEの他のコントロールプレーンまたは管理プレーンの選択肢によっては、BIER-TEのBFRにBIRTの要件が導入される場合があります。</li>
+              <li pn="section-2.4-3.3.2.2" derivedCounter="3.b">BIER-TE層の転送プレーンでは、BFRが一意のBPを持つ必要はありません。<xref target="leaf-bfer" format="default" sectionFormat="of" derivedContent="Section 5.1.3"/>を参照してください。したがって、BFRは一意のBFR-idを持たない場合があります。<xref target="bfr-id" format="default" sectionFormat="of" derivedContent="Section 5.3.3"/>を参照してください。</li>
+              <li pn="section-2.4-3.3.2.3" derivedCounter="3.c">BIER-TEコントロールプレーンによるBFRの識別は、この仕様の範囲外です。BIERコントロールプレーンはBFR間のシグナリングでBFR-idを使用しますが、BIER-TEコントローラーは適切と考える任意の形式の識別を選択できます。</li>
+              <li pn="section-2.4-3.3.2.4" derivedCounter="3.d">BIER-TE転送では、BIERパケットヘッダーのBFIR-idフィールドは必要ありません。</li>
+            </ol>
+          </li>
+          <li pn="section-2.4-3.4" derivedCounter="4.">
+            <t indent="0" pn="section-2.4-3.4.1">同じネットワーク内でBIERとBIER-TEを共存させるには、次のことが必要です。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-2.4-3.4.2"><li pn="section-2.4-3.4.2.1" derivedCounter="4.a">BIER/BIER-TEパケットヘッダーは、BIERとBIER-TEの両方のBIFTのアドレス指定を可能にする必要があります。カプセル化の選択肢によっては、同じSDをBIERとBIER-TEの間で再利用できる場合とできない場合があります。<xref target="encapsulation" format="default" sectionFormat="of" derivedContent="Section 4.3"/>を参照してください。いずれの場合も、パケットは常に、BIERのみ、またはBIER-TEのみを介してエンドツーエンドで転送されます（「ships in the night」転送）。</li>
+              <li pn="section-2.4-3.4.2.2" derivedCounter="4.b">展開がマルチキャストフローオーバーレイやBIER層のコントロールプレーン要素など、BFR-idを使用するBIER向けに開発された（変更されていない）コンポーネントを使用する場合には常に、BIER-TEの展開でもBIERと同様に、BFRにBFR-idを割り当て、それをBIERパケットヘッダーのBFIR-idフィールドに挿入する必要があります。<xref target="bfr-id" format="default" sectionFormat="of" derivedContent="Section 5.3.3"/>も参照してください。</li>
+            </ol>
+          </li>
+        </ol>
+      </section>
+      <section anchor="fwd-comparison" numbered="true" toc="include" removeInRFC="false" pn="section-2.5">
+        <name slugifiedName="name-accelerated-hardware-forwar">ハードウェアによる高速転送の比較</name>
+        <t indent="0" pn="section-2.5-1">BIER-TEの転送規則、特にBitStringの解析は、BIERをサポートするプラットフォーム上でのBIER-TE転送コードやBIER-TE転送ハードウェアのプログラミングが容易になることを期待して、できる限りBIERのものに近くなるように設計されています。<xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Section 4.4"/>の疑似コードは、BIERのBIFTの「転送ビットマスク（Forwarding Bit Mask）」（F-BM）を使用することで、既存の（TEでない）BIER/BIFT転送を変更して、必要なBIER-TE転送機能（<xref target="requirements" format="default" sectionFormat="of" derivedContent="Section 4.5"/>）をサポートする方法を示しています。BIER-TE転送で省略されるのは、BFRのネイバーに重複パケットを送信しないようにするためのビットのクリアだけです。これは、このクリアが不要であり、またBIERのF-BMを使用する場合には実行できないためです。</t>
+        <t indent="0" pn="section-2.5-2">BIERとBIER-TEのどちらの転送を使用するかは、単にパケットが示すBIFTのモード（BIERまたはBIER-TEのBIFT）の選択です。これは、カプセル化に関するBFRの設定によって決定されます。<xref target="encapsulation" format="default" sectionFormat="of" derivedContent="Section 4.3"/>を参照してください。</t>
+      </section>
+    </section>
+    <section anchor="components" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-components">コンポーネント</name>
+      <t indent="0" pn="section-3-1">BIER-TEは、BIERと同じ3つの層、すなわち「マルチキャストフローオーバーレイ」、「BIER層」、「ルーティングアンダーレイ」で構成されていると考えることができます。<xref target="architecture" format="default" sectionFormat="of" derivedContent="Figure 3"/>は、BIER層が「BIER-TE転送プレーン」と、「BIER-TEコントローラー」によって表される「BIER-TEコントロールプレーン」でどのように構成されるかも示しています。</t>
+      <figure anchor="architecture" align="left" suppress-title="false" pn="figure-3">
+        <name slugifiedName="name-bier-te-architecture">BIER-TEアーキテクチャー</name>
+        <artwork align="left" name="" type="" alt="" pn="section-3-2.1">
+                &lt;------BGP/PIM-----&gt;
+   |&lt;-IGMP/PIM-&gt;  multicast flow   &lt;-PIM/IGMP-&gt;|
+                     overlay
+
+       BIER-TE  [BIER-TE Controller] &lt;=&gt; [BIER-TE Topology]
+       control     ^      ^     ^
+       plane      /       |      \   BIER-TE control protocol
+                 |        |       |  (e.g., YANG/NETCONF/RESTCONF
+                 |        |       |       PCEP/...)
+                 v        v       v
+ Src -&gt; Rtr1 -&gt; BFIR-----BFR-----BFER -&gt; Rtr2 -&gt; Rcvr
+
+                |&lt;-----------------&gt;|
+              BIER-TE forwarding plane
+
+                |&lt;- BIER-TE domain-&gt;|
+
+              |&lt;---------------------&gt;|
+                  Routing underlay
+</artwork>
+      </figure>
+      <section anchor="flow-overlay" numbered="true" toc="include" removeInRFC="false" pn="section-3.1">
+        <name slugifiedName="name-the-multicast-flow-overlay">マルチキャストフローオーバーレイ</name>
+        <t indent="0" pn="section-3.1-1">マルチキャストフローオーバーレイは、<xref target="RFC8279" sectionFormat="comma" section="4.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8279#section-4.3" derivedContent="RFC8279"/>でBIERについて説明されているものと同じ役割を持ちます。<xref target="engineered-bitstrings" format="default" sectionFormat="of" derivedContent="Section 3.2.1.2"/>も参照してください。</t>
+        <t indent="0" pn="section-3.1-2">BIER-TEコントローラーを使用する場合、マルチキャストフローオーバーレイのシグナリングも中央の制御点を通じて行うほうが望ましい場合があります。「<xref target="RFC8556" format="title" sectionFormat="of" derivedContent="Multicast VPN Using Bit Index Explicit Replication (BIER)"/>」<xref target="RFC8556" format="default" sectionFormat="of" derivedContent="RFC8556"/>のようなBGPベースのオーバーレイフローサービスでは、BIER-TEコントローラーをBGPルートリフレクター<xref target="RFC4456" format="default" sectionFormat="of" derivedContent="RFC4456"/>として動作させ、BIER-TEコントローラーが計算したBitStringのためのBGPまたは別のプロトコルによるシグナリングと組み合わせることで、これを実現できます。セクション<xref target="engineered-bitstrings" format="counter" sectionFormat="of" derivedContent="3.2.1.2"/>と<xref target="bitstring-mappings" format="counter" sectionFormat="of" derivedContent="5.3.4"/>を参照してください。</t>
+      </section>
+      <section anchor="control-plane" numbered="true" toc="include" removeInRFC="false" pn="section-3.2">
+        <name slugifiedName="name-the-bier-te-control-plane">BIER-TEコントロールプレーン</name>
+        <t indent="0" pn="section-3.2-1">（TEでない）BIERアーキテクチャー<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>では、BIER層は<xref target="RFC8279" sectionFormat="of" section="4.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8279#section-4.2" derivedContent="RFC8279"/>で要約されています。この要約には、BIER層のコントロールプレーンと転送プレーンの両方の機能が、これらの用語を使わずに含まれています。BIERコントロールプレーンの標準化された選択肢の例としては、それぞれ<xref target="RFC8401" format="default" sectionFormat="of" derivedContent="RFC8401"/>と<xref target="RFC8444" format="default" sectionFormat="of" derivedContent="RFC8444"/>で規定されている、BIERのためのIS-IS拡張とOSPF拡張があります。</t>
+        <t indent="0" pn="section-3.2-2">BIER-TEでは、コントロールプレーンには少なくとも次の機能が含まれます。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2-3"><li pn="section-3.2-3.1" derivedCounter="1.">
+            <t indent="0" pn="section-3.2-3.1.1">BIER-TEトポロジー制御：ネットワークの初期プロビジョニング時、またはそのトポロジーやサービスの変更時に、BIER-TEのBIFTを確立するためのプロトコルや手順。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-3.2-3.1.2">
+              <li anchor="topology-control-1" pn="section-3.2-3.1.2.1" derivedCounter="1.a">BIER-TEサブドメインに対して望ましいBIER-TEトポロジー、すなわちBPに割り当てられる隣接を決定します。トポロジーの発見については<xref target="topology-discovery" format="default" sectionFormat="of" derivedContent="Section 3.2.1.1"/>で議論し、トポロジーに関するBIER-TEコントローラーの決定のさまざまな側面については<xref target="controller-ops" format="default" sectionFormat="of" derivedContent="Section 5"/>全体で議論します。</li>
+              <li pn="section-3.2-3.1.2.2" derivedCounter="1.b">BIER-TEトポロジーからBFRごとのBIFTを決定します。これは、BIER-TEトポロジーからそのBFRの隣接を抽出し、それらをBFRのBIFTに格納するだけで実現できます。</li>
+              <li pn="section-3.2-3.1.2.3" derivedCounter="1.c">オプションで、後でBFIR上でBIERヘッダーにBFIR-idとして挿入するために、BFIRにBFR-idを割り当てます。あるいは、BIERパケットヘッダー内のBFIR-idは、フローオーバーレイ層だけで管理されるか、使用されないこともあります。これについては<xref target="bfr-id" format="default" sectionFormat="of" derivedContent="Section 5.3.3"/>で議論します。</li>
+              <li pn="section-3.2-3.1.2.4" derivedCounter="1.d">BFRにBIFTを、またオプションでBFIRにBFR-idをインストールまたは更新します。これについては<xref target="topology-discovery" format="default" sectionFormat="of" derivedContent="Section 3.2.1.1"/>で議論します。</li>
+            </ol>
+          </li>
+          <li pn="section-3.2-3.2" derivedCounter="2.">
+            <t anchor="tree-control" indent="0" pn="section-3.2-3.2.1">BIER-TEツリー制御：ネットワークの運用中に、BFIR上でのオーバーレイフローの作成／変更／削除をサポートするためのプロトコルや手順。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-3.2-3.2.2"><li pn="section-3.2-3.2.2.1" derivedCounter="2.a">マルチキャストオーバーレイフローのBIER-TE要件、すなわちフローのBFIRとBFER、およびフローの経路選択のためのポリシーを処理します。これについては<xref target="te-considerations" format="default" sectionFormat="of" derivedContent="Section 3.5"/>で議論します。</li>
+              <li pn="section-3.2-3.2.2.2" derivedCounter="2.b">BitStringと、オプションでエントロピーを決定します。BitStringについてはセクション<xref target="engineered-bitstrings" format="counter" sectionFormat="of" derivedContent="3.2.1.2"/>、<xref target="te-considerations" format="counter" sectionFormat="of" derivedContent="3.5"/>、<xref target="bitstring-mappings" format="counter" sectionFormat="of" derivedContent="5.3.4"/>で議論します。エントロピーについては<xref target="forward-ecmp" format="default" sectionFormat="of" derivedContent="Section 4.2.3"/>で議論します。</li>
+              <li pn="section-3.2-3.2.2.3" derivedCounter="2.c">オーバーレイフローのパケットに望ましいBIERパケットヘッダーを付与するための状態をBFIRにインストールします。この点と次の点のさまざまな側面については、<xref target="bier-te-controller" format="default" sectionFormat="of" derivedContent="Section 3.2.1"/>全体と<xref target="encapsulation" format="default" sectionFormat="of" derivedContent="Section 4.3"/>で議論します。これら2つの点を担う主要なコンポーネントは、アーキテクチャー上BIERから継承されたマルチキャストフローオーバーレイ（<xref target="flow-overlay" format="default" sectionFormat="of" derivedContent="Section 3.1"/>）です。</li>
+              <li pn="section-3.2-3.2.2.4" derivedCounter="2.d">BIERパケットヘッダーのカプセル化を解除し、そのペイロードを適切にディスパッチするために必要な状態をBFERにインストールします。</li>
+            </ol>
+          </li>
+        </ol>
+        <section anchor="bier-te-controller" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1">
+          <name slugifiedName="name-the-bier-te-controller">BIER-TEコントローラー</name>
+          <t indent="0" pn="section-3.2.1-1">このアーキテクチャーでは、<xref target="architecture" format="default" sectionFormat="of" derivedContent="Figure 3"/>に示すように、BIER-TEコントロールプレーンが次のもので構成されると説明します。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2.1-2">
+            <li pn="section-3.2.1-2.1">BIER-TEコントローラー。</li>
+            <li pn="section-3.2.1-2.2"><xref target="topology-control-1" format="none" sectionFormat="of" derivedContent="">BIER-TEトポロジー制御</xref>（「BIER-TEトポロジー制御」の下のリストを参照）をサポートするために、コントローラーとBFRの間で通信するためのBFRデータモデルとプロトコル。たとえばYANG/NETCONF/RESTCONF <xref target="RFC7950" format="default" sectionFormat="of" derivedContent="RFC7950"/> <xref target="RFC6241" format="default" sectionFormat="of" derivedContent="RFC6241"/> <xref target="RFC8040" format="default" sectionFormat="of" derivedContent="RFC8040"/>などです。</li>
+            <li pn="section-3.2.1-2.3"><xref target="tree-control" format="none" sectionFormat="of" derivedContent="">BIER-TEツリー制御</xref>（<xref target="control-plane" format="default" sectionFormat="of" derivedContent="Section 3.2"/>の項目2を参照）をサポートするために、コントローラーとBFIRの間で通信するためのBFRデータモデルとプロトコル。たとえば<xref target="RFC5440" format="default" sectionFormat="of" derivedContent="RFC5440"/>のためのBIER-TE拡張などです。</li>
+          </ul>
+          <t indent="0" pn="section-3.2.1-3">この文書では、BIER-TEコントロールプレーンの参照オプションとして単一の集中型BIER-TEコントローラーを使用しますが、他の選択肢も同様に実現可能です。BIER-TEコントロールプレーンは、自動化された設定やプロトコルを使わずに、運用者がBFR上のCLIを介して実装することも同様に可能です。その場合、BFIR上で運用者が設定したローカルポリシーによって、適切なBIERヘッダーフィールドの設定方法を決定する必要があります。BIER-TEコントロールプレーンを分散化することもできますが、この文書では、前述の機能を実現するためにその（分散化された）エンティティーを調整する際に必要となる追加のプロトコルや手順については考慮しません。</t>
+          <section anchor="topology-discovery" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1.1">
+            <name slugifiedName="name-bier-te-topology-discovery-">BIER-TEトポロジーの発見と作成</name>
+            <t indent="0" pn="section-3.2.1.1-1"><xref target="topology-control-1" format="none" sectionFormat="of" derivedContent="">BIER-TEトポロジー制御で最初に挙げた項目</xref>（<xref target="control-plane" format="default" sectionFormat="of" derivedContent="Section 3.2"/>の項目1.a）には、ネットワークトポロジーの発見とBIER-TEトポロジーの作成が含まれます。後者は、どのルーターをBFRとして設定するか、およびそれらの間の隣接をコントローラーが決定するプロセスを指します。</t>
+            <t indent="0" pn="section-3.2.1.1-2">静的に管理されるネットワーク（たとえば産業環境）では、発見と作成のどちらも手動／オフラインのプロセスにできます。</t>
+            <t indent="0" pn="section-3.2.1.1-3">その他のネットワークでは、トポロジーの発見は、リンクステートプロトコルに基づくIGPをBIER-TEコントローラー自体にまで拡張することを含むプロトコル（たとえばBGP-LS <xref target="RFC7752" format="default" sectionFormat="of" derivedContent="RFC7752"/>やYANGトポロジー<xref target="RFC8345" format="default" sectionFormat="of" derivedContent="RFC8345"/>）や、BIER-TEに固有の方法（たとえば<xref target="BIER-TE-YANG" format="default" sectionFormat="of" derivedContent="BIER-TE-YANG"/>を介したもの）に依存する場合があります。これらの選択肢は網羅的なものではありません。</t>
+            <t indent="0" pn="section-3.2.1.1-4">BIER-TEトポロジーの動的な作成は、ネットワークのサブネット隣接ごとにBPを割り当てることで、ネットワークトポロジーをBIER-TEトポロジーに1対1でマッピングするだけの簡単なものにもなりえます。より大規模なネットワークでは、必要なBPの数を最小化する方法や、異なるSI:BitStringを使用してオーバーレイフローをBFERに配送する際にリンク上の重複パケットの数を最小化するために、異なるBitStringにわたってBPを割り当てる方法など、より複雑なポリシーや最適化の決定を伴う可能性が高くなります。これらのトピックについては<xref target="controller-ops" format="default" sectionFormat="of" derivedContent="Section 5"/>で議論します。</t>
+            <t indent="0" pn="section-3.2.1.1-5">BIER-TEトポロジーが決定されると、BIER-TEコントローラーはBP／隣接をBFRのBIFTにプッシュします。各BFRでは、BIER-TEトポロジーにおいて他のBFRへの隣接となるSI:BPだけが格納されます。</t>
+            <t indent="0" pn="section-3.2.1.1-6">BIER-TEトポロジー制御とBIER-TEツリー制御の両方におけるBIER-TEコントローラーとBFRの間の通信は、NETCONF/RESTCONF/YANG/PCEPなどの標準化されたプロトコルとデータモデルを介して行うのが理想的です。BFR上のベンダー固有のCLIも選択肢の1つです（標準化されたデータモデルの定義がない他の多くの「ソフトウェア定義ネットワーク（Software-Defined Network）」（SDN）ソリューションと同様です）。</t>
+          </section>
+          <section anchor="engineered-bitstrings" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1.2">
+            <name slugifiedName="name-engineered-trees-via-bitstr">BitStringによるツリーのエンジニアリング</name>
+            <t indent="0" pn="section-3.2.1.2-1">BIERでは、単一のサブドメイン内の同じBFERの集合は、常に同じBitStringとしてエンコードされます。BIER-TEでは、BitStringはBFERへの経路をエンコードするため、同じサブドメイン内の同じBFERの集合に到達するために使用されるBitStringは、オーバーレイフローごとに異なる場合があり、異なるBFIRから同じBFERの集合へのBitStringは異なることがよくあります。同様に、最短経路ツリー、シュタイナーツリー（最小コストツリー）、冗長性のための多様な経路のツリーなど、オーバーレイフローに異なるポリシーを適用すべき場合には、同じBFIRから同じBFERの集合へのBitStringもオーバーレイフローごとに異なる場合があります。</t>
+            <t indent="0" pn="section-3.2.1.2-2">BIER-TEでエンジニアリングされたツリーを活用するアプリケーションについては、<xref target="BIER-MCAST-OVERLAY" format="default" sectionFormat="of" derivedContent="BIER-MCAST-OVERLAY"/>も参照してください。</t>
+          </section>
+          <section anchor="changes-in-topo" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1.3">
+            <name slugifiedName="name-changes-in-the-network-topo">ネットワークトポロジーの変更</name>
+            <t indent="0" pn="section-3.2.1.3-1">ネットワークトポロジーが（障害以外の理由で）変更され、ビット位置に割り当てられていた隣接が不要になった場合、BIER-TEコントローラーはそれらのビット位置を新しい隣接に再利用できます。まず、これらのビット位置を、すべてのBFIRのフロー状態とBFRのBIFT状態から削除する必要があります。その後、まずBIFTに、次にBFIRに再び格納できます。</t>
+          </section>
+          <section anchor="failures" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1.4">
+            <name slugifiedName="name-link-node-failures-and-reco">リンク／ノードの障害と回復</name>
+            <t indent="0" pn="section-3.2.1.4-1">トポロジー内のリンクやノードに障害が発生したり回復したりした場合、BIER-TEは、<xref target="BIER-TE-PROTECTION" format="default" sectionFormat="of" derivedContent="BIER-TE-PROTECTION"/>で説明されているような「高速リルート（Fast Reroute）」（FRR）手順で迅速に対応できます。その詳細はこの文書の範囲外です。また、影響を受けるマルチキャストフローのBitStringを再計算することで、より時間をかけて対応することもできます。この対応がFRR手順よりも遅いのは、BIER-TEコントローラーがリンク／ノードのアップ／ダウンの通知を受信し、望ましいBitStringを再計算し、それらをBFIRにプッシュする必要があるためです。FRRでは、これらはすべて、隣接のアップ／ダウンの通知を受信したBFR上でローカルに実行されます。</t>
+          </section>
+        </section>
+      </section>
+      <section anchor="forwarding-plane" numbered="true" toc="include" removeInRFC="false" pn="section-3.3">
+        <name slugifiedName="name-the-bier-te-forwarding-plan">BIER-TE転送プレーン</name>
+        <t indent="0" pn="section-3.3-1">BIER-TE転送プレーンは、次のコンポーネントで構成されます。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.3-2"><li pn="section-3.3-2.1" derivedCounter="1.">BFIRにおける、オーバーレイフローからのパケットへのBIERヘッダーの付与。これは、BIER-TEコントロールプレーンによって確立された状態、<xref target="flow-overlay" format="default" sectionFormat="of" derivedContent="Section 3.1"/>で説明するマルチキャストフローオーバーレイ、またはその両方の組み合わせによって駆動されます。</li>
+          <li pn="section-3.3-2.2" derivedCounter="2.">BFR（BFIRとBFERを含む）における、<xref target="forwarding" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明するSD、SI、「BitStringLength」（BSL）、BitString、およびオプションでエントロピーのフィールドに従ったBIERパケットの転送／複製。「差別化サービスコードポイント（Differentiated Services Code Point）」（DSCP）フィールドなど、その他のBIERヘッダーフィールドの処理は、この文書の範囲外です。</li>
+          <li pn="section-3.3-2.3" derivedCounter="3.">BFERにおける、BIERヘッダーの除去と、BIER-TEコントロールプレーンやオーバーレイ層によって作成された状態に従ったペイロードのディスパッチ。</li>
+        </ol>
+        <t indent="0" pn="section-3.3-3">BIER-TE転送プレーンは、パケットを受信すると、BIER-TEコントローラーによって格納されたBIFTで、パケットのBitString内でセットされているビット位置を単に検索します。BitString内でセットされていて、BIFT内に1つ以上の隣接を持つすべてのBPについて、BIFT内のそのBPの隣接の種類に従ってコピーが作成されます。コピーを送信する前に、BFRは、パケットのBitString内のBPのうち、そのBFRがBIFT内に1つ以上の隣接を持つものをすべてクリアします。これらのビットをクリアすることで、BitStringに誤って転送ループが含まれている場合にパケットがループするのを防ぎます。forward_connected()隣接に「DoNotClear」（DNC）フラグがセットされている場合、その隣接にコピーされるパケットについてはこのBPが元に戻されます。<xref target="forward-connected" format="default" sectionFormat="of" derivedContent="Section 4.2.1"/>を参照してください。</t>
+      </section>
+      <section anchor="routing-underlay" numbered="true" toc="include" removeInRFC="false" pn="section-3.4">
+        <name slugifiedName="name-the-routing-underlay">ルーティングアンダーレイ</name>
+        <t indent="0" pn="section-3.4-1">forward_connected()隣接では、BIER-TEは、ルーティングアンダーレイを必要とせずに、直接接続されたBIER-TEネイバーにL2（ユニキャスト）BIERパケットとしてBIERパケットを送信します。forward_routed()隣接では、BIER-TE転送はBIERパケットのコピーをカプセル化し、ルーティングアンダーレイの転送プレーンによって、隣接で示されるルーティング可能な宛先アドレスに配送されるようにします。forward_routed()隣接の詳細については<xref target="forward-routed" format="default" sectionFormat="of" derivedContent="Section 4.2.2"/>を参照してください。</t>
+        <t indent="0" pn="section-3.4-2">BIERは、BFERへの経路を計算し、それらの経路に対するネクストホップのBFR隣接を導出するためにルーティングアンダーレイに依存しています。これら2つのステップは、一般にルーティングアンダーレイのルーティングプロトコルに対するBIER固有の拡張に依存していますが、コントローラーによって確立されることもあります。BIER-TEでは、パケットのネクストホップは、BitStringのBPに対してBFR上でBIER-TEコントローラーが確立した隣接を通じて、BitStringによって決定されます。したがって、BIER-TEのセマンティクスでBIERパケットを転送するために、BFR固有のルーティングアンダーレイの拡張は必要ありません。</t>
+        <t indent="0" pn="section-3.4-3">カプセル化のパラメーターは、ルーティングアンダーレイに依存することなく、BIER-TEコントローラーがforward_connected()隣接またはforward_routed()隣接に直接プロビジョニングできます。</t>
+        <t indent="0" pn="section-3.4-4">BFRがBIER-TEのFRRをサポートしようとする場合、BIER-TE転送プレーンは、たとえば「双方向転送検出（Bidirectional Forwarding Detection）」（BFD）から、リンクのアップ／ダウンやネイバーのアップ／ダウンといった、隣接のアップ／ダウンの高速な通知を受信する必要があります。この文書では、これらの通知の提供はルーティングアンダーレイの一部と見なします。</t>
+      </section>
+      <section anchor="te-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-3.5">
+        <name slugifiedName="name-traffic-engineering-conside">トラフィックエンジニアリングに関する考慮事項</name>
+        <t indent="0" pn="section-3.5-1">トラフィックエンジニアリング<xref target="TE-OVERVIEW" format="default" sectionFormat="of" derivedContent="TE-OVERVIEW"/>は、ネットワークリソースを経済的かつ確実に利用しながら、運用中のIPネットワークのパフォーマンス最適化を提供します。トラフィックエンジニアリングを実現するために必要な主要な要素は、ポリシー、経路誘導、リソース管理です。これらの要素には、コントロール／コントローラーのレベルと転送プレーン内でのサポートが必要です。</t>
+        <t indent="0" pn="section-3.5-2">ポリシーの決定は、BIER-TEコントロールプレーン内、すなわちBIER-TEコントローラー内で行われます。コントローラーは、BitStringとBFRのBIFT状態を構成する際にポリシーを使用します。ユーザー／IPトラフィックから特定のBitString／BIER-TEフローへのマッピングは、ポリシーに基づいて行われます。BIER-TEのポリシーの具体的な詳細と、コントローラーがそれらをどのように使用するかは、この文書の範囲外です。</t>
+        <t indent="0" pn="section-3.5-3">経路誘導は、BitStringの定義を介してサポートされます。BIER-TEで使用されるBitStringは、ポリシーとリソース管理の考慮事項に基づいて構成されます。たとえば、レート制御サービス規律（Rate-Controlled Service Disciplines）<xref target="RCSD94" format="default" sectionFormat="of" derivedContent="RCSD94"/>のような輻輳損失のないサービスを提供する場合、コントローラーはBIER-TEのBitStringを構成する際に、各BFRおよび各BPで利用可能なリソースを考慮しなければなりません。リソースの可用性は、たとえばルーティングプロトコルの情報を介して提供される場合もありますが、NETCONFのようなBIER-TE制御プロトコルや、コントローラーが動作するネットワークのリソースを把握するために一般的に使用されるその他のプロトコルを介して取得することもできます。forward_routed()隣接が使用されない限り（forward_routed()隣接の定義については<xref target="forward-routed" format="default" sectionFormat="of" derivedContent="Section 4.2.2"/>を参照）、BIER-TEコントローラーが受け入れたBIER-TEトラフィックのリソース使用量は、ローカルな計上に基づいてBIER-TEコントローラー上だけで追跡できます。forward_routed()隣接が使用される場合は、基盤となるルーティングプロトコルによって選択された経路も追跡する必要があります。</t>
+        <t indent="0" pn="section-3.5-4">リソース管理は、BIER-TEで定義されたパケットの誘導を超えて、転送プレーンに影響を及ぼします。これには、受け入れられたRCSDトラフィックの最悪ケースの要件を保証するためのバッファーの割り当てや、場合によっては、通常さまざまな形式のキューイングを介して行われるポリシングやレートシェーピングのメカニズムが含まれます。このレベルのリソース制御は任意ですが、提供されるトラフィックを制御または調整して異なるレベルのサービスを提供し、輻輳の問題を緩和するための輻輳管理ポリシーをサポートしたいネットワークや、特定のトラフィックフローが経験する遅延を制御したいネットワークでは重要です。</t>
+      </section>
+    </section>
+    <section anchor="forwarding" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-bier-te-forwarding">BIER-TE転送</name>
+      <section anchor="btft" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-the-bier-te-bit-index-forwa">BIER-TEビットインデックス転送テーブル（BIFT）</name>
+        <t indent="0" pn="section-4.1-1">BIER-TEのBIFTは、（TEでない）BIERのBIFTと同等です。これは、BIER-TEを実行するすべてのBFR上に存在します。BIER-TEに使用されているBIERの「サブドメイン」（SD）ごとに、BIFTは<xref target="adjacencies" format="default" sectionFormat="of" derivedContent="Figure 4"/>に示す例のように構築されます。図のBIFTは、パケットのBitString内のBSLが8「ビット位置」（BP）であると仮定しています。<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>と同様に、このBSLは純粋に例として使用しているものであり、BIER/BIER-TEでサポートされるBSLではありません（最小のBSLは64です）。</t>
+        <t indent="0" pn="section-4.1-2">BIER-TEのBIFTを、<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>に示されているBIERのBIFTと比較すると次のようになります。</t>
+        <t indent="0" pn="section-4.1-3">BIERとBIER-TEのどちらでも、BIFTの行／エントリーは、それぞれのBIER疑似コード（<xref target="RFC8279" sectionFormat="comma" section="6.5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8279#section-6.5" derivedContent="RFC8279"/>）とBIER-TE疑似コード（<xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Section 4.4"/>）において、パケットのSI、BSL、およびBIFTの行を指すパケットのBitStringの1つのビット位置（BP）から導出されるBIFT-indexによってインデックス付けされます。BIFT-index = SI * BSL + BP - 1です。BitString内のBPは1からBSLまで番号付けされます。そのため、BIFT-indexに変換する際に - 1 のオフセットがあります。この文書では、BIFTの行を示すために「SI:BP」という表記も使用します。<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>では同等の表記「SI:BitString」を使用しており、そのBitStringにはそのBIFTの行のBPだけが入っています。</t>
+        <t indent="0" pn="section-4.1-4">BIERでは、各BIFT-indexはBFR-id = BIFT-index + 1によって1つのBFERを指し、各BFR上でそのBFERへのネクストホップの「BFRネイバー（BFR Neighbor）」（BFR-NBR）が格納されます。</t>
+        <t indent="0" pn="section-4.1-5">BIER-TEでは、各BIFT-index、したがって各SI:BPは、トポロジー内のBFR間の1つの隣接を示します。SI:BPを再利用する場合は、複数の隣接を示します。SI:BPには、その隣接の上流BFR上で、その隣接が格納されます。他のすべてのBFR上では、BIFTのエントリーは空です。</t>
+        <t indent="0" pn="section-4.1-6">BIERでは、BIERの転送規則のために、各BIFTの行に「転送ビットマスク（Forwarding Bit Mask）」（F-BM）のエントリーも必要です。BIER-TE転送ではF-BMは必要ありませんが、BIER転送から派生した、F-BMを使用しなければならない転送ハードウェア上でBIER-TEを実装する場合には使用できます。これについては、<xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Section 4.4"/>に示すBIER-TE転送疑似コードの最初のバリエーションで議論します。</t>
+        <figure anchor="adjacencies" align="left" suppress-title="false" pn="figure-4">
+          <name slugifiedName="name-bier-te-bit-index-forwardin">さまざまな隣接を持つBIER-TEビットインデックス転送テーブル（BIFT）</name>
+          <artwork align="left" pn="section-4.1-7.1">
+ -------------------------------------------------------------------
+ | BIFT-index |      | Adjacencies:                                |
+ | (SI:BP)    |(F-BM)| &lt;empty&gt; or one or more per entry            |
+ ===================================================================
+ |               BIFT indices for Packets with SI=0                |
+ -------------------------------------------------------------------
+ | 0 (0:1)    | ...  | forward_connected(interface,neighbor{,DNC}) |
+ -------------------------------------------------------------------
+ | 1 (0:2)    | ...  | forward_connected(interface,neighbor{,DNC}) |
+ |            | ...  | forward_connected(interface,neighbor{,DNC}) |
+ -------------------------------------------------------------------
+ |  ...       | ...  | ...                                         |
+ -------------------------------------------------------------------
+ | 4 (0:5)    | ...  | local_decap({VRF})                          |
+ -------------------------------------------------------------------
+ | 5 (0:6)    | ...  | forward_routed({VRF,}l3-neighbor)           |
+ -------------------------------------------------------------------
+ | 6 (0:7)    | ...  | &lt;empty&gt;                                     |
+ -------------------------------------------------------------------
+ | 7 (0:8)    | ...  | ECMP((adjacency1,...adjacencyN){,seed})     |
+ -------------------------------------------------------------------
+ |           BIFT indices for BitString/Packet with SI=1           |
+ -------------------------------------------------------------------
+ | 9 (1:1)    |      | ...                                         |
+ |  ...       | ...  | ...                                         |
+ -------------------------------------------------------------------
+</artwork>
+        </figure>
+        <t indent="0" pn="section-4.1-8">BIFTは、適切なプロトコルとデータモデルを通じて、BIER-TEコントローラーによってBFRのBIER-TEデータプレーンに設定されます。その後、BIFTは、<xref target="forwarding-plane" format="default" sectionFormat="of" derivedContent="Section 3.3"/>で規定されているBIER-TE転送プレーンの手順に従って、パケットを転送するために使用されます。</t>
+        <t indent="0" pn="section-4.1-9">BPを節約するために、BIFT-index（SI:BP）が複数のBFRのBIFTに格納される場合があることに注意してください。BIER-TEコントローラーが複数のBFRで共有される（論理的な）隣接にBPを割り当てる方法の例については<xref target="rings" format="default" sectionFormat="of" derivedContent="Section 5.1.6"/>を、同じBPを異なる隣接に割り当てる例については<xref target="leaf-bfer" format="default" sectionFormat="of" derivedContent="Section 5.1.3"/>を、異なる隣接間でのBPの再利用に関する一般的なガイドラインについては<xref target="reuse" format="default" sectionFormat="of" derivedContent="Section 5.1.9"/>を参照してください。</t>
+        <t indent="0" pn="section-4.1-10">{VRF}は、BIERペイロードを配送する先の仮想ルーティング転送（Virtual Routing and Forwarding）コンテキストを示します。これは任意であり、マルチキャストフローオーバーレイに依存します。</t>
+      </section>
+      <section anchor="atypes" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-adjacency-types">隣接の種類</name>
+        <section anchor="forward-connected" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.1">
+          <name slugifiedName="name-forward-connected">Forward Connected</name>
+          <t indent="0" pn="section-4.2.1-1">「forward_connected()」隣接は、接続しているインターフェイス上のBFRのインターフェイスアドレスを使用する、直接接続されたBFR-NBRへの隣接です。forward_connected()隣接はパケットをルーティングせず、L2でネイバーに転送するだけです。</t>
+          <t indent="0" pn="section-4.2.1-2">BIFT内で「DoNotClear」（DNC）がセットされている隣接に送信されるパケットでは、BFRがその隣接に対するコピーを作成する際に、その隣接のビット位置をクリア<bcp14>してはなりません（MUST NOT）</bcp14>。他の隣接に向けて作成されるパケットのコピーについては、そのビット位置は引き続きクリアされます。これは、たとえば<xref target="rings" format="default" sectionFormat="of" derivedContent="Section 5.1.6"/>で説明するようなリングトポロジーで使用できます。</t>
+          <t indent="0" pn="section-4.2.1-3">設定ミスによって引き起こされるループから保護するため（<xref target="loops" format="default" sectionFormat="of" derivedContent="Section 5.2.1"/>を参照）、DNCはforward_connected()隣接に対してのみ許可されます。他の種類の隣接に対するDNCの必要性や利点は特定されておらず、関連するリスクも分析されていません。</t>
+        </section>
+        <section anchor="forward-routed" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.2">
+          <name slugifiedName="name-forward-routed">Forward Routed</name>
+          <t indent="0" pn="section-4.2.2-1">「forward_routed()」隣接は、（トンネリングの）カプセル化を使用するBFRへの隣接であり、このカプセル化によって、パケットはforward_routed()隣接のl3-neighborパラメーターで示される隣接BFRに向けて、ルーティングアンダーレイによって転送されます。BIER-TEパケットをペイロードとして識別できる限り、MPLSやIP/IPv6上のトンネリングなど、実現可能な任意のカプセル化を活用できます。この識別は、<xref target="encapsulation" format="default" sectionFormat="of" derivedContent="Section 4.3"/>で説明するBIER/BIER-TEの共存メカニズム、またはトンネリングのカプセル化におけるBIER-TEペイロードタイプの明示的なサポートのいずれかに依存できます。</t>
+          <t indent="0" pn="section-4.2.2-2">forward_routed()隣接は、BIER-TEに対応していないルーターを越えてBIER-TEトラフィックを通過させるため、または複製も経路誘導も望まない（BIER-TEに対応した）ルーターを越えてトンネリングすることで必要なBPの数を最小化するため、あるいは単に、次のBFRへのルーティングアンダーレイの経路冗長性とFRRを活用するために必要です。また、複数のサブネットで隣接しているBFRが、BIER-TEのECMP（<xref target="forward-ecmp" format="default" sectionFormat="of" derivedContent="Section 4.2.3"/>）とは独立してルーティングアンダーレイのECMPを活用する場合にも有用です。</t>
+        </section>
+        <section anchor="forward-ecmp" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.3">
+          <name slugifiedName="name-ecmp">ECMP</name>
+          <t indent="0" pn="section-4.2.3-1">（TEでない）BIERのECMPは、BIERのBIFT処理のセマンティクスに結び付いているため、BIER-TEでは直接使用できません。</t>
+          <t indent="0" pn="section-4.2.3-2"><xref target="adjacencies" format="default" sectionFormat="of" derivedContent="Figure 4"/>のBIFT-index 7に示すようなBIER-TEの「等コストマルチパス（Equal-Cost Multipath）」（ECMP()）隣接は、パラメーターとして2つ以上の非ECMP()隣接のリストと、オプションのシードパラメーターを持ちます。BIER-TEパケットがそのようなECMP()隣接にコピーされると、実装固有のいわゆるハッシュ関数が、リストの隣接のうちパケットを転送する1つを選択します。パケットのカプセル化にエントロピーフィールドが含まれている場合、エントロピーフィールドを尊重<bcp14>すべきです（SHOULD）</bcp14>。エントロピーフィールドの値が同じ2つのパケットは、同じ隣接に送信される<bcp14>べきです（SHOULD）</bcp14>。シードパラメーターにより、複数の連続するECMPホップにわたる偏り（polarization）の問題に陥ることなく、高速に実装しやすいハッシュ関数を設計できます。詳細については<xref target="ecmp" format="default" sectionFormat="of" derivedContent="Section 5.1.7"/>を参照してください。</t>
+        </section>
+        <section anchor="forward-local" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.4">
+          <name slugifiedName="name-local-decapsulation">ローカルでのカプセル化解除（Local Decap(sulation)）</name>
+          <t indent="0" pn="section-4.2.4-1">「local_decap()」隣接は、BIER-TEパケットのペイロードのコピーを、パケットヘッダーフィールドに従って、BFR内でそのペイロードを担当するプロトコル（「NextProto」）（IP/IPv6、イーサネットなど）に渡します。local_decap()隣接は、一致するパケットに対してBFRをBFERにします。local_decap()隣接では、パケットをさらにどのように処理するかを決定するために、BFERがNextProtoのルーティングまたはスイッチングをサポートしている必要があります。</t>
+        </section>
+      </section>
+      <section anchor="encapsulation" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-encapsulation-co-existence-">カプセル化／BIERとの共存</name>
+        <t indent="0" pn="section-4.3-1">BIER-TEのカプセル化の仕様は、この文書の範囲外です。このセクションでは、説明とガイドラインを示します。</t>
+        <t indent="0" pn="section-4.3-2">「最大転送単位（Maximum Transmission Unit）」（MTU）の制限の取り扱いは、この文書の範囲外であり、<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>でも議論されていません。その代わりに、この処理はBIER-TEパケットのカプセル化やフローオーバーレイの一部です。たとえば<xref target="RFC8296" sectionFormat="comma" section="3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8296#section-3" derivedContent="RFC8296"/>を参照してください。これは、BIER-TEとBIERの両方に等しく当てはまります。</t>
+        <t indent="0" pn="section-4.3-3">BFRはBIER-TEパケットのBitStringを（TEでない）BIERパケットとは異なる方法で解釈する必要があるため、BIERパケットとBIER-TEパケットを区別する必要があります。BIERのカプセル化<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>では、パケットのBIFT-idフィールドがパケットのBIFTを示します。したがって、BIFT-idのアドレス空間がBIERのBIFTとBIER-TEのBIFTの間で共有されている場合、BIERとBIER-TEを同時に実行できます。BIFT-idのアドレス空間の分割は、BIER-TE/BIERのコントロールプレーンの手順に従います。</t>
+        <t indent="0" pn="section-4.3-4">MPLSによるBIERに<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>を使用する場合、BIFT-idのアドレス範囲は、実際に使用されるSD:BSLのBIFTの集合に対してのみ、MPLSラベル空間から動的に割り当てることができます。これにより、BIER-TEのBIFTで使用されるBIFT-idに対して、重複しないラベル範囲を割り当てることもできます。</t>
+        <t indent="0" pn="section-4.3-5">MPLSでは、BIER-TEとBIERの両方で同じSD空間を再利用することも可能です。そうすることで、同じSDが、対応する範囲のBIFT-idを持つBIERのBIFTと、重複しない範囲のBIFT-idを持つ別個のBIER-TEのBIFTの両方を持つようにできます。</t>
+        <t indent="0" pn="section-4.3-6">BIERとBIER-TEの間でBIFT-id空間を明示的に分割しない、BSL、SD、SIからBIFT-idへの固定マッピングが使用されているとします。たとえば、<xref target="NON-MPLS-BIER-ENCODING" sectionFormat="comma" section="5" format="default" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-bier-non-mpls-bift-encoding-04#section-5" derivedContent="NON-MPLS-BIER-ENCODING"/>で、BIERのカプセル化<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>を用いた非MPLS転送について提案されているものです。この場合、両方をBIFT-idでアドレス指定できるように、BIERとBIER-TEのBIFTに別々のSDを割り当てる必要があります。<xref target="NON-MPLS-BIER-ENCODING" sectionFormat="of" section="6" format="default" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-bier-non-mpls-bift-encoding-04#section-6" derivedContent="NON-MPLS-BIER-ENCODING"/>で提案されているエンコーディングは、BSLやSDをBIFT-idに静的にエンコードしませんが、このエンコーディングはマッピングを可能にするため、MPLSを使用する場合と同じ自由度（BIER/BIER-TEで同じSD、または異なるSD）を提供できる可能性があります。</t>
+        <t indent="0" pn="section-4.3-7">forward_routed()には、ユニキャストでカプセル化されたBIER-TEパケットを、ターゲットBFR上の特定のインターフェイスアドレスに向けることができるカプセル化が必要です。MPLSカプセル化では、これは単に、そのアドレスのラベルを最上位のラベルとし、その後に (BSL,SD,SI) のBitStringに割り当てられたラベルが続くラベルスタックによって実現できます。非MPLSのカプセル化では、何らかの形式のIPカプセル化（たとえばIP/GRE）が必要になります。</t>
+        <t indent="0" pn="section-4.3-8">forward_routed()隣接に使用されるカプセル化は、たとえばMPLSラベルスタックや適切なヘッダー拡張（たとえばIPv6の場合）を介した「緩いソースルート（loose source route）」など、既存の高度な隣接情報も同様にサポートできます。</t>
+      </section>
+      <section anchor="pseudocode" numbered="true" toc="include" removeInRFC="false" pn="section-4.4">
+        <name slugifiedName="name-bier-te-forwarding-pseudoco">BIER-TE転送の疑似コード</name>
+        <t indent="0" pn="section-4.4-1"><xref target="simple-pseudocode-picture" format="default" sectionFormat="of" derivedContent="Figure 5"/>に示すBIER-TE転送の疑似コードは、<xref target="RFC8279" sectionFormat="comma" section="6.5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8279#section-6.5" derivedContent="RFC8279"/>で提供されている（TEでない）BIER転送の疑似コードに基づいており、変更点は1つだけです。</t>
+        <figure anchor="simple-pseudocode-picture" align="left" suppress-title="false" pn="figure-5">
+          <name slugifiedName="name-bier-te-forwarding-pseudocod">BIER疑似コードに基づく、必須機能のためのBIER-TE転送の疑似コード</name>
+          <sourcecode name="" type="pseudocode" markers="false" pn="section-4.4-2.1">
+   void ForwardBitMaskPacket_withTE (Packet)
+   {
+       SI=GetPacketSI(Packet);
+       Offset=SI*BitStringLength;
+       for (Index = GetFirstBitPosition(Packet-&gt;BitString); Index ;
+            Index = GetNextBitPosition(Packet-&gt;BitString, Index)) {
+           F-BM = BIFT[Index+Offset]-&gt;F-BM;
+           if (!F-BM) continue;                            [3]
+           BFR-NBR = BIFT[Index+Offset]-&gt;BFR-NBR;
+           PacketCopy = Copy(Packet);
+           PacketCopy-&gt;BitString &amp;= F-BM;                  [2]
+           PacketSend(PacketCopy, BFR-NBR);
+           // BIER-TEでは次の処理を行ってはならない:
+           // Packet-&gt;BitString &amp;= ~F-BM;                  [1]
+       }
+   }
+</sourcecode>
+        </figure>
+        <t indent="0" pn="section-4.4-3">ステップ[2]では、F-BMを使用してPacketCopy内の1つ以上のビットをクリアします。このステップはBIERとBIER-TEの両方に存在しますが、望ましいクリアを行うためには、BIER-TEではBIERとは異なる方法でF-BMを格納する必要があります。</t>
+        <t indent="0" pn="section-4.4-4">BIERでは、BitStringの複数のビットが同じBFR-NBRを持つことがあります。受信したパケットのBitStringでこれらのビットが複数セットされている場合、BIERの複製ロジックは、そのBFR-NBRに複数のPacketCopyが送信されないようにしなければなりません（[1]）。同様に、BFR-NBRに送信されるPacketCopyでは、そのBitString内のビットのうち、そのBFR-NBRを越えてルーティングされないものをすべてクリアしなければなりません。これにより、BIERの複製ロジックが、その先にありうるBFRで重複を作成することを防ぎます（[2]）。</t>
+        <t indent="0" pn="section-4.4-5">BIERで[1]と[2]の両方を解決するには、各ビットインデックスのF-BMで、このBFRがそのBFR-NBRを越えてルーティングしたいすべてのビットをセットしておく必要があります。[2]はPacketCopy-&gt;BitString内の他のすべてのビットをクリアし、[1]は最初のPacketCopyの後にPacket-&gt;BitStringからそれらのビットをクリアします。</t>
+        <t indent="0" pn="section-4.4-6">BIER-TEでは、この疑似コードにおけるBFR-NBRは、forward_connected()、forward_routed()、local_decap()のいずれかの隣接です。一般に異なるBPが同じ隣接を持つことはないため、BIERと同じ方法で重複を抑制するための[2]は必要ありません。BIER-TEコントローラーが、これが望ましくなるような何らかの最適化を実際に見つけた場合には、コントローラーが明示的に重複を作成したい場合を除き、任意のPacket-&gt;BitStringでそれらのビットのうち1つだけがセットされるようにすることも、そのコントローラーの責任です。</t>
+        <t indent="0" pn="section-4.4-7">次の各点では、各BPのF-BMがBIFT内でどのように設定され、それがそのBIFTで処理されるパケットのBitStringにどのように影響するかを説明します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.4-8"><li pn="section-4.4-8.1" derivedCounter="1.">隣接を持たないすべてのBIFTのBPのF-BMは、すべてのビットがクリアされています。これにより、[3]はそのようなBPのそれ以降の処理をスキップします。</li>
+          <li pn="section-4.4-8.2" derivedCounter="2.">（DNCフラグがクリアされた）隣接を持つすべてのBIFTのBPは、このBFRが隣接を持たないBPだけがセットされたF-BMを持ちます。これにより、[2]はPacketCopy-&gt;BitStringから、このBFRが隣接を持つすべてのビットをクリアします。</li>
+          <li pn="section-4.4-8.3" derivedCounter="3.">BIER-TEでは[1]は実行されません。BIER-TEで必要なすべてのビットのクリアは[2]によって実行されます。</li>
+        </ol>
+        <t indent="0" pn="section-4.4-9">この転送の疑似コードは、必須のBIER-TE転送機能（<xref target="requirements" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照）であるforward_connected()、forward_routed()、local_decap()をサポートできますが、推奨される機能（DNCフラグとビットごとの複数の隣接）や任意の機能（すなわちECMP()隣接）はサポートできません。[1]だけを使ってビットをマスクする場合、DNCフラグはサポートできません。</t>
+        <t indent="0" pn="section-4.4-10"><xref target="pseudocode-picture" format="default" sectionFormat="of" derivedContent="Figure 6"/>の変更および拡張された転送の疑似コードでは、すべてのBIER-TE転送機能（必須、推奨、任意）をサポートする方法を規定します。</t>
+        <ol spacing="normal" indent="adaptive" start="1" type="1" pn="section-4.4-11">
+          <li pn="section-4.4-11.1" derivedCounter="1.">
+            <t indent="0" pn="section-4.4-11.1.1">この疑似コードはビットごとのF-BMを排除するため、BIFT状態のサイズをSI*BSL<sup>2</sup>だけ削減し、DNCフラグがセットされた隣接を除いて、パケットのコピーごとのBitStringのマスク操作を不要にします。</t>
+            <ol spacing="normal" type="%p%c" indent="adaptive" start="1" pn="section-4.4-11.1.2">
+              <li pn="section-4.4-11.1.2.1" derivedCounter="1.a">AdjacentBits[SI]は、このBFRのBIFT内で隣接のリストが空でないビット位置です。これは、BIER-TEコントローラーがBIFT内の隣接を更新（追加／削除）するたびに計算できます。</li>
+              <li pn="section-4.4-11.1.2.2" derivedCounter="1.b">BFRは、これらの隣接ビットがパケットのBitStringでセットされている場合に、それらに対するパケットのコピーを作成する必要があります。このビットの集合はPktAdjacentBitsで計算されます。</li>
+              <li pn="section-4.4-11.1.2.3" derivedCounter="1.c">ループを避けるため、BFRがコピーを作成するすべてのビット位置は、パケットのコピーでクリアしなければなりません。これは、パケットのBitStringを~AdjacentBits[SI]でマスクすることで行われます。隣接にDNCがセットされている場合、このビット位置は、そのビット位置に向けたパケットのコピーに対してのみ再びセットされます。</li>
+            </ol>
+          </li>
+          <li pn="section-4.4-11.2" derivedCounter="2.">ハブと複数のスポーク（<xref target="hubnspoke" format="default" sectionFormat="of" derivedContent="Section 5.1.5"/>）など、特定の構成をサポートするために、BIFTのエントリーに複数の隣接が含まれる場合があります。そのため、コードにはこれらの隣接に対するループが含まれています。</li>
+          <li pn="section-4.4-11.3" derivedCounter="3.">図にはECMP()隣接も示されています。そのパラメーターはシードと「ListOfAdjacencies」であり、その中から1つが選ばれます。</li>
+          <li pn="section-4.4-11.4" derivedCounter="4.">forward_connected()、forward_routed()、local_decap()の各隣接が、そのパラメーターとともに示されています。</li>
+        </ol>
+        <figure anchor="pseudocode-picture" align="left" suppress-title="false" pn="figure-6">
+          <name slugifiedName="name-complete-bier-te-forwarding">必須、推奨、任意の機能のための完全なBIER-TE転送の疑似コード</name>
+          <sourcecode name="" type="pseudocode" markers="false" pn="section-4.4-12.1">
+ void ForwardBitMaskPacket_withTE (Packet)
+ {
+     SI = GetPacketSI(Packet);
+     Offset = SI * BitStringLength;
+     // パケットのBitString内の隣接ビットを決定する
+     PktAdjacentBits = Packet-&gt;BitString &amp; AdjacentBits[SI];
+
+     // ループを避けるためにパケットヘッダー内の隣接ビットをクリアする
+     Packet-&gt;BitString &amp;= ~AdjacentBits[SI];
+
+     // PktAdjacentBitsをループしてパケットのコピーを作成する
+     for (Index = GetFirstBitPosition(PktAdjacentBits); Index ;
+          Index = GetNextBitPosition(PktAdjacentBits, Index)) {
+         for adjacency in BIFT[Index+Offset]-&gt;Adjacencies {
+             if(adjacency.type == ECMP(ListOfAdjacencies,seed) ) {
+                 I = ECMP_hash(sizeof(ListOfAdjacencies),
+                               Packet-&gt;Entropy,seed);
+                 adjacency = ListOfAdjacencies[I];
+             }
+             PacketCopy = Copy(Packet);
+             switch(adjacency.type) {
+                 case forward_connected(interface,neighbor,DNC):
+                     if(DNC)
+                         PacketCopy-&gt;BitString |= 1&lt;&lt;(Index-1);
+                     SendToL2Unicast(PacketCopy,interface,neighbor);
+
+                 case forward_routed({VRF,}l3-neighbor):
+                     SendToL3(PacketCopy,{VRF,}l3-neighbor);
+
+                 case local_decap({VRF},neighbor):
+                     DecapBierHeader(PacketCopy);
+                     PassTo(PacketCopy,{VRF,}Packet-&gt;NextProto);
+             }
+         }
+     }
+ }
+</sourcecode>
+        </figure>
+      </section>
+      <section anchor="requirements" numbered="true" toc="include" removeInRFC="false" pn="section-4.5">
+        <name slugifiedName="name-bfr-requirements-for-bier-t">BIER-TE転送に対するBFRの要件</name>
+        <t indent="0" pn="section-4.5-1">BIER-TEとBIERをサポートするBFRは、1つ以上のBIERサブドメインのすべてのBIFTに対して、（TEでない）BIERの転送規則の代わりにBIER-TEを有効にする設定をサポート<bcp14>しなければなりません（MUST）</bcp14>。BIER-TEのBIFT内のすべてのBPは、0個または1個の隣接を持つことをサポート<bcp14>しなければなりません（MUST）</bcp14>。BIER-TE転送は、DNCフラグがセットされていないforward_connected()、forward_routed()、local_decap()の隣接の種類をサポート<bcp14>しなければなりません（MUST）</bcp14>。<xref target="pseudocode" format="default" sectionFormat="of" derivedContent="Section 4.4"/>で説明したように、これらの必須のBIER-TE転送機能は、1つの変更（F-BMによるマスクを1回省略すること）を除いて、BIER転送に使用されるものと同じ転送の疑似コードで実装できます。</t>
+        <t indent="0" pn="section-4.5-2">BIER-TE転送は、DNCフラグがセットされたforward_connected()隣接をサポート<bcp14>すべきです（SHOULD）</bcp14>。これは、リングでビットを節約するのに非常に有用だからです（<xref target="rings" format="default" sectionFormat="of" derivedContent="Section 5.1.6"/>を参照）。</t>
+        <t indent="0" pn="section-4.5-3">BIER-TE転送は、1つのビットに対して複数の隣接をサポート<bcp14>すべきです（SHOULD）</bcp14>。これにより、ハブアンドスポークのシナリオでビットを節約できます（<xref target="hubnspoke" format="default" sectionFormat="of" derivedContent="Section 5.1.5"/>を参照）。</t>
+        <t indent="0" pn="section-4.5-4">BIER-TE転送は、ECMPのシナリオでビットを節約するためにECMP()隣接をサポート<bcp14>してもよいです（MAY）</bcp14>。例については<xref target="ecmp" format="default" sectionFormat="of" derivedContent="Section 5.1.7"/>を参照してください。これが任意の要件であるのは、BIER-TEを使用するECMPの展開では、forward_routed()隣接を介してルーティングアンダーレイのECMPを活用することもでき、また、ECMPの経路の選択肢ごとに明示的なBP／隣接を介して、選択される経路をより明示的に制御したい場合もあるためです。</t>
+      </section>
+    </section>
+    <section anchor="controller-ops" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-bier-te-controller-operatio">BIER-TEコントローラーの運用上の考慮事項</name>
+      <section anchor="bitpositions" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-bit-position-assignments">ビット位置の割り当て</name>
+        <t indent="0" pn="section-5.1-1">このセクションでは、BIER-TEコントローラーがさまざまなBIER-TE隣接の種類を使用して、BIER-TEドメインのビット位置を定義する方法について説明します。</t>
+        <t indent="0" pn="section-5.1-2">BitStringのサイズによってBIER-TEドメインのサイズが制限されるため、ここで説明する選択肢の多くは、より少ないビット位置でより大きなトポロジーをサポートするために存在します。</t>
+        <section anchor="p2p-links" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.1">
+          <name slugifiedName="name-p2p-links">P2Pリンク</name>
+          <t indent="0" pn="section-5.1.1-1">2つのBFRを接続する「ポイントツーポイント（point-to-point）」（P2P）リンクでは、隣接するBFRへの隣接に、両方のBFRで同じビット位置を使用できます。したがって、P2Pリンクに必要なビット位置は1つだけです。</t>
+        </section>
+        <section anchor="bfer" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.2">
+          <name slugifiedName="name-bfers">BFER</name>
+          <t indent="0" pn="section-5.1.2-1">リーフでないすべてのBFERには、local_decap()隣接を持つ一意のビット位置が与えられます。</t>
+        </section>
+        <section anchor="leaf-bfer" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.3">
+          <name slugifiedName="name-leaf-bfers">リーフBFER</name>
+          <t indent="0" pn="section-5.1.3-1">リーフBFERとは、受信したBIER-TEパケットを別のBFRに転送する必要がなく、BIER-TEドメインから出るためだけにそのBFERに送信されるBFERです。たとえば、「プロバイダーエッジ（Provider Edge）」（PE）ルーターがプロバイダー（P）ルーターに接続されたスポークであるネットワークでは、2つのPE間にUターンがない限り、それらのPEはリーフBFERです。</t>
+          <t indent="0" pn="section-5.1.3-2"><xref target="leaf-bfer-picture" format="default" sectionFormat="of" derivedContent="Figure 7"/>に示すように、冗長で互いに素なトラフィックがBFER1/BFER2にどのように到達できるかを考えます。右側に示すようにBFER1/BFER2がリーフでないBFERである場合、トラフィックの一方のコピーはBFR1からBFER1に転送されますが、もう一方のコピーはBFER2経由でしかBFER1に到達できないため、BFER2はリーフでないBFERになります。同様に、BFER2にトラフィックを転送する場合、BFER1はリーフでないBFERです。図の左側のBFERがリーフBFERであることが保証されるのは、BFERを通過する中継トラフィックを禁止するルーティング設定（これらのトポロジーでは一般に適用されています）を正しく適用した場合に限られることに注意してください。</t>
+          <figure anchor="leaf-bfer-picture" align="left" suppress-title="false" pn="figure-7">
+            <name slugifiedName="name-leaf-vs-non-leaf-bfer-examp">リーフBFERとリーフでないBFERの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.3-3.1">
+        BFR1(P) BFR2(P)             BFR1(P)  BFR2(P)
+          |  \ /  |                    |       |
+          |   X   |                    |       |
+          |  / \  |                    |       |
+     BFER1(PE)  BFER2(PE)        BFER1(PE)----BFER2(PE)
+                                        
+                                           ^ U-turn link
+
+         Leaf BFER /               Non-leaf BFER /
+          PE router                  PE router
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.3-4">ほとんどの状況では、同じBitStringでアドレス指定されるリーフBFERは、そのBitStringにおいて、local_decap()隣接のために単一のビット位置を共有できるため、ビット位置を節約できます。リーフでないBFERでは、受信したBIER-TEパケットは、そのBFERを通過するだけでよい場合もあれば、カプセル化を解除する必要がある場合もあります。したがって、パケットのカプセル化を解除するかどうかは、このBFERのBIFTにだけlocal_decap()隣接とともに格納される一意のビット位置によって示す必要があります。リーフBFERでは、パケットが通過する必要はないため、受信したパケットは通常、カプセル化を解除されることを意図しています。これは、BitStringでアドレス指定されるすべてのリーフBFER上でlocal_decap()隣接とともに格納される、単一の共有ビット位置によって表現できます。</t>
+          <t indent="0" pn="section-5.1.3-5">このリーフBFERのビット位置の最適化シナリオに対する例外となりうるのは、たとえばセクション<xref target="lans" format="counter" sectionFormat="of" derivedContent="5.1.4"/>と<xref target="hubnspoke" format="counter" sectionFormat="of" derivedContent="5.1.5"/>で説明するように、最適化として、（当該リーフBFERのためのパケットのコピーを作成した）前段のBIER-TE BFR上のビット位置に複数の隣接が格納されている場合です。これら2つの最適化のいずれかを使用する場合、パケットの送信者が当該リーフBFERでパケットのカプセル化を解除するかどうかを明示的に制御できるのは、そのリーフBFERがlocal_decap()隣接のための一意のビット位置を持っている場合に限られます。</t>
+          <t indent="0" pn="section-5.1.3-6">しかし、ビット位置がリーフBFER間で共有されており、そのためにパケットが（場合によっては不必要に）カプセル化を解除される場合でも、BIER-TEパケットのカプセル化を解除したペイロードが、パケットをさらに処理／受信する必要があるかどうかを示すのであれば、これは依然として適切である可能性があります。たとえば、ペイロードがIPマルチキャストである場合は通常これに当てはまります。BFER上のIPマルチキャストは、IPマルチキャストペイロードのメンバーシップ状態を把握しており、BIER-TE層によってパケットが不必要に配送された場合にはそれを破棄できるからです。ペイロードにそのようなメンバーシップの表示がなく、BFIRがどのBFERにパケットを受信させてカプセル化を解除させるかを明示的に制御したい場合、これら2つの最適化を、リーフBFERのための共有ビット位置の最適化と一緒に使用することはできません。</t>
+        </section>
+        <section anchor="lans" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.4">
+          <name slugifiedName="name-lans">LAN</name>
+          <t indent="0" pn="section-5.1.4-1">LANでは、隣接する各BFRへの隣接に一意のビット位置が与えられます。このビット位置の隣接は、そのBFRへのforward_connected()隣接であり、このビット位置はそのLAN上の他のすべてのBFRのBIFTに格納されます。</t>
+          <figure anchor="lan-picture" align="left" suppress-title="false" pn="figure-8">
+            <name slugifiedName="name-lan-example">LANの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.4-2.1">
+                                 BFR1
+                                  |p1
+                           LAN1-+-+---+-----+
+                              p3|   p4|   p2|
+                              BFR3  BFR4  BFR7
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.4-3">LAN上の帯域幅が問題にならず、ほとんどのBIER-TEトラフィックをLAN上のすべてのネイバーにコピーすべき場合は、LANに単一のビット位置だけを割り当て、LAN上の各BFRのBIFTのそのビット位置に、LAN上の他のすべてのネイバーへのforward_connected()隣接のリストを格納することで、ビット位置を節約できます。</t>
+          <t indent="0" pn="section-5.1.4-4">この最適化は、この最適化を用いた複数のLANに冗長に接続されたBFRの場合には機能しません。そのようなBFRは重複を受信し、その重複を他のLANに転送してしまいます。そのようなBFRには、接続するLANごとに別々のビット位置が必要です。</t>
+        </section>
+        <section anchor="hubnspoke" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.5">
+          <name slugifiedName="name-hub-and-spoke">ハブアンドスポーク</name>
+          <t indent="0" pn="section-5.1.5-1">ハブと、別々のP2Pリンクを介してハブに接続された複数のスポークがある構成では、ハブからスポークのリンクへのすべてのP2P隣接で同じビット位置を共有できます。ハブのBIFT上のビット位置は、スポークごとに1つずつのforward_connected()隣接のリストで設定されます。</t>
+          <t indent="0" pn="section-5.1.5-2">この選択肢は、LANにおけるビット位置の最適化と似ています。冗長に接続されたスポークは、それ自体がリーフBFERでない限り、独自のビット位置が必要です。</t>
+          <t indent="0" pn="section-5.1.5-3">この種の最適化されたBPは、たとえば、ライブTVや、状況認識を含む多対多のテレメトリーなど、すべてのトラフィックが「ブロードキャスト」トラフィック（非常に密な受信者の集合）である場合に使用できます。そうすると、このBPの最適化を使用して、データセンターやブロードバンド集約のネットワークにおいて、最小限のBPの使用で、異なるトラフィックフローを異なるECMP経路に明示的に誘導できます。</t>
+        </section>
+        <section anchor="rings" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.6">
+          <name slugifiedName="name-rings">リング</name>
+          <t indent="0" pn="section-5.1.6-1">L3リングでは、リング内のP2Pリンクごとに単一のビット位置を割り当てる代わりに、forward_connected()隣接に「DoNotClear」（DNC）フラグを設定することで、ビット位置を節約できます。</t>
+          <t indent="0" pn="section-5.1.6-2"><xref target="ring-picture" format="default" sectionFormat="of" derivedContent="Figure 9"/>に示すリングでは、次のようにすれば、BFRaまたはBFRbでリングに入るトラフィックをBFR1まで転送するのに単一のビット位置で十分です。</t>
+          <t indent="0" pn="section-5.1.6-3">BFRa、BFRb、BFR30、... BFR3では、そのビット位置に、リング上の時計回りのネイバーを指し、DNCがセットされたforward_connected()隣接を格納します。BFR2では、隣接は同様に時計回りのネイバーであるBFR1を指しますが、DNCはセットしません。</t>
+          <t indent="0" pn="section-5.1.6-4">このようにDNCを扱うことで、リング内の任意のBFRからリング外のBFRに転送されるコピーではリングのビット位置がセットされないことが保証され、ループを作成するリスクが最小化されます。</t>
+          <figure anchor="ring-picture" align="left" suppress-title="false" pn="figure-9">
+            <name slugifiedName="name-ring-example">リングの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.6-5.1">
+               v        v
+               |        |
+        L1     |   L2   |   L3
+    /-------- BFRa ---- BFRb --------------------\
+    |                                            |
+    \- BFR1 - BFR2 - BFR3 - ... - BFR29 - BFR30 -/
+        |      |    L4               |      |
+     p33|                         p15|
+        BFRd                       BFRc
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.6-6">この例では、リングを一周させることを意図したパケットは、BFRaとBFRbでのみリングに入ることができることに注意してください。また、パケットは常に時計回りに移動することにも注意してください。リングの任意のBFRでパケットがリングに入ることを許可すべき場合は、時計回りと反時計回りの方向ごとに1つずつ、2つのリングのビット位置を使用する必要があります。</t>
+          <t indent="0" pn="section-5.1.6-7">どちらも、同じリンク（たとえばL1）で周回を止めるように設定します。リングのBFIRが時計回りのコピーを作成する際には、DNCビットは複製が行われるビットにのみ適用されるため、反時計回りのビット位置はクリアされます（反時計回りのコピーに対する時計回りのビット位置についても同様です）。その結果、リングのBFIRは両方向にコピーを送信し、L1までのリングの両側のBFRにサービスを提供します。</t>
+        </section>
+        <section anchor="ecmp" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.7">
+          <name slugifiedName="name-equal-cost-multipath-ecmp">等コストマルチパス（ECMP）</name>
+          <t indent="0" pn="section-5.1.7-1">ECMP()隣接を使用すると、隣接ごとに1つのBPを使う代わりに、1つのBPだけを使用してN個の隣接のうちの1つにパケットを配送できます。<xref target="ecmp-picture" format="default" sectionFormat="of" derivedContent="Figure 10"/>に示す一般的な例では、3本のリンクL1、L2、L3からなるリンクバンドルがBFR1とBFR2を接続しており、BFR1からBFR2にパケットを配送するために、3つのBPの代わりに1つのBPだけが使用されます。</t>
+          <figure anchor="ecmp-picture" align="left" suppress-title="false" pn="figure-10">
+            <name slugifiedName="name-ecmp-example">ECMPの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.7-2.1">
+             --L1-----
+        BFR1 --L2----- BFR2
+             --L3-----
+
+  BIFT entry in BFR1:
+  ------------------------------------------------------------------
+  | Index |  Adjacencies                                           |
+  ==================================================================
+  | 0:6   |  ECMP({forward_connected(L1, BFR2),                    |
+  |       |        forward_connected(L2, BFR2),                    |
+  |       |        forward_connected(L3, BFR2)}, seed)             |
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR2:
+  ------------------------------------------------------------------
+  | Index |  Adjacencies                                           |
+  ==================================================================
+  | 0:6   |  ECMP({forward_connected(L1, BFR1),                    |
+  |       |        forward_connected(L2, BFR1),                    |
+  |       |        forward_connected(L3, BFR1)}, seed)             |
+  ------------------------------------------------------------------
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.7-3">実装が自由に選択したECMPアルゴリズムを文書化すれば十分であるため、この文書ではECMPアルゴリズムを標準化しません。<xref target="ecmp-algo-picture" format="default" sectionFormat="of" derivedContent="Figure 11"/>はECMPアルゴリズムの例を示しており、そのアルゴリズムの文書を兼ねるものです。BIER-TEコントローラーは、シードと隣接のパラメーター、およびパケットのエントロピーに基づいて、どの隣接が選択されるかを決定できます。</t>
+          <figure anchor="ecmp-algo-picture" align="left" suppress-title="false" pn="figure-11">
+            <name slugifiedName="name-ecmp-algorithm-example">ECMPアルゴリズムの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.7-4.1">
+   forward(packet, ECMP(adj(0), adj(1),... adj(N-1), seed)):
+      i = (packet(bier-header-entropy) XOR seed) % N
+      forward packet to adj(i)
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.7-5"><xref target="polarization-picture" format="default" sectionFormat="of" derivedContent="Figure 12"/>に示す例では、BFR1からBFR10へのすべてのトラフィックが、トポロジー全体にわたってECMPで均等に負荷分散されることを意図しています。この例はありそうな構成を意図したものではありません。むしろ、ECMPを使用してリンクバンドル間だけでなく、異なる中継BFRを通る代替経路間でもBPを共有できることを示し、シードパラメーターの使用法を説明するものです。</t>
+          <figure anchor="polarization-picture" align="left" suppress-title="false" pn="figure-12">
+            <name slugifiedName="name-polarization-example">偏り（polarization）の例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.7-6.1">
+                 BFR1         (BFIR)
+               /L11  \L12
+              /       \
+          BFR2         BFR3
+         /L21 \L22    /L31 \L32
+        /      \     /      \
+       BFR4  BFR5   BFR6  BFR7
+        \      /     \      /
+         \    /       \    /
+          BFR8         BFR9
+              \       /
+               \     /
+                BFR10         (BFER)
+
+  BIFT entry in BFR1:
+  ------------------------------------------------------------------
+  | 0:6   |  ECMP({forward_connected(L11, BFR2),                   |
+  |       |        forward_connected(L12, BFR3)}, seed1)           |
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR2:
+  ------------------------------------------------------------------
+  | 0:7   |  ECMP({forward_connected(L21, BFR4),                   |
+  |       |        forward_connected(L22, BFR5)}, seed1)           |
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR3:
+  ------------------------------------------------------------------
+  | 0:7   |  ECMP({forward_connected(L31, BFR6),                   |
+  |       |        forward_connected(L32, BFR7)}, seed1)           |
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR4, BFR5:
+  ------------------------------------------------------------------
+  | 0:8   |  forward_connected(Lxx, BFR8)  |xx differs on BFR4/BFR5|
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR6, BFR7:
+  ------------------------------------------------------------------
+  | 0:8   |  forward_connected(Lxx, BFR9)  |xx differs on BFR6/BFR7|
+  ------------------------------------------------------------------
+
+  BIFT entry in BFR8, BFR9:
+  ------------------------------------------------------------------
+  | 0:9   |  forward_connected(Lxx, BFR10) |xx differs on BFR8/BFR9|
+  ------------------------------------------------------------------
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.7-7">以下のECMPの議論では、BFR1、BFR2、BFR3上のBIFTのECMP()隣接だけが関係することに注意してください。この例におけるBFR間でのBPの再利用については、後述の<xref target="reuse" format="default" sectionFormat="of" derivedContent="Section 5.1.9"/>でさらに説明します。</t>
+          <t indent="0" pn="section-5.1.7-8">上記のトポロジーに示すECMPの構成では、トラフィックは均等に負荷分散されません。その代わり、リンクL22とL31にはまったくトラフィックが流れません。BFR2が受け取るのは、BFR1のECMPハッシュが、ECMPのパラメーターとして与えられた2つの隣接のリストの最初の隣接（リンクL11経由でBFR2へ）を選択したBFR1からのトラフィックだけです。BFR2は、そのトラフィックの部分集合に対して、同じseed1を使用して2つの隣接によるECMPを再び実行するため、再び2つの隣接のうち最初のもの（L21経由でBFR4へ）を選択します。したがって、L22とBFR5にはトラフィックが流れません（L31とBFR6についても同様です）。</t>
+          <t indent="0" pn="section-5.1.7-9">BFR2/BFR3におけるこの問題は「偏り（polarization）」と呼ばれます。これは、このようなトポロジーにおいて、複数の連続するホップで同じハッシュ関数を再利用することから生じます。この問題を解決するために、BFR1上のECMP()隣接を、BFR2/BFR3上のECMP()隣接とは異なるseed2で設定できます。パケットがBFR2とBFR3の両方を順に通過することはないため、BFR2/BFR3は同じハッシュを使用できます。したがって、同じBP（すなわち0:7）を使用することもできます。</t>
+          <t indent="0" pn="section-5.1.7-10">BIER以外のECMPソリューションでは、一意なローカル識別子やネクストホップ識別子などのローカルなエントロピーからシードを自動選択することで、シードを隠すことがよくあることに注意してください。BIER-TEコントローラーがシードを明示的に設定できるようにすることで、BIER-TEコントローラーは、複数の連続するECMPホップにわたって同じ経路を選択するか異なる経路を選択するかを制御できるようになります。</t>
+        </section>
+        <section anchor="routed" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.8">
+          <name slugifiedName="name-forward-routed-adjacencies">Forward Routed隣接</name>
+          <section anchor="reducing" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.8.1">
+            <name slugifiedName="name-reducing-bit-positions">ビット位置の削減</name>
+            <t indent="0" pn="section-5.1.8.1-1">経路誘導の要件がホップバイホップの明示的な経路選択ではなく、緩いホップの選択である場合、forward_routed()隣接によって必要なビット位置の数を削減できます。また、forward_routed()隣接により、BIER-TEをサポートしていない中間ホップのルーターを越えてBIER-TEを運用することもできます。</t>
+            <t indent="0" pn="section-5.1.8.1-2"><xref target="routed-picture" format="default" sectionFormat="of" derivedContent="Figure 13"/>における要件が、ルーティングアンダーレイの「Network Area 1」内の経路を経由してBFR1またはBFR4に到着したトラフィックフローを、次の3つのセグメントのいずれかに明示的に誘導することであるとします。(1) リンクL1経由でBFR2へ、(2) リンクL2経由でBFR2へ、(3) BFR3経由で、その後パケットがL3とL4のどちらで転送されるかは問わない。</t>
+            <figure anchor="routed-picture" align="left" suppress-title="false" pn="figure-13">
+              <name slugifiedName="name-forward-routed-adjacencies-">Forward Routed隣接の例</name>
+              <artwork align="left" name="" type="" alt="" pn="section-5.1.8.1-3.1">
+                   ...............             
+         ...BFR1--...           ...--L1-- BFR2...
+                  ... .Routers. ...--L2--/    
+         ...BFR4--...           ...--L3-- BFR3...
+                  ...           ...--L4--/ |
+                   ...............         |        
+                                          LO
+                    Network Area 1
+</artwork>
+            </figure>
+            <t indent="0" pn="section-5.1.8.1-4">これを可能にするために、BFR1とBFR4の両方に、リンクL1上のBFR2のアドレスへのforward_routed()隣接のビット位置、リンクL2上のBFR2のアドレスへの別のforward_routed()のビット位置、そしてBFR3のノードアドレスLOへの3つ目のforward_routed()のビット位置を設定します。</t>
+          </section>
+          <section anchor="without" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.8.2">
+            <name slugifiedName="name-supporting-nodes-without-bi">BIER-TEを持たないノードのサポート</name>
+            <t indent="0" pn="section-5.1.8.2-1">forward_routed()隣接により、BIER-TEの段階的な展開も可能になります。BIER-TEをサポートする必要があるのは、（複製の有無にかかわらず）BIER-TEトラフィックを誘導する必要があるノードだけです。それらのノードが互いに直接接続されていない場合は、forward_routed()隣接を使用して、BIER-TEが有効になっていないノードを越えます。</t>
+          </section>
+        </section>
+        <section anchor="reuse" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.9">
+          <name slugifiedName="name-reuse-of-bit-positions-with">ビット位置の再利用（DNCなし）</name>
+          <t indent="0" pn="section-5.1.9-1">必要なBPの数を最小化するために、複数のBFRにわたってBPを再利用できます。これは、前述のように複数のBFR上の隣接がDNCフラグを使用する場合に起こりますが、DNCでない隣接に対しても行うことができます。このセクションでは、このDNCでない場合についてのみ議論します。</t>
+          <t indent="0" pn="section-5.1.9-2">あるBPは、そのBPの隣接を持つBFRを通過する際にクリアされるため、複数のBFRにわたってBPを再利用しても、すべての隣接が一意のBPを持つ場合にも存在しないような重複やループの問題は発生しません。むしろ、BPを再利用する際の課題は、望ましいツリーエンジニアリングの目標を依然として達成できるかどうかです。</t>
+          <t indent="0" pn="section-5.1.9-3">ある経路で順に通過する必要がある2つのBFRの間では、BPを再利用できません。最初のBFRがBPをクリアしてしまうため、そのような経路を構築できないからです。BPは、(A) 異なる経路、または (B) 同じツリーの異なるブランチにしか現れないBFR間でセットできます。</t>
+          <t indent="0" pn="section-5.1.9-4">(A) の例は<xref target="polarization-picture" format="default" sectionFormat="of" derivedContent="Figure 12"/>で示しました。そこでは、単一のパケット／経路が同じBPを共有する複数のBFRに到達することは決してないため、BP 0:7、BP 0:8、BP 0:9がそれぞれ複数のBFRにわたって再利用されています。</t>
+          <t indent="0" pn="section-5.1.9-5">例を変更したとします。BFR1はBP 0:6に対するECMP()隣接を持たず、代わりに、BFR2へのforward_connected()を持つBP 0:5と、BFR3へのforward_connected()を持つBP 0:6を持つとします。BP 0:5とBP 0:6の両方を持つパケットは、BFR2とBFR3の両方に到達できるようになります。そして、BFR2とBFR3の間で依然として存在するBP 0:7の再利用は (B) の場合であり、次の例のように、有用な経路の選択肢の集合を制限しないため、BPの再利用として完璧です。</t>
+          <t indent="0" pn="section-5.1.9-6">BFR3がBP 0:7を再利用する代わりに、ECMP()隣接に別のBP 0:10を使用したとしても、有用な追加の経路誘導の選択肢は何も可能になりません。BFR10での重複が望ましくない場合は、同じパケットに対してBP 0:5とBP 0:6をセットしないことで対応します。重複が望ましい場合（たとえば、回復力のある伝送）でも、追加のBP 0:10は付加価値をもたらしません。</t>
+          <t indent="0" pn="section-5.1.9-7">再利用により、より大きなトポロジーでBPを節約できる場合もあります。<xref target="scaling-picture2" format="default" sectionFormat="of" derivedContent="Figure 14"/>に示すトポロジーを考えます。</t>
+          <figure anchor="scaling-picture2" align="left" suppress-title="false" pn="figure-14">
+            <name slugifiedName="name-reuse-of-bps">BPの再利用</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.1.9-8.1">
+                       area1 
+                   BFR1a BFR1b
+                     /    \
+        ....................................
+        .                Core              .
+        ....................................
+        |    /       \    /           \  |
+      BFR2a BFR2b  BFR3a BFR3b      BFR6a BFR6b
+       /-------\   /---------\      /--------\
+       | area2 |   |  area3  | ...  | area6  |
+       | ring  |   |  ring   |      | ring   |
+       \-------/   \---------/      \--------/
+       more BFRs    more BFRs        more BFRs
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.1.9-9">BFIR／送信者（たとえばビデオヘッドエンド）はエリア1に接続されており、エリア2...6の5つのエリアに受信者／BFERが含まれています。各エリアには配信リングがあり、それぞれに（前述のように）方向を示す2つのBPがあるとします。これら2つのBPは、5つのエリアにわたって再利用できます。パケットは、他のBPを通じてコアからエリアの望ましい部分集合へと複製され、パケットのコピーがエリアのリングに到達すると、2つのリングのBPが機能します。この再利用は (B) の場合ですが、トポロジーの選択肢を制限します。すなわち、パケットはすべてのエリアのリングで同じ方向にしか流れることができません。これが許容できるかどうかは、望ましい経路誘導の選択肢によります。回復力のある伝送が経路エンジニアリングの目標である場合、これはおそらく良い最適化です。しかし、各リングの帯域幅を個別に最適化する場合には、良い制限ではありません。</t>
+        </section>
+        <section anchor="bits-summary" numbered="true" toc="include" removeInRFC="false" pn="section-5.1.10">
+          <name slugifiedName="name-summary-of-bp-optimizations">BPの最適化のまとめ</name>
+          <t indent="0" pn="section-5.1.10-1">このセクションでは、必要なBPの数を最小化する方法でBIER-TEコントローラーがBIER-TEトポロジーを作成するための、さまざまな手法を検討しました。</t>
+          <t indent="0" pn="section-5.1.10-2">最適化を行わない場合、BIER-TEコントローラーはネットワークのサブネットトポロジーをBIER-TEトポロジーに1対1でマッピングしようとし、サブネット内の隣接するネイバーごとにforward_connected()のBPが必要になり、BFERごとにlocal_decap()のBPが必要になります。</t>
+          <t indent="0" pn="section-5.1.10-3">この文書で説明した最適化は次のとおりです。</t>
+          <ol spacing="normal" indent="adaptive" start="1" type="1" pn="section-5.1.10-4">
+            <li pn="section-5.1.10-4.1" derivedCounter="1.">P2Pリンクに必要なBPは1つだけです（<xref target="p2p-links" format="default" sectionFormat="of" derivedContent="Section 5.1.1"/>）。</li>
+            <li pn="section-5.1.10-4.2" derivedCounter="2.">すべてのリーフBFERは、単一のlocal_decap()のBPを共有できます（<xref target="leaf-bfer" format="default" sectionFormat="of" derivedContent="Section 5.1.3"/>）。</li>
+            <li pn="section-5.1.10-4.3" derivedCounter="3.">N個のBFRを持つLANに必要なBPは、最大でN個（BFRごとに1つ）です。複数のLANに冗長に接続されていないBFRすべてに対しては、1つのBPだけで済みます（<xref target="lans" format="default" sectionFormat="of" derivedContent="Section 5.1.4"/>）。</li>
+            <li pn="section-5.1.10-4.4" derivedCounter="4.">リーフでない複数のBFERスポークへのP2P接続を持つハブは、たとえば帯域幅の懸念がない、あるいは受信者の集合が密であるといった理由で、それらすべてのスポークにトラフィックをフラッディングできる場合、すべてのスポークで1つのBPを共有できます（<xref target="hubnspoke" format="default" sectionFormat="of" derivedContent="Section 5.1.5"/>）。</li>
+            <li pn="section-5.1.10-4.5" derivedCounter="5.">BFRのリングは、LANと同様に、複数のリング接続を持つBFRを除いて、わずか2つのBP（方向ごとに1つ）で構築できます（<xref target="rings" format="default" sectionFormat="of" derivedContent="Section 5.1.6"/>）。</li>
+            <li pn="section-5.1.10-4.6" derivedCounter="6.">N個のネイバーへのECMP()隣接により、N個のBPを1つのBPに置き換えることができます。マルチホップのECMPでは、ECMPアルゴリズムのシードを変えることで偏りを回避できます（<xref target="ecmp" format="default" sectionFormat="of" derivedContent="Section 5.1.7"/>）。</li>
+            <li pn="section-5.1.10-4.7" derivedCounter="7.">forward_routed()隣接により、トラフィックの誘導や複製が不要な場所で、BIER-TEに対応しているかどうかにかかわらず、ルーターを越える「トンネリング」が可能になります（<xref target="routed" format="default" sectionFormat="of" derivedContent="Section 5.1.8"/>）。</li>
+            <li pn="section-5.1.10-4.8" derivedCounter="8.">一般に、どの経路もその集合の複数のノードを通過する必要がないことを保証できるノードの集合では、BPを再利用できます。シナリオによっては、これにより実現可能な経路誘導の選択肢が制限される場合があります（<xref target="reuse" format="default" sectionFormat="of" derivedContent="Section 5.1.9"/>）。</li>
+          </ol>
+          <t indent="0" pn="section-5.1.10-5">この最適化のリストは網羅的なものではないことに注意してください。特に、必要な経路誘導の選択肢の集合と、トラフィックを受信できるべきBFERの可能な部分集合の両方が限られている場合には、BPのさらなる最適化が可能です。ハブアンドスポークの最適化は、このようなトラフィックパターンに依存する最適化の簡単な例です。</t>
+        </section>
+      </section>
+      <section anchor="avoiding" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-avoiding-duplicates-and-loo">重複とループの回避</name>
+        <section anchor="loops" numbered="true" toc="include" removeInRFC="false" pn="section-5.2.1">
+          <name slugifiedName="name-loops">ループ</name>
+          <t indent="0" pn="section-5.2.1-1">BIER-TEがパケットのコピーを作成する際には常に、そのコピーのBitStringでは、BFR上の隣接に関連付けられたすべてのビット位置がクリアされます。これにより、パケットのループが防止されます。唯一の例外は、DNCがセットされた隣接です。</t>
+          <t indent="0" pn="section-5.2.1-2">DNCがセットされていると、ループが発生する可能性があります。<xref target="ring-picture2" format="default" sectionFormat="of" derivedContent="Figure 15"/>で、BFR3からのリンクL4が（不注意で）（BFR2ではなく）BFRaのL1インターフェイスに接続されている場合を考えます。これにより、リングを時計回りに移動するパケットのコピーに対して、リングの時計回りのビット位置が決してクリアされないループが生じます。</t>
+          <figure anchor="ring-picture2" align="left" suppress-title="false" pn="figure-15">
+            <name slugifiedName="name-miswired-ring-example">誤配線されたリングの例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.2.1-3.1">
+               v        v
+               |        |
+        L1     |   L2   |   L3
+    /-------- BFRa ---- BFRb ---------------------\
+    |        .                                    |
+    |         ......  Wrong link wiring           |
+    |               .                             |
+    \- BFR1 - BFR2   BFR3 - ... - BFR29 - BFR30 -/
+        |      |    L4               |      |
+     p33|                         p15|
+        BFRd                       BFRc
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.2.1-4">このような物理的な設定ミスがあってもループを抑止するために、DNCをセットできるのはforward_connected()隣接だけに限られ、隣接のリンク層ポートに固有のユニキャスト宛先アドレス（たとえば「メディアアクセス制御（Media Access Control）」（MAC）アドレス）がループの形成を防ぎます。ポートに固有のリンク層アドレスを持たないリンク層は、DNCフラグをセットして使用すべきではありません。</t>
+        </section>
+        <section anchor="duplicates" numbered="true" toc="include" removeInRFC="false" pn="section-5.2.2">
+          <name slugifiedName="name-duplicates">重複</name>
+          <t indent="0" pn="section-5.2.2-1">重複は、BitStringによって表現されるグラフがツリーではなく、BFR同士を冗長に接続している場合に発生します。<xref target="duplicates-picture" format="default" sectionFormat="of" derivedContent="Figure 16"/>では、p2,p3,p4,p5のBitStringを使用すると、BFER4に重複パケットが到着します。したがって、BIER-TEコントローラーは、ツリーであるBitStringだけが作成されるようにしなければなりません。</t>
+          <figure anchor="duplicates-picture" align="left" suppress-title="false" pn="figure-16">
+            <name slugifiedName="name-duplicates-example">重複の例</name>
+            <artwork align="left" name="" type="" alt="" pn="section-5.2.2-2.1">
+                 BFIR1
+                /    \
+               / p2   \ p3
+              BFR2   BFR3
+               \ p4   / p5
+                \    /
+                 BFER4
+</artwork>
+          </figure>
+          <t indent="0" pn="section-5.2.2-3">BIER-TEコントローラーがBFIR内のBitStringを更新する前に、リンクが物理的に誤って再接続されると、重複が発生する可能性があります。ループと同様に、これはforward_connected()隣接におけるリンク層のアドレス指定によって抑止できます。</t>
+          <t indent="0" pn="section-5.2.2-4">forward_routed()隣接で使用されるインターフェイスアドレスやループバックアドレスが、あるBFRから別のBFRに移動された場合も、同様に重複が発生する可能性があります。このようなアドレスの付け直しの操作は、BIER-TEコントローラーと調整しなければなりません。</t>
+        </section>
+      </section>
+      <section anchor="mgmt-stuff" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-managing-sis-subdomains-and">SI、サブドメイン、BFR-idの管理</name>
+        <t indent="0" pn="section-5.3-1">トポロジー内の必要なホップとBFERを表すために必要なビット数が、サポートされている「BitStringLength」（BSL）を超える場合は、複数のSIやサブドメインを使用しなければなりません。このセクションでは、その方法について議論します。</t>
+        <t indent="0" pn="section-5.3-2">BIER-TE転送ではBFR-idの概念は必要ありませんが、ルーティングアンダーレイ、フローオーバーレイ、BIERヘッダーでは必要になる場合があります。このセクションでは、BIER-TEのためにBFIR/BFERにBFR-idを割り当てる方法についても議論します。</t>
+        <section anchor="why" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.1">
+          <name slugifiedName="name-why-sis-and-subdomains">なぜSIとサブドメインなのか</name>
+          <t indent="0" pn="section-5.3.1-1">（TEでない）BIERとBIER-TEの転送のどちらでも、複数のSIやサブドメインを使用することによる最も重要な帰結は同じです。すなわち、異なるSIやサブドメインのBFERに送信する必要があるマルチキャストフローオーバーレイのパケットには、それぞれ異なる (SI,サブドメイン) の組み合わせに対するBitStringを持つ複数のBIERパケットが必要になります。そのような各BitStringは、サブドメインのBIFT内のBSLサイズのSIブロックを1つ使用します。これをBIFT:SI（ブロック）と呼びます。</t>
+          <t indent="0" pn="section-5.3.1-2">SIとサブドメインは、BIERアーキテクチャーにおいても、BIER-TEアーキテクチャーにおいても、異なる目的を持っています。これは、運用者がそれらをどのように管理するか、特にフローオーバーレイがそれらをどのように使用する可能性が高いかに影響します。</t>
+          <t indent="0" pn="section-5.3.1-3">デフォルトでは、BIERネットワーク内の可能なすべてのBFIR/BFERには、（BFIR/BFERが64k個を超えない限り）サブドメイン0のBFR-idが与えられる可能性が高いでしょう。</t>
+          <t indent="0" pn="section-5.3.1-4">BFERの異なる部分集合への複製を必要とする異なるフローサービス（またはサービスインスタンス）がある場合、サブドメイン0を介してこれらのすべてのサービスインスタンスに対して最高の複製効率を達成することは、おそらくできません。N個のBFERに対する理想的な複製効率は、それらがceiling(N/BitStringLength)個以下のSIに分割されている場合に、サブドメイン内に存在します。</t>
+          <t indent="0" pn="section-5.3.1-5">サービスインスタンスがネットワーク内の追加のBIER:SI状態を正当化する場合には、追加のサブドメインが使用されます。BFIR/BFERにはそれらのサブドメインでBFR-idが割り当てられ、各サービスインスタンスは最も適切なサブドメインを使用するように設定されます。これにより、さまざまなサービスに対する複製効率が向上します。</t>
+          <t indent="0" pn="section-5.3.1-6">サブドメインの作成と、それらのサブドメインにおけるBFIR/BFERへのBFR-idの割り当てが自動化されていても、個々のサービスインスタンスが異なるサブドメインのBFERを扱えることは期待されていません。サービスインスタンスは、依存すべき単一のサブドメインの設定しかサポートしない場合があります。</t>
+          <t indent="0" pn="section-5.3.1-7">したがって、BIER-TE転送を追加する際に、既存のBIERの手順（フローオーバーレイとルーティングアンダーレイを含む）を容易に再利用できるように（そして変更を可能な限り少なくするように）、SIとサブドメインを論理的にBIERで使用されるのと同じ方法で再利用します。すなわち、あるサービスに必要なすべてのBFIR/BFERは単一のBIER-TEのBIFTを使用し、必要な数のSIに分割されます（<xref target="bit-requirements" format="default" sectionFormat="of" derivedContent="Section 5.3.2"/>を参照）。異なるサービスは異なるサブドメインを使用する場合があり、それらのサブドメインは主に、BFIR/BFERの異なる部分集合に対してより効率的な複製（およびBIER-TEの場合は望ましい経路誘導）を提供するために存在します。</t>
+        </section>
+        <section anchor="bit-requirements" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.2">
+          <name slugifiedName="name-assigning-bits-for-the-bier">BIER-TEトポロジーへのビットの割り当て</name>
+          <t indent="0" pn="section-5.3.2-1">BIERでは、BitStringはBFERのビットを運ぶだけでよいため、BFR-idがBitString内の各ビットに1対1でマッピングされるモデルになります。</t>
+          <t indent="0" pn="section-5.3.2-2">BIER-TEでは、BitStringは、受信するBFERだけでなく、パケットを送信しなければならない中間のホップ／リンクを示すビットも運ぶ必要があります。単一のBitStringまたはBIFT:SIでサポートできるBFERの最大数は、それらの間の望ましいトポロジーを表すために必要なビット数に依存します。</t>
+          <t indent="0" pn="section-5.3.2-3">「望ましい」トポロジーとは、物理トポロジーと、運用者の次のような要望に依存するという意味です。</t>
+          <ol spacing="normal" indent="adaptive" start="1" type="1" pn="section-5.3.2-4">
+<li pn="section-5.3.2-4.1" derivedCounter="1.">すべての単一ホップにわたって明示的な経路誘導を許可する（より多くのビットが必要）、または</li>
+            <li pn="section-5.3.2-4.2" derivedCounter="2.">トポロジーの「興味のない」部分（たとえば、経路誘導上の理由から、異なるツリーが異なる経路をとる必要のない部分）に対して、ユニキャスト（forward_routed()）、ECMP()、フラッディング（DNC）などの最適化を活用することで、必要なビット数を削減する。</li>
+          </ol>
+          <t indent="0" pn="section-5.3.2-5">トポロジーを記述するためのビットの総数とBIFT:SI内のBFERの数の比は、トポロジーのサイズとその中の代替経路の量に応じて大きく異なる可能性があります。BIER-TEの専門家が作成したBIER-TEトポロジーでは、BFER以外のビットの割合が高いほど、それらのトポロジーのビットが追加の利点のない単なるBIER-TEのオーバーヘッドではなく、望ましい経路誘導の代替案を表現できるものである可能性が高くなります。</t>
+        </section>
+        <section anchor="bfr-id" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.3">
+          <name slugifiedName="name-assigning-bfr-ids-with-bier">BIER-TEにおけるBFR-idの割り当て</name>
+          <t indent="0" pn="section-5.3.3-1">BIER-TE転送はBFR-idを使用せず、BIERヘッダーのBFIR-idフィールドを特定の値に設定することも要求しません。しかし、BIER-TEの展開の他の部分、具体的にはマルチキャストフローオーバーレイのシグナリングとマルチキャストフローオーバーレイのパケットの処分では、BFR-idが必要になる場合があります。その場合、BFRはBIER-TEのSDに対してもBFR-idを持つ必要があります。</t>
+          <t indent="0" pn="section-5.3.3-2">たとえば、BIERのオーバーレイシグナリングでは、BFIRはBFR-idを持つ必要があります。このBFIRのBFR-idは、どのBFIRがパケットを発信したかを受信側のBFERのオーバーレイシグナリングに示すために、BIERヘッダーのBFIR-idフィールドで運ばれるためです。</t>
+          <t indent="0" pn="section-5.3.3-3">BIERでは、BFR-id = SI * BSL + BPであり、BFERのSIとBPをBFR-idから計算でき、その逆も可能です。これはまた、BFR-idを持つすべてのBFRが、BIER転送に必要でない場合でも、SI内に予約済みのBPを持つことを意味します。BFRは決してBFERにならない（すなわちBFIRにしかならない）可能性があるからです。</t>
+          <t indent="0" pn="section-5.3.3-4">BIER-TEでは、リーフでないBFERには通常、そのBFER上のlocal_decap()隣接を持つ、そのBFERのための単一のBPがあります。したがって、そのようなBFERのBFR-idは、（TEでない）BIERで使用されるのと同じ手順、すなわちBFR-id = SI * BSL + BPを使用して決定できます。</t>
+          <t indent="0" pn="section-5.3.3-5"><xref target="leaf-bfer" format="default" sectionFormat="of" derivedContent="Section 5.1.3"/>で説明したように、リーフBFERにはそのような一意のlocal_decap()隣接は必要ありません。同様に、BFERでもあるわけではないBFIRも、一意のlocal_decap()隣接を持たない場合があります。それらすべてのBFIRと（リーフ）BFERについて、コントローラーは、リーフでないBFERのlocal_decap()のBPから導出されるBFR-idと衝突しない、一意のBFR-idを決定する必要があります。</t>
+          <t indent="0" pn="section-5.3.3-6">この文書では、そのようなBFR-idの割り当て方法に関する要件は定義しませんが、単純な選択肢の1つは、当該BFRに固有の隣接の (SI,BP) からBFR-idを導出することです。BFIRの場合、これはこのBFIRにのみ格納される最初の隣接にできます。リーフBFERの場合、これはそのBFERへの隣接を持つ最初のBPにできます。</t>
+        </section>
+        <section anchor="bitstring-mappings" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.4">
+          <name slugifiedName="name-mapping-from-bfrs-to-bitstr">BIER-TEにおけるBFRからBitStringへのマッピング</name>
+          <t indent="0" pn="section-5.3.4-1">BIERでは、BFIR上のフローオーバーレイのアプリケーションは、BFERのBFR-idからそのBFERの (SI,BP) を計算できるため、BFR-idが既知であるBFERの集合へのBIERパケットのBitStringを容易に決定できます。</t>
+          <t indent="0" pn="section-5.3.4-2">BIER-TEでも、このマッピングはフローオーバーレイに対して同様にサポートされる必要があります。このセクションでは、特定のアプリケーションに対してBIER-TEコントローラーが実行する必要があるツリーエンジニアリングの種類に基づいて、2つの中心的な選択肢の概要を説明します。</t>
+          <dl spacing="normal" indent="3" newline="false" pn="section-5.3.4-3">
+            <dt pn="section-5.3.4-3.1">「独立したブランチ（Independent branches）」：</dt>
+            <dd pn="section-5.3.4-3.2">特定のフローオーバーレイのインスタンスについて、BFIRから各BFERへのブランチは、他のBFERへのブランチとは独立するようにBIER-TEコントローラーによって計算されます。最短経路ツリーは、独立したブランチを持つツリーの最も一般的な例です。</dd>
+            <dt pn="section-5.3.4-3.3">「相互依存するブランチ（Interdependent branches）」：</dt>
+            <dd pn="section-5.3.4-3.4">特定の配信ツリーにBFERが追加または削除された場合、他のBFERへのブランチも変更が必要になる可能性があるため、BIER-TEコントローラーはそれらを再計算しなければなりません。シュタイナーツリーは、相互依存するブランチを持つツリーの例です。</dd>
+          </dl>
+          <t indent="0" pn="section-5.3.4-4">「独立したブランチ」を使用する場合、BIER-TEコントローラーは、BFIRのフローオーバーレイに対して、BFERごとにそのBFERへのブランチを表すSI:BitStringをシグナリングできます。そうすれば、BFIR上のフローオーバーレイは、コントローラーとは独立して、望ましいすべてのBFERのBitStringのORをとることで、それらのBFERに対するSI:BitStringを計算できます。これにより、フローオーバーレイのアプリケーションは、特定のパケットをどのBFERの部分集合が受信する必要があるかを決定する必要があるときには常に、コントローラーとは独立して動作できます。</t>
+          <t indent="0" pn="section-5.3.4-5">「相互依存するブランチ」が必要な場合、アプリケーションは、BFERの集合が変化するたびに、その集合に対するSI:BitStringを問い合わせる必要があります。</t>
+          <t indent="0" pn="section-5.3.4-6">（BIERのシナリオとは異なり）いずれの場合も、リンク／ノードの障害／回復、ネットワークの拡張、またはトラフィックエンジニアリングの目標達成の一環としての他のトラフィックによるネットワークリソースの消費（たとえば、低優先度のトラフィックフローの再最適化）に応じて、ビットを変更する必要がある場合があることに注意してください。したがって、そのようなBFIRのアプリケーションとBIER-TEコントローラーの間のやり取りでは、SI:BitStringの動的な更新をサポートする必要があります。</t>
+          <t indent="0" pn="section-5.3.4-7">BFIRのフローオーバーレイとBIER-TEコントローラーの間の通信では、BFERを識別する何らかの方法が必要です。<xref target="bfr-id" format="default" sectionFormat="of" derivedContent="Section 5.3.3"/>で概説したように展開でBFR-idが使用されている場合は、それが「自然な」BFR-idになります。BFR-idが使用されていない場合は、BFRのBFR-prefix <xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>など、その他の任意の一意な識別子を使用できます。</t>
+        </section>
+        <section anchor="assigning" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.5">
+          <name slugifiedName="name-assigning-bfr-ids-for-bier-">BIER-TEのためのBFR-idの割り当て</name>
+          <t indent="0" pn="section-5.3.5-1">単一のサブドメインで（TEでない）BIERパケットとBIER-TEパケットの両方の転送を許可できるのか、あるいは許可すべきなのかは、現時点では決まっていません。これをサポートすべき場合、2つの選択肢があります。</t>
+          <ol spacing="normal" type="A" indent="adaptive" start="1" pn="section-5.3.5-2">
+          <li pn="section-5.3.5-2.1" derivedCounter="A.">BIERとBIER-TEが、同じサブドメイン内で異なるBFR-idを持つ。BIERのBFR-idは連続的に割り当てることができる一方で、BIER-TEのBitStringではトポロジーの隣接のための追加のビットも割り当てなければならないため、これによりBIERの複製効率を高めることができます。BFRのBIERのBFR-idとBIER-TEのBFR-idの間には何の関係もありません。</li>
+            <li pn="section-5.3.5-2.2" derivedCounter="B.">BIERとBIER-TEが同じBFR-idを共有する。BFR-idは上記のようにBIER-TEのために割り当てられ、BIERではそれを単に再利用します。この方法では、BIERの複製効率はBIER-TEと同じくらい低くなります。</li>
+          </ol>
+        </section>
+        <section anchor="allocation-example" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.6">
+          <name slugifiedName="name-example-bit-allocations">ビット割り当ての例</name>
+          <section anchor="with-bier" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.6.1">
+            <name slugifiedName="name-with-bier">BIERの場合</name>
+            <t indent="0" pn="section-5.3.6.1-1"><xref target="scaling-picture" format="default" sectionFormat="of" derivedContent="Figure 17"/>に示すネットワークトポロジーに対して、BSLが256のネットワーク構成を考えます。このネットワークには6つのエリアがあり、それぞれに170個のBFERがあり、4つの（コア）BFRを持つコアを介して接続されています。BIERですべてのBFERをアドレス指定するには、4つのSIが必要です。ネットワーク内のすべてのBFERにBIERパケットを送信するには、BFIRが4つのコピーを送信する必要があります。BFIRにとっては、ネットワーク内のBFERにBFR-idがどのように割り当てられているかは問題になりませんが、ネットワークのさらに下流での効率にとっては問題になります。</t>
+            <figure anchor="scaling-picture" align="left" suppress-title="false" pn="figure-17">
+              <name slugifiedName="name-scaling-bier-te-bits-by-reu">再利用によるBIER-TEビットのスケーリング</name>
+              <artwork align="left" name="" type="" alt="" pn="section-5.3.6.1-2.1">
+             area1           area2        area3
+            BFR1a BFR1b  BFR2a BFR2b   BFR3a BFR3b
+              |  \         /    \        /  |
+              ................................
+              .                Core          .
+              ................................
+              |    /       \    /        \  |
+            BFR4a BFR4b  BFR5a BFR5b   BFR6a BFR6b
+             area4          area5        area6
+</artwork>
+            </figure>
+            <t indent="0" pn="section-5.3.6.1-3">BFERにBFR-idをランダムに割り当てると、各エリアに4つのSIそれぞれのBFR-idが存在することになるため、各受信エリアは（おそらく）BIERパケットの4つのコピーすべてを受信しなければなりません。この重複は、各BFERに向けてさらに進み、4つのツリーそれぞれのブランチが尽きたときに、ようやく収まります。</t>
+            <t indent="0" pn="section-5.3.6.1-4">BFR-idを賢く割り当てれば、エリア内のすべてのBFERには、できるだけ少ない異なるSIでBFR-idが与えられます。各エリアは、4つではなく1つまたは2つのパケットを転送するだけで済みます。</t>
+            <t indent="0" pn="section-5.3.6.1-5">ネットワークが時間とともに成長しうることを考えると、BFR-idがネットワーク全体で連続的に割り当てられるだけの場合、エリア内の複製効率も時間とともに低下していきます。最初は1つのSIのBFR-idしか持たないエリアが、長期間の成長の後には多くのSIを持つことになるかもしれません。成長のために十分な数の予備ビットを最初から持つようにエリアにSIを割り当てることは、この問題を緩和するのに役立ちます。あるいは、ネットワークの拡張後にBFERの番号を付け直すこともできます。この例では、6つのSIを使用して各エリアに1つずつ割り当てることを検討できます。</t>
+            <t indent="0" pn="section-5.3.6.1-6">この例は、少なくともサブドメイン0内での賢いBFR-idの割り当てが、BIERにおいて有用であるか、あるいは必要でさえあることを示しています。</t>
+          </section>
+          <section anchor="with-bier-te" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.6.2">
+            <name slugifiedName="name-with-bier-te">BIER-TEの場合</name>
+            <t indent="0" pn="section-5.3.6.2-1">BIER-TEでは、物理トポロジーとそれに接続されたBFERの部分集合を、このトポロジーとBFERの「望ましい」表現が単一のBitStringに収まるように決定する必要があります。このプロセスは、トポロジー全体がカバーされるまで繰り返す必要があります。</t>
+            <t indent="0" pn="section-5.3.6.2-2">トポロジーとBFERにビット／SIが割り当てられると、BFR-idは、前述のように、運用者／BIER-TEコントローラーから導出される識別子の集合にすぎません。</t>
+            <t indent="0" pn="section-5.3.6.2-3">異なるサブトポロジーが重複する場合は常に、BitStringにわたってビットを繰り返す必要があり、すべてのBitString／SIにわたって必要なビットの総量が増加します。最悪の場合は、BFERのランダムな部分集合を異なるSIに割り当てることです。これは、（TEでない）BIERよりもはるかに悪い結果になります。SI間での不要なトポロジーの重複の量が最大になり、したがって個々のSIで到達できるBFERの数が減少します。BFERからSIへの賢い割り当てと、特定の「望ましい」サブトポロジーの選択によって、この問題を最小化できます。</t>
+            <t indent="0" pn="section-5.3.6.2-4"><xref target="scaling-picture" format="default" sectionFormat="of" derivedContent="Figure 17"/>に示すトポロジーに対してBIER-TEを効率的に設定するには、次のビット割り当て方法を使用できます。この方法は、同様の構造を持つ他のより大きなトポロジーにも容易に拡張できます。</t>
+            <t indent="0" pn="section-5.3.6.2-5">各エリアには、将来予想されるBFERの数と、そのエリア内のトポロジーに必要なビット数に応じて、1つ以上のSIが割り当てられます。この例では、エリアごとに1つずつ、6つのSIが使用されます。</t>
+            <t indent="0" pn="section-5.3.6.2-6">さらに、各SIで次の4つのビットを使用します。</t>
+            <dl spacing="normal" indent="3" newline="false" pn="section-5.3.6.2-7">
+              <dt pn="section-5.3.6.2-7.1">bia:</dt>
+              <dd pn="section-5.3.6.2-7.2">(b)it (i)ngress (a)</dd>
+              <dt pn="section-5.3.6.2-7.3">bib:</dt>
+              <dd pn="section-5.3.6.2-7.4">(b)it (i)ngress (b)</dd>
+              <dt pn="section-5.3.6.2-7.5">bea:</dt>
+              <dd pn="section-5.3.6.2-7.6">(b)it (e)gress (a)</dd>
+              <dt pn="section-5.3.6.2-7.7">beb:</dt>
+              <dd pn="section-5.3.6.2-7.8">(b)it (e)gress (b)</dd>
+            </dl>
+            <t indent="0" pn="section-5.3.6.2-8">これらのビットは、入口エリアのa/bのBFRと出口エリアのa/bのBFRの任意の組み合わせを経由して、任意のBFIRから特定のターゲットエリアにBIERパケットを渡すために使用されます。これらのビットは、BFIRとエリアエッジのBFR上で、次のように適切なforward_routed()隣接とともに設定されます。</t>
+            <t indent="0" pn="section-5.3.6.2-9">エリアj（j=1...6）内のすべてのBFIR上で、各BIFT:SIのbiaには同じforward_routed(BFRja)が、bibにはforward_routed(BFRjb)が格納されます。すべてのエリアエッジのBFR上で、BIFT:SI=k（k=1...6）のbeaにはforward_routed(BFRka)が、BIFT:SI=kのbebにはforward_routed(BFRkb)が格納されます。</t>
+            <t indent="0" pn="section-5.3.6.2-10">すべてのエリアにわたるBFERの部分集合にパケットをBIER-TE転送する場合、BFIRはSI=1...SI=6の最大6つのコピーを作成します。各パケットでは、BitStringには、1つのエリアとそのエリア内のBFERのためのビットに加えて、このパケットを入口エリアのaまたはbの境界BFRと、出口エリアのaまたはbの境界BFRのどちらを経由させるかを示す4つのビットが含まれます。これにより、1) BFIRから入口エリアのエッジまで、2) コアから出口エリアのエッジまで、という2つの「ユニキャスト」区間の経路誘導が可能になります。複製は出口エリア内でのみ行われます。BFIRと同じエリアにあるBFERについては、これら4つのビットは使用されません。</t>
+          </section>
+        </section>
+        <section anchor="summary" numbered="true" toc="include" removeInRFC="false" pn="section-5.3.7">
+          <name slugifiedName="name-summary">まとめ</name>
+          <t indent="0" pn="section-5.3.7-1">BIER-TEは、BIERと同様に、サブドメイン内で複数のSIをサポートできます。これにより、BFR-id = SI * BSL + BPというマッピングを適用できます。これはまた、BFR-idというBIERアーキテクチャーの概念の再利用を可能にし、したがって、フローオーバーレイの方法やBIERヘッダーフィールドを含む、BIER-TEとともに使用されうるBIER層のコントロールプレーンのメカニズムにおいて、BIER-TE固有の機能を最小化できます。</t>
+          <t indent="0" pn="section-5.3.7-2">BIER-TEはトポロジーのために追加のビットを使用するため、サブドメイン内で可能なBFIR/BFERの数はBIERよりも少なくなります。</t>
+          <t indent="0" pn="section-5.3.7-3">BIER-TEのサブドメインは、BIERと同様に、BFERの既知の部分集合に対するより効率的な複製を作成するために使用できます。</t>
+          <t indent="0" pn="section-5.3.7-4">複製効率と必要なビットの総量の観点から、BFERのビットを適切なSIに賢く割り当てることは、BIERよりもBIER-TEにおいてより重要です。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="security" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">「<xref target="RFC8296" format="title" sectionFormat="of" derivedContent="Encapsulation for Bit Index Explicit Replication (BIER) in MPLS and Non-MPLS Networks"/>」<xref target="RFC8296" format="default" sectionFormat="of" derivedContent="RFC8296"/>を使用する場合、そのセキュリティーに関する考慮事項はBIER-TEにも適用されます。</t>
+      <t indent="0" pn="section-6-2">「<xref target="RFC8279" format="title" sectionFormat="of" derivedContent="Multicast Using Bit Index Explicit Replication (BIER)"/>」<xref target="RFC8279" format="default" sectionFormat="of" derivedContent="RFC8279"/>のセキュリティーに関する考慮事項もBIER-TEに適用されますが、次の考慮事項によって上書きまたは追加されます。</t>
+      <t indent="0" pn="section-6-3">BIER-TE転送は、forward_routed()隣接を介したBIERパケットのユニキャスト「トンネリング」を明示的にサポートします。BIERドメインのセキュリティーモデルは、同じBIERドメインの他のBFRに接続する、BFR上のインターフェイスの部分集合に基づいています。BIER-TEでは、このセキュリティーモデルは、このようなユニキャストで「トンネリング」されたBIERパケットにも同様に適用されます。これには、BIERドメインの外部からそのような「トンネリング」されたBIERパケットが注入されるのを禁止するために、受信したユニキャストで「トンネリング」されたBIERパケットをフィルタリングする必要性だけでなく、forward_routed()隣接がBIERドメインからBIERパケットを漏洩させるのを禁止する必要性も含まれます。インターフェイスがBIERでカプセル化されたパケットを送受信できない場合でも、ユニキャストで「トンネリング」されたBIERパケットの送受信のためだけに、インターフェイスをBIERドメインの一部となるように設定できる<bcp14>べきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-6-4">BIERでは、ルーティングアンダーレイの標準化された方法は、BFR-idとBFR-prefixを配布するための拡張を備えたIGPです。<xref target="RFC8401" format="default" sectionFormat="of" derivedContent="RFC8401"/>はIS-ISの拡張を規定し、<xref target="RFC8444" format="default" sectionFormat="of" derivedContent="RFC8444"/>はOSPFの拡張を規定しています。BIERのルーティングアンダーレイや（TEでない）BIER層のコントロールプレーンのプロトコルを攻撃したり、ドメイン内の任意のBFRを損なったりすることで、BIER-TEがルーティングプロトコルから学習する情報（ルート、ネクストホップ、BFR-idなど）に対する攻撃が成功し、BIERが使用する経路やアドレス指定（BFR-id、BFR-prefix）に対するDoS攻撃が可能になる場合があります。</t>
+      <t indent="0" pn="section-6-5">BIER-TE層のコントロールプレーンの参照モデルは、BIER-TEコントローラーです。そのようなコントローラーを使用する場合、ドメイン内の個々のBFRが損なわれても、他のBFR上のBIER-TEコントロールプレーンは損なわれません。forward_routed()隣接をサポートするためにルーティングプロトコルが使用される場合、これはBIERと同様に依然として攻撃ベクトルとなりますが、それはBIER-TEのforward_routed()隣接に対してのみであり、他の隣接に対してではありません。</t>
+      <t indent="0" pn="section-6-6">IGPルーティングプロトコルは、暗号学的な認証と機密性によって十分に保護されていないことがほとんどですが、BIER-TEコントローラー／コントロールプレーンで考慮すべきもののようなコントローラーとルーターの間の通信は、これらのセキュリティー特性によって保護することができ、また実際にはるかに一般的に保護されています。たとえば、NETCONF <xref target="RFC6242" format="default" sectionFormat="of" derivedContent="RFC6242"/>のために「セキュアシェル（Secure Shell）」（SSH）<xref target="RFC4253" format="default" sectionFormat="of" derivedContent="RFC4253"/>を使用したり、PCEP <xref target="RFC5440" format="default" sectionFormat="of" derivedContent="RFC5440"/>のための<xref target="RFC8253" format="default" sectionFormat="of" derivedContent="RFC8253"/>やNETCONFのための<xref target="RFC7589" format="default" sectionFormat="of" derivedContent="RFC7589"/>のように「トランスポート層セキュリティー（Transport Layer Security）」（TLS）を介したりします。BIER-TEコントローラーは、これらのメカニズムと同等以上のセキュリティーを使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-6-7">BIER-TEコントローラーとBFRの間の通信にこれらのセキュリティーメカニズム／プロトコルのいずれかを使用する場合、それらのセキュリティーに関する考慮事項がBIER-TEに適用されます。さらに、「<xref target="RFC4655" format="title" sectionFormat="of" derivedContent="A Path Computation Element (PCE)-Based Architecture"/>」<xref target="RFC4655" format="default" sectionFormat="of" derivedContent="RFC4655"/>のセキュリティーに関する考慮事項も適用されます。</t>
+      <t indent="0" pn="section-6-8">BIER-TEにおける最も重要な攻撃ベクトルは、BFR自体での、またはBIER-TEコントローラーを介した設定ミスです。DNCを持つ転送エントリーは、パケットがTTLによってのみ期限切れになる永続的なループを作成するように設定される可能性があります。そのような攻撃（あるいは、より可能性が高いのは、運用者による意図しない設定ミスや不良なBIER-TEコントローラーソフトウェア）の影響を最小化するために、BIER-TEの転送規則は、ビットのクリアについて可能な限り厳格になるように定義されています。BFR上で隣接を持つすべてのビットをクリアすることで、ループするパケットが、ループを2回目以降に周回する際に、設定ミスのあるループを通じてパケットをさらに増幅させることを防ぎます。関連するすべての隣接ビットは、ループの1周目でクリアされているからです。その結果、BIER-TEにおいてパケットのループが発生しうる程度は、BIERにおけるルーティングアンダーレイ内の意図しない、または悪意のあるループ、あるいはユニキャストトラフィックでさえ起こりうるループと同程度になります。</t>
+      <t indent="0" pn="section-6-9">BIER-TEが有益となる可能性が高い展開には、コントローラーからの実際の設定変更が、ネットワークのライフサイクルのうち非本番フェーズの間にのみ必要となる運用モデルが含まれる場合があります。たとえば、組み込みネットワークや、工場の改修や修理などの作業中の製造ネットワークです。この種の展開では、ネットワークが本番状態にあるときは設定変更をロックアウトし、ネットワーク／設備を非本番状態に戻すことによってのみ設定変更を（再び）有効にできるようにすることができます。このようなセキュリティー設計は、展開において設定に対する攻撃からの保護の層を追加できるようにするだけでなく、何よりもまず、稼働中の本番プロセスをそのような設定に対する攻撃から保護します。</t>
+    </section>
+    <section anchor="iana" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.ietf-roll-ccast" to="CONSTRAINED-CAST"/>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized.  This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8279" target="https://www.rfc-editor.org/info/rfc8279" quoteTitle="true" derivedAnchor="RFC8279">
+          <front>
+            <title>Multicast Using Bit Index Explicit Replication (BIER)</title>
+            <author fullname="IJ. Wijnands" initials="IJ." role="editor" surname="Wijnands"/>
+            <author fullname="E. Rosen" initials="E." role="editor" surname="Rosen"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <date month="November" year="2017"/>
+            <abstract>
+              <t indent="0">This document specifies a new architecture for the forwarding of multicast data packets.  It provides optimal forwarding of multicast packets through a "multicast domain".  However, it does not require a protocol for explicitly building multicast distribution trees, nor does it require intermediate nodes to maintain any per-flow state.  This architecture is known as "Bit Index Explicit Replication" (BIER).  When a multicast data packet enters the domain, the ingress router determines the set of egress routers to which the packet needs to be sent.  The ingress router then encapsulates the packet in a BIER header.  The BIER header contains a bit string in which each bit represents exactly one egress router in the domain; to forward the packet to a given set of egress routers, the bits corresponding to those routers are set in the BIER header.  The procedures for forwarding a packet based on its BIER header are specified in this document.  Elimination of the per-flow state and the explicit tree-building protocols results in a considerable simplification.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8279"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8279"/>
+        </reference>
+        <reference anchor="RFC8296" target="https://www.rfc-editor.org/info/rfc8296" quoteTitle="true" derivedAnchor="RFC8296">
+          <front>
+            <title>Encapsulation for Bit Index Explicit Replication (BIER) in MPLS and Non-MPLS Networks</title>
+            <author fullname="IJ. Wijnands" initials="IJ." role="editor" surname="Wijnands"/>
+            <author fullname="E. Rosen" initials="E." role="editor" surname="Rosen"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="J. Tantsura" initials="J." surname="Tantsura"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="I. Meilik" initials="I." surname="Meilik"/>
+            <date month="January" year="2018"/>
+            <abstract>
+              <t indent="0">Bit Index Explicit Replication (BIER) is an architecture that provides optimal multicast forwarding through a "multicast domain", without requiring intermediate routers to maintain any per-flow state or to engage in an explicit tree-building protocol.  When a multicast data packet enters the domain, the ingress router determines the set of egress routers to which the packet needs to be sent.  The ingress router then encapsulates the packet in a BIER header.  The BIER header contains a bit string in which each bit represents exactly one egress router in the domain; to forward the packet to a given set of egress routers, the bits corresponding to those routers are set in the BIER header.  The details of the encapsulation depend on the type of network used to realize the multicast domain.  This document specifies a BIER encapsulation that can be used in an MPLS network or, with slight differences, in a non-MPLS network.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8296"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8296"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="BIER-MCAST-OVERLAY" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-bier-multicast-http-response-06" derivedAnchor="BIER-MCAST-OVERLAY">
+          <front>
+            <title>Applicability of BIER Multicast Overlay for Adaptive Streaming Services</title>
+            <author initials="D." surname="Trossen" fullname="Dirk Trossen">
+              <organization showOnFrontPage="true">Huawei Technologies Duesseldorf GmbH</organization>
+            </author>
+            <author initials="A." surname="Rahman" fullname="Akbar Rahman">
+              <organization showOnFrontPage="true">InterDigital Communications, LLC</organization>
+            </author>
+            <author initials="C." surname="Wang" fullname="Chonggang Wang">
+              <organization showOnFrontPage="true">InterDigital Communications, LLC</organization>
+            </author>
+            <author initials="T." surname="Eckert" fullname="Toerless Eckert">
+              <organization showOnFrontPage="true">Futurewei Technologies Inc.</organization>
+            </author>
+            <date month="July" day="10" year="2021"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-multicast-http-response-06"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="BIER-TE-PROTECTION" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-eckert-bier-te-frr-03" derivedAnchor="BIER-TE-PROTECTION">
+          <front>
+            <title>Protection Methods for BIER-TE</title>
+            <author initials="T." surname="Eckert" fullname="Toerless Eckert">
+              <organization showOnFrontPage="true">Huawei USA - Futurewei Technologies Inc.</organization>
+            </author>
+            <author initials="G." surname="Cauchie" fullname="Gregory Cauchie">
+              <organization showOnFrontPage="true">Bouygues Telecom</organization>
+            </author>
+            <author initials="W." surname="Braun" fullname="Wolfgang Braun">
+              <organization showOnFrontPage="true">University of Tuebingen</organization>
+            </author>
+            <author initials="M." surname="Menth" fullname="Michael Menth">
+              <organization showOnFrontPage="true">University of Tuebingen</organization>
+            </author>
+            <date month="March" day="5" year="2018"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-eckert-bier-te-frr-03"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="BIER-TE-YANG" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-bier-te-yang-05" derivedAnchor="BIER-TE-YANG">
+          <front>
+            <title>A YANG data model for Tree Engineering for Bit Index Explicit Replication (BIER-TE)</title>
+            <author initials="Z." surname="Zhang" fullname="Zheng Zhang">
+              <organization showOnFrontPage="true">ZTE Corporation</organization>
+            </author>
+            <author initials="C." surname="Wang" fullname="Cui(Linda) Wang">
+              <organization showOnFrontPage="true">Individual</organization>
+            </author>
+            <author initials="R." surname="Chen" fullname="Ran Chen">
+              <organization showOnFrontPage="true">ZTE Corporation</organization>
+            </author>
+            <author initials="F." surname="Hu" fullname="fangwei hu">
+              <organization showOnFrontPage="true">Individual</organization>
+            </author>
+            <author initials="M." surname="Sivakumar" fullname="Mahesh Sivakumar">
+              <organization showOnFrontPage="true">Juniper networks</organization>
+            </author>
+            <author initials="H." surname="Chen" fullname="Huanan Chen">
+              <organization showOnFrontPage="true">China Telecom</organization>
+            </author>
+            <date month="May" day="1" year="2022"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-te-yang-05"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="Bloom70" target="https://dl.acm.org/doi/10.1145/362686.362692" quoteTitle="true" derivedAnchor="Bloom70">
+          <front>
+            <title>Space/time trade-offs in hash coding with allowable errors</title>
+            <author initials="B. H." surname="Bloom" fullname="Burton H. Bloom">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="July" year="1970"/>
+          </front>
+          <refcontent>Comm. ACM 13(7):422-6</refcontent>
+          <seriesInfo name="DOI" value="10.1145/362686.362692"/>
+        </reference>
+        <reference anchor="I-D.ietf-roll-ccast" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-roll-ccast-01" derivedAnchor="CONSTRAINED-CAST">
+          <front>
+            <title>Constrained-Cast: Source-Routed Multicast for RPL</title>
+            <author initials="O." surname="Bergmann" fullname="Olaf Bergmann">
+              <organization showOnFrontPage="true">Universität Bremen TZI</organization>
+            </author>
+            <author initials="C." surname="Bormann" fullname="Carsten Bormann">
+              <organization showOnFrontPage="true">Universität Bremen TZI</organization>
+            </author>
+            <author initials="S." surname="Gerdes" fullname="Stefanie Gerdes">
+              <organization showOnFrontPage="true">Universität Bremen TZI</organization>
+            </author>
+            <author initials="H." surname="Chen" fullname="Hao Chen">
+              <organization showOnFrontPage="true">Huawei Technologies</organization>
+            </author>
+            <date month="October" day="30" year="2017"/>
+            <abstract>
+              <t indent="0">   This specification defines a protocol for forwarding multicast
+   traffic in a constrained node network employing the RPL routing
+   protocol in non-storing mode.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-roll-ccast-01"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-ietf-roll-ccast-01.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="ICC" target="https://ieeexplore.ieee.org/document/7511036" quoteTitle="true" derivedAnchor="ICC">
+          <front>
+            <title>Stateless multicast switching in software defined networks</title>
+            <author initials="M. J." surname="Reed"/>
+            <author initials="M." surname="Al-Naday"/>
+            <author initials="N." surname="Thomos"/>
+            <author initials="D." surname="Trossen"/>
+            <author initials="G." surname="Petropoulos"/>
+            <author initials="S." surname="Spirou"/>
+            <date month="May" year="2016"/>
+          </front>
+          <refcontent>IEEE International Conference on Communications (ICC), Kuala Lumpur, Malaysia</refcontent>
+          <seriesInfo name="DOI" value="10.1109/ICC.2016.7511036"/>
+        </reference>
+        <reference anchor="NON-MPLS-BIER-ENCODING" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-bier-non-mpls-bift-encoding-04" derivedAnchor="NON-MPLS-BIER-ENCODING">
+          <front>
+            <title>An Optional Encoding of the BIFT-id Field in the non-MPLS BIER Encapsulation</title>
+            <author fullname="IJsbrand Wijnands" surname="Wijnands" initials="IJ"/>
+            <author fullname="Mankamana Mishra" surname="Mishra" initials="M"/>
+            <author fullname="Xiaohu Xu" surname="Xu" initials="X"/>
+            <author fullname="Hooman Bidgoli" surname="Bidgoli" initials="H"/>
+            <date month="May" day="30" year="2021"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-non-mpls-bift-encoding-04"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RCSD94" target="https://content.iospress.com/articles/journal-of-high-speed-networks/jhs3-4-05" quoteTitle="true" derivedAnchor="RCSD94">
+          <front>
+            <title>Rate-Controlled Service Disciplines</title>
+            <author initials="H." surname="Zhang"/>
+            <author initials="D." surname="Ferrari"/>
+            <date month="October" year="1994"/>
+          </front>
+          <refcontent>Journal of High Speed Networks, Volume 3, Issue 4, pp. 389-412</refcontent>
+          <seriesInfo name="DOI" value="10.3233/JHS-1994-3405"/>
+        </reference>
+        <reference anchor="RFC4253" target="https://www.rfc-editor.org/info/rfc4253" quoteTitle="true" derivedAnchor="RFC4253">
+          <front>
+            <title>The Secure Shell (SSH) Transport Layer Protocol</title>
+            <author fullname="T. Ylonen" initials="T." surname="Ylonen"/>
+            <author fullname="C. Lonvick" initials="C." role="editor" surname="Lonvick"/>
+            <date month="January" year="2006"/>
+            <abstract>
+              <t indent="0">The Secure Shell (SSH) is a protocol for secure remote login and other secure network services over an insecure network.</t>
+              <t indent="0">This document describes the SSH transport layer protocol, which typically runs on top of TCP/IP. The protocol can be used as a basis for a number of secure network services. It provides strong encryption, server authentication, and integrity protection. It may also provide compression.</t>
+              <t indent="0">Key exchange method, public key algorithm, symmetric encryption algorithm, message authentication algorithm, and hash algorithm are all negotiated.</t>
+              <t indent="0">This document also describes the Diffie-Hellman key exchange method and the minimal set of algorithms that are needed to implement the SSH transport layer protocol. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4253"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4253"/>
+        </reference>
+        <reference anchor="RFC4456" target="https://www.rfc-editor.org/info/rfc4456" quoteTitle="true" derivedAnchor="RFC4456">
+          <front>
+            <title>BGP Route Reflection: An Alternative to Full Mesh Internal BGP (IBGP)</title>
+            <author fullname="T. Bates" initials="T." surname="Bates"/>
+            <author fullname="E. Chen" initials="E." surname="Chen"/>
+            <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+            <date month="April" year="2006"/>
+            <abstract>
+              <t indent="0">The Border Gateway Protocol (BGP) is an inter-autonomous system routing protocol designed for TCP/IP internets. Typically, all BGP speakers within a single AS must be fully meshed so that any external routing information must be re-distributed to all other routers within that Autonomous System (AS). This represents a serious scaling problem that has been well documented with several alternatives proposed.</t>
+              <t indent="0">This document describes the use and design of a method known as "route reflection" to alleviate the need for "full mesh" Internal BGP (IBGP).</t>
+              <t indent="0">This document obsoletes RFC 2796 and RFC 1966. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4456"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4456"/>
+        </reference>
+        <reference anchor="RFC4655" target="https://www.rfc-editor.org/info/rfc4655" quoteTitle="true" derivedAnchor="RFC4655">
+          <front>
+            <title>A Path Computation Element (PCE)-Based Architecture</title>
+            <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+            <author fullname="J.-P. Vasseur" initials="J.-P." surname="Vasseur"/>
+            <author fullname="J. Ash" initials="J." surname="Ash"/>
+            <date month="August" year="2006"/>
+            <abstract>
+              <t indent="0">Constraint-based path computation is a fundamental building block for traffic engineering systems such as Multiprotocol Label Switching (MPLS) and Generalized Multiprotocol Label Switching (GMPLS) networks. Path computation in large, multi-domain, multi-region, or multi-layer networks is complex and may require special computational components and cooperation between the different network domains.</t>
+              <t indent="0">This document specifies the architecture for a Path Computation Element (PCE)-based model to address this problem space. This document does not attempt to provide a detailed description of all the architectural components, but rather it describes a set of building blocks for the PCE architecture from which solutions may be constructed. This memo provides information for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4655"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4655"/>
+        </reference>
+        <reference anchor="RFC5440" target="https://www.rfc-editor.org/info/rfc5440" quoteTitle="true" derivedAnchor="RFC5440">
+          <front>
+            <title>Path Computation Element (PCE) Communication Protocol (PCEP)</title>
+            <author fullname="JP. Vasseur" initials="JP." role="editor" surname="Vasseur"/>
+            <author fullname="JL. Le Roux" initials="JL." role="editor" surname="Le Roux"/>
+            <date month="March" year="2009"/>
+            <abstract>
+              <t indent="0">This document specifies the Path Computation Element (PCE) Communication Protocol (PCEP) for communications between a Path Computation Client (PCC) and a PCE, or between two PCEs.  Such interactions include path computation requests and path computation replies as well as notifications of specific states related to the use of a PCE in the context of Multiprotocol Label Switching (MPLS) and Generalized MPLS (GMPLS) Traffic Engineering.  PCEP is designed to be flexible and extensible so as to easily allow for the addition of further messages and objects, should further requirements be expressed in the future. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5440"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5440"/>
+        </reference>
+        <reference anchor="RFC6241" target="https://www.rfc-editor.org/info/rfc6241" quoteTitle="true" derivedAnchor="RFC6241">
+          <front>
+            <title>Network Configuration Protocol (NETCONF)</title>
+            <author fullname="R. Enns" initials="R." role="editor" surname="Enns"/>
+            <author fullname="M. Bjorklund" initials="M." role="editor" surname="Bjorklund"/>
+            <author fullname="J. Schoenwaelder" initials="J." role="editor" surname="Schoenwaelder"/>
+            <author fullname="A. Bierman" initials="A." role="editor" surname="Bierman"/>
+            <date month="June" year="2011"/>
+            <abstract>
+              <t indent="0">The Network Configuration Protocol (NETCONF) defined in this document provides mechanisms to install, manipulate, and delete the configuration of network devices.  It uses an Extensible Markup Language (XML)-based data encoding for the configuration data as well as the protocol messages.  The NETCONF protocol operations are realized as remote procedure calls (RPCs).  This document obsoletes RFC 4741. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6241"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6241"/>
+        </reference>
+        <reference anchor="RFC6242" target="https://www.rfc-editor.org/info/rfc6242" quoteTitle="true" derivedAnchor="RFC6242">
+          <front>
+            <title>Using the NETCONF Protocol over Secure Shell (SSH)</title>
+            <author fullname="M. Wasserman" initials="M." surname="Wasserman"/>
+            <date month="June" year="2011"/>
+            <abstract>
+              <t indent="0">This document describes a method for invoking and running the Network Configuration Protocol (NETCONF) within a Secure Shell (SSH) session as an SSH subsystem.  This document obsoletes RFC 4742. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6242"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6242"/>
+        </reference>
+        <reference anchor="RFC7589" target="https://www.rfc-editor.org/info/rfc7589" quoteTitle="true" derivedAnchor="RFC7589">
+          <front>
+            <title>Using the NETCONF Protocol over Transport Layer Security (TLS) with Mutual X.509 Authentication</title>
+            <author fullname="M. Badra" initials="M." surname="Badra"/>
+            <author fullname="A. Luchuk" initials="A." surname="Luchuk"/>
+            <author fullname="J. Schoenwaelder" initials="J." surname="Schoenwaelder"/>
+            <date month="June" year="2015"/>
+            <abstract>
+              <t indent="0">The Network Configuration Protocol (NETCONF) provides mechanisms to install, manipulate, and delete the configuration of network devices.  This document describes how to use the Transport Layer Security (TLS) protocol with mutual X.509 authentication to secure the exchange of NETCONF messages.  This revision of RFC 5539 documents the new message framing used by NETCONF 1.1 and it obsoletes RFC 5539.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7589"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7589"/>
+        </reference>
+        <reference anchor="RFC7752" target="https://www.rfc-editor.org/info/rfc7752" quoteTitle="true" derivedAnchor="RFC7752">
+          <front>
+            <title>North-Bound Distribution of Link-State and Traffic Engineering (TE) Information Using BGP</title>
+            <author fullname="H. Gredler" initials="H." role="editor" surname="Gredler"/>
+            <author fullname="J. Medved" initials="J." surname="Medved"/>
+            <author fullname="S. Previdi" initials="S." surname="Previdi"/>
+            <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+            <author fullname="S. Ray" initials="S." surname="Ray"/>
+            <date month="March" year="2016"/>
+            <abstract>
+              <t indent="0">In a number of environments, a component external to a network is called upon to perform computations based on the network topology and current state of the connections within the network, including Traffic Engineering (TE) information. This is information typically distributed by IGP routing protocols within the network.</t>
+              <t indent="0">This document describes a mechanism by which link-state and TE information can be collected from networks and shared with external components using the BGP routing protocol. This is achieved using a new BGP Network Layer Reachability Information (NLRI) encoding format. The mechanism is applicable to physical and virtual IGP links. The mechanism described is subject to policy control.</t>
+              <t indent="0">Applications of this technique include Application-Layer Traffic Optimization (ALTO) servers and Path Computation Elements (PCEs).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7752"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7752"/>
+        </reference>
+        <reference anchor="RFC7950" target="https://www.rfc-editor.org/info/rfc7950" quoteTitle="true" derivedAnchor="RFC7950">
+          <front>
+            <title>The YANG 1.1 Data Modeling Language</title>
+            <author fullname="M. Bjorklund" initials="M." role="editor" surname="Bjorklund"/>
+            <date month="August" year="2016"/>
+            <abstract>
+              <t indent="0">YANG is a data modeling language used to model configuration data, state data, Remote Procedure Calls, and notifications for network management protocols.  This document describes the syntax and semantics of version 1.1 of the YANG language.  YANG version 1.1 is a maintenance release of the YANG language, addressing ambiguities and defects in the original specification.  There are a small number of backward incompatibilities from YANG version 1.  This document also specifies the YANG mappings to the Network Configuration Protocol (NETCONF).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7950"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7950"/>
+        </reference>
+        <reference anchor="RFC7988" target="https://www.rfc-editor.org/info/rfc7988" quoteTitle="true" derivedAnchor="RFC7988">
+          <front>
+            <title>Ingress Replication Tunnels in Multicast VPN</title>
+            <author fullname="E. Rosen" initials="E." role="editor" surname="Rosen"/>
+            <author fullname="K. Subramanian" initials="K." surname="Subramanian"/>
+            <author fullname="Z. Zhang" initials="Z." surname="Zhang"/>
+            <date month="October" year="2016"/>
+            <abstract>
+              <t indent="0">RFCs 6513, 6514, and other RFCs describe procedures by which a Service Provider may offer Multicast VPN (MVPN) service to its customers.  These procedures create point-to-multipoint (P2MP) or multipoint-to-multipoint (MP2MP) trees across the Service Provider's backbone.  One type of P2MP tree that may be used is known as an "Ingress Replication (IR) tunnel".  In an IR tunnel, a parent node need not be directly connected to its child nodes.  When a parent node has to send a multicast data packet to its n child nodes, it does not use Layer 2 multicast, IP multicast, or MPLS multicast to do so.  Rather, it makes n individual copies, and then unicasts each copy, through an IP or MPLS unicast tunnel, to exactly one child node.  While the prior MVPN specifications allow the use of IR tunnels, those specifications are not always very clear or explicit about how the MVPN protocol elements and procedures are applied to IR tunnels.  This document updates RFCs 6513 and 6514 by adding additional details that are specific to the use of IR tunnels.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7988"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7988"/>
+        </reference>
+        <reference anchor="RFC8040" target="https://www.rfc-editor.org/info/rfc8040" quoteTitle="true" derivedAnchor="RFC8040">
+          <front>
+            <title>RESTCONF Protocol</title>
+            <author fullname="A. Bierman" initials="A." surname="Bierman"/>
+            <author fullname="M. Bjorklund" initials="M." surname="Bjorklund"/>
+            <author fullname="K. Watsen" initials="K." surname="Watsen"/>
+            <date month="January" year="2017"/>
+            <abstract>
+              <t indent="0">This document describes an HTTP-based protocol that provides a programmatic interface for accessing data defined in YANG, using the datastore concepts defined in the Network Configuration Protocol (NETCONF).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8040"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8040"/>
+        </reference>
+        <reference anchor="RFC8253" target="https://www.rfc-editor.org/info/rfc8253" quoteTitle="true" derivedAnchor="RFC8253">
+          <front>
+            <title>PCEPS: Usage of TLS to Provide a Secure Transport for the Path Computation Element Communication Protocol (PCEP)</title>
+            <author fullname="D. Lopez" initials="D." surname="Lopez"/>
+            <author fullname="O. Gonzalez de Dios" initials="O." surname="Gonzalez de Dios"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+            <author fullname="D. Dhody" initials="D." surname="Dhody"/>
+            <date month="October" year="2017"/>
+            <abstract>
+              <t indent="0">The Path Computation Element Communication Protocol (PCEP) defines the mechanisms for the communication between a Path Computation Client (PCC) and a Path Computation Element (PCE), or among PCEs. This document describes PCEPS -- the usage of Transport Layer Security (TLS) to provide a secure transport for PCEP. The additional security mechanisms are provided by the transport protocol supporting PCEP; therefore, they do not affect the flexibility and extensibility of PCEP.</t>
+              <t indent="0">This document updates RFC 5440 in regards to the PCEP initialization phase procedures.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8253"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8253"/>
+        </reference>
+        <reference anchor="RFC8345" target="https://www.rfc-editor.org/info/rfc8345" quoteTitle="true" derivedAnchor="RFC8345">
+          <front>
+            <title>A YANG Data Model for Network Topologies</title>
+            <author fullname="A. Clemm" initials="A." surname="Clemm"/>
+            <author fullname="J. Medved" initials="J." surname="Medved"/>
+            <author fullname="R. Varga" initials="R." surname="Varga"/>
+            <author fullname="N. Bahadur" initials="N." surname="Bahadur"/>
+            <author fullname="H. Ananthakrishnan" initials="H." surname="Ananthakrishnan"/>
+            <author fullname="X. Liu" initials="X." surname="Liu"/>
+            <date month="March" year="2018"/>
+            <abstract>
+              <t indent="0">This document defines an abstract (generic, or base) YANG data model for network/service topologies and inventories.  The data model serves as a base model that is augmented with technology-specific details in other, more specific topology and inventory data models.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8345"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8345"/>
+        </reference>
+        <reference anchor="RFC8401" target="https://www.rfc-editor.org/info/rfc8401" quoteTitle="true" derivedAnchor="RFC8401">
+          <front>
+            <title>Bit Index Explicit Replication (BIER) Support via IS-IS</title>
+            <author fullname="L. Ginsberg" initials="L." role="editor" surname="Ginsberg"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="Z. Zhang" initials="Z." surname="Zhang"/>
+            <date month="June" year="2018"/>
+            <abstract>
+              <t indent="0">This document defines IS-IS extensions to support multicast forwarding using the Bit Index Explicit Replication (BIER) architecture.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8401"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8401"/>
+        </reference>
+        <reference anchor="RFC8402" target="https://www.rfc-editor.org/info/rfc8402" quoteTitle="true" derivedAnchor="RFC8402">
+          <front>
+            <title>Segment Routing Architecture</title>
+            <author fullname="C. Filsfils" initials="C." role="editor" surname="Filsfils"/>
+            <author fullname="S. Previdi" initials="S." role="editor" surname="Previdi"/>
+            <author fullname="L. Ginsberg" initials="L." surname="Ginsberg"/>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+            <author fullname="R. Shakir" initials="R." surname="Shakir"/>
+            <date month="July" year="2018"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) leverages the source routing paradigm. A node steers a packet through an ordered list of instructions, called "segments". A segment can represent any instruction, topological or service based. A segment can have a semantic local to an SR node or global within an SR domain. SR provides a mechanism that allows a flow to be restricted to a specific topological path, while maintaining per-flow state only at the ingress node(s) to the SR domain.</t>
+              <t indent="0">SR can be directly applied to the MPLS architecture with no change to the forwarding plane. A segment is encoded as an MPLS label. An ordered list of segments is encoded as a stack of labels. The segment to process is on the top of the stack. Upon completion of a segment, the related label is popped from the stack.</t>
+              <t indent="0">SR can be applied to the IPv6 architecture, with a new type of routing header. A segment is encoded as an IPv6 address. An ordered list of segments is encoded as an ordered list of IPv6 addresses in the routing header. The active segment is indicated by the Destination Address (DA) of the packet. The next active segment is indicated by a pointer in the new routing header.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8402"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8402"/>
+        </reference>
+        <reference anchor="RFC8444" target="https://www.rfc-editor.org/info/rfc8444" quoteTitle="true" derivedAnchor="RFC8444">
+          <front>
+            <title>OSPFv2 Extensions for Bit Index Explicit Replication (BIER)</title>
+            <author fullname="P. Psenak" initials="P." role="editor" surname="Psenak"/>
+            <author fullname="N. Kumar" initials="N." surname="Kumar"/>
+            <author fullname="IJ. Wijnands" initials="IJ." surname="Wijnands"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <author fullname="J. Zhang" initials="J." surname="Zhang"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <date month="November" year="2018"/>
+            <abstract>
+              <t indent="0">Bit Index Explicit Replication (BIER) is an architecture that provides optimal multicast forwarding through a "BIER domain" without requiring intermediate routers to maintain multicast-related, per- flow state. BIER also does not require an explicit tree-building protocol for its operation. A multicast data packet enters a BIER domain at a Bit-Forwarding Ingress Router (BFIR) and leaves the BIER domain at one or more Bit-Forwarding Egress Routers (BFERs). The BFIR adds a BIER packet header to the packet. The BIER packet header contains a BitString in which each bit represents exactly one BFER to forward the packet to. The set of BFERs to which the multicast packet needs to be forwarded is expressed by the set of bits in the BIER packet header.</t>
+              <t indent="0">This document describes the OSPF protocol extension (from RFC 2328) that is required for BIER with MPLS encapsulation (which is defined in RFC 8296). Support for other encapsulation types and the use of multiple encapsulation types are outside the scope of this document.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8444"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8444"/>
+        </reference>
+        <reference anchor="RFC8556" target="https://www.rfc-editor.org/info/rfc8556" quoteTitle="true" derivedAnchor="RFC8556">
+          <front>
+            <title>Multicast VPN Using Bit Index Explicit Replication (BIER)</title>
+            <author fullname="E. Rosen" initials="E." role="editor" surname="Rosen"/>
+            <author fullname="M. Sivakumar" initials="M." surname="Sivakumar"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <date month="April" year="2019"/>
+            <abstract>
+              <t indent="0">The Multicast Virtual Private Network (MVPN) specifications require the use of multicast tunnels ("P-tunnels") that traverse a service provider's backbone network.  The P-tunnels are used for carrying multicast traffic across the backbone.  A variety of P-tunnel types are supported.  Bit Index Explicit Replication (BIER) is a new architecture that provides optimal multicast forwarding through a "multicast domain", without requiring intermediate routers to maintain any per-flow state or to engage in an explicit tree-building protocol.  This document specifies the protocol and procedures that allow MVPN to use BIER as the method of carrying multicast traffic over a service provider's backbone network.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8556"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8556"/>
+        </reference>
+        <reference anchor="TE-OVERVIEW" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-teas-rfc3272bis-21" derivedAnchor="TE-OVERVIEW">
+          <front>
+            <title>Overview and Principles of Internet Traffic Engineering</title>
+            <author fullname="Adrian Farrel" surname="Farrel" initials="A" role="editor">
+      </author>
+            <date month="September" day="11" year="2022"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-teas-rfc3272bis-21"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="SR" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-bier-te-and-segment-routing">BIER-TEとセグメントルーティング（SR）</name>
+      <t indent="0" pn="section-appendix.a-1">SR <xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>は、緩いソースルーティングを介して軽量な経路誘導を可能にすることを目指しています。たとえば、より重量級の前身であるRSVP-TEと比較して、SRはこれらの各ホップに対する経路ごとのシグナリングを必要としません。</t>
+      <t indent="0" pn="section-appendix.a-2">BIER-TEは、マルチキャストに対して同じ設計思想をサポートします。SRと同様に、BIER-TEは次のとおりです。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-appendix.a-3">
+        <li pn="section-appendix.a-3.1">（BitStringを介した）ソースルーティングに依存します。</li>
+        <li pn="section-appendix.a-3.2">(1) 複製が行われなければならない「ホップ」、または (2)（複製がない場合でも）トラフィックを誘導すべき「ホップ」のいずれかだけを考慮する必要があります。</li>
+      </ul>
+      <t indent="0" pn="section-appendix.a-4">その他のホップは、ルーテッド隣接を使用することでスキップできます。</t>
+      <t indent="0" pn="section-appendix.a-5">BIER-TEの「ビット位置」（BP）は、SRにおける「転送セグメント（forwarding segment）」のBIER-TE版と理解できますが、SRの転送セグメントとはスコープが異なります。SRの転送セグメントがグローバルまたはローカルであるのに対し、BIER-TEのBPは、自身のBIFT内にそのBPの隣接を持つ1つ以上のBFRで構成されるスコープを持ちます。これらのセグメントは、「隣接スコープ」の転送セグメントと呼ぶことができます。</t>
+      <t indent="0" pn="section-appendix.a-6">隣接スコープをグローバルにすることもできますが、その場合、すべてのBFRが特定のBPに対する隣接を必要とします。たとえば、宛先のグローバルなSRの「セグメント識別子（Segment Identifier）」（SID）へのカプセル化を伴うforward_routed()隣接です。ただし、そのようなBPは常に（<xref target="RFC7988" format="default" sectionFormat="of" derivedContent="RFC7988"/>のような）入口での複製になります。このBPに遭遇した最初のBFRが、そのBP上のトラフィックを直接複製します。BPに非グローバルな隣接スコープを使用することによってのみ、BFIR以外でトラフィックを誘導して複製できます。</t>
+      <t indent="0" pn="section-appendix.a-7">SRはBIER-TEと自然に組み合わせることができ、BIER-TEの最適化に役立ちます。たとえば、複製を行わないホップのためにビット位置を定義する代わりに、「forward_routed()」隣接のカプセル化にSRのカプセル化（たとえばSR-MPLSラベルスタック）を使用することも同様に可能です。</t>
+      <t indent="0" pn="section-appendix.a-8">（TEでない）BIER自体もSRに似ていると見なせることに注意してください。BIERのBPはグローバルな宛先Node-SIDとして機能し、BIERのBitStringは、そのような複数のSIDを示して、各宛先Node-SIDへのパケットのホップバイホップでの効率的な複製をネットワークに任せるための、高度に最適化されたメカニズムにすぎません。BIERでは、中間ホップを示すこと、SRの用語で言えば、宛先に到達するためのSIDのシーケンスを示すことはできません。一方、BIER-TEとその隣接スコープのBPは、これらの能力を提供します。</t>
+    </section>
+    <section anchor="ack" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.b-1">著者らは、レビューと提案をいただいた<contact fullname="Greg Shepherd"/>、<contact fullname="IJsbrand Wijnands"/>、<contact fullname="Neale Ranns"/>、<contact fullname="Dirk Trossen"/>、<contact fullname="Sandy Zheng"/>、<contact fullname="Lou Berger"/>、<contact fullname="Jeffrey Zhang"/>、<contact fullname="Carsten Bormann"/>、<contact fullname="Wolfgang Braun"/>に感謝します。</t>
+      <t indent="0" pn="section-appendix.b-2">この文書のシェパードを務めていただいた<contact fullname="Xuesong Geng"/>に特に感謝します。また、IESGのレビュー／提案をいただいた<contact fullname="Alvaro Retana"/>（担当AD/RTG）、<contact fullname="Benjamin Kaduk"/>（SEC）、<contact fullname="Tommy Pauly"/>（TSV）、<contact fullname="Zaheduzzaman Sarker"/>（TSV）、<contact fullname="Éric Vyncke"/>（INT）、<contact fullname="Martin Vigoureux"/>（RTG）、<contact fullname="Robert Wilton"/>（OPS）、<contact fullname="Erik Kline"/>（INT）、<contact fullname="Lars Eggert"/>（GEN）、<contact fullname="Roman Danyliw"/>（SEC）、<contact fullname="Ines Robles"/>（RTGDIR）、<contact fullname="Robert Sparks"/>（Gen-ART）、<contact fullname="Yingzhen Qu"/>（RTGDIR）、<contact fullname="Martin Duke"/>（TSV）にも特に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author role="editor" fullname="Toerless Eckert" initials="T." surname="Eckert">
+        <organization abbrev="Futurewei" showOnFrontPage="true">Futurewei Technologies Inc.</organization>
+        <address>
+          <postal>
+            <street>2330 Central Expy</street>
+            <city>Santa Clara</city>
+            <code>95050</code>
+            <region>CA</region>
+            <country>United States of America</country>
+          </postal>
+          <email>tte@cs.fau.de</email>
+        </address>
+      </author>
+      <author fullname="Michael Menth" initials="M." surname="Menth">
+        <organization showOnFrontPage="true">University of Tuebingen</organization>
+        <address>
+          <postal>
+            <country>Germany</country>
+          </postal>
+          <email>menth@uni-tuebingen.de</email>
+        </address>
+      </author>
+      <author fullname="Gregory Cauchie" initials="G." surname="Cauchie">
+        <organization showOnFrontPage="true">KOEVOO</organization>
+        <address>
+          <postal>
+            <country>France</country>
+          </postal>
+          <email>gregory@koevoo.tech</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

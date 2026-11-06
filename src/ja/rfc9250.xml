@@ -1,0 +1,1745 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-dprive-dnsoquic-11" indexInclude="true" ipr="trust200902" number="9250" prepTime="2022-05-11T16:24:17" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-dprive-dnsoquic-11" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9250" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="DNS over Dedicated QUIC">専用のQUICコネクション上のDNS</title>
+    <seriesInfo name="RFC" value="9250" stream="IETF"/>
+    <author initials="C" surname="Huitema" fullname="Christian Huitema">
+      <organization showOnFrontPage="true">Private Octopus Inc.</organization>
+      <address>
+        <postal>
+          <street>427 Golfcourse Rd</street>
+          <city>Friday Harbor</city>
+          <code>WA 98250</code>
+          <country>USA</country>
+        </postal>
+        <email>huitema@huitema.net</email>
+      </address>
+    </author>
+    <author initials="S." surname="Dickinson" fullname="Sara Dickinson">
+      <organization showOnFrontPage="true">Sinodun IT</organization>
+      <address>
+        <postal>
+          <street>Oxford Science Park</street>
+          <city>Oxford</city>
+          <code>OX4 4GA</code>
+          <country>United Kingdom</country>
+        </postal>
+        <email>sara@sinodun.com</email>
+      </address>
+    </author>
+    <author initials="A." surname="Mankin" fullname="Allison Mankin">
+      <organization showOnFrontPage="true">Salesforce</organization>
+      <address>
+        <email>allison.mankin@gmail.com</email>
+      </address>
+    </author>
+    <date month="05" year="2022"/>
+    <area>Internet</area>
+    <workgroup>DNS PRIVate Exchange</workgroup>
+    <keyword>DNS</keyword>
+    <keyword>QUIC</keyword>
+    <keyword>DNS over QUIC</keyword>
+    <keyword>Encrypted DNS</keyword>
+    <keyword>DoQ</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、DNSにトランスポートの機密性を提供するためのQUICの使用について説明します。
+QUICが提供する暗号化はTLSが提供するものと同様の特性を持ち、さらにQUICトランスポートは、TCPに固有のヘッドオブラインブロッキングの問題を解消し、UDPよりも効率的なパケット損失回復を提供します。
+DNS over QUIC（DoQ）は、RFC 7858で規定されたDNS over TLS（DoT）と同様のプライバシー特性と、従来のDNS over UDPと同様の遅延特性を持ちます。
+この仕様は、DNSの汎用トランスポートとしてのDoQの使用について説明し、スタブから再帰、再帰から権威、およびゾーン転送のシナリオにおけるDoQの使用を含みます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9250" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-key-words">キーワード</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-considerations">設計上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-provide-dns-privacy">DNSプライバシーの提供</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-for-minimum-latency">最小遅延のための設計</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-middlebox-considerations">ミドルボックスに関する考慮事項</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-no-server-initiated-transac">サーバーが開始するトランザクションはなし</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-specifications">仕様</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-connection-establishment">コネクションの確立</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.1.2">
+                  <li pn="section-toc.1-1.4.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-port-selection">ポートの選択</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-stream-mapping-and-usage">ストリームのマッピングと使用法</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                  <li pn="section-toc.1-1.4.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dns-message-ids">DNSメッセージID</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-doq-error-codes">DoQのエラーコード</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.3.2">
+                  <li pn="section-toc.1-1.4.2.3.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.1.1"><xref derivedContent="4.3.1" format="counter" sectionFormat="of" target="section-4.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-transaction-cancellation">トランザクションのキャンセル</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.2.1"><xref derivedContent="4.3.2" format="counter" sectionFormat="of" target="section-4.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-transaction-errors">トランザクションエラー</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.3.1"><xref derivedContent="4.3.3" format="counter" sectionFormat="of" target="section-4.3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protocol-errors">プロトコルエラー</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.3.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.3.2.4.1"><xref derivedContent="4.3.4" format="counter" sectionFormat="of" target="section-4.3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-alternative-error-codes">代替のエラーコード</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-connection-management">コネクションの管理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-session-resumption-and-0-rt">セッション再開と0-RTT</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.6">
+                <t indent="0" pn="section-toc.1-1.4.2.6.1"><xref derivedContent="4.6" format="counter" sectionFormat="of" target="section-4.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-message-sizes">メッセージサイズ</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-requirements">実装要件</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-authentication">認証</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fallback-to-other-protocols">コネクション失敗時の他のプロトコルへのフォールバック</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-address-validation">アドレス検証</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-padding">パディング</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.5">
+                <t indent="0" pn="section-toc.1-1.5.2.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-connection-handling">コネクションの取り扱い</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.5.2">
+                  <li pn="section-toc.1-1.5.2.5.2.1">
+                    <t indent="0" pn="section-toc.1-1.5.2.5.2.1.1"><xref derivedContent="5.5.1" format="counter" sectionFormat="of" target="section-5.5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-connection-reuse">コネクションの再利用</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.5.2.2">
+                    <t indent="0" pn="section-toc.1-1.5.2.5.2.2.1"><xref derivedContent="5.5.2" format="counter" sectionFormat="of" target="section-5.5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-resource-management">リソース管理</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.5.2.3">
+                    <t indent="0" pn="section-toc.1-1.5.2.5.2.3.1"><xref derivedContent="5.5.3" format="counter" sectionFormat="of" target="section-5.5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-0-rtt-and-session-res">0-RTTとセッション再開の使用</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.5.2.4">
+                    <t indent="0" pn="section-toc.1-1.5.2.5.2.4.1"><xref derivedContent="5.5.4" format="counter" sectionFormat="of" target="section-5.5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-controlling-connection-migr">プライバシーのためのコネクションマイグレーションの制御</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.5.2.6">
+                <t indent="0" pn="section-toc.1-1.5.2.6.1"><xref derivedContent="5.6" format="counter" sectionFormat="of" target="section-5.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-processing-queries-in-paral">クエリーの並列処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.7">
+                <t indent="0" pn="section-toc.1-1.5.2.7.1"><xref derivedContent="5.7" format="counter" sectionFormat="of" target="section-5.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-zone-transfer">ゾーン転送</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.8">
+                <t indent="0" pn="section-toc.1-1.5.2.8.1"><xref derivedContent="5.8" format="counter" sectionFormat="of" target="section-5.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flow-control-mechanisms">フロー制御メカニズム</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-considerations">プライバシーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-issues-with-0-rtt-d">0-RTTデータに関するプライバシー問題</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-issues-with-session">セッション再開に関するプライバシー問題</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-issues-with-address">アドレス検証トークンに関するプライバシー問題</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.4">
+                <t indent="0" pn="section-toc.1-1.7.2.4.1"><xref derivedContent="7.4" format="counter" sectionFormat="of" target="section-7.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-issues-with-long-du">長期間のセッションに関するプライバシー問題</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.5">
+                <t indent="0" pn="section-toc.1-1.7.2.5.1"><xref derivedContent="7.5" format="counter" sectionFormat="of" target="section-7.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-traffic-analysis">トラフィック解析</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-registration-of-a-doq-ident">DoQ識別文字列の登録</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reservation-of-a-dedicated-">専用ポートの予約</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.3">
+                <t indent="0" pn="section-toc.1-1.8.2.3.1"><xref derivedContent="8.3" format="counter" sectionFormat="of" target="section-8.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reservation-of-an-extended-">拡張DNSエラーコードの予約：Too Early</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.4">
+                <t indent="0" pn="section-toc.1-1.8.2.4.1"><xref derivedContent="8.4" format="counter" sectionFormat="of" target="section-8.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dns-over-quic-error-codes-r">DNS-over-QUIC Error Codesレジストリー</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-notify-service">NOTIFYサービス</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">ドメインネームシステム（DNS）の概念は、"Domain names - concepts and facilities"<xref target="RFC1034" format="default" sectionFormat="of" derivedContent="RFC1034"/>で規定されています。
+UDPおよびTCP上でのDNSクエリーとレスポンスの送信は、"Domain names - implementation and specification"<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で規定されています。</t>
+      <t indent="0" pn="section-1-2">この文書は、QUICトランスポート<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="RFC9000"/> <xref target="RFC9001" format="default" sectionFormat="of" derivedContent="RFC9001"/>上へのDNSプロトコルのマッピングを示します。
+"DNS Terminology"<xref target="I-D.ietf-dnsop-rfc8499bis" format="default" sectionFormat="of" derivedContent="DNS-TERMS"/>に合わせて、ここではDNS over QUICをDoQと呼びます。</t>
+      <t indent="0" pn="section-1-3">DoQマッピングの目標は次のとおりです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-1-4"><li pn="section-1-4.1" derivedCounter="1.">DoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>と同じDNSプライバシー保護を提供すること。
+これには、"Usage Profiles for DNS over TLS and DNS over DTLS"<xref target="RFC8310" format="default" sectionFormat="of" derivedContent="RFC8310"/>で規定されているように、クライアントが認証ドメイン名によってサーバーを認証するオプションが含まれます。</li>
+        <li pn="section-1-4.2" derivedCounter="2.">従来のDNS over UDPと比べて、DNSサーバーに対してより高いレベルの送信元アドレス検証を提供すること。</li>
+        <li pn="section-1-4.3" derivedCounter="3.">送信できるDNSレスポンスのサイズにパスMTUの制限を課さないトランスポートを提供すること。</li>
+      </ol>
+      <t indent="0" pn="section-1-5">これらの目標を達成し、DNSの暗号化に関する継続中の作業を支援するため、この文書の範囲には次のものが含まれます。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-1-6">
+        <li pn="section-1-6.1">「スタブから再帰リゾルバー」のシナリオ（この文書では「スタブから再帰」のシナリオとも呼びます）</li>
+        <li pn="section-1-6.2">「再帰リゾルバーから権威ネームサーバー」のシナリオ（この文書では「再帰から権威」のシナリオとも呼びます）</li>
+        <li pn="section-1-6.3">「ネームサーバーからネームサーバー」のシナリオ（主にゾーン転送（XFR）<xref target="RFC1995" format="default" sectionFormat="of" derivedContent="RFC1995"/> <xref target="RFC5936" format="default" sectionFormat="of" derivedContent="RFC5936"/>に使用されます）</li>
+      </ul>
+      <t indent="0" pn="section-1-7">言い換えると、この文書はQUICをDNSの汎用トランスポートとして規定します。</t>
+      <t indent="0" pn="section-1-8">この文書が明確に目標としないものは次のとおりです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-1-9"><li pn="section-1-9.1" derivedCounter="1.">ミドルボックスによるDoQトラフィックのブロックの可能性を回避する試みは行いません。</li>
+        <li pn="section-1-9.2" derivedCounter="2.">DNSステートフル操作（DSO）<xref target="RFC8490" format="default" sectionFormat="of" derivedContent="RFC8490"/>でのみ使用される、サーバーが開始するトランザクションのサポートは試みません。</li>
+      </ol>
+      <t indent="0" pn="section-1-10">QUIC上でのアプリケーションの送信を規定するには、アプリケーションのメッセージをQUICストリームにどのようにマッピングするか、そして一般にアプリケーションがQUICをどのように使用するかを規定する必要があります。
+HTTPについては、"Hypertext Transfer Protocol Version 3 (HTTP/3)"<xref target="I-D.ietf-quic-http" format="default" sectionFormat="of" derivedContent="HTTP/3"/>でこれが行われています。
+この文書の目的は、QUIC上でDNSメッセージを送信する方法を定義することです。</t>
+      <t indent="0" pn="section-1-11">DNS over HTTPS（DoH）<xref target="RFC8484" format="default" sectionFormat="of" derivedContent="RFC8484"/>をHTTP/3とともに使用すれば、QUICの利点の一部を得ることができます。
+しかし、DoQのための軽量で直接的なマッピングは、仲介者がめったに関与しない再帰から権威のシナリオとゾーン転送のシナリオの両方に、より自然に適合すると考えられます。
+これらのシナリオでは、HTTPの追加のオーバーヘッドが、たとえばHTTPのプロキシーやキャッシュの振る舞いによる利点によって相殺されることはありません。</t>
+      <t indent="0" pn="section-1-12">この文書では、<xref target="design-considerations" format="default" sectionFormat="of" derivedContent="Section 3"/>で、提案する設計の指針となった論拠を示します。
+<xref target="specifications" format="default" sectionFormat="of" derivedContent="Section 4"/>では、DoQの実際のマッピングを規定します。
+<xref target="implementation-requirements" format="default" sectionFormat="of" derivedContent="Section 5"/>では、DoQの実装、使用、展開に関するガイドラインを示します。</t>
+    </section>
+    <section anchor="key-words" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-key-words">キーワード</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+    </section>
+    <section anchor="design-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-design-considerations">設計上の考慮事項</name>
+      <t indent="0" pn="section-3-1">このセクションとそのサブセクションでは、DoQに使用された設計ガイドラインを示します。
+この文書の他のすべてのセクションは規範的ですが、このセクションは本質的に情報提供を目的としています。</t>
+      <section anchor="provide-dns-privacy" numbered="true" toc="include" removeInRFC="false" pn="section-3.1">
+        <name slugifiedName="name-provide-dns-privacy">DNSプライバシーの提供</name>
+        <t indent="0" pn="section-3.1-1">DoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>は、TLS上でDNSメッセージを送信する方法を規定することで、"DNS Privacy Considerations"<xref target="RFC9076" format="default" sectionFormat="of" derivedContent="RFC9076"/>で説明されている問題の一部を緩和する方法を定義しています。
+"Usage Profiles for DNS over TLS and DNS over DTLS"<xref target="RFC8310" format="default" sectionFormat="of" derivedContent="RFC8310"/>は、スタブリゾルバーが再帰リゾルバーを認証する方法を含め、DoTの厳格（Strict）および日和見的（Opportunistic）利用プロファイルを規定しています。</t>
+        <t indent="0" pn="section-3.1-2">QUICコネクションのセットアップには、"Using TLS to Secure QUIC"<xref target="RFC9001" format="default" sectionFormat="of" derivedContent="RFC9001"/>で規定されているように、TLSを使用したセキュリティーパラメーターのネゴシエーションが含まれ、これによりQUICトランスポートの暗号化が可能になります。
+QUIC上でDNSメッセージを送信すると、厳格および日和見的利用プロファイル<xref target="RFC8310" format="default" sectionFormat="of" derivedContent="RFC8310"/>を含め、DoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>と本質的に同じプライバシー保護が提供されます。
+これについての詳しい議論は<xref target="privacy-considerations" format="default" sectionFormat="of" derivedContent="Section 7"/>にあります。</t>
+      </section>
+      <section anchor="design-for-minimum-latency" numbered="true" toc="include" removeInRFC="false" pn="section-3.2">
+        <name slugifiedName="name-design-for-minimum-latency">最小遅延のための設計</name>
+        <t indent="0" pn="section-3.2-1">QUICは、次のような機能によって、プロトコルに起因する遅延を削減するように特別に設計されています。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2-2"><li pn="section-3.2-2.1" derivedCounter="1.">セッション再開時の0-RTTデータのサポート。</li>
+          <li pn="section-3.2-2.2" derivedCounter="2.">"QUIC Loss Detection and Congestion Control"<xref target="RFC9002" format="default" sectionFormat="of" derivedContent="RFC9002"/>で規定されている、高度なパケット損失回復手順のサポート。</li>
+          <li pn="section-3.2-2.3" derivedCounter="3.">複数のストリームでのデータの並列配送を可能にすることによる、ヘッドオブラインブロッキングの緩和。</li>
+        </ol>
+        <t indent="0" pn="section-3.2-3">このDNSのQUICへのマッピングは、次の3つの方法でこれらの機能を活用します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2-4"><li pn="section-3.2-4.1" derivedCounter="1.">セッション再開時の0-RTTデータ送信の任意サポート（これによるセキュリティーとプライバシーへの影響については、後のセクションで議論します）。</li>
+          <li pn="section-3.2-4.2" derivedCounter="2.">複数のDNSトランザクションを実行する長寿命のQUICコネクション。これにより、高度な回復機能の恩恵を受けるために必要な持続的なトラフィックが生成されます。</li>
+          <li pn="section-3.2-4.3" derivedCounter="3.">ヘッドオブラインブロッキングを緩和するための、各DNSクエリー/レスポンストランザクションの個別のストリームへのマッピング。
+これにより、サーバーはクエリーに「順不同で」応答できます。
+また、クライアントは、サーバーが以前に送ったレスポンスの順序どおりの配送を待つことなく、到着した時点でレスポンスを処理できます。</li>
+        </ol>
+        <t indent="0" pn="section-3.2-5">これらの考慮事項は、<xref target="stream-mapping-and-usage" format="default" sectionFormat="of" derivedContent="Section 4.2"/>におけるDNSトラフィックのQUICストリームへのマッピングに反映されています。</t>
+      </section>
+      <section anchor="middlebox-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-3.3">
+        <name slugifiedName="name-middlebox-considerations">ミドルボックスに関する考慮事項</name>
+        <t indent="0" pn="section-3.3-1">QUICを使用すると、暗号化や、パディング、トラフィックペーシング、トラフィックシェーピングといったトラフィック解析への耐性を高める技術を用いて、プロトコルがネットワーク経路上の機器からその目的を隠せる可能性があります。
+この仕様には、そのような分類を回避するように設計された対策は含まれていません。
+<xref target="padding" format="default" sectionFormat="of" derivedContent="Section 5.4"/>で定義するパディングメカニズムは、DNSクエリーとレスポンスに含まれる特定のレコードを難読化することを意図したものであり、これがDNSトラフィックであるという事実を難読化するものではありません。
+したがって、ファイアウォールやその他のミドルボックスは、DoQをHTTPのようなQUICを使用する他のプロトコルと区別し、異なる扱いを適用できる可能性があります。</t>
+        <t indent="0" pn="section-3.3-2">この仕様にプロトコルの分類を回避する対策がないことは、そのような慣行を支持するものではありません。</t>
+      </section>
+      <section anchor="no-server-initiated-transactions" numbered="true" toc="include" removeInRFC="false" pn="section-3.4">
+        <name slugifiedName="name-no-server-initiated-transac">サーバーが開始するトランザクションはなし</name>
+        <t indent="0" pn="section-3.4-1"><xref target="introduction" format="default" sectionFormat="of" derivedContent="Section 1"/>で述べたように、この文書は、確立されたDoQコネクション内でのサーバーが開始するトランザクションのサポートを規定しません。
+つまり、DoQコネクションのイニシエーターのみが、そのコネクション上でクエリーを送信してもかまいません。</t>
+        <t indent="0" pn="section-3.4-2">DSOは、既存のコネクション内でのサーバーが開始するトランザクションをサポートしています。
+しかし、ここで定義するDoQは、メッセージの順序どおりの配送を保証しないため、DSOに適用可能なトランスポートの基準を満たしません。
+<xref section="4.2" sectionFormat="of" target="RFC8490" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8490#section-4.2" derivedContent="RFC8490"/>を参照してください。</t>
+      </section>
+    </section>
+    <section anchor="specifications" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-specifications">仕様</name>
+      <section anchor="connection-establishment" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-connection-establishment">コネクションの確立</name>
+        <t indent="0" pn="section-4.1-1">DoQコネクションは、QUICトランスポート仕様<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="RFC9000"/>に記載されているとおりに確立されます。
+コネクションの確立中、暗号ハンドシェイクでアプリケーション層プロトコルネゴシエーション（ALPN）トークン"doq"を選択することによって、DoQのサポートが示されます。</t>
+        <section anchor="port-selection" numbered="true" toc="include" removeInRFC="false" pn="section-4.1.1">
+          <name slugifiedName="name-port-selection">ポートの選択</name>
+          <t indent="0" pn="section-4.1.1-1">デフォルトでは、DoQをサポートするDNSサーバーは、別のポートを使用するという相互の合意がない限り、専用のUDPポート853（<xref target="iana-considerations" format="default" sectionFormat="of" derivedContent="Section 8"/>）でQUICコネクションを待ち受けて受け入れ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.1.1-2">デフォルトでは、特定のサーバーとDoQを使用したいDNSクライアントは、別のポートを使用するという相互の合意がない限り、そのサーバーのUDPポート853へのQUICコネクションを確立<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.1.1-3">DoQコネクションはUDPポート53を使用<bcp14>してはなりません（MUST NOT）</bcp14>。
+DoQにポート53を使用しないというこの推奨事項は、DoQとDNS over UDP<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>の使用との混同を避けるためのものです。
+2者がポート53について合意したとしても、その合意を知らない他の当事者がそのポートを使おうとする可能性があるため、混同のリスクは存在します。</t>
+          <t indent="0" pn="section-4.1.1-4">スタブから再帰のシナリオでは、相互に合意した代替ポートとしてポート443を使用することが運用上有益な場合があります。
+ポート443はQUICとHTTP-3を使用する多くのサービスで使われており、そのため他のポートよりもブロックされる可能性が低いからです。
+カスタムポートの使用を含め、暗号化トランスポートを提供する再帰リゾルバーをスタブが発見するためのいくつかのメカニズムは、現在進行中の作業の対象です。</t>
+        </section>
+      </section>
+      <section anchor="stream-mapping-and-usage" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-stream-mapping-and-usage">ストリームのマッピングと使用法</name>
+        <t indent="0" pn="section-4.2-1">QUICストリーム上へのDNSトラフィックのマッピングは、QUICトランスポート仕様である<xref section="2" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-2" derivedContent="RFC9000"/>で詳述されているQUICストリームの機能を活用します。</t>
+        <t indent="0" pn="section-4.2-2">DNSのクエリー/レスポンストラフィック<xref target="RFC1034" format="default" sectionFormat="of" derivedContent="RFC1034"/> <xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、クライアントがクエリーを送信し、サーバーが1つ以上のレスポンスを提供するという単純なパターンに従います（ゾーン転送では複数のレスポンスが発生することがあります）。</t>
+        <t indent="0" pn="section-4.2-3">ここで規定するマッピングでは、クライアントがクエリーごとに個別のQUICストリームを選択する必要があります。
+そして、サーバーは同じストリームを使用して、そのクエリーに対するすべてのレスポンスメッセージを提供します。
+複数のレスポンスを解析できるように、DNS over TCP<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で定義されている2オクテットの長さフィールドとまったく同じ方法で、2オクテットの長さフィールドを使用します。
+この実際上の結果として、各QUICストリームのコンテンツは、ちょうど1つのクエリーを扱うTCPコネクションのコンテンツとまったく同じになります。</t>
+        <t indent="0" pn="section-4.2-4">DoQコネクション上で送信されるすべてのDNSメッセージ（クエリーとレスポンス）は、2オクテットの長さフィールドに続けて<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で規定されたメッセージコンテンツが来る形式でエンコード<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-5">クライアントは、QUICトランスポート仕様<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="RFC9000"/>に準拠して、QUICコネクション上の後続の各クエリーに対して、次に利用可能なクライアントが開始する双方向ストリームを選択<bcp14>しなければなりません（MUST）</bcp14>。
+パケット損失やその他のネットワークイベントにより、クエリーが異なる順序で到着することがあります。
+サーバーは、クエリーを到着した順に処理<bcp14>すべきです（SHOULD）</bcp14>。そうしないと不必要な遅延が発生するからです。</t>
+        <t indent="0" pn="section-4.2-6">クライアントは、選択したストリーム上でDNSクエリーを送信<bcp14>しなければなりません（MUST）</bcp14>。また、STREAM FINメカニズムによって、そのストリーム上でそれ以上データを送信しないことを示さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-7">サーバーは、同じストリーム上でレスポンスを送信<bcp14>しなければなりません（MUST）</bcp14>。また、最後のレスポンスの後に、STREAM FINメカニズムによって、そのストリーム上でそれ以上データを送信しないことを示さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-8">したがって、1つのDNSトランザクションは、クライアントが開始する1つの双方向ストリームを消費します。
+これは、クライアントの最初のクエリーがQUICストリーム0で、2番目のクエリーがストリーム4で、というように行われることを意味します（<xref section="2.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-2.1" derivedContent="RFC9000"/>を参照）。</t>
+        <t indent="0" pn="section-4.2-9">サーバーは、クライアントが選択したストリーム上でSTREAM FINが示されるまで、クエリーの処理を延期<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-10">サーバーとクライアントは、「宙ぶらりんの（dangling）」ストリームの数を監視<bcp14>してもよいです（MAY）</bcp14>。
+これらは、実装定義のタイムアウトの後も、次のイベントが発生していない開いたストリームです。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2-11">
+          <li pn="section-4.2-11.1">期待されるクエリーまたはレスポンスを受信していない、または</li>
+          <li pn="section-4.2-11.2">期待されるクエリーまたはレスポンスを受信したが、STREAM FINを受信していない</li>
+        </ul>
+        <t indent="0" pn="section-4.2-12">実装は、そのような宙ぶらりんのストリームの数に制限を課<bcp14>してもよいです（MAY）</bcp14>。
+制限に達した場合、実装はコネクションを閉じても<bcp14>よいです（MAY）</bcp14>。</t>
+        <section anchor="dns-message-ids" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.1">
+          <name slugifiedName="name-dns-message-ids">DNSメッセージID</name>
+          <t indent="0" pn="section-4.2.1-1">QUICコネクション上でクエリーを送信する場合、DNSメッセージIDは0に設定<bcp14>しなければなりません（MUST）</bcp14>。
+DoQのストリームマッピングにより、クエリーとレスポンスを曖昧さなく対応づけられるため、Message IDフィールドは必要ありません。</t>
+          <t indent="0" pn="section-4.2.1-2">このことは、DoQメッセージを他のトランスポートとの間でプロキシーする場合に影響があります。
+たとえば、DoQはMessage IDの空間による制限を受けないため、1つのコネクション上で、たとえばDNS over TCPよりも多くの未処理のクエリーをサポートできます。プロキシーはこの事実に対処しなければならない場合があります。
+この問題はDoHにもすでに存在しており、DoHではMessage IDを0にすることが推奨されています。</t>
+          <t indent="0" pn="section-4.2.1-3">DoQから別のトランスポート上にDNSメッセージを転送する場合、使用しているプロトコルの規則に従ってDNSメッセージIDを生成<bcp14>しなければなりません（MUST）</bcp14>。
+別のトランスポートからDoQ上にDNSメッセージを転送する場合、Message IDは0に設定<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        </section>
+      </section>
+      <section anchor="doq-error-codes" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-doq-error-codes">DoQのエラーコード</name>
+        <t indent="0" pn="section-4.3-1">次のエラーコードは、ストリームを突然終了する場合、ストリームの読み取りを中断する際のアプリケーションプロトコルエラーコードとして、またはコネクションを即座に閉じる場合に使用するために定義されています。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-4.3-2">
+          <dt pn="section-4.3-2.1">DOQ_NO_ERROR (0x0)：</dt>
+          <dd pn="section-4.3-2.2">
+            <t indent="0" pn="section-4.3-2.2.1">エラーなし。
+これは、コネクションまたはストリームを閉じる必要があるが、通知すべきエラーがない場合に使用されます。</t>
+          </dd>
+          <dt pn="section-4.3-2.3">DOQ_INTERNAL_ERROR (0x1)：</dt>
+          <dd pn="section-4.3-2.4">
+            <t indent="0" pn="section-4.3-2.4.1">DoQ実装が内部エラーに遭遇し、トランザクションまたはコネクションを継続できません。</t>
+          </dd>
+          <dt pn="section-4.3-2.5">DOQ_PROTOCOL_ERROR (0x2)：</dt>
+          <dd pn="section-4.3-2.6">
+            <t indent="0" pn="section-4.3-2.6.1">DoQ実装がプロトコルエラーに遭遇し、コネクションを強制的に中断しています。</t>
+          </dd>
+          <dt pn="section-4.3-2.7">DOQ_REQUEST_CANCELLED (0x3)：</dt>
+          <dd pn="section-4.3-2.8">
+            <t indent="0" pn="section-4.3-2.8.1">DoQクライアントは、未処理のトランザクションをキャンセルしたいことを通知するためにこれを使用します。</t>
+          </dd>
+          <dt pn="section-4.3-2.9">DOQ_EXCESSIVE_LOAD (0x4)：</dt>
+          <dd pn="section-4.3-2.10">
+            <t indent="0" pn="section-4.3-2.10.1">DoQ実装は、過負荷のためにコネクションを閉じる際に通知するためにこれを使用します。</t>
+          </dd>
+          <dt pn="section-4.3-2.11">DOQ_UNSPECIFIED_ERROR (0x5)：</dt>
+          <dd pn="section-4.3-2.12">
+            <t indent="0" pn="section-4.3-2.12.1">DoQ実装は、より具体的なエラーコードがない場合にこれを使用します。</t>
+          </dd>
+          <dt pn="section-4.3-2.13">DOQ_ERROR_RESERVED (0xd098ea5e)：</dt>
+          <dd pn="section-4.3-2.14">
+            <t indent="0" pn="section-4.3-2.14.1">テストに使用される代替のエラーコード。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-4.3-3">新しいエラーコードの登録の詳細については、<xref target="iana-error-codes" format="default" sectionFormat="of" derivedContent="Section 8.4"/>を参照してください。</t>
+        <section anchor="transaction-cancellation" numbered="true" toc="include" removeInRFC="false" pn="section-4.3.1">
+          <name slugifiedName="name-transaction-cancellation">トランザクションのキャンセル</name>
+          <t indent="0" pn="section-4.3.1-1">QUICでは、STOP_SENDINGを送信することで、ピアにストリーム上での送信を停止するよう要求します。
+DoQクライアントが未処理のリクエストをキャンセルしたい場合、QUICのSTOP_SENDINGを発行<bcp14>しなければなりません（MUST）</bcp14>。その際、エラーコードDOQ_REQUEST_CANCELLEDを使用<bcp14>すべきです（SHOULD）</bcp14>。
+<xref target="iana-error-codes" format="default" sectionFormat="of" derivedContent="Section 8.4"/>に従って登録された、より具体的なエラーコードを使用<bcp14>してもよいです（MAY）</bcp14>。
+STOP_SENDINGリクエストはいつでも送信できますが、サーバーのレスポンスがすでに送信されている場合には効果がありません。その場合、クライアントは到着したレスポンスを単に破棄します。
+対応するDNSトランザクションは放棄<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.1-2">STOP_SENDINGを受信したサーバーは、<xref section="3.5" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-3.5" derivedContent="RFC9000"/>に従って動作します。
+サーバーは、STOP_SENDINGを受信した場合、DNSトランザクションの処理を継続<bcp14>すべきではありません（SHOULD NOT）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.1-3">サーバーは、キャンセルリクエストの総数またはレートに実装上の制限を課<bcp14>してもよいです（MAY）</bcp14>。
+制限に達した場合、サーバーはコネクションを閉じても<bcp14>よいです（MAY）</bcp14>。
+この場合、クライアントのデバッグを支援したいサーバーは、エラーコードDOQ_EXCESSIVE_LOADを使用<bcp14>してもよいです（MAY）</bcp14>。
+善意のクライアントによる問題のデバッグを支援することと、サービス拒否攻撃者がサーバーの防御をテストできるようにしてしまうことの間には、常にトレードオフがあります。
+状況によっては、サーバーが異なるエラーコードを送信することを選択することも十分にありえます。</t>
+          <t indent="0" pn="section-4.3.1-4">このメカニズムは、セカンダリーがQUICコネクションを閉じることなく、特定のストリーム上で行われている単一のゾーン転送をキャンセルする方法を提供することに注意してください。</t>
+          <t indent="0" pn="section-4.3.1-5">サーバーは、クライアントがSTREAM FINを示す前にクライアントからRESET_STREAMリクエストを受信した場合、DNSトランザクションの処理を継続<bcp14>してはなりません（MUST NOT）</bcp14>。
+次のいずれかの場合を除き、サーバーは、トランザクションが放棄されたことを示すためにRESET_STREAMを発行<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.3.1-6">
+            <li pn="section-4.3.1-6.1">別の理由ですでにそうしている場合、または</li>
+            <li pn="section-4.3.1-6.2">すでにレスポンスを送信し、かつSTREAM FINを示している場合</li>
+          </ul>
+        </section>
+        <section anchor="transaction-errors" numbered="true" toc="include" removeInRFC="false" pn="section-4.3.2">
+          <name slugifiedName="name-transaction-errors">トランザクションエラー</name>
+          <t indent="0" pn="section-4.3.2-1">サーバーは通常、トランザクションのストリーム上でDNSレスポンス（1つまたは複数）を送信することによってトランザクションを完了します。これには、DNSレスポンスがDNSエラーを示す場合も含まれます。
+
+たとえば、クライアントには、Response CodeをSERVFAILに設定したレスポンスによって、サーバー障害（SERVFAIL、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>）を通知<bcp14>すべきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.2-2">内部エラーのためにサーバーがDNSレスポンスを送信できない場合、サーバーはQUICのRESET_STREAMフレームを発行<bcp14>すべきです（SHOULD）</bcp14>。
+エラーコードはDOQ_INTERNAL_ERRORに設定<bcp14>すべきです（SHOULD）</bcp14>。
+対応するDNSトランザクションは放棄<bcp14>しなければなりません（MUST）</bcp14>。
+クライアントは、コネクションを閉じることを選択する前に、コネクション上で受信する要求されていないQUICのRESET_STREAMフレームの数を制限<bcp14>してもよいです（MAY）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.2-3">このメカニズムは、プライマリーがQUICコネクションを閉じることなく、特定のストリーム上で行われている単一のゾーン転送を中断する方法を提供することに注意してください。</t>
+        </section>
+        <section anchor="protocol-errors" numbered="true" toc="include" removeInRFC="false" pn="section-4.3.3">
+          <name slugifiedName="name-protocol-errors">プロトコルエラー</name>
+          <t indent="0" pn="section-4.3.3-1">トランザクション中に、不正な形式のメッセージ、不完全なメッセージ、または予期しないメッセージが原因で、他のエラーシナリオが発生することがあります。
+これには次のものが含まれます（ただし、これらに限定されません）。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.3.3-2">
+            <li pn="section-4.3.3-2.1">クライアントまたはサーバーが、ゼロ以外のMessage IDを持つメッセージを受信した</li>
+            <li pn="section-4.3.3-2.2">クライアントまたはサーバーが、2オクテットの長さフィールドで示されたメッセージのすべてのバイトを受信する前に、STREAM FINを受信した</li>
+            <li pn="section-4.3.3-2.3">クライアントが、期待されるすべてのレスポンスを受信する前に、STREAM FINを受信した</li>
+            <li pn="section-4.3.3-2.4">サーバーが、1つのストリーム上で2つ以上のクエリーを受信した</li>
+            <li pn="section-4.3.3-2.5">クライアントが、1つのストリーム上で期待とは異なる数のレスポンスを受信した（たとえば、Aレコードのクエリーに対して複数のレスポンスを受信した）</li>
+            <li pn="section-4.3.3-2.6">クライアントが、STOP_SENDINGリクエストを受信した</li>
+            <li pn="section-4.3.3-2.7">クライアントまたはサーバーが、リクエストまたはレスポンスを送信した後に、期待されるSTREAM FINを示さない（<xref target="stream-mapping-and-usage" format="default" sectionFormat="of" derivedContent="Section 4.2"/>を参照）</li>
+            <li pn="section-4.3.3-2.8">実装が、edns-tcp-keepalive EDNS(0)オプション<xref target="RFC7828" format="default" sectionFormat="of" derivedContent="RFC7828"/>を含むメッセージを受信した（<xref target="resource-management" format="default" sectionFormat="of" derivedContent="Section 5.5.2"/>を参照）</li>
+            <li pn="section-4.3.3-2.9">クライアントまたはサーバーが、単方向QUICストリームを開こうとした</li>
+            <li pn="section-4.3.3-2.10">サーバーが、サーバーが開始する双方向QUICストリームを開こうとした</li>
+            <li pn="section-4.3.3-2.11">サーバーが、0-RTTデータで「リプレイ可能な」トランザクションを受信した（このケースを処理する意思のないサーバーについては、<xref target="session-resumption-and-0-rtt" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照）</li>
+          </ul>
+          <t indent="0" pn="section-4.3.3-3">ピアがそのようなエラー状態に遭遇した場合、それは致命的なエラーとみなされます。
+ピアは、QUICのCONNECTION_CLOSEメカニズムを使用してコネクションを強制的に中断<bcp14>すべきです（SHOULD）</bcp14>。その際、DoQのエラーコードDOQ_PROTOCOL_ERRORを使用<bcp14>すべきです（SHOULD）</bcp14>。
+場合によっては、代わりに黙ってコネクションを放棄<bcp14>してもよいです（MAY）</bcp14>。これはローカルリソースの使用量が少なくなりますが、問題を起こしたノードでのデバッグがより困難になります。</t>
+          <t indent="0" pn="section-4.3.3-4">上記のEDNS(0)オプションの使用に関する制限は、TCP/DoT/DoHからDoQ上へのメッセージのプロキシーに影響することに注意してください。</t>
+        </section>
+        <section anchor="alternative-error-codes" numbered="true" toc="include" removeInRFC="false" pn="section-4.3.4">
+          <name slugifiedName="name-alternative-error-codes">代替のエラーコード</name>
+          <t indent="0" pn="section-4.3.4-1">この仕様は、セクション<xref target="transaction-cancellation" format="counter" sectionFormat="of" derivedContent="4.3.1"/>、<xref target="transaction-errors" format="counter" sectionFormat="of" derivedContent="4.3.2"/>、<xref target="protocol-errors" format="counter" sectionFormat="of" derivedContent="4.3.3"/>で具体的なエラーコードを説明しています。
+これらのエラーコードは、障害やその他のインシデントの調査を容易にすることを目的としています。
+新しいエラーコードは、DoQの将来のバージョンで定義されるか、<xref target="iana-error-codes" format="default" sectionFormat="of" derivedContent="Section 8.4"/>で規定されているように登録されることがあります。</t>
+          <t indent="0" pn="section-4.3.4-2">新しいエラーコードはネゴシエーションなしに定義できるため、予期しない文脈でのエラーコードの使用や、未知のエラーコードの受信は、DOQ_UNSPECIFIED_ERRORと同等のものとして扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-4.3.4-3">実装は、この文書に記載されていないエラーコードを使用して、エラーコード拡張メカニズムのサポートをテストしたいと考える<bcp14>場合があります（MAY）</bcp14>。あるいは、DOQ_ERROR_RESERVEDを使用<bcp14>してもよいです（MAY）</bcp14>。</t>
+        </section>
+      </section>
+      <section anchor="connection-management" numbered="true" toc="include" removeInRFC="false" pn="section-4.4">
+        <name slugifiedName="name-connection-management">コネクションの管理</name>
+        <t indent="0" pn="section-4.4-1">QUICトランスポート仕様である<xref section="10" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-10" derivedContent="RFC9000"/>は、コネクションを次の3つの方法で閉じることができると規定しています。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.4-2">
+          <li pn="section-4.4-2.1">アイドルタイムアウト</li>
+          <li pn="section-4.4-2.2">即時クローズ</li>
+          <li pn="section-4.4-2.3">ステートレスリセット</li>
+        </ul>
+        <t indent="0" pn="section-4.4-3">DoQを実装するクライアントとサーバーは、アイドルタイムアウトの使用をネゴシエート<bcp14>すべきです（SHOULD）</bcp14>。
+アイドルタイムアウトによるクローズはパケットの交換なしに行われるため、プロトコルのオーバーヘッドが最小限に抑えられます。
+QUICトランスポート仕様である<xref section="10.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-10.1" derivedContent="RFC9000"/>によると、アイドルタイムアウトの実効値は、2つのエンドポイントが広告した値の最小値として計算されます。
+アイドルタイムアウトの設定に関する実際的な考慮事項については、<xref target="resource-management" format="default" sectionFormat="of" derivedContent="Section 5.5.2"/>で議論します。</t>
+        <t indent="0" pn="section-4.4-4">クライアントは、サーバーへのコネクションで発生するアイドル時間を監視<bcp14>すべきです（SHOULD）</bcp14>。アイドル時間は、サーバーからの最後のパケットを受信してから経過した時間として定義されます。
+クライアントは、サーバーに新しいDNSクエリーを送信しようとする際、アイドル時間がアイドルタイマーよりも十分に短いかどうかを確認<bcp14>すべきです（SHOULD）</bcp14>。
+十分に短い場合、クライアントは既存のコネクション上でDNSクエリーを送信<bcp14>すべきです（SHOULD）</bcp14>。
+そうでない場合、クライアントは新しいコネクションを確立し、そのコネクション上でクエリーを送信<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-4.4-5">クライアントは、アイドルタイムアウトが期限切れになる前に、サーバーへのコネクションを破棄<bcp14>してもよいです（MAY）</bcp14>。
+未処理のクエリーを持つクライアントは、QUICのCONNECTION_CLOSEメカニズムとDoQのエラーコードDOQ_NO_ERRORを使用して、コネクションを明示的に閉じる<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-4.4-6">クライアントとサーバーは、他のさまざまな理由でコネクションを閉じても<bcp14>よいです（MAY）</bcp14>。その理由はQUICのCONNECTION_CLOSEを使用して示されます。
+ピアによって破棄されたコネクション上でパケットを送信したクライアントとサーバーは、ステートレスリセットの通知を受け取る可能性があります。
+コネクションが失敗した場合、そのコネクション上で進行中のすべてのトランザクションは放棄<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="session-resumption-and-0-rtt" numbered="true" toc="include" removeInRFC="false" pn="section-4.5">
+        <name slugifiedName="name-session-resumption-and-0-rt">セッション再開と0-RTT</name>
+        <t indent="0" pn="section-4.5-1">サーバーがサポートしている場合、クライアントは、QUICトランスポート<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="RFC9000"/>とQUIC TLS<xref target="RFC9001" format="default" sectionFormat="of" derivedContent="RFC9001"/>がサポートするセッション再開と0-RTTのメカニズムを活用<bcp14>してもよいです（MAY）</bcp14>。
+クライアントは、このメカニズムの使用を決定する前に、セッション再開に関連する潜在的なプライバシー問題を考慮し、特にこの文書のさまざまなセクションで示されているトレードオフを評価<bcp14>すべきです（SHOULD）</bcp14>。
+プライバシー問題の詳細はセクション<xref target="privacy-issues-with-0-rtt-data" format="counter" sectionFormat="of" derivedContent="7.1"/>と<xref target="privacy-issues-with-session-resumption" format="counter" sectionFormat="of" derivedContent="7.2"/>にあり、実装上の考慮事項は<xref target="using-0-rtt-and-session-resumption" format="default" sectionFormat="of" derivedContent="Section 5.5.3"/>で議論します。</t>
+        <t indent="0" pn="section-4.5-2">0-RTTメカニズムを、「リプレイ可能な」トランザクションではないDNSリクエストの送信に使用<bcp14>してはなりません（MUST NOT）</bcp14>。
+この仕様では、OPCODEがQUERYまたはNOTIFYであるトランザクションのみをリプレイ可能とみなします。
+したがって、他のOPCODEを0-RTTデータで送信<bcp14>してはなりません（MUST NOT）</bcp14>。
+ここにNOTIFYが含まれている理由の詳しい議論については、<xref target="the-notify-service" format="default" sectionFormat="of" derivedContent="Appendix A"/>を参照してください。</t>
+        <t indent="0" pn="section-4.5-3">サーバーは、<xref section="4.6.1" sectionFormat="of" target="RFC9001" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.6.1" derivedContent="RFC9001"/>で説明されているメカニズムを使用して、セッション再開をサポート<bcp14>してもよいです（MAY）</bcp14>。その際、0-RTTをサポートしてもしなくても<bcp14>よいです（MAY）</bcp14>。
+0-RTTをサポートするサーバーは、0-RTTデータで受信したリプレイ不可能なトランザクションを即座に処理<bcp14>してはなりません（MUST NOT）</bcp14>。代わりに、次の振る舞いのいずれかを採用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.5-4">
+          <li pn="section-4.5-4.1">問題のトランザクションをキューに入れ、<xref section="4.1.1" sectionFormat="of" target="RFC9001" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.1.1" derivedContent="RFC9001"/>で定義されているようにQUICハンドシェイクが完了した後にのみ処理する。</li>
+          <li pn="section-4.5-4.2"><xref target="RFC6891" format="default" sectionFormat="of" derivedContent="RFC6891"/>で定義されている拡張RCODEメカニズムと、<xref target="RFC8914" format="default" sectionFormat="of" derivedContent="RFC8914"/>で定義されている拡張DNSエラーを使用して、問題のトランザクションに対して、レスポンスコードREFUSEDと拡張DNSエラーコード（EDE）"Too Early"で応答する。
+<xref target="reservation-of-extended-dns-error-code-too-early" format="default" sectionFormat="of" derivedContent="Section 8.3"/>を参照してください。</li>
+          <li pn="section-4.5-4.3">エラーコードDOQ_PROTOCOL_ERRORでコネクションを閉じる。</li>
+        </ul>
+      </section>
+      <section anchor="message-sizes" numbered="true" toc="include" removeInRFC="false" pn="section-4.6">
+        <name slugifiedName="name-message-sizes">メッセージサイズ</name>
+        <t indent="0" pn="section-4.6-1">DoQのクエリーとレスポンスはQUICストリーム上で送信され、QUICストリームは理論上は最大2<sup>62</sup>バイトを運ぶことができます。
+しかし、DNSメッセージは実際には最大65535バイトのサイズに制限されています。
+この最大サイズは、DNS over TCP<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>とDoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>では2オクテットのメッセージ長フィールドの使用によって、DoH<xref target="RFC8484" format="default" sectionFormat="of" derivedContent="RFC8484"/>では"application/dns-message"の定義によって強制されています。
+DoQも同じ制限を強制します。</t>
+        <t indent="0" pn="section-4.6-2">DNSの拡張メカニズム（EDNS(0)）<xref target="RFC6891" format="default" sectionFormat="of" derivedContent="RFC6891"/>では、ピアがUDPメッセージサイズを指定できます。
+このパラメーターはDoQでは無視されます。
+DoQ実装は、最大メッセージサイズが65535バイトであると常に想定します。</t>
+      </section>
+    </section>
+    <section anchor="implementation-requirements" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-implementation-requirements">実装要件</name>
+      <section anchor="authentication" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-authentication">認証</name>
+        <t indent="0" pn="section-5.1-1">スタブから再帰のシナリオでは、認証要件はDoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>と"Usage Profiles for DNS over TLS and DNS over DTLS"<xref target="RFC8310" format="default" sectionFormat="of" derivedContent="RFC8310"/>で説明されているものと同じです。
+<xref target="RFC8932" format="default" sectionFormat="of" derivedContent="RFC8932"/>には、「DNSプライバシーサービスは、クライアントがサーバーを認証するために使用できるクレデンシャルを提供<bcp14>すべきです（SHOULD）</bcp14>」と記載されています。
+このことを踏まえ、またDoHの認証モデルと整合させるため、DoQのスタブは厳格（Strict）利用プロファイルを使用<bcp14>すべきです（SHOULD）</bcp14>。
+暗号化されたスタブから再帰のシナリオにおけるクライアント認証は、どのDNSのRFCでも説明されていません。</t>
+        <t indent="0" pn="section-5.1-2">ゾーン転送については、認証要件は<xref target="RFC9103" format="default" sectionFormat="of" derivedContent="RFC9103"/>で説明されているものと同じです。</t>
+        <t indent="0" pn="section-5.1-3">再帰から権威のシナリオについては、執筆時点では認証要件は規定されておらず、DPRIVEワーキンググループで進行中の作業の対象となっています。</t>
+      </section>
+      <section anchor="fallback-to-other-protocols-on-connection-failure" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-fallback-to-other-protocols">コネクション失敗時の他のプロトコルへのフォールバック</name>
+        <t indent="0" pn="section-5.2-1">DoQコネクションの確立に失敗した場合、クライアントは、その利用プロファイルに応じて、DoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>と"Usage Profiles for DNS over TLS and DNS over DTLS"<xref target="RFC8310" format="default" sectionFormat="of" derivedContent="RFC8310"/>で規定されているように、DoTへ、そして場合によってはさらに平文へのフォールバックを試みても<bcp14>よいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-5.2-2">DNSクライアントは、DoQをサポートしないサーバーのIPアドレスを記憶<bcp14>すべきです（SHOULD）</bcp14>。
+モバイルクライアントは、特定のIPアドレスがDoQをサポートしていないことを、コンテキストごと（たとえば、ネットワークごとやプロビジョニングドメインごと）に記憶することもできます。</t>
+        <t indent="0" pn="section-5.2-3">タイムアウト、コネクションの拒否、QUICハンドシェイクの失敗は、サーバーがDoQをサポートしていないことを示す指標です。
+クライアントは、DoQをサポートしていないサーバーに対して、妥当な期間（サーバーごとに1時間など）DoQクエリーを試行<bcp14>すべきではありません（SHOULD NOT）</bcp14>。
+帯域外で鍵をピン留めする利用プロファイル<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>に従うDNSクライアントは、DoQコネクションの失敗後の再試行について、より積極的であっても<bcp14>よいです（MAY）</bcp14>。</t>
+      </section>
+      <section anchor="address-validation" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-address-validation">アドレス検証</name>
+        <t indent="0" pn="section-5.3-1">QUICトランスポート仕様である<xref section="8" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8" derivedContent="RFC9000"/>は、サーバーがアドレス増幅攻撃に使用されることを避けるためのアドレス検証の手順を定義しています。
+DoQ実装はこの仕様に準拠<bcp14>しなければなりません（MUST）</bcp14>。この仕様により、最悪の場合の増幅は3倍に制限されます。</t>
+        <t indent="0" pn="section-5.3-2">DoQ実装は、QUICトランスポート仕様である<xref section="8.1.2" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8.1.2" derivedContent="RFC9000"/>で定義されている「Retryパケットを使用したアドレス検証」の手順を使用するようにサーバーを設定することを検討<bcp14>すべきです（SHOULD）</bcp14>。
+この手順は、DNSクッキーのメカニズム<xref target="RFC7873" format="default" sectionFormat="of" derivedContent="RFC7873"/>と同様に、クライアントの送信元アドレスへの戻り経路の到達可能性を検証するために1-RTTの遅延を課します。</t>
+        <t indent="0" pn="section-5.3-3">Retryパケットを使用したアドレス検証を設定するDoQ実装は、QUICトランスポート仕様である<xref section="8.1.3" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8.1.3" derivedContent="RFC9000"/>で定義されている「将来のコネクションのためのアドレス検証」の手順を実装<bcp14>すべきです（SHOULD）</bcp14>。
+これは、同じアドレスからのクライアントによる後続のコネクションで1-RTTのペナルティーを回避するために、クライアントアドレスが検証された後にサーバーがクライアントにNEW_TOKENフレームを送信する方法を定義しています。</t>
+      </section>
+      <section anchor="padding" numbered="true" toc="include" removeInRFC="false" pn="section-5.4">
+        <name slugifiedName="name-padding">パディング</name>
+        <t indent="0" pn="section-5.4-1">実装は、パディングを適切に挿入することによって、<xref target="traffic-analysis" format="default" sectionFormat="of" derivedContent="Section 7.5"/>で説明されているトラフィック解析攻撃から保護<bcp14>しなければなりません（MUST）</bcp14>。
+これは、EDNS(0) Paddingオプション<xref target="RFC7830" format="default" sectionFormat="of" derivedContent="RFC7830"/>を使用して個々のDNSメッセージをパディングするか、QUICパケットをパディングする（<xref section="19.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-19.1" derivedContent="RFC9000"/>を参照）ことによって行えます。</t>
+        <t indent="0" pn="section-5.4-2">理論上は、QUICパケットレベルでのパディングの方が、同等の保護に対してより良い性能をもたらす可能性があります。パディングの量に確認応答やフロー制御の更新などのDNS以外のフレームを考慮に入れることができ、またQUICパケットは複数のDNSメッセージを運ぶことができるからです。
+しかし、アプリケーションがQUICパケット内のパディングの量を制御できるのは、QUICの実装が適切なAPIを公開している場合に限られます。
+このことから、次の推奨事項が導かれます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.4-3">
+          <li pn="section-5.4-3.1">QUICの実装がパディングポリシーを設定するためのAPIを公開している場合、DoQはそのAPIを使用して、パケット長を少数の固定サイズのセットにそろえる<bcp14>べきです（SHOULD）</bcp14>。</li>
+          <li pn="section-5.4-3.2">QUICパケットレベルでのパディングが利用できない、または使用されない場合、DoQは、<xref target="RFC7830" format="default" sectionFormat="of" derivedContent="RFC7830"/>で規定されているEDNS(0)パディング拡張を使用して、すべてのDNSクエリーとレスポンスが少数の固定サイズのセットにパディングされることを保証<bcp14>しなければなりません（MUST）</bcp14>。</li>
+        </ul>
+        <t indent="0" pn="section-5.4-4">他の暗号化トランスポートに適用されている既存のDNSメッセージのパディングロジックを再利用する方が大幅に簡単な場合、実装はパディングにQUICのAPIを使用しないことを選択するかもしれません。</t>
+        <t indent="0" pn="section-5.4-5">パディングサイズに関する標準的なポリシーがない場合、実装は、Experimentalステータスの"Padding Policies for Extension Mechanisms for DNS (EDNS(0))"<xref target="RFC8467" format="default" sectionFormat="of" derivedContent="RFC8467"/>の推奨事項に従う<bcp14>べきです（SHOULD）</bcp14>。
+これらの推奨事項はExperimentalですが、DoTのために実装および展開されており、実装がこの仕様に完全に準拠するための方法を提供するため、参照しています。</t>
+      </section>
+      <section anchor="connection-handling" numbered="true" toc="include" removeInRFC="false" pn="section-5.5">
+        <name slugifiedName="name-connection-handling">コネクションの取り扱い</name>
+        <t indent="0" pn="section-5.5-1">"DNS Transport over TCP - Implementation Requirements"<xref target="RFC7766" format="default" sectionFormat="of" derivedContent="RFC7766"/>は、DNS over TCPに関する更新されたガイダンスを提供しており、その一部はDoQにも適用できます。
+このセクションでは、DoQのコネクションの取り扱いについて同様の助言を提供します。</t>
+        <section anchor="connection-reuse" numbered="true" toc="include" removeInRFC="false" pn="section-5.5.1">
+          <name slugifiedName="name-connection-reuse">コネクションの再利用</name>
+          <t indent="0" pn="section-5.5.1-1">過去のDNSクライアントの実装には、DNSクエリーごとにTCPコネクションを開いて閉じるものがあることが知られています。
+コネクションのセットアップコストを償却するため、クライアントとサーバーの両方が、単一の永続的なQUICコネクション上で複数のクエリーとレスポンスを送信することによって、コネクションの再利用をサポート<bcp14>すべきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-5.5.1-2">UDPと同等の性能を達成するため、DNSクライアントは、QUICコネクション上のQUICストリームを通じてクエリーを並行して送信<bcp14>すべきです（SHOULD）</bcp14>。
+つまり、DNSクライアントがQUICコネクション上でサーバーに複数のクエリーを送信する場合、次のクエリーを送信する前に未処理の応答を待つ<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+        </section>
+        <section anchor="resource-management" numbered="true" toc="include" removeInRFC="false" pn="section-5.5.2">
+          <name slugifiedName="name-resource-management">リソース管理</name>
+          <t indent="0" pn="section-5.5.2-1">確立されたコネクションとアイドル状態のコネクションを適切に管理することは、DNSサーバーの健全な運用にとって重要です。</t>
+          <t indent="0" pn="section-5.5.2-2">DoQの実装は、特に次の点に関して、DNS over TCP<xref target="RFC7766" format="default" sectionFormat="of" derivedContent="RFC7766"/>について規定されているものと同様のベストプラクティスに従う<bcp14>べきです（SHOULD）</bcp14>。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.5.2-3">
+            <li pn="section-5.5.2-3.1">同時コネクション（<xref section="6.4" sectionFormat="of" target="RFC9103" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9103#section-6.4" derivedContent="RFC9103"/>で更新された<xref section="6.2.2" sectionFormat="of" target="RFC7766" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7766#section-6.2.2" derivedContent="RFC7766"/>）</li>
+            <li pn="section-5.5.2-3.2">セキュリティーに関する考慮事項（<xref section="10" sectionFormat="of" target="RFC7766" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7766#section-10" derivedContent="RFC7766"/>）</li>
+          </ul>
+          <t indent="0" pn="section-5.5.2-4">そうしないと、リソースの枯渇やサービス拒否につながる可能性があります。</t>
+          <t indent="0" pn="section-5.5.2-5">長期間のDoQコネクションを維持したいクライアントは、QUICトランスポート仕様である<xref section="10.1" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-10.1" derivedContent="RFC9000"/>で定義されているアイドルタイムアウトのメカニズムを使用<bcp14>すべきです（SHOULD）</bcp14>。
+クライアントとサーバーは、DoQコネクション上で送信するどのメッセージにも、edns-tcp-keepalive EDNS(0)オプション<xref target="RFC7828" format="default" sectionFormat="of" derivedContent="RFC7828"/>を含めて送信<bcp14>してはなりません（MUST NOT）</bcp14>（このオプションはトランスポートとしてのTCP/TLSの使用に固有のものであるため）。</t>
+          <t indent="0" pn="section-5.5.2-6">この文書は、アイドル状態のコネクションのタイムアウト値について具体的な推奨は行いません。
+クライアントとサーバーは、利用可能なリソースのレベルに応じて、コネクションを再利用したり閉じたりすべきです。
+タイムアウトは、活動が少ない期間には長く、活動が多い期間には短くしてもかまいません。</t>
+        </section>
+        <section anchor="using-0-rtt-and-session-resumption" numbered="true" toc="include" removeInRFC="false" pn="section-5.5.3">
+          <name slugifiedName="name-using-0-rtt-and-session-res">0-RTTとセッション再開の使用</name>
+          <t indent="0" pn="section-5.5.3-1">DoQで0-RTTを使用することには、多くの説得力のある利点があります。
+クライアントは、コネクションの遅延を被ることなく、コネクションを確立してクエリーを送信できます。
+したがって、サーバーはコネクションタイマーの値を低くネゴシエートでき、管理する必要のあるコネクションの総数を減らせます。
+これが可能なのは、0-RTTを使用するクライアントは、クエリーのために新しいコネクションが必要になっても遅延のペナルティーを被らないからです。</t>
+          <t indent="0" pn="section-5.5.3-2">セッション再開と0-RTTデータの送信は、セクション<xref target="privacy-issues-with-0-rtt-data" format="counter" sectionFormat="of" derivedContent="7.1"/>と<xref target="privacy-issues-with-session-resumption" format="counter" sectionFormat="of" derivedContent="7.2"/>で詳述するプライバシーリスクを生み出します。
+次の推奨事項は、<xref target="session-resumption-and-0-rtt" format="default" sectionFormat="of" derivedContent="Section 4.5"/>で規定されている制限の下で、0-RTTデータの性能上の利点を享受しつつ、プライバシーリスクを低減することを目的としています。</t>
+          <t indent="0" pn="section-5.5.3-3">クライアントは、<xref target="RFC8446" sectionFormat="of" section="C.4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#appendix-C.4" derivedContent="RFC8446"/>で規定されているように、再開チケットを1回だけ使用<bcp14>すべきです（SHOULD）</bcp14>。
+デフォルトでは、クライアントの接続性が変化した場合、クライアントはセッション再開を使用<bcp14>すべきではありません（SHOULD NOT）</bcp14>。</t>
+          <t indent="0" pn="section-5.5.3-4">クライアントは、NEW_TOKENメカニズムを使用してサーバーからアドレス検証トークンを受け取ることがあります。<xref section="8" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8" derivedContent="RFC9000"/>を参照してください。
+関連する追跡のリスクについては、<xref target="privacy-issues-with-address-validation-tokens" format="default" sectionFormat="of" derivedContent="Section 7.3"/>で言及しています。
+クライアントは、セッション再開も使用している場合にのみアドレス検証トークンを使用<bcp14>すべきです（SHOULD）</bcp14>。これにより、追加の追跡リスクを回避できます。</t>
+          <t indent="0" pn="section-5.5.3-5">サーバーは、十分に長い有効期間（たとえば6時間）を持つセッション再開チケットを発行<bcp14>すべきです（SHOULD）</bcp14>。そうすれば、クライアントは、セッション再開チケットを更新するためにコネクションを維持し続けたり、サーバーを頻繁にポーリングしたりしようとは思わなくなります。
+サーバーは、<xref section="8" sectionFormat="of" target="RFC8446" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-8" derivedContent="RFC8446"/>で規定されているリプレイ対策メカニズムを実装<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        </section>
+        <section anchor="controlling-connection-migration-for-privacy" numbered="true" toc="include" removeInRFC="false" pn="section-5.5.4">
+          <name slugifiedName="name-controlling-connection-migr">プライバシーのためのコネクションマイグレーションの制御</name>
+          <t indent="0" pn="section-5.5.4-1">DoQ実装は、<xref section="9" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-9" derivedContent="RFC9000"/>で定義されているコネクションマイグレーションの機能の使用を検討するかもしれません。
+これらの機能により、クライアントの接続性が変化しても、コネクションは動作を継続できます。
+<xref target="privacy-issues-with-long-duration-sessions" format="default" sectionFormat="of" derivedContent="Section 7.4"/>で詳述するように、これらの機能はプライバシーと遅延をトレードオフします。
+デフォルトでは、クライアントは、プライバシーを優先し、接続性が変化した場合には新しいセッションを開始するように設定される<bcp14>べきです（SHOULD）</bcp14>。</t>
+        </section>
+      </section>
+      <section anchor="processing-queries-in-parallel" numbered="true" toc="include" removeInRFC="false" pn="section-5.6">
+        <name slugifiedName="name-processing-queries-in-paral">クエリーの並列処理</name>
+        <t indent="0" pn="section-5.6-1"><xref section="7" sectionFormat="of" target="RFC7766" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7766#section-7" derivedContent="RFC7766"/>"DNS Transport over TCP - Implementation Requirements"で規定されているように、リゾルバーは、レスポンスを並列に準備し、順不同で送信することをサポートすることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+DoQでは、以前に開かれたストリームのレスポンスが利用可能になるのを待たずに、それぞれ固有のストリーム上でできるだけ早くレスポンスを送信することによってこれを行います。</t>
+      </section>
+      <section anchor="zone-transfer" numbered="true" toc="include" removeInRFC="false" pn="section-5.7">
+        <name slugifiedName="name-zone-transfer">ゾーン転送</name>
+        <t indent="0" pn="section-5.7-1"><xref target="RFC9103" format="default" sectionFormat="of" derivedContent="RFC9103"/>は、TLS上のゾーン転送（XoT）を規定しており、<xref target="RFC1995" format="default" sectionFormat="of" derivedContent="RFC1995"/>（IXFR）、<xref target="RFC5936" format="default" sectionFormat="of" derivedContent="RFC5936"/>（AXFR）、および<xref target="RFC7766" format="default" sectionFormat="of" derivedContent="RFC7766"/>の更新を含んでいます。
+そこで説明されているXoTコネクションの再利用に関する考慮事項は、DoQコネクションを使用して行われるゾーン転送にも同様に適用されます。
+このような具体的なガイダンスを繰り返す理由の1つは、現在の既存のTCP/TLSゾーン転送の実装において、効果的なコネクションの再利用が行われていないことです。
+次の推奨事項が適用されます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.7-2">
+          <li pn="section-5.7-2.1">DoQサーバーは、単一のQUICコネクション上で、複数の同時IXFRリクエストを処理できなければ<bcp14>なりません（MUST）</bcp14>。</li>
+          <li pn="section-5.7-2.2">DoQサーバーは、単一のQUICコネクション上で、複数の同時AXFRリクエストを処理できなければ<bcp14>なりません（MUST）</bcp14>。</li>
+          <li pn="section-5.7-2.3">
+            <t indent="0" pn="section-5.7-2.3.1">DoQ実装は、次のことを行う<bcp14>べきです（SHOULD）</bcp14>。
+            </t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.7-2.3.2">
+              <li pn="section-5.7-2.3.2.1">同じプライマリーへのAXFRリクエストとIXFRリクエストの両方に同じQUICコネクションを使用する</li>
+              <li pn="section-5.7-2.3.2.2">それらのリクエストをキューに入れられたらすぐに並列に送信する。つまり、コネクション上で次のクエリーを送信する前にレスポンスを待たない（これは、TCP/TLSコネクション上でリクエストをパイプライン化することに相当します）</li>
+              <li pn="section-5.7-2.3.2.3">各リクエストに対するレスポンスを、利用可能になり次第送信する。つまり、レスポンスストリームを混在させて送信<bcp14>してもよいです（MAY）</bcp14></li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section anchor="flow-control-mechanisms" numbered="true" toc="include" removeInRFC="false" pn="section-5.8">
+        <name slugifiedName="name-flow-control-mechanisms">フロー制御メカニズム</name>
+        <t indent="0" pn="section-5.8-1">サーバーとクライアントは、<xref section="4" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-4" derivedContent="RFC9000"/>で定義されているメカニズムを使用してフロー制御を管理します。
+これらのメカニズムにより、クライアントとサーバーは、作成できるストリームの数、1つのストリーム上で送信できるデータの量、およびすべてのストリームの合計で送信できるデータの量を指定できます。
+DoQでは、作成されるストリームの数を制御することで、サーバーは、クライアントが特定のコネクション上で送信できる新しいリクエストの数を制御できます。</t>
+        <t indent="0" pn="section-5.8-2">フロー制御は、エンドポイントのリソースを保護するために存在します。
+サーバーにとって、全体およびストリームごとのフロー制御の制限は、クライアントが送信できるデータの量を制御します。
+同じメカニズムにより、クライアントはサーバーが送信できるデータの量を制御できます。
+値が小さすぎると、性能が不必要に制限されます。
+値が大きすぎると、エンドポイントが過負荷やメモリー枯渇にさらされる可能性があります。
+実装や展開では、これらの懸念のバランスを取るためにフロー制御の制限を調整する必要があるでしょう。
+特に、ゾーン転送の実装では、大規模なゾーン転送と同時に行われるゾーン転送の両方が適切に管理されるように、これらの制限を慎重に制御する必要があるでしょう。</t>
+        <t indent="0" pn="section-5.8-3">パラメーターの初期値は、コネクションの開始時にクライアントとサーバーが送信できるリクエストの数とデータの量を制御します。
+これらの値は、コネクションのハンドシェイク中に交換されるトランスポートパラメーターで指定されます。
+最初のコネクションで受信したパラメーター値は、再開されたコネクションにおいてクライアントが0-RTTデータを使用して送信できるリクエストの数とデータの量も制御します。
+これらの初期パラメーターの値が小さすぎると、0-RTTデータを許可することの有用性が制限されてしまいます。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">ドメインネームシステムの脅威分析は<xref target="RFC3833" format="default" sectionFormat="of" derivedContent="RFC3833"/>にあります。
+この分析はDoT、DoH、DoQの開発以前に書かれたものであり、おそらく更新が必要です。</t>
+      <t indent="0" pn="section-6-2">DoQのセキュリティーに関する考慮事項は、DoT<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>のものと同程度であるはずです。
+<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>で規定されているDoTはスタブから再帰のシナリオのみを扱っていますが、中間者攻撃、ミドルボックス、平文のコネクションからのデータのキャッシュに関する考慮事項は、リゾルバーから権威サーバーのシナリオにおけるDoQにも適用されます。
+<xref target="authentication" format="default" sectionFormat="of" derivedContent="Section 5.1"/>で述べたように、DoQを使用したゾーン転送を保護するための認証要件はDoT上のゾーン転送のものと同じです。したがって、一般的なセキュリティーに関する考慮事項は、<xref target="RFC9103" format="default" sectionFormat="of" derivedContent="RFC9103"/>で説明されているものとまったく同様です。</t>
+      <t indent="0" pn="section-6-3">DoQはQUICに依存しており、QUIC自体はTLS 1.3に依存しているため、<xref target="BCP195" format="default" sectionFormat="of" derivedContent="BCP195"/>で説明されているダウングレード攻撃に対する保護をデフォルトでサポートしています。
+QUIC固有の問題とその緩和策は、<xref section="21" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-21" derivedContent="RFC9000"/>で説明されています。</t>
+    </section>
+    <section anchor="privacy-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-privacy-considerations">プライバシーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">"DNS Privacy Considerations"<xref target="RFC9076" format="default" sectionFormat="of" derivedContent="RFC9076"/>で示されている暗号化トランスポートに関する一般的な考慮事項は、DoQにも適用されます。
+そこで示されている具体的な考慮事項はDoTとDoQの間で違いがないため、ここではこれ以上議論しません。
+同様に、"Recommendations for DNS Privacy Service Operators"<xref target="RFC8932" format="default" sectionFormat="of" derivedContent="RFC8932"/>（DNSプライバシーサービスの運用、ポリシー、セキュリティーに関する考慮事項を扱っています）もDoQサービスに適用できます。</t>
+      <t indent="0" pn="section-7-2">QUICはTLS 1.3<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>のメカニズムを取り入れており、これによりQUICで「0-RTT」データを送信できます。
+これは興味深い遅延の改善をもたらしますが、次の2つの懸念を生じさせます。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-7-3"><li pn="section-7-3.1" derivedCounter="1.">敵対者が0-RTTデータをリプレイし、受信したサーバーの振る舞いからその内容を推測できる可能性があります。</li>
+        <li pn="section-7-3.2" derivedCounter="2.">0-RTTメカニズムはTLSのセッション再開に依存しており、これにより連続するクライアントセッションの間の関連付けが可能になることがあります。</li>
+      </ol>
+      <t indent="0" pn="section-7-4">これらの問題については、セクション<xref target="privacy-issues-with-0-rtt-data" format="counter" sectionFormat="of" derivedContent="7.1"/>と<xref target="privacy-issues-with-session-resumption" format="counter" sectionFormat="of" derivedContent="7.2"/>で展開します。</t>
+      <section anchor="privacy-issues-with-0-rtt-data" numbered="true" toc="include" removeInRFC="false" pn="section-7.1">
+        <name slugifiedName="name-privacy-issues-with-0-rtt-d">0-RTTデータに関するプライバシー問題</name>
+        <t indent="0" pn="section-7.1-1">0-RTTデータは敵対者によってリプレイされる可能性があります。
+そのデータは、再帰リゾルバーから権威リゾルバーへのクエリーを引き起こすことがあります。
+敵対者は、再帰リゾルバーの送信トラフィックが観測可能な時点を選び、それによって0-RTTデータでどの名前がクエリーされたかを突き止めることができるかもしれません。</t>
+        <t indent="0" pn="section-7.1-2">このリスクは、実際には、"DNS Privacy Considerations"<xref target="RFC9076" format="default" sectionFormat="of" derivedContent="RFC9076"/>で議論されている、再帰リゾルバーの振る舞いを観測するという一般的な問題の一部です。
+この攻撃は、このトラフィックの観測可能性を低下させることによって部分的に緩和されます。
+TLS 1.3<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>の必須のリプレイ保護メカニズムは、リプレイのリスクを制限しますが、なくすわけではありません。
+0-RTTパケットは狭いウィンドウ内でのみリプレイ可能であり、そのウィンドウの幅は、クロックスキューとネットワーク伝送の変動を考慮するのに十分な程度しかありません。</t>
+        <t indent="0" pn="section-7.1-3">TLS 1.3<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>の推奨事項は、0-RTTデータを使用する能力はデフォルトで無効にし、ユーザーが関連するリスクを明確に理解している場合にのみ有効にするというものです。
+DoQの場合、0-RTTデータを許可すると大幅な性能向上が得られるため、使用しないという推奨は単に無視されてしまうのではないかという懸念があります。
+代わりに、セクション<xref target="session-resumption-and-0-rtt" format="counter" sectionFormat="of" derivedContent="4.5"/>と<xref target="using-0-rtt-and-session-resumption" format="counter" sectionFormat="of" derivedContent="5.5.3"/>で一連の実際的な推奨事項を示しています。</t>
+        <t indent="0" pn="section-7.1-4"><xref target="session-resumption-and-0-rtt" format="default" sectionFormat="of" derivedContent="Section 4.5"/>の仕様は、サーバーの長期的な状態を変更しないトランザクションのみを許可するため、リプレイ攻撃の最も明白なリスクを防ぎます。</t>
+        <t indent="0" pn="section-7.1-5">上で説明した攻撃はスタブリゾルバーから再帰リゾルバーのシナリオに適用されますが、再帰リゾルバーから権威リゾルバーのシナリオでも同様の攻撃が想定される可能性があり、同じ緩和策が適用されます。</t>
+      </section>
+      <section anchor="privacy-issues-with-session-resumption" numbered="true" toc="include" removeInRFC="false" pn="section-7.2">
+        <name slugifiedName="name-privacy-issues-with-session">セッション再開に関するプライバシー問題</name>
+        <t indent="0" pn="section-7.2-1">QUICのセッション再開メカニズムは、セッションを再確立するコストを削減し、0-RTTデータを可能にします。
+同じ再開トークンが複数回使用されると、セッション再開に関連した関連付け可能性（linkability）の問題が生じます。
+クライアントとサーバーの間の経路上の攻撃者は、トークンの繰り返しの使用を観測し、それを使用してクライアントを時間を越えて、あるいは複数の場所にわたって追跡できる可能性があります。</t>
+        <t indent="0" pn="section-7.2-2">セッション再開メカニズムにより、サーバーは再開されたセッションを最初のセッションと相関させることができ、それによってクライアントを追跡できます。
+これは、仮想的な長期間のセッションを作り出します。
+そのセッション内の一連のクエリーは、サーバーがクライアントを識別するために使用できます。
+クライアントのアドレスが一定のままであれば、サーバーはおそらくすでにそれを行うことができますが、セッション再開チケットはクライアントのアドレスが変化した後の追跡も可能にします。</t>
+        <t indent="0" pn="section-7.2-3"><xref target="using-0-rtt-and-session-resumption" format="default" sectionFormat="of" derivedContent="Section 5.5.3"/>の推奨事項は、これらのリスクを緩和するように設計されています。
+セッションチケットを1回だけ使用することで、第三者による追跡のリスクが緩和されます。
+アドレスが変化した場合にセッションの再開を拒否することで、サーバーによる追跡の増分リスクが緩和されます（ただし、IPアドレスによる追跡のリスクは残ります）。</t>
+        <t indent="0" pn="section-7.2-4">ここでのプライバシーのトレードオフは、文脈に固有である場合があります。
+スタブリゾルバーは頻繁に場所を変えるため、遅延よりもプライバシーを優先する強い動機があるでしょう。
+しかし、少数の静的なIPアドレスのセットを使用する再帰リゾルバーは、セッション再開によってもたらされる遅延の削減を優先する可能性が高く、セッション間でIPアドレスが変化した場合でも再開チケットを使用する正当な理由とみなすかもしれません。</t>
+        <t indent="0" pn="section-7.2-5">暗号化されたゾーン転送（<xref target="RFC9103" format="default" sectionFormat="of" derivedContent="RFC9103"/>）は、転送に関与する当事者の身元を隠すことを明示的に試みていません。同時に、そのような転送は遅延に特に敏感ではありません。
+これは、ゾーン転送をサポートするアプリケーションが、スタブから再帰のアプリケーションと同じ保護を適用することを決定してもかまわないことを意味します。</t>
+      </section>
+      <section anchor="privacy-issues-with-address-validation-tokens" numbered="true" toc="include" removeInRFC="false" pn="section-7.3">
+        <name slugifiedName="name-privacy-issues-with-address">アドレス検証トークンに関するプライバシー問題</name>
+        <t indent="0" pn="section-7.3-1">QUICは、<xref section="8" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8" derivedContent="RFC9000"/>でアドレス検証メカニズムを規定しています。
+アドレス検証トークンを使用すると、QUICサーバーは新しいコネクションのための余分なRTTを回避できます。
+アドレス検証トークンは通常、IPアドレスに結び付けられています。
+QUICクライアントは通常、以前に使用したアドレスから新しいコネクションをセットアップする場合にのみ、これらのトークンを使用します。
+しかし、クライアントは、自分が新しいアドレスを使用していることを常に認識しているとは限りません。
+これは、NATによる場合や、IPアドレスが変化したかどうかを確認するために利用できるAPIをクライアントが持っていない場合（IPv6ではかなり頻繁に起こりえます）に起こります。
+クライアントが知らないうちに新しい場所に移動した後で、誤ってアドレス検証トークンを使用すると、関連付け可能性のリスクがあります。</t>
+        <t indent="0" pn="section-7.3-2"><xref target="using-0-rtt-and-session-resumption" format="default" sectionFormat="of" derivedContent="Section 5.5.3"/>の推奨事項は、NEW_TOKENの使用をセッション再開の使用に結び付けることによってこのリスクを緩和しますが、この推奨事項は、クライアントがアドレスの変化を認識していない場合には対応していません。</t>
+      </section>
+      <section anchor="privacy-issues-with-long-duration-sessions" numbered="true" toc="include" removeInRFC="false" pn="section-7.4">
+        <name slugifiedName="name-privacy-issues-with-long-du">長期間のセッションに関するプライバシー問題</name>
+        <t indent="0" pn="section-7.4-1">セッション再開の代替となりうるのは、長期間のセッションの使用です。
+セッションが長時間開いたままであれば、コネクション確立の遅延を被ることなく新しいクエリーを送信できます。
+この2つの解決策は同様のプライバシー特性を持つことを指摘しておく価値があります。
+セッション再開により、サーバーはクライアントのIPアドレスを追跡し続けられる可能性がありますが、長期間のセッションにも同じ効果があります。</t>
+        <t indent="0" pn="section-7.4-2">特に、DoQ実装は、クライアントの接続性が変化した場合でも、たとえばクライアントがWi-Fiコネクションからセルラーネットワークのコネクションに移行し、さらに別のWi-Fiコネクションに移行した場合でも、QUICのコネクションマイグレーションの機能を活用してセッションを維持するかもしれません。
+サーバーは、長期間のコネクションで使用される一連のIPアドレスを監視することで、クライアントの場所を追跡できるでしょう。</t>
+        <t indent="0" pn="section-7.4-3"><xref target="controlling-connection-migration-for-privacy" format="default" sectionFormat="of" derivedContent="Section 5.5.4"/>の推奨事項は、複数のクライアントアドレスを使用する長期間のセッションに関連するプライバシーの懸念を緩和します。</t>
+      </section>
+      <section anchor="traffic-analysis" numbered="true" toc="include" removeInRFC="false" pn="section-7.5">
+        <name slugifiedName="name-traffic-analysis">トラフィック解析</name>
+        <t indent="0" pn="section-7.5-1">QUICパケットは暗号化されていますが、敵対者は、クエリーとレスポンスの両方におけるパケット長や、パケットのタイミングを観測することで情報を得ることができます。
+多くのDNSリクエストはウェブブラウザーから発行されます。
+特定のウェブページを読み込むには、数十のDNS名を解決する必要がある場合があります。
+アプリケーションが、1パケットあたり1つのクエリーまたはレスポンス、つまり「1パケットあたり1つのQUIC STREAMフレーム」という単純なマッピングを採用すると、一連のパケット長から、リクエストされたサイトを特定するのに十分な情報が得られる可能性があります。</t>
+        <t indent="0" pn="section-7.5-2">実装は、この攻撃を緩和するために、<xref target="padding" format="default" sectionFormat="of" derivedContent="Section 5.4"/>で定義されているメカニズムを使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="registration-of-doq-identification-string" numbered="true" toc="include" removeInRFC="false" pn="section-8.1">
+        <name slugifiedName="name-registration-of-a-doq-ident">DoQ識別文字列の登録</name>
+        <t indent="0" pn="section-8.1-1">この文書は、"TLS Application-Layer Protocol Negotiation (ALPN) Protocol IDs"レジストリー<xref target="RFC7301" format="default" sectionFormat="of" derivedContent="RFC7301"/>に、DoQを識別するための新しい登録を作成します。</t>
+        <t indent="0" pn="section-8.1-2">"doq"という文字列はDoQを識別します。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.1-3">
+          <dt pn="section-8.1-3.1">Protocol：</dt>
+          <dd pn="section-8.1-3.2">
+            <t indent="0" pn="section-8.1-3.2.1">DoQ</t>
+          </dd>
+          <dt pn="section-8.1-3.3">Identification Sequence：</dt>
+          <dd pn="section-8.1-3.4">
+            <t indent="0" pn="section-8.1-3.4.1">0x64 0x6F 0x71 ("doq")</t>
+          </dd>
+          <dt pn="section-8.1-3.5">Specification：</dt>
+          <dd pn="section-8.1-3.6">
+            <t indent="0" pn="section-8.1-3.6.1">This document</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="reservation-of-dedicated-port" numbered="true" toc="include" removeInRFC="false" pn="section-8.2">
+        <name slugifiedName="name-reservation-of-a-dedicated-">専用ポートの予約</name>
+        <t indent="0" pn="section-8.2-1">TCPとUDPの両方について、ポート853は現在、"DNS query-response protocol run over TLS/DTLS"<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>のために予約されています。</t>
+        <t indent="0" pn="section-8.2-2">しかし、DNS over DTLS（DoD）の仕様<xref target="RFC8094" format="default" sectionFormat="of" derivedContent="RFC8094"/>は実験的なものであり、スタブからリゾルバーに限定されています。また、著者の知る限り、（仕様が公開されてから数年が経過しているにもかかわらず）現在、実装も展開も存在しません。</t>
+        <t indent="0" pn="section-8.2-3">この仕様は、UDPポート853の使用をDoQのためにも予約します。
+QUICバージョン1は、DTLSを含め、同じポート上で他のプロトコルと共存できるように設計されています。<xref section="17.2" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-17.2" derivedContent="RFC9000"/>を参照してください。
+これは、同じポートでDoDとDoQ（QUICバージョン1）を提供する展開では、各UDPペイロードの上位から2番目のビットによって、この2つを多重分離できることを意味します。
+そのような展開では、QUICとDTLSの将来のバージョンや拡張（たとえば<xref target="I-D.ietf-quic-bit-grease" format="default" sectionFormat="of" derivedContent="GREASING-QUIC"/>）を同じポートでDNSを提供するために展開する前に、それらのシグネチャーを確認するべきです。</t>
+        <t indent="0" pn="section-8.2-4">IANAは、"Service Name and Transport Protocol Port Number Registry"のSystem範囲にある次の値を更新しました。
+その範囲のレジストリーには、IETF ReviewまたはIESG Approval<xref target="RFC6335" format="default" sectionFormat="of" derivedContent="RFC6335"/>が必要です。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.2-5">
+          <dt pn="section-8.2-5.1">Service Name：</dt>
+          <dd pn="section-8.2-5.2">
+            <t indent="0" pn="section-8.2-5.2.1">domain-s</t>
+          </dd>
+          <dt pn="section-8.2-5.3">Port Number：</dt>
+          <dd pn="section-8.2-5.4">
+            <t indent="0" pn="section-8.2-5.4.1">853</t>
+          </dd>
+          <dt pn="section-8.2-5.5">Transport Protocol(s)：</dt>
+          <dd pn="section-8.2-5.6">
+            <t indent="0" pn="section-8.2-5.6.1">UDP</t>
+          </dd>
+          <dt pn="section-8.2-5.7">Assignee：</dt>
+          <dd pn="section-8.2-5.8">
+            <t indent="0" pn="section-8.2-5.8.1">IESG</t>
+          </dd>
+          <dt pn="section-8.2-5.9">Contact：</dt>
+          <dd pn="section-8.2-5.10">
+            <t indent="0" pn="section-8.2-5.10.1">IETF Chair</t>
+          </dd>
+          <dt pn="section-8.2-5.11">Description：</dt>
+          <dd pn="section-8.2-5.12">
+            <t indent="0" pn="section-8.2-5.12.1">DNS query-response protocol run over DTLS or QUIC</t>
+          </dd>
+          <dt pn="section-8.2-5.13">Reference：</dt>
+          <dd pn="section-8.2-5.14">
+            <t indent="0" pn="section-8.2-5.14.1"><xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/><xref target="RFC8094" format="default" sectionFormat="of" derivedContent="RFC8094"/> This document</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-8.2-6">さらに、IANAは、対応するTCPポート853の割り当てのDescriptionフィールドを"DNS query-response protocol run over TLS"に更新し、一貫性と明確さのために、TCPの割り当てのReferenceフィールドから<xref target="RFC8094" format="default" sectionFormat="of" derivedContent="RFC8094"/>を削除しました。</t>
+      </section>
+      <section anchor="reservation-of-extended-dns-error-code-too-early" numbered="true" toc="include" removeInRFC="false" pn="section-8.3">
+        <name slugifiedName="name-reservation-of-an-extended-">拡張DNSエラーコードの予約：Too Early</name>
+        <t indent="0" pn="section-8.3-1">IANAは、"Extended DNS Error Codes"レジストリー<xref target="RFC8914" format="default" sectionFormat="of" derivedContent="RFC8914"/>に次の値を登録しました。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.3-2">
+          <dt pn="section-8.3-2.1">INFO-CODE：</dt>
+          <dd pn="section-8.3-2.2">
+            <t indent="0" pn="section-8.3-2.2.1">26</t>
+          </dd>
+          <dt pn="section-8.3-2.3">Purpose：</dt>
+          <dd pn="section-8.3-2.4">
+            <t indent="0" pn="section-8.3-2.4.1">Too Early</t>
+          </dd>
+          <dt pn="section-8.3-2.5">Reference：</dt>
+          <dd pn="section-8.3-2.6">
+            <t indent="0" pn="section-8.3-2.6.1">This document</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="iana-error-codes" numbered="true" toc="include" removeInRFC="false" pn="section-8.4">
+        <name slugifiedName="name-dns-over-quic-error-codes-r">DNS-over-QUIC Error Codesレジストリー</name>
+        <t indent="0" pn="section-8.4-1">IANAは、"Domain Name System (DNS) Parameters"のウェブページに"DNS-over-QUIC Error Codes"のレジストリーを追加しました。</t>
+        <t indent="0" pn="section-8.4-2">"DNS-over-QUIC Error Codes"レジストリーは62ビットの空間を管理します。
+この空間は、異なるポリシーによって管理される3つの領域に分割されています。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-8.4-3">
+          <li pn="section-8.4-3.1">0x00から0x3f（16進数、両端を含む）までの値に対する永続的な登録。これらは、<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>のセクション<xref target="RFC8126" section="4.9" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.9" derivedContent="RFC8126"/>と<xref target="RFC8126" section="4.10" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.10" derivedContent="RFC8126"/>で定義されているStandards ActionまたはIESG Approvalを使用して割り当てられます。</li>
+          <li pn="section-8.4-3.2">0x3fより大きい値に対する永続的な登録。これらは、Specification Requiredポリシー（<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>）を使用して割り当てられます。</li>
+          <li pn="section-8.4-3.3">0x3fより大きい値に対する暫定的な登録。これらには、<xref section="4.5" sectionFormat="of" target="RFC8126" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8126#section-4.5" derivedContent="RFC8126"/>で定義されているExpert Reviewが必要です。</li>
+        </ul>
+        <t indent="0" pn="section-8.4-4">暫定的な予約は、0x3fより大きい値の範囲を一部の永続的な登録と共有します。
+これは、展開済みのシステムの変更を必要とせずに、暫定的な登録を永続的な登録に変換できるようにするための意図的な設計です。
+（この設計は、<xref section="22" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-22" derivedContent="RFC9000"/>で定められた原則に沿ったものです。）</t>
+        <t indent="0" pn="section-8.4-5">このレジストリーへの登録には、次のフィールドを含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.4-6">
+          <dt pn="section-8.4-6.1">Value：</dt>
+          <dd pn="section-8.4-6.2">
+            <t indent="0" pn="section-8.4-6.2.1">割り当てられたコードポイント</t>
+          </dd>
+          <dt pn="section-8.4-6.3">Status：</dt>
+          <dd pn="section-8.4-6.4">
+            <t indent="0" pn="section-8.4-6.4.1">"Permanent"または"Provisional"</t>
+          </dd>
+          <dt pn="section-8.4-6.5">Contact：</dt>
+          <dd pn="section-8.4-6.6">
+            <t indent="0" pn="section-8.4-6.6.1">登録者の連絡先の詳細</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-8.4-7">加えて、永続的な登録には次のものを含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.4-8">
+          <dt pn="section-8.4-8.1">Error：</dt>
+          <dd pn="section-8.4-8.2">
+            <t indent="0" pn="section-8.4-8.2.1">パラメーターの短い覚えやすい名前</t>
+          </dd>
+          <dt pn="section-8.4-8.3">Specification：</dt>
+          <dd pn="section-8.4-8.4">
+            <t indent="0" pn="section-8.4-8.4.1">その値についての公開されている仕様への参照（暫定的な登録では任意）</t>
+          </dd>
+          <dt pn="section-8.4-8.5">Description：</dt>
+          <dd pn="section-8.4-8.6">
+            <t indent="0" pn="section-8.4-8.6.1">エラーコードのセマンティクスの簡潔な説明。仕様への参照が提供されている場合は、要約であっても<bcp14>よいです（MAY）</bcp14></t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-8.4-9">コードポイントの暫定的な登録は、プライベートな使用やDoQの拡張の実験を可能にすることを意図しています。
+しかし、暫定的な登録は回収され、他の目的のために再割り当てされる可能性があります。
+上記のパラメーターに加えて、暫定的な登録には次のものを含め<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.4-10">
+          <dt pn="section-8.4-10.1">Date：</dt>
+          <dd pn="section-8.4-10.2">
+            <t indent="0" pn="section-8.4-10.2.1">登録が最後に更新された日付</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-8.4-11">暫定的な登録の日付を更新するリクエストは、指定専門家によるレビューなしに行うことができます。</t>
+        <t indent="0" pn="section-8.4-12">このレジストリーの初期内容は<xref target="iana-error-table" format="default" sectionFormat="of" derivedContent="Table 1"/>に示すとおりであり、すべてのエントリーは次のフィールドを共有します。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-8.4-13">
+          <dt pn="section-8.4-13.1">Status：</dt>
+          <dd pn="section-8.4-13.2">
+            <t indent="0" pn="section-8.4-13.2.1">Permanent</t>
+          </dd>
+          <dt pn="section-8.4-13.3">Contact：</dt>
+          <dd pn="section-8.4-13.4">
+            <t indent="0" pn="section-8.4-13.4.1">DPRIVE WG</t>
+          </dd>
+          <dt pn="section-8.4-13.5">Specification：</dt>
+          <dd pn="section-8.4-13.6">
+            <t indent="0" pn="section-8.4-13.6.1"><xref target="doq-error-codes" format="default" sectionFormat="of" derivedContent="Section 4.3"/></t>
+          </dd>
+        </dl>
+        <table anchor="iana-error-table" align="center" pn="table-1">
+          <name slugifiedName="name-initial-dns-over-quic-error">DNS-over-QUIC Error Codesの初期エントリー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">Value</th>
+              <th align="left" colspan="1" rowspan="1">Error</th>
+              <th align="left" colspan="1" rowspan="1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x0</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_NO_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">No error</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x1</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_INTERNAL_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">Implementation error</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x2</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_PROTOCOL_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">Generic protocol violation</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x3</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_REQUEST_CANCELLED</td>
+              <td align="left" colspan="1" rowspan="1">Request cancelled by client</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x4</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_EXCESSIVE_LOAD</td>
+              <td align="left" colspan="1" rowspan="1">Closing a connection for excessive load</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x5</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_UNSPECIFIED_ERROR</td>
+              <td align="left" colspan="1" rowspan="1">No error reason specified</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0xd098ea5e</td>
+              <td align="left" colspan="1" rowspan="1">DOQ_ERROR_RESERVED</td>
+              <td align="left" colspan="1" rowspan="1">Alternative error code used for tests</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.ietf-dnsop-rfc8499bis" to="DNS-TERMS"/>
+    <displayreference target="I-D.ietf-quic-bit-grease" to="GREASING-QUIC"/>
+    <displayreference target="I-D.ietf-quic-http" to="HTTP/3"/>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1034" target="https://www.rfc-editor.org/info/rfc1034" quoteTitle="true" derivedAnchor="RFC1034">
+          <front>
+            <title>Domain names - concepts and facilities</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t indent="0">This RFC is the revised basic definition of The Domain Name System.  It obsoletes RFC-882.  This memo describes the domain style names and their used for host address look up and electronic mail forwarding.  It discusses the clients and servers in the domain name system and the protocol used between them.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1034"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1034"/>
+        </reference>
+        <reference anchor="RFC1035" target="https://www.rfc-editor.org/info/rfc1035" quoteTitle="true" derivedAnchor="RFC1035">
+          <front>
+            <title>Domain names - implementation and specification</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t indent="0">This RFC is the revised specification of the protocol and format used in the implementation of the Domain Name System.  It obsoletes RFC-883. This memo documents the details of the domain name client - server communication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1035"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1035"/>
+        </reference>
+        <reference anchor="RFC1995" target="https://www.rfc-editor.org/info/rfc1995" quoteTitle="true" derivedAnchor="RFC1995">
+          <front>
+            <title>Incremental Zone Transfer in DNS</title>
+            <author initials="M." surname="Ohta" fullname="M. Ohta">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="August"/>
+            <abstract>
+              <t indent="0">This document proposes extensions to the DNS protocols to provide an incremental zone transfer (IXFR) mechanism.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1995"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1995"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC5936" target="https://www.rfc-editor.org/info/rfc5936" quoteTitle="true" derivedAnchor="RFC5936">
+          <front>
+            <title>DNS Zone Transfer Protocol (AXFR)</title>
+            <author initials="E." surname="Lewis" fullname="E. Lewis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Hoenes" fullname="A. Hoenes" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="June"/>
+            <abstract>
+              <t indent="0">The standard means within the Domain Name System protocol for maintaining coherence among a zone's authoritative name servers consists of three mechanisms.  Authoritative Transfer (AXFR) is one of the mechanisms and is defined in RFC 1034 and RFC 1035.</t>
+              <t indent="0">The definition of AXFR has proven insufficient in detail, thereby forcing implementations intended to be compliant to make assumptions, impeding interoperability.  Yet today we have a satisfactory set of implementations that do interoperate.  This document is a new definition of AXFR -- new in the sense that it records an accurate definition of an interoperable AXFR mechanism.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5936"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5936"/>
+        </reference>
+        <reference anchor="RFC6891" target="https://www.rfc-editor.org/info/rfc6891" quoteTitle="true" derivedAnchor="RFC6891">
+          <front>
+            <title>Extension Mechanisms for DNS (EDNS(0))</title>
+            <author initials="J." surname="Damas" fullname="J. Damas">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Graff" fullname="M. Graff">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Vixie" fullname="P. Vixie">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="April"/>
+            <abstract>
+              <t indent="0">The Domain Name System's wire protocol includes a number of fixed fields whose range has been or soon will be exhausted and does not allow requestors to advertise their capabilities to responders.  This document describes backward-compatible mechanisms for allowing the protocol to grow.</t>
+              <t indent="0">This document updates the Extension Mechanisms for DNS (EDNS(0)) specification (and obsoletes RFC 2671) based on feedback from deployment experience in several implementations.  It also obsoletes RFC 2673 ("Binary Labels in the Domain Name System") and adds considerations on the use of extended labels in the DNS.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="75"/>
+          <seriesInfo name="RFC" value="6891"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6891"/>
+        </reference>
+        <reference anchor="RFC7301" target="https://www.rfc-editor.org/info/rfc7301" quoteTitle="true" derivedAnchor="RFC7301">
+          <front>
+            <title>Transport Layer Security (TLS) Application-Layer Protocol Negotiation Extension</title>
+            <author initials="S." surname="Friedl" fullname="S. Friedl">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Popov" fullname="A. Popov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Langley" fullname="A. Langley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Stephan" fullname="E. Stephan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="July"/>
+            <abstract>
+              <t indent="0">This document describes a Transport Layer Security (TLS) extension for application-layer protocol negotiation within the TLS handshake. For instances in which multiple application protocols are supported on the same TCP or UDP port, this extension allows the application layer to negotiate which protocol will be used within the TLS connection.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7301"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7301"/>
+        </reference>
+        <reference anchor="RFC7766" target="https://www.rfc-editor.org/info/rfc7766" quoteTitle="true" derivedAnchor="RFC7766">
+          <front>
+            <title>DNS Transport over TCP - Implementation Requirements</title>
+            <author initials="J." surname="Dickinson" fullname="J. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Bellis" fullname="R. Bellis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Wessels" fullname="D. Wessels">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="March"/>
+            <abstract>
+              <t indent="0">This document specifies the requirement for support of TCP as a transport protocol for DNS implementations and provides guidelines towards DNS-over-TCP performance on par with that of DNS-over-UDP. This document obsoletes RFC 5966 and therefore updates RFC 1035 and RFC 1123.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7766"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7766"/>
+        </reference>
+        <reference anchor="RFC7830" target="https://www.rfc-editor.org/info/rfc7830" quoteTitle="true" derivedAnchor="RFC7830">
+          <front>
+            <title>The EDNS(0) Padding Option</title>
+            <author initials="A." surname="Mayrhofer" fullname="A. Mayrhofer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="May"/>
+            <abstract>
+              <t indent="0">This document specifies the EDNS(0) "Padding" option, which allows DNS clients and servers to pad request and response messages by a variable number of octets.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7830"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7830"/>
+        </reference>
+        <reference anchor="RFC7858" target="https://www.rfc-editor.org/info/rfc7858" quoteTitle="true" derivedAnchor="RFC7858">
+          <front>
+            <title>Specification for DNS over Transport Layer Security (TLS)</title>
+            <author initials="Z." surname="Hu" fullname="Z. Hu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Zhu" fullname="L. Zhu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Heidemann" fullname="J. Heidemann">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Wessels" fullname="D. Wessels">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="May"/>
+            <abstract>
+              <t indent="0">This document describes the use of Transport Layer Security (TLS) to provide privacy for DNS.  Encryption provided by TLS eliminates opportunities for eavesdropping and on-path tampering with DNS queries in the network, such as discussed in RFC 7626.  In addition, this document specifies two usage profiles for DNS over TLS and provides advice on performance considerations to minimize overhead from using TCP and TLS with DNS.</t>
+              <t indent="0">This document focuses on securing stub-to-recursive traffic, as per the charter of the DPRIVE Working Group.  It does not prevent future applications of the protocol to recursive-to-authoritative traffic.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7858"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7858"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Narten" fullname="T. Narten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="June"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters.  To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper.  For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed.  This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8310" target="https://www.rfc-editor.org/info/rfc8310" quoteTitle="true" derivedAnchor="RFC8310">
+          <front>
+            <title>Usage Profiles for DNS over TLS and DNS over DTLS</title>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Gillmor" fullname="D. Gillmor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Reddy" fullname="T. Reddy">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="March"/>
+            <abstract>
+              <t indent="0">This document discusses usage profiles, based on one or more authentication mechanisms, which can be used for DNS over Transport Layer Security (TLS) or Datagram TLS (DTLS).  These profiles can increase the privacy of DNS transactions compared to using only cleartext DNS.  This document also specifies new authentication mechanisms -- it describes several ways that a DNS client can use an authentication domain name to authenticate a (D)TLS connection to a DNS server.  Additionally, it defines (D)TLS protocol profiles for DNS clients and servers implementing DNS over (D)TLS.  This document updates RFC 7858.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8310"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8310"/>
+        </reference>
+        <reference anchor="RFC8446" target="https://www.rfc-editor.org/info/rfc8446" quoteTitle="true" derivedAnchor="RFC8446">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t>
+              <t indent="0">This document updates RFCs 5705 and 6066, and obsoletes RFCs 5077, 5246, and 6961.  This document also specifies new requirements for TLS 1.2 implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8446"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+        <reference anchor="RFC8467" target="https://www.rfc-editor.org/info/rfc8467" quoteTitle="true" derivedAnchor="RFC8467">
+          <front>
+            <title>Padding Policies for Extension Mechanisms for DNS (EDNS(0))</title>
+            <author initials="A." surname="Mayrhofer" fullname="A. Mayrhofer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="October"/>
+            <abstract>
+              <t indent="0">RFC 7830 specifies the "Padding" option for Extension Mechanisms for DNS (EDNS(0)) but does not specify the actual padding length for specific applications.  This memo lists the possible options ("padding policies"), discusses the implications of each option, and provides a recommended (experimental) option.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8467"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8467"/>
+        </reference>
+        <reference anchor="RFC8914" target="https://www.rfc-editor.org/info/rfc8914" quoteTitle="true" derivedAnchor="RFC8914">
+          <front>
+            <title>Extended DNS Errors</title>
+            <author initials="W." surname="Kumari" fullname="W. Kumari">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Hunt" fullname="E. Hunt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Arends" fullname="R. Arends">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="W." surname="Hardaker" fullname="W. Hardaker">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Lawrence" fullname="D. Lawrence">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="October"/>
+            <abstract>
+              <t indent="0">This document defines an extensible method to return additional information about the cause of DNS errors. Though created primarily to extend SERVFAIL to provide additional information about the cause of DNS and DNSSEC failures, the Extended DNS Errors option defined in this document allows all response types to contain extended error information. Extended DNS Error information does not change the processing of RCODEs.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8914"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8914"/>
+        </reference>
+        <reference anchor="RFC9000" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="RFC9000">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author initials="J." surname="Iyengar" fullname="J. Iyengar" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Thomson" fullname="M. Thomson" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="May"/>
+            <abstract>
+              <t indent="0">This document defines the core of the QUIC transport protocol.  QUIC provides applications with flow-controlled streams for structured communication, low-latency connection establishment, and network path migration. QUIC includes security measures that ensure confidentiality, integrity, and availability in a range of deployment circumstances.  Accompanying documents describe the integration of TLS for key negotiation, loss detection, and an exemplary congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC9001" target="https://www.rfc-editor.org/info/rfc9001" quoteTitle="true" derivedAnchor="RFC9001">
+          <front>
+            <title>Using TLS to Secure QUIC</title>
+            <author initials="M." surname="Thomson" fullname="M. Thomson" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Turner" fullname="S. Turner" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="May"/>
+            <abstract>
+              <t indent="0">This document describes how Transport Layer Security (TLS) is used to secure QUIC.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9001"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9001"/>
+        </reference>
+        <reference anchor="RFC9103" target="https://www.rfc-editor.org/info/rfc9103" quoteTitle="true" derivedAnchor="RFC9103">
+          <front>
+            <title>DNS Zone Transfer over TLS</title>
+            <author initials="W." surname="Toorop" fullname="W. Toorop">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Sahib" fullname="S. Sahib">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Aras" fullname="P. Aras">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="August"/>
+            <abstract>
+              <t indent="0">DNS zone transfers are transmitted in cleartext, which gives attackers the opportunity to collect the content of a zone by eavesdropping on network connections. The DNS Transaction Signature (TSIG) mechanism is specified to restrict direct zone transfer to authorized clients only, but it does not add confidentiality. This document specifies the use of TLS, rather than cleartext, to prevent zone content collection via passive monitoring of zone transfers: XFR over TLS (XoT). Additionally, this specification updates RFC 1995 and RFC 5936 with respect to efficient use of TCP connections and RFC 7766 with respect to the recommended number of connections between a client and server for each transport.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9103"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9103"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <referencegroup anchor="BCP195" target="https://www.rfc-editor.org/info/bcp195" derivedAnchor="BCP195">
+          <reference anchor="RFC7525" target="https://www.rfc-editor.org/info/rfc7525" quoteTitle="true">
+            <front>
+              <title>Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
+              <author initials="Y." surname="Sheffer" fullname="Y. Sheffer">
+                <organization showOnFrontPage="true"/>
+              </author>
+              <author initials="R." surname="Holz" fullname="R. Holz">
+                <organization showOnFrontPage="true"/>
+              </author>
+              <author initials="P." surname="Saint-Andre" fullname="P. Saint-Andre">
+                <organization showOnFrontPage="true"/>
+              </author>
+              <date year="2015" month="May"/>
+              <abstract>
+                <t indent="0">Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) are widely used to protect data exchanged over application protocols such as HTTP, SMTP, IMAP, POP, SIP, and XMPP.  Over the last few years, several serious attacks on TLS have emerged, including attacks on its most commonly used cipher suites and their modes of operation.  This document provides recommendations for improving the security of deployed services that use TLS and DTLS. The recommendations are applicable to the majority of use cases.</t>
+              </abstract>
+            </front>
+            <seriesInfo name="BCP" value="195"/>
+            <seriesInfo name="RFC" value="7525"/>
+            <seriesInfo name="DOI" value="10.17487/RFC7525"/>
+          </reference>
+          <reference anchor="RFC8996" target="https://www.rfc-editor.org/info/rfc8996" quoteTitle="true">
+            <front>
+              <title>Deprecating TLS 1.0 and TLS 1.1</title>
+              <author initials="K." surname="Moriarty" fullname="K. Moriarty">
+                <organization showOnFrontPage="true"/>
+              </author>
+              <author initials="S." surname="Farrell" fullname="S. Farrell">
+                <organization showOnFrontPage="true"/>
+              </author>
+              <date year="2021" month="March"/>
+              <abstract>
+                <t indent="0">This document formally deprecates Transport Layer Security (TLS) versions 1.0 (RFC 2246) and 1.1 (RFC 4346). Accordingly, those documents have been moved to Historic status. These versions lack support for current and recommended cryptographic algorithms and mechanisms, and various government and industry profiles of applications using TLS now mandate avoiding these old TLS versions. TLS version 1.2 became the recommended version for IETF protocols in 2008 (subsequently being obsoleted by TLS version 1.3 in 2018), providing sufficient time to transition away from older versions. Removing support for older versions from implementations reduces the attack surface, reduces opportunity for misconfiguration, and streamlines library and product maintenance. </t>
+                <t indent="0">This document also deprecates Datagram TLS (DTLS) version 1.0 (RFC 4347) but not DTLS version 1.2, and there is no DTLS version 1.1.</t>
+                <t indent="0">This document updates many RFCs that normatively refer to TLS version 1.0 or TLS version 1.1, as described herein. This document also updates the best practices for TLS usage in RFC 7525; hence, it is part of BCP 195.</t>
+              </abstract>
+            </front>
+            <seriesInfo name="BCP" value="195"/>
+            <seriesInfo name="RFC" value="8996"/>
+            <seriesInfo name="DOI" value="10.17487/RFC8996"/>
+          </reference>
+        </referencegroup>
+        <reference anchor="I-D.ietf-dnsop-rfc8499bis" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-dnsop-rfc8499bis-03" derivedAnchor="DNS-TERMS">
+          <front>
+            <title>DNS Terminology</title>
+            <author fullname="Paul Hoffman">
+              <organization showOnFrontPage="true">ICANN</organization>
+            </author>
+            <author fullname="Kazunori Fujiwara">
+              <organization showOnFrontPage="true">Japan Registry Services Co., Ltd.</organization>
+            </author>
+            <date month="September" day="28" year="2021"/>
+            <abstract>
+              <t indent="0">   The Domain Name System (DNS) is defined in literally dozens of
+   different RFCs.  The terminology used by implementers and developers
+   of DNS protocols, and by operators of DNS systems, has sometimes
+   changed in the decades since the DNS was first defined.  This
+   document gives current definitions for many of the terms used in the
+   DNS in a single document.
+
+   This document obsoletes RFC 8499 and updates RFC 2308.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-dnsop-rfc8499bis-03"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-ietf-dnsop-rfc8499bis-03.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="DNS0RTT" target="https://www.ietf.org/mail-archive/web/dns-privacy/current/msg01276.html" quoteTitle="true" derivedAnchor="DNS0RTT">
+          <front>
+            <title>DNS + 0-RTT</title>
+            <author initials="D." surname="Kahn Gillmor" fullname="Daniel Kahn Gillmor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="April" day="06"/>
+          </front>
+          <seriesInfo name="Message" value="to DNS-Privacy WG mailing list"/>
+        </reference>
+        <reference anchor="I-D.ietf-quic-bit-grease" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-quic-bit-grease-02" derivedAnchor="GREASING-QUIC">
+          <front>
+            <title>Greasing the QUIC Bit</title>
+            <author fullname="Martin Thomson">
+              <organization showOnFrontPage="true">Mozilla</organization>
+            </author>
+            <date month="November" day="10" year="2021"/>
+            <abstract>
+              <t indent="0">   This document describes a method for negotiating the ability to send
+   an arbitrary value for the second-to-most significant bit in QUIC
+   packets.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-quic-bit-grease-02"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-ietf-quic-bit-grease-02.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="I-D.ietf-quic-http" target="https://datatracker.ietf.org/doc/html/draft-ietf-quic-http-34" quoteTitle="true" derivedAnchor="HTTP/3">
+          <front>
+            <title>Hypertext Transfer Protocol Version 3 (HTTP/3)</title>
+            <author initials="M" surname="Bishop" fullname="Mike Bishop" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date day="2" month="February" year="2021"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-quic-http-34"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC1996" target="https://www.rfc-editor.org/info/rfc1996" quoteTitle="true" derivedAnchor="RFC1996">
+          <front>
+            <title>A Mechanism for Prompt Notification of Zone Changes (DNS NOTIFY)</title>
+            <author initials="P." surname="Vixie" fullname="P. Vixie">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="August"/>
+            <abstract>
+              <t indent="0">This memo describes the NOTIFY opcode for DNS, by which a master server advises a set of slave servers that the master's data has been changed and that a query should be initiated to discover the new data. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1996"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1996"/>
+        </reference>
+        <reference anchor="RFC3833" target="https://www.rfc-editor.org/info/rfc3833" quoteTitle="true" derivedAnchor="RFC3833">
+          <front>
+            <title>Threat Analysis of the Domain Name System (DNS)</title>
+            <author initials="D." surname="Atkins" fullname="D. Atkins">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Austein" fullname="R. Austein">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2004" month="August"/>
+            <abstract>
+              <t indent="0">Although the DNS Security Extensions (DNSSEC) have been under development for most of the last decade, the IETF has never written down the specific set of threats against which DNSSEC is designed to protect.  Among other drawbacks, this cart-before-the-horse situation has made it difficult to determine whether DNSSEC meets its design goals, since its design goals are not well specified.  This note attempts to document some of the known threats to the DNS, and, in doing so, attempts to measure to what extent (if any) DNSSEC is a useful tool in defending against these threats.  This memo provides information for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3833"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3833"/>
+        </reference>
+        <reference anchor="RFC6335" target="https://www.rfc-editor.org/info/rfc6335" quoteTitle="true" derivedAnchor="RFC6335">
+          <front>
+            <title>Internet Assigned Numbers Authority (IANA) Procedures for the Management of the Service Name and Transport Protocol Port Number Registry</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Eggert" fullname="L. Eggert">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Touch" fullname="J. Touch">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Westerlund" fullname="M. Westerlund">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Cheshire" fullname="S. Cheshire">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="August"/>
+            <abstract>
+              <t indent="0">This document defines the procedures that the Internet Assigned Numbers Authority (IANA) uses when handling assignment and other requests related to the Service Name and Transport Protocol Port Number registry.  It also discusses the rationale and principles behind these procedures and how they facilitate the long-term sustainability of the registry.</t>
+              <t indent="0">This document updates IANA's procedures by obsoleting the previous UDP and TCP port assignment procedures defined in Sections 8 and 9.1 of the IANA Allocation Guidelines, and it updates the IANA service name and port assignment procedures for UDP-Lite, the Datagram Congestion Control Protocol (DCCP), and the Stream Control Transmission Protocol (SCTP).  It also updates the DNS SRV specification to clarify what a service name is and how it is registered.  This memo documents an Internet Best Current Practice.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="165"/>
+          <seriesInfo name="RFC" value="6335"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6335"/>
+        </reference>
+        <reference anchor="RFC7828" target="https://www.rfc-editor.org/info/rfc7828" quoteTitle="true" derivedAnchor="RFC7828">
+          <front>
+            <title>The edns-tcp-keepalive EDNS0 Option</title>
+            <author initials="P." surname="Wouters" fullname="P. Wouters">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Abley" fullname="J. Abley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Bellis" fullname="R. Bellis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="April"/>
+            <abstract>
+              <t indent="0">DNS messages between clients and servers may be received over either UDP or TCP.  UDP transport involves keeping less state on a busy server, but can cause truncation and retries over TCP.  Additionally, UDP can be exploited for reflection attacks.  Using TCP would reduce retransmits and amplification.  However, clients commonly use TCP only for retries and servers typically use idle timeouts on the order of seconds.</t>
+              <t indent="0">This document defines an EDNS0 option ("edns-tcp-keepalive") that allows DNS servers to signal a variable idle timeout.  This signalling encourages the use of long-lived TCP connections by allowing the state associated with TCP transport to be managed effectively with minimal impact on the DNS transaction time.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7828"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7828"/>
+        </reference>
+        <reference anchor="RFC7873" target="https://www.rfc-editor.org/info/rfc7873" quoteTitle="true" derivedAnchor="RFC7873">
+          <front>
+            <title>Domain Name System (DNS) Cookies</title>
+            <author initials="D." surname="Eastlake 3rd" fullname="D. Eastlake 3rd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Andrews" fullname="M. Andrews">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="May"/>
+            <abstract>
+              <t indent="0">DNS Cookies are a lightweight DNS transaction security mechanism that provides limited protection to DNS servers and clients against a variety of increasingly common denial-of-service and amplification/ forgery or cache poisoning attacks by off-path attackers.  DNS Cookies are tolerant of NAT, NAT-PT (Network Address Translation - Protocol Translation), and anycast and can be incrementally deployed. (Since DNS Cookies are only returned to the IP address from which they were originally received, they cannot be used to generally track Internet users.)</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7873"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7873"/>
+        </reference>
+        <reference anchor="RFC8094" target="https://www.rfc-editor.org/info/rfc8094" quoteTitle="true" derivedAnchor="RFC8094">
+          <front>
+            <title>DNS over Datagram Transport Layer Security (DTLS)</title>
+            <author initials="T." surname="Reddy" fullname="T. Reddy">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Wing" fullname="D. Wing">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Patil" fullname="P. Patil">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="February"/>
+            <abstract>
+              <t indent="0">DNS queries and responses are visible to network elements on the path between the DNS client and its server.  These queries and responses can contain privacy-sensitive information, which is valuable to protect.</t>
+              <t indent="0">This document proposes the use of Datagram Transport Layer Security (DTLS) for DNS, to protect against passive listeners and certain active attacks.  As latency is critical for DNS, this proposal also discusses mechanisms to reduce DTLS round trips and reduce the DTLS handshake size.  The proposed mechanism runs over port 853.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8094"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8094"/>
+        </reference>
+        <reference anchor="RFC8484" target="https://www.rfc-editor.org/info/rfc8484" quoteTitle="true" derivedAnchor="RFC8484">
+          <front>
+            <title>DNS Queries over HTTPS (DoH)</title>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="McManus" fullname="P. McManus">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="October"/>
+            <abstract>
+              <t indent="0">This document defines a protocol for sending DNS queries and getting DNS responses over HTTPS.  Each DNS query-response pair is mapped into an HTTP exchange.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8484"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8484"/>
+        </reference>
+        <reference anchor="RFC8490" target="https://www.rfc-editor.org/info/rfc8490" quoteTitle="true" derivedAnchor="RFC8490">
+          <front>
+            <title>DNS Stateful Operations</title>
+            <author initials="R." surname="Bellis" fullname="R. Bellis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Cheshire" fullname="S. Cheshire">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Dickinson" fullname="J. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Lemon" fullname="T. Lemon">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Pusateri" fullname="T. Pusateri">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2019" month="March"/>
+            <abstract>
+              <t indent="0">This document defines a new DNS OPCODE for DNS Stateful Operations (DSO).  DSO messages communicate operations within persistent stateful sessions using Type Length Value (TLV) syntax.  Three TLVs are defined that manage session timeouts, termination, and encryption padding, and a framework is defined for extensions to enable new stateful operations.  This document updates RFC 1035 by adding a new DNS header OPCODE that has both different message semantics and a new result code.  This document updates RFC 7766 by redefining a session, providing new guidance on connection reuse, and providing a new mechanism for handling session idle timeouts.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8490"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8490"/>
+        </reference>
+        <reference anchor="RFC8932" target="https://www.rfc-editor.org/info/rfc8932" quoteTitle="true" derivedAnchor="RFC8932">
+          <front>
+            <title>Recommendations for DNS Privacy Service Operators</title>
+            <author initials="S." surname="Dickinson" fullname="S. Dickinson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Overeinder" fullname="B. Overeinder">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="van Rijswijk-Deij" fullname="R. van Rijswijk-Deij">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="October"/>
+            <abstract>
+              <t indent="0">This document presents operational, policy, and security considerations for DNS recursive resolver operators who choose to offer DNS privacy services.  With these recommendations, the operator can make deliberate decisions regarding which services to provide, as well as understanding how those decisions and the alternatives impact the privacy of users. </t>
+              <t indent="0">This document also presents a non-normative framework to assist writers of a Recursive operator Privacy Statement, analogous to DNS Security Extensions (DNSSEC) Policies and DNSSEC Practice Statements described in RFC 6841.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="232"/>
+          <seriesInfo name="RFC" value="8932"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8932"/>
+        </reference>
+        <reference anchor="RFC9002" target="https://www.rfc-editor.org/info/rfc9002" quoteTitle="true" derivedAnchor="RFC9002">
+          <front>
+            <title>QUIC Loss Detection and Congestion Control</title>
+            <author initials="J." surname="Iyengar" fullname="J. Iyengar" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="I." surname="Swett" fullname="I. Swett" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="May"/>
+            <abstract>
+              <t indent="0">This document describes loss detection and congestion control mechanisms for QUIC.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9002"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9002"/>
+        </reference>
+        <reference anchor="RFC9076" target="https://www.rfc-editor.org/info/rfc9076" quoteTitle="true" derivedAnchor="RFC9076">
+          <front>
+            <title>DNS Privacy Considerations</title>
+            <author initials="T." surname="Wicinski" fullname="T. Wicinski" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="July"/>
+            <abstract>
+              <t indent="0">This document describes the privacy issues associated with the use of the DNS by Internet users. It provides general observations about typical current privacy practices. It is intended to be an analysis of the present situation and does not prescribe solutions. This document obsoletes RFC 7626.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9076"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9076"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="the-notify-service" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-the-notify-service">NOTIFYサービス</name>
+      <t indent="0" pn="section-appendix.a-1">この付録では、0-RTTデータでNOTIFY（<xref target="RFC1996" format="default" sectionFormat="of" derivedContent="RFC1996"/>を参照）を送信することが許容されると考えられる理由について議論します。</t>
+      <t indent="0" pn="section-appendix.a-2"><xref target="session-resumption-and-0-rtt" format="default" sectionFormat="of" derivedContent="Section 4.5"/>には、「0-RTTメカニズムを、『リプレイ可能な』トランザクションではないDNSリクエストの送信に使用<bcp14>してはなりません（MUST NOT）</bcp14>」とあります。
+NOTIFYは技術的には受信したサーバーの状態を変更しますが、NOTIFYをリプレイすることの影響は実際上無視できるほど小さいため、この仕様は0-RTTデータでのNOTIFYの送信をサポートします。</t>
+      <t indent="0" pn="section-appendix.a-3">NOTIFYメッセージは、新しいバージョンのゾーンが利用可能であることを理由に、セカンダリーにプライマリーへのSOAクエリーまたはXFRリクエストのいずれかを送信するよう促します。
+NOTIFYは偽造可能であり、理論上は、セカンダリーにプライマリーへの不要なリクエストを繰り返し送信させるために使用できることが、以前から認識されています。
+このため、ほとんどの実装には、1つ以上のNOTIFYの受信によって引き起こされるSOA/XFRクエリーに対する何らかの形のスロットリングがあります。</t>
+      <t indent="0" pn="section-appendix.a-4"><xref target="RFC9103" format="default" sectionFormat="of" derivedContent="RFC9103"/>は、NOTIFYとSOAクエリーの両方に関連するプライバシーリスクを説明していますが、それらのリスクへの対処をゾーン転送の暗号化の範囲には含めていません。
+このことから、NOTIFYにDoQを使用することのプライバシー上の利点は明確ではありません。しかし同じ理由で、NOTIFYを0-RTTデータとして送信しても、平文のDNSを使用して送信する場合を上回るプライバシーリスクはありません。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.b-1">この文書は、<contact fullname="Mike       Bishop"/>が編集したHTTP/3の仕様<xref target="I-D.ietf-quic-http" format="default" sectionFormat="of" derivedContent="HTTP/3"/>と、<contact fullname="Zi Hu"/>、<contact fullname="Liang Zhu"/>、<contact fullname="John Heidemann"/>、<contact fullname="Allison       Mankin"/>、<contact fullname="Duane Wessels"/>、<contact fullname="Paul Hoffman"/>が執筆したDoTの仕様<xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>から、テキストを大いに借用しています。</t>
+      <t indent="0" pn="section-appendix.b-2">0-RTTデータとセッション再開に関するプライバシー問題は、<contact fullname="Daniel Kahn Gillmor"/>（DKG）が、IETF DPRIVEワーキンググループへのメッセージ<xref target="DNS0RTT" format="default" sectionFormat="of" derivedContent="DNS0RTT"/>で分析しました。</t>
+      <t indent="0" pn="section-appendix.b-3">この文書の最初のドラフト版を広範にレビューしてくれた<contact fullname="Tony Finch"/>と、0-RTTのプライバシー問題について議論してくれた<contact fullname="Robert Evans"/>に感謝します。
+<contact fullname="Paul Hoffman"/>と<contact fullname="Martin Thomson"/>による初期のレビューと、Stephane Bortzmeyerが実施した相互運用性テストは、プロトコルの定義の改善に役立ちました。</t>
+      <t indent="0" pn="section-appendix.b-4">また、低レベルのQUICの詳細に焦点を当てた後期のレビューによってDoQのいくつかの側面を明確にすることに役立った<contact fullname="Martin Thomson"/>と<contact fullname="Martin Duke"/>にも感謝します。
+レビューと貢献をしてくれた<contact fullname="Andrey Meshkov"/>、<contact fullname="Loganaden Velvindron"/>、<contact fullname="Lucas       Pardue"/>、<contact fullname="Matt Joras"/>、<contact fullname="Mirja Kuelewind"/>、<contact fullname="Brian Trammell"/>、<contact fullname="Phillip       Hallam-Baker"/>に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="C" surname="Huitema" fullname="Christian Huitema">
+        <organization showOnFrontPage="true">Private Octopus Inc.</organization>
+        <address>
+          <postal>
+            <street>427 Golfcourse Rd</street>
+            <city>Friday Harbor</city>
+            <code>WA 98250</code>
+            <country>USA</country>
+          </postal>
+          <email>huitema@huitema.net</email>
+        </address>
+      </author>
+      <author initials="S." surname="Dickinson" fullname="Sara Dickinson">
+        <organization showOnFrontPage="true">Sinodun IT</organization>
+        <address>
+          <postal>
+            <street>Oxford Science Park</street>
+            <city>Oxford</city>
+            <code>OX4 4GA</code>
+            <country>United Kingdom</country>
+          </postal>
+          <email>sara@sinodun.com</email>
+        </address>
+      </author>
+      <author initials="A." surname="Mankin" fullname="Allison Mankin">
+        <organization showOnFrontPage="true">Salesforce</organization>
+        <address>
+          <email>allison.mankin@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

@@ -62,15 +62,27 @@ sub parse_section_name($s) {
 
     $number =~ s/[.:]$//; # 末尾のピリオドやコロンを削除
     my @numbers = split /[.]/, $number;
+    # "1.0 Introduction" のように末尾が ".0" の見出しは、"1.1" などを子に持つ最上位の章として扱う
+    pop @numbers while @numbers > 1 && $numbers[-1] eq "0";
     my $slugified_name = lc($name =~ s/\s+/-/gr);
     return +{
         anchor => $slugified_name,
         pn => "section-$number",
         number => $number,
+        numbers => [@numbers],
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
         name => $name,
     };
+}
+
+sub is_prefix($parent, $title) {
+    my $p = $parent->{title}->{numbers} or return 1;
+    my $t = $title->{numbers} or return 1;
+    for my $i(0..$#$p) {
+        return 0 unless defined $t->[$i] && lc($p->[$i]) eq lc($t->[$i]);
+    }
+    return 1;
 }
 
 sub parse_appendix_name($s) {
@@ -89,6 +101,7 @@ sub parse_appendix_name($s) {
         anchor => $slugified_name,
         pn => lc($appendix ? "section-appendix.$number" : "section-$number"),
         number => $number,
+        numbers => [@numbers],
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
         name => $name,
@@ -491,6 +504,7 @@ my $references_root = {
     type => "references_root",
     parent => undef,
     level => 0,
+    title => { level => 0 },
 };
 my $current_references = undef;
 
@@ -499,6 +513,7 @@ my $appendix_root = {
     type => "appendix-root",
     parent => undef,
     level => 0,
+    title => { level => 0 },
 };
 my $current_appendix = undef;
 
@@ -548,8 +563,8 @@ for my $content(@contents) {
                 push @{$references_root->{contents}}, $new_references;
                 $new_references->{parent} = $references_root;
             } else {
-                my $parent = $current_references;
-                while ($parent->{title}->{level} >= $title->{level}) {
+                my $parent = $current_references // $references_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 push @{$parent->{contents}}, $new_references;
@@ -567,8 +582,8 @@ for my $content(@contents) {
                 push @{$appendix_root->{contents}}, $new_appendix;
                 $new_appendix->{parent} = $appendix_root;
             } else {
-                my $parent = $current_appendix;
-                while ($parent->{title}->{level} >= $title->{level}) {
+                my $parent = $current_appendix // $appendix_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 push @{$parent->{contents}}, $new_appendix;
@@ -602,8 +617,8 @@ for my $content(@contents) {
                 push @{$root->{contents}}, $new_section;
                 $new_section->{parent} = $root;
             } else {
-                my $parent = $current_section;
-                while ($parent->{title}->{level} >= $title->{level}) {
+                my $parent = $current_section // $root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 $parent->{contents} = [] unless $parent->{contents};

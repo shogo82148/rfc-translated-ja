@@ -1,0 +1,997 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" consensus="true" docName="draft-ietf-emu-eaptlscert-08" indexInclude="true" ipr="trust200902" number="9191" prepTime="2022-02-15T18:26:46" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-emu-eaptlscert-08" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9191" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Certificates in TLS-Based EAP Methods">TLSベースのEAP方式における大きな証明書と長い証明書チェーンの扱い</title>
+    <seriesInfo name="RFC" value="9191" stream="IETF"/>
+    <author initials="M" surname="Sethi" fullname="Mohit Sethi">
+      <organization showOnFrontPage="true">Ericsson</organization>
+      <address>
+        <postal>
+          <street/>
+          <city>Jorvas</city>
+          <code>02420</code>
+          <country>Finland</country>
+        </postal>
+        <email>mohit@iki.fi</email>
+      </address>
+    </author>
+    <author initials="J." surname="Preuß Mattsson" fullname="John Preuß Mattsson">
+      <organization showOnFrontPage="true">Ericsson</organization>
+      <address>
+        <postal>
+          <street/>
+          <city>Kista</city>
+          <code/>
+          <country>Sweden</country>
+        </postal>
+        <email>john.mattsson@ericsson.com</email>
+      </address>
+    </author>
+    <author initials="S" surname="Turner" fullname="Sean Turner">
+      <organization showOnFrontPage="true">sn3rd</organization>
+      <address>
+        <postal>
+          <street/>
+          <city/>
+          <code/>
+          <country/>
+        </postal>
+        <email>sean@sn3rd.com</email>
+      </address>
+    </author>
+    <date month="02" year="2022"/>
+    <workgroup>Network Working Group</workgroup>
+    <keyword>EAP-TLS</keyword>
+    <keyword>X.509</keyword>
+    <keyword>EAP authenticator</keyword>
+    <keyword>Maximum Transmission Unit</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">
+		RFC 3748で定義されている拡張認証プロトコル（Extensible Authentication Protocol; EAP）は、複数の認証方式をサポートするための標準的なメカニズムを提供します。EAP-TLSやほかのTLSベースのEAP方式は広く展開されており、ネットワークアクセス認証に使用されています。大きな証明書と長い証明書チェーンが、わずか40〜50回の往復でEAPセッションを切断するオーセンティケーターと組み合わさることは、展開上の大きな問題です。この文書は、この問題を詳しく検討し、利用可能な解決策の候補を説明します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+            RFC 7841のセクション2を参照してください。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9191" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-experience-with-deployments">展開での経験</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-large-certifica">大きな証明書と長い証明書チェーンの扱い</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-updating-certificates-and-c">証明書と証明書チェーンの更新</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.1.2">
+                  <li pn="section-toc.1-1.4.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-guidelines-for-certificates">証明書に関するガイドライン</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.2.1"><xref derivedContent="4.1.2" format="counter" sectionFormat="of" target="section-4.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-pre-distributing-and-omitti">CA証明書の事前配布と省略</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.1.2.3.1"><xref derivedContent="4.1.3" format="counter" sectionFormat="of" target="section-4.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-fewer-intermediate-ce">中間証明書の削減</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-updating-tls-and-eap-tls-co">TLSとEAP-TLSのコードの更新</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                  <li pn="section-toc.1-1.4.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-urls-for-client-certificate">クライアント証明書のURL</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.2.1"><xref derivedContent="4.2.2" format="counter" sectionFormat="of" target="section-4.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-caching-certificates">証明書のキャッシュ</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.3.1"><xref derivedContent="4.2.3" format="counter" sectionFormat="of" target="section-4.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compressing-certificates">証明書の圧縮</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.4.1"><xref derivedContent="4.2.4" format="counter" sectionFormat="of" target="section-4.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compact-tls-13">Compact TLS 1.3</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.5">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.5.1"><xref derivedContent="4.2.5" format="counter" sectionFormat="of" target="section-4.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-suppressing-intermediate-ce">中間証明書の抑制</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.6">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.6.1"><xref derivedContent="4.2.6" format="counter" sectionFormat="of" target="section-4.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-raw-public-keys">生の公開鍵</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.2.2.7">
+                    <t indent="0" pn="section-toc.1-1.4.2.2.2.7.1"><xref derivedContent="4.2.7" format="counter" sectionFormat="of" target="section-4.2.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-new-certificate-types-and-c">新しい証明書タイプと圧縮アルゴリズム</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-updating-authenticators">オーセンティケーターの更新</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">
+<xref target="RFC3748" format="default" sectionFormat="of" derivedContent="RFC3748"/>で定義されている拡張認証プロトコル（Extensible Authentication Protocol; EAP）は、複数の認証方式をサポートするための標準的なメカニズムを提供します。EAP-TLS<xref target="RFC5216" format="default" sectionFormat="of" derivedContent="RFC5216"/><xref target="RFC9190" format="default" sectionFormat="of" derivedContent="RFC9190"/>は、証明書<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>による強力な相互認証を提供するためにTLS<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>に依存しており、広く展開され、ネットワークアクセス認証によく使用されています。
+ほかにも、Flexible Authentication via Secure Tunneling（EAP-FAST）<xref target="RFC4851" format="default" sectionFormat="of" derivedContent="RFC4851"/>、Tunneled Transport Layer Security（EAP-TTLS）<xref target="RFC5281" format="default" sectionFormat="of" derivedContent="RFC5281"/>、Tunnel Extensible Authentication Protocol（TEAP）<xref target="RFC7170" format="default" sectionFormat="of" derivedContent="RFC7170"/>などの標準化されたTLSベースのEAP方式が多数あり、Protected Extensible Authentication Protocol（PEAP）<xref target="PEAP" format="default" sectionFormat="of" derivedContent="PEAP"/>などのベンダー固有のEAP方式もいくつかあります。
+      </t>
+      <t indent="0" pn="section-1-2">
+			EAPの展開における証明書は比較的大きくなることがあり、証明書チェーンも長くなることがあります。通常はTLSサーバーのみが認証されるWebでのTLSの使用とは異なり、EAP-TLSの展開では通常、EAPピアとEAPサーバーの両方が認証されます。また、展開の経験から、EAPピアは通常、サーバーよりも長い証明書チェーンを持っています。これは、EAPピアが組織の階層構造に従うことが多く、多数の中間証明書を持つ傾向があるためです。したがって、EAP-TLS認証では通常、TLSをHTTPSの一部として使用する場合よりもはるかに多くのオクテットを交換することになります。
+      </t>
+      <t indent="0" pn="section-1-3">
+			<xref target="RFC3748" sectionFormat="of" section="3.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3748#section-3.1" derivedContent="RFC3748"/>は、EAPの実装が下位層から少なくとも1020オクテットの最大転送単位（Maximum Transmission Unit; MTU）を想定できると述べています。典型的な展開におけるEAPのフラグメントのサイズは、わずか1020〜1500オクテットです（イーサネットフレームの最大サイズが約1500バイトであるため）。したがって、EAP-TLS認証は、下位層で転送するために多数の小さなパケットに断片化する必要があります。このような断片化は、遅延に悪影響を及ぼすだけでなく、ほかの課題も引き起こします。
+			たとえば、EAPオーセンティケーター（たとえば、アクセスポイント）の実装の中には、40〜50回の往復が過ぎても終了していないEAPセッションを切断するものがあります。これは大きな問題であり、多くの状況において、認証と鍵導出を成功させるための有効なクレデンシャルを双方が持っているにもかかわらず、EAPピアがネットワークアクセス認証を実行できないことを意味します。
+      </t>
+      <t indent="0" pn="section-1-4">
+			すべてのEAPの展開が下位層のMTUによって制約されるわけではありません。たとえば、一部の実装は、非常に大きなEAPパケットを容易に扱えるイーサネットの「ジャンボ」フレーム上のEAPをサポートしています。パケットが大きくなれば、当然、EAP-TLS認証を成功させるのに必要な往復の回数を減らすのに役立ちます。しかし、展開の経験から、これらのジャンボフレームが常に正しく実装されているとは限らないことがわかっています。さらに、EAPのフラグメントのサイズは、オーセンティケーターとEAPサーバーの間でEAPメッセージを転送する役割を担うRADIUS<xref target="RFC2865" format="default" sectionFormat="of" derivedContent="RFC2865"/>などのプロトコルによっても制限されます。RADIUSは一般に、1つのメッセージで約4000オクテットのEAPしか転送できません（<xref target="RFC2865" format="default" sectionFormat="of" derivedContent="RFC2865"/>では、RADIUSパケットの最大長は4096オクテットに制限されています）。
+      </t>
+      <t indent="0" pn="section-1-5">
+			この文書は、大きな証明書と長い証明書チェーンによって引き起こされる展開上の課題を克服するために利用可能な関連研究と潜在的なツールを検討します。
+			次に、これらの課題を克服するために利用可能な解決策について議論します。解決策の多くはTLS 1.3<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>を必要とします。IETFはEAP-TLS 1.3<xref target="RFC9190" format="default" sectionFormat="of" derivedContent="RFC9190"/>を標準化しており、ほかのTLSベースのEAP方式がTLS 1.3をどのように使用するかについて、<xref target="TLS-EAP-TYPES" format="default" sectionFormat="of" derivedContent="TLS-EAP-TYPES"/>などの仕様を策定中です。
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+			「<bcp14>要求されています（REQUIRED）</bcp14>」、
+			「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+			「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+			「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+			「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+			BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+			ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+      <t indent="0" pn="section-2-2">
+			読者は、EAP<xref target="RFC3748" format="default" sectionFormat="of" derivedContent="RFC3748"/>、EAP-TLS<xref target="RFC5216" format="default" sectionFormat="of" derivedContent="RFC5216"/>、TLS<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>で使用される用語と概念に精通していることが期待されます。特に、この文書では、<xref target="RFC5216" format="default" sectionFormat="of" derivedContent="RFC5216"/>で定義されている次の用語を頻繁に使用します。
+      </t>
+      <dl newline="false" spacing="normal" indent="6" pn="section-2-3">
+        <dt pn="section-2-3.1">オーセンティケーター（Authenticator）：</dt>
+        <dd pn="section-2-3.2">
+					EAP認証を開始するエンティティー。通常、ネットワークスイッチや無線アクセスポイントの一部として実装されます。
+					</dd>
+        <dt pn="section-2-3.3">EAPピア（EAP peer）：</dt>
+        <dd pn="section-2-3.4">
+					オーセンティケーターに応答するエンティティー。<xref target="IEEE-802.1X" format="default" sectionFormat="of" derivedContent="IEEE-802.1X"/>では、このエンティティーはサプリカント（supplicant）と呼ばれます。EAP-TLSでは、EAPピアはTLSクライアントの役割を実装します。
+					</dd>
+        <dt pn="section-2-3.5">EAPサーバー（EAP server）：</dt>
+        <dd pn="section-2-3.6">
+					ピアとのEAP認証方式を終端するエンティティー。バックエンド認証サーバーが使用されない場合、EAPサーバーはオーセンティケーターの一部です。オーセンティケーターがパススルーモードで動作する場合、EAPサーバーはバックエンド認証サーバー上に配置されます。EAP-TLSでは、EAPサーバーはTLSサーバーの役割を実装します。
+					</dd>
+      </dl>
+      <t indent="0" pn="section-2-4">
+			この文書ではさらに、<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>で定義されている「トラストアンカー（trust anchor）」と「証明書パス（certification path）」という用語を使用します。
+      </t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-experience-with-deployments">展開での経験</name>
+      <t indent="0" pn="section-3-1">
+		前述のとおり、典型的な展開におけるEAPのフラグメントのサイズは、わずか1020〜1500オクテットです。しかし、証明書はさまざまな理由で大きくなることがあります。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-2">
+        <li pn="section-3-2.1">長いSubject Alternative Nameフィールドを持つことがあります。</li>
+        <li pn="section-3-2.2">長いPublic KeyフィールドとSignatureフィールドを持つことがあります。</li>
+        <li pn="section-3-2.3"><xref target="RFC5216" sectionFormat="of" section="5.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc5216#section-5.3" derivedContent="RFC5216"/>で述べられているように、証明書の許可された用途を示す複数のオブジェクト識別子（OID）を含むことがあります。ほとんどの実装は、認証を成功させるためにこれらのOIDが存在することを検証します。</li>
+        <li pn="section-3-2.4">（クライアント証明書において）ユーザーが複数のグループに所属していることを反映するために、複数の組織名のフィールドを含むことがあります。</li>
+      </ul>
+      <t indent="0" pn="section-3-3">
+			EAP-TLSにおける証明書チェーン（<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>では証明書パスと呼ばれます）には、エンドエンティティー証明書とトラストアンカーの間に2〜6個の中間証明書があることがよくあります。
+      </t>
+      <t indent="0" pn="section-3-4">
+			証明書（および証明書チェーン）のサイズは、将来、耐量子暗号の導入によって何倍にも増加する可能性もあります。たとえば、格子ベースの暗号では、公開鍵が約1000バイト、署名が約2000バイトになります。
+      </t>
+      <t indent="0" pn="section-3-5">
+			多くのアクセスポイントの実装は、40〜50回の往復以内に完了しないEAPセッションを切断します。これは、チェーンが約60キロバイトより大きい場合、ほとんどの展開でEAP-TLS認証を正常に完了できないことを意味します。
+      </t>
+    </section>
+    <section anchor="handle-large-cert-long-chain" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-handling-of-large-certifica">大きな証明書と長い証明書チェーンの扱い</name>
+      <t indent="0" pn="section-4-1">
+		このセクションでは、EAP-TLS認証における大きな証明書と長い証明書チェーンという課題を克服するための、いくつかの可能な代替案について議論します。<xref target="update-certs" format="default" sectionFormat="of" derivedContent="Section 4.1"/>では、既存のEAP-TLSのコードベースを変更することなく、EAP-TLS認証に使用される証明書や証明書チェーンを更新する必要がある推奨事項を検討します。また、EAP-TLSで使用する証明書を発行する際に従うべきガイドラインもいくつか示します。<xref target="update-code" format="default" sectionFormat="of" derivedContent="Section 4.2"/>では、EAP-TLSの実装の更新に依存し、既存の証明書のままで展開できる推奨事項を検討します。最後に、<xref target="update-APs" format="default" sectionFormat="of" derivedContent="Section 4.3"/>では、展開済みのコンポーネントを置き換えることが困難な場合に、オーセンティケーターを更新または再設定するために何ができるかを簡単に議論します。これにより、既存の証明書やコードを変更することなく展開できる解決策が得られます。
+      </t>
+      <section anchor="update-certs" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-updating-certificates-and-c">証明書と証明書チェーンの更新</name>
+        <t indent="0" pn="section-4.1-1">
+				現在、多くのIETFのプロトコルは、下位の暗号操作に楕円曲線暗号（ECC）<xref target="RFC6090" format="default" sectionFormat="of" derivedContent="RFC6090"/>を使用しています。ECCを使用すると、証明書と署名のサイズを削減できます。たとえば、128ビットのセキュリティーレベルでは、従来のRSAの公開鍵のサイズは約384バイトですが、ECCの公開鍵のサイズはわずか32〜64バイトです。同様に、従来のRSAのデジタル署名のサイズは384バイトですが、楕円曲線デジタル署名アルゴリズム（ECDSA）やエドワーズ曲線デジタル署名アルゴリズム（EdDSA）<xref target="RFC8032" format="default" sectionFormat="of" derivedContent="RFC8032"/>ではわずか64バイトです。ECCを使用する証明書を使えば、EAP-TLS認証におけるメッセージの数を削減でき、往復の回数が多すぎるためにオーセンティケーターがEAPセッションを切断するという問題を軽減できます。別途規定する標準のアプリケーションプロファイルがない場合、TLS 1.3<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>は実装にECCのサポートを要求します。ECCを使用する新しい暗号スイートは、TLS 1.2向けにも規定されています<xref target="RFC8422" format="default" sectionFormat="of" derivedContent="RFC8422"/>。既存のコードでECCベースの暗号スイートを使用すれば、1つのEAPセッションにおけるメッセージの数を大幅に削減できます。
+        </t>
+        <section anchor="cert-guide" numbered="true" toc="include" removeInRFC="false" pn="section-4.1.1">
+          <name slugifiedName="name-guidelines-for-certificates">証明書に関するガイドライン</name>
+          <t indent="0" pn="section-4.1.1-1">フィールドに過剰な情報を入れないことで証明書のサイズを小さく保つという一般的なガイドラインは、EAP-TLS認証の失敗という問題を回避するのに役立ちます。EAP-TLSで使用する証明書に関するより具体的な推奨事項は次のとおりです。
+          </t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.1.1-2">
+            <li pn="section-4.1.1-2.1">
+              <t indent="0" pn="section-4.1.1-2.1.1">
+		オブジェクト識別子（Object Identifier; OID）は、オブジェクトの一意な識別子を定義するASN.1のデータ型です。OIDのASN.1の値は整数の列であり、関連するオブジェクトに名前を付けるために使用されます。識別符号化規則（Distinguished Encoding Rules; DER）では、最初の2つの整数は常に1オクテットを占め、後続の整数は可能な限り少ないオクテットで128進数で符号化されると規定しています。OIDはX.509証明書<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>で大量に使用されており、すべてを避けることはできません（たとえば、拡張やアルゴリズムとそれに関連するパラメーターのOID）が、証明書の発行者が十分に制御できるものもあります。
+              </t>
+              <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.1.1-2.1.2">
+                <li pn="section-4.1.1-2.1.2.1">
+		DN（識別名; Distinguished Name）の各名前属性には1つずつOIDがあります。DNは、issuerフィールドとsubjectフィールドだけでなく、多数の拡張でも使用されます。階層の浅い名前ほど小さくなります。たとえば、C=FI, O=Example, OU=Division 1, SOPN=Southern Finland, CN=Coolest IoT Gadget Ever, SN=B0A123499EFCに対して、C=FI, O=Example, SN=B0A123499EFCのほうが小さくなります。
+								</li>
+                <li pn="section-4.1.1-2.1.2.2">
+		すべての証明書ポリシー（および修飾子）と、別のポリシーへのマッピングは、識別子を使用します。どのポリシーを適用するかを慎重に検討してください。
+								</li>
+              </ul>
+            </li>
+            <li pn="section-4.1.1-2.2">
+		DirectoryString型とGeneralName型は、ものに名前を付けるために広く使用されています。たとえば、DNの名前属性O=（組織名の属性）のDirectoryStringにはExample組織を表す「Example」が含まれ、uniformResourceIdentifierは、CRL Distribution Point拡張において証明書失効リスト（CRL）の場所（たとえば、「http://crl.example.com/sfig2s1-128.crl」）を示すために使用できます。これらの具体例では、各文字は1バイトです。非ASCII文字列の中には、1文字が数バイトになるものもあります。当然ながら、名前は一意である必要がありますが、長い文字列を使わずにこれを達成する方法は1つだけではありません。これは、名前がユーザーにとって意味を持つことを意図していない場合には特に当てはまります。
+						</li>
+            <li pn="section-4.1.1-2.3">
+		拡張は<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>に準拠するために必要ですが、その大部分は任意です。動作に必要なものだけを含めてください。
+						</li>
+            <li pn="section-4.1.1-2.4">前述のとおり、EAPピアの証明書チェーンは組織の階層構造に従うことがよくあります。このような場合、中間証明書の情報（郵便の住所など）は何の付加価値も提供しないため、短くすることができます（たとえば、完全な住所の代わりに部署名だけを含めるなど）。</li>
+          </ul>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.1.2">
+          <name slugifiedName="name-pre-distributing-and-omitti">CA証明書の事前配布と省略</name>
+          <t indent="0" pn="section-4.1.2-1">
+		TLSのCertificateメッセージは、送信側エンドポイントの証明書チェーンを伝達します。TLSでは、相手のエンドポイントが所持していることがわかっている証明書を省略することで、エンドポイントがCertificateメッセージのサイズを削減できます。TLS 1.3を使用する場合、相手のエンドポイントが知っているトラストアンカーを指定するすべての証明書を省略してもかまいません（<xref target="RFC8446" sectionFormat="of" section="4.4.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-4.4.2" derivedContent="RFC8446"/>を参照）。TLS 1.2以前を使用する場合、省略してもよいのは、ルート認証局を指定する自己署名証明書のみです（<xref target="RFC5246" sectionFormat="of" section="7.4.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc5246#section-7.4.2" derivedContent="RFC5246"/>を参照）。したがって、TLSの実装をバージョン1.3に更新することは、EAP-TLS認証で交換されるメッセージの数を大幅に削減するのに役立ちます。省略される証明書はTLSとは独立して事前に配布される必要があり、TLSの実装は、これらの事前配布された証明書を省略するように設定される必要があります。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.1.3">
+          <name slugifiedName="name-using-fewer-intermediate-ce">中間証明書の削減</name>
+          <t indent="0" pn="section-4.1.3-1">
+					EAPピアの証明書チェーンは、組織の階層構造を反映する必要はありません。EAP-TLS認証を成功させるために、証明書チェーンには4個を超える中間証明書を含める<bcp14>べきではありません（SHOULD NOT）</bcp14>。
+          </t>
+          <t indent="0" pn="section-4.1.3-2">
+	TLSベースのEAP方式を使用する展開に責任を持つ管理者は、証明書チェーンを調べて、認証を成功させるのに必要な往復の回数をおおまかに計算できます。たとえば、ピアとサーバーの証明書チェーンに含まれるすべての証明書の合計サイズ（バイト単位）を1020バイトで割ると、必要な往復の回数がわかります。この数が50を超える場合、管理者は、多くの一般的なオーセンティケーターの実装で失敗が起こることを予想できます。
+          </t>
+        </section>
+      </section>
+      <section anchor="update-code" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-updating-tls-and-eap-tls-co">TLSとEAP-TLSのコードの更新</name>
+        <t indent="0" pn="section-4.2-1">このセクションでは、下位のTLSやEAP-TLSの実装を更新することで、断片化の問題をどのように回避できるかを議論します。場合によっては、新しい機能が下位のライブラリーにすでに実装されており、有効にするだけでよいこともある点に注意してください。</t>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.1">
+          <name slugifiedName="name-urls-for-client-certificate">クライアント証明書のURL</name>
+          <t indent="0" pn="section-4.2.1-1">
+					<xref target="RFC6066" format="default" sectionFormat="of" derivedContent="RFC6066"/>は「client_certificate_url」拡張を定義しています。この拡張により、TLSクライアントは、クライアント証明書チェーンの代わりにURL（Uniform Resource Locator）の列を送信できます。URLは、1つの証明書を参照することも、証明書チェーンを参照することもできます。この拡張を使用すると、EAPの展開における断片化の量を削減でき、その結果EAPセッションを正常に完了できるようになります。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.2">
+          <name slugifiedName="name-caching-certificates">証明書のキャッシュ</name>
+          <t indent="0" pn="section-4.2.2-1">
+					TLS Cached Information Extension<xref target="RFC7924" format="default" sectionFormat="of" derivedContent="RFC7924"/>は、以前のTLSハンドシェイクでキャッシュされた証明書の情報をサーバーが送信しないようにできる拡張を規定しています。クライアントとサーバーは、まず完全なTLSハンドシェイクを実行します。次に、クライアントはサーバーが提供した証明書をキャッシュします。その後、TLSクライアントがセッション再開を使用せずに同じTLSサーバーに接続するとき、クライアントはClientHelloメッセージに「cached_info」拡張を付けることができます。これにより、クライアントは証明書をキャッシュしていることを示せます。クライアントは、サーバーの証明書チェーンのフィンガープリントも含めます。サーバーの証明書が変更されていなければ、サーバーは自身の証明書と対応する証明書チェーンを再度送信する必要はありません。クライアントが提供したフィンガープリントからわかるように情報が変更されている場合は、クライアントがキャッシュを更新できるように、証明書のペイロードがクライアントに送信されます。しかし、この拡張では、キャッシュを行う前に完全なハンドシェイクが成功している必要があります。この拡張は、たとえば、ホームネットワークでEAPピアとEAPサーバーの間の認証がすでに成功している場合に有用です。ローミング先のネットワークのオーセンティケーターが長いEAPセッションをより厳しく切断する場合、EAPピアはCached Information Extensionを使用して、メッセージの総数を削減できます。
+          </t>
+          <t indent="0" pn="section-4.2.2-2">
+					しかし、ある特定のEAPピアとEAPサーバーの組み合わせに対して、すべてのオーセンティケーターがEAPセッションを切断する場合、完全なハンドシェイクを成功させることはできません。このようなシナリオでの選択肢の1つは、EAP-TLSの交換が失敗した場合でも検証済みの証明書チェーンをキャッシュすることですが、このようなキャッシュは現在のところ<xref target="RFC7924" format="default" sectionFormat="of" derivedContent="RFC7924"/>では規定されていません。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.3">
+          <name slugifiedName="name-compressing-certificates">証明書の圧縮</name>
+          <t indent="0" pn="section-4.2.3-1">
+	TLSワーキンググループは、完全なハンドシェイクの際に証明書と証明書チェーンを圧縮できるようにするTLS 1.3の拡張<xref target="RFC8879" format="default" sectionFormat="of" derivedContent="RFC8879"/>を標準化しました。クライアントは、ClientHelloメッセージにこの拡張を含めることで、圧縮されたサーバー証明書のサポートを示すことができます。同様に、サーバーは、CertificateRequestメッセージにこの拡張を含めることで、クライアント証明書の圧縮のサポートを示すことができます。このような拡張はEAP-TLSにおける過剰な断片化の問題を軽減できますが、TLSバージョン1.3以上でしか使用できません。古いバージョンのTLSに依存する展開は、この拡張の恩恵を受けられません。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.4">
+          <name slugifiedName="name-compact-tls-13">Compact TLS 1.3</name>
+          <t indent="0" pn="section-4.2.4-1">
+					<xref target="I-D.ietf-tls-ctls" format="default" sectionFormat="of" derivedContent="cTLS"/>はTLS 1.3の「コンパクト」バージョンを定義しており、古くなった要素を取り除き、より効率的なエンコーディングを使用することで、プロトコルのメッセージサイズを削減します。また、どちらの側も「既知の証明書」の辞書を定義できる圧縮プロファイルも定義しています。したがって、cTLSは、EAP-TLSの展開においてメッセージのサイズを削減し、過剰な断片化を回避するための別のメカニズムを提供できる可能性があります。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.5">
+          <name slugifiedName="name-suppressing-intermediate-ce">中間証明書の抑制</name>
+          <t indent="0" pn="section-4.2.5-1">
+					証明書チェーン内のすべての中間証明書を持っているクライアントにとって、サーバーがTLSハンドシェイクで中間証明書を送信することは、ハンドシェイクのサイズを不必要に増加させます。<xref target="I-D.thomson-tls-sic" format="default" sectionFormat="of" derivedContent="TLS-SIC"/>は、公開されている中間証明書の完全な集合にアクセスできるTLSクライアントがその事実をサーバーに通知できるようにするTLS 1.3の拡張を提案しています。これにより、サーバーは中間証明書の送信を避けることができ、TLSハンドシェイクのサイズが削減されます。このメカニズムは、証明書の圧縮を補完することを意図しています。
+          </t>
+          <t indent="0" pn="section-4.2.5-2">
+					<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>で規定されているAuthority Information Access（AIA）拡張は、エンドエンティティー証明書やCA証明書とともに使用して、その拡張が含まれる証明書の発行者に関する情報にアクセスするために使用できます。たとえば、（その拡張が含まれる）証明書の失効状態を確認できるOnline Certificate Status Protocol（OCSP）レスポンダーのアドレスを提供するために使用できます。また、発行者の証明書を取得するためにも使用できます。したがって、AIA拡張は、発行者の証明書全体を含める代わりに発行者の証明書へのポインターだけを含めることで、証明書チェーンのサイズを削減できます。しかし、そのためには、拡張を含む証明書を受信する側がネットワーク接続を持っている必要があります（情報がすでにローカルにキャッシュされている場合を除きます）。当然ながら、このような間接参照はサーバー証明書には使用できません（ほとんどの展開では、EAPピアは認証前にはネットワーク接続を持っておらず、通常、発行者の証明書の最新のローカルキャッシュも保持していないためです）。
+          </t>
+        </section>
+        <section numbered="true" toc="include" removeInRFC="false" pn="section-4.2.6">
+          <name slugifiedName="name-raw-public-keys">生の公開鍵</name>
+          <t indent="0" pn="section-4.2.6-1">
+					<xref target="RFC7250" format="default" sectionFormat="of" derivedContent="RFC7250"/>は、認証に生の公開鍵（raw public key）を使用できるようにするための新しい証明書タイプとTLS拡張を定義しています。生の公開鍵は、典型的な証明書に含まれる情報の一部しか使用しないため、サイズがはるかに小さくなります。しかし、生の公開鍵では、公開鍵とその鍵を提示するエンティティーを結び付けるための帯域外のメカニズムが必要です。生の公開鍵を使用すれば、大きな証明書と長い証明書チェーンに起因する断片化の問題は当然回避できます。公開鍵を識別子と結び付けるための適切な帯域外のメカニズムが用意されている限り、展開ではその使用を検討できます。当然ながら、展開では、生の公開鍵を使用する際の失効と鍵のローテーションの課題も考慮する必要があります。
+          </t>
+        </section>
+        <section anchor="new-cert-format" numbered="true" toc="include" removeInRFC="false" pn="section-4.2.7">
+          <name slugifiedName="name-new-certificate-types-and-c">新しい証明書タイプと圧縮アルゴリズム</name>
+          <t indent="0" pn="section-4.2.7-1">
+	従来のX.509証明書よりも小さい新しい証明書タイプを規定する作業が進行中です。たとえば、<xref target="I-D.mattsson-cose-cbor-cert-compress" format="default" sectionFormat="of" derivedContent="CBOR-CERT"/>は、X.509証明書のConcise Binary Object Representation（CBOR）<xref target="RFC8949" format="default" sectionFormat="of" derivedContent="RFC8949"/>エンコーディングを定義しています。CBORエンコーディングは、既存のX.509証明書を圧縮するためにも、ネイティブに署名されたCBOR証明書のためにも使用できます。<xref target="I-D.tschofenig-tls-cwt" format="default" sectionFormat="of" derivedContent="TLS-CWT"/>は、TLSの実装がCBOR Web Token（CWT）<xref target="RFC8392" format="default" sectionFormat="of" derivedContent="RFC8392"/>を証明書として使用できるようにする新しいTLSの証明書タイプを登録します。これらは初期段階の取り組みですが、将来のEAP-TLSの展開では、大きなメッセージサイズを避けるために、これらの新しい証明書タイプと圧縮アルゴリズムの使用を検討できます。
+          </t>
+        </section>
+      </section>
+      <section anchor="update-APs" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-updating-authenticators">オーセンティケーターの更新</name>
+        <t indent="0" pn="section-4.3-1">
+	オーセンティケーターが送信できるパケット数、オクテット数、往復の回数を制限したいと考えるのには、いくつかの正当な理由があります。主な理由は、EAPピアとEAPサーバーが互いのメッセージにACKを返し続ける無限ループに陥るという問題を回避することでした。別の理由は、EAPを使用する未認証のデバイスからの無制限の通信が、不適切な大量データ転送の経路になりうることです。3つ目の理由は、サービス拒否攻撃を防ぐことです。
+        </t>
+        <t indent="0" pn="section-4.3-2">
+				すでに展開されている何百万ものアクセスポイントやスイッチを更新することは、多くの場合現実的ではありません。ベンダーが廃業していたり、製品をもうサポートしていなかったりすることがあり、管理者がデバイスへのログイン情報を失っていることもあります。現実的には、EAPのインフラストラクチャーは当面のあいだ硬直化しています。
+        </t>
+        <t indent="0" pn="section-4.3-3">
+				新しいオーセンティケーターを作るベンダーは、EAP認証の完了を拒否するまでに許容する往復の回数を100回に増やすことを検討すべきです。現在展開されている証明書と証明書チェーンのサイズに基づくと、このように増やすことで、ピアとサーバーがEAP-TLS認証を完了できることがおそらく保証されます。同時に、EAPの展開に責任を持つ管理者は、実際にこの100回の往復の制限を超えないようにすべきです。
+        </t>
+      </section>
+    </section>
+    <section anchor="IANA" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">この文書にはIANAアクションはありません。</t>
+    </section>
+    <section anchor="Security" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">
+			実装をTLSバージョン1.3に更新すると、相手のエンドポイントが知っているトラストアンカーを持つすべての証明書を省略できます。さらに、TLS 1.3は、EAP-TLSに対して、セキュリティーとプライバシーの改善と遅延の削減を提供します<xref target="RFC9190" format="default" sectionFormat="of" derivedContent="RFC9190"/>。
+      </t>
+      <t indent="0" pn="section-6-2">
+			証明書を圧縮する際のセキュリティーに関する考慮事項は、<xref target="RFC8879" format="default" sectionFormat="of" derivedContent="RFC8879"/>で規定されています。
+      </t>
+      <t indent="0" pn="section-6-3">
+			参照されている文書を使用する際には、それぞれの文書に固有のセキュリティーに関する考慮事項が適用されます。
+      </t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.thomson-tls-sic" to="TLS-SIC"/>
+    <displayreference target="I-D.ietf-tls-ctls" to="cTLS"/>
+    <displayreference target="I-D.tschofenig-tls-cwt" to="TLS-CWT"/>
+    <displayreference target="I-D.mattsson-cose-cbor-cert-compress" to="CBOR-CERT"/>
+    <references pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3748" target="https://www.rfc-editor.org/info/rfc3748" quoteTitle="true" derivedAnchor="RFC3748">
+          <front>
+            <title>Extensible Authentication Protocol (EAP)</title>
+            <author initials="B." surname="Aboba" fullname="B. Aboba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Blunk" fullname="L. Blunk">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Vollbrecht" fullname="J. Vollbrecht">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Carlson" fullname="J. Carlson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Levkowetz" fullname="H. Levkowetz" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2004" month="June"/>
+            <abstract>
+              <t indent="0">This document defines the Extensible Authentication Protocol (EAP), an authentication framework which supports multiple authentication methods.  EAP typically runs directly over data link layers such as Point-to-Point Protocol (PPP) or IEEE 802, without requiring IP.  EAP provides its own support for duplicate elimination and retransmission, but is reliant on lower layer ordering guarantees.  Fragmentation is not supported within EAP itself; however, individual EAP methods may support this.  This document obsoletes RFC 2284.  A summary of the changes between this document and RFC 2284 is available in Appendix A.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3748"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3748"/>
+        </reference>
+        <reference anchor="RFC4851" target="https://www.rfc-editor.org/info/rfc4851" quoteTitle="true" derivedAnchor="RFC4851">
+          <front>
+            <title>The Flexible Authentication via Secure Tunneling Extensible Authentication Protocol Method (EAP-FAST)</title>
+            <author initials="N." surname="Cam-Winget" fullname="N. Cam-Winget">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="McGrew" fullname="D. McGrew">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Salowey" fullname="J. Salowey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Zhou" fullname="H. Zhou">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2007" month="May"/>
+            <abstract>
+              <t indent="0">This document defines the Extensible Authentication Protocol (EAP) based Flexible Authentication via Secure Tunneling (EAP-FAST) protocol.  EAP-FAST is an EAP method that enables secure communication between a peer and a server by using the Transport Layer Security (TLS) to establish a mutually authenticated tunnel. Within the tunnel, Type-Length-Value (TLV) objects are used to convey authentication related data between the peer and the EAP server.  This memo provides information for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4851"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4851"/>
+        </reference>
+        <reference anchor="RFC5216" target="https://www.rfc-editor.org/info/rfc5216" quoteTitle="true" derivedAnchor="RFC5216">
+          <front>
+            <title>The EAP-TLS Authentication Protocol</title>
+            <author initials="D." surname="Simon" fullname="D. Simon">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Aboba" fullname="B. Aboba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Hurst" fullname="R. Hurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="March"/>
+            <abstract>
+              <t indent="0">The Extensible Authentication Protocol (EAP), defined in RFC 3748, provides support for multiple authentication methods.  Transport Layer Security (TLS) provides for mutual authentication, integrity-protected ciphersuite negotiation, and key exchange between two endpoints.  This document defines EAP-TLS, which includes support for certificate-based mutual authentication and key derivation.</t>
+              <t indent="0">This document obsoletes RFC 2716.  A summary of the changes between this document and RFC 2716 is available in Appendix A.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5216"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5216"/>
+        </reference>
+        <reference anchor="RFC5280" target="https://www.rfc-editor.org/info/rfc5280" quoteTitle="true" derivedAnchor="RFC5280">
+          <front>
+            <title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
+            <author initials="D." surname="Cooper" fullname="D. Cooper">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Santesson" fullname="S. Santesson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Farrell" fullname="S. Farrell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Boeyen" fullname="S. Boeyen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Housley" fullname="R. Housley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="W." surname="Polk" fullname="W. Polk">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="May"/>
+            <abstract>
+              <t indent="0">This memo profiles the X.509 v3 certificate and X.509 v2 certificate revocation list (CRL) for use in the Internet.  An overview of this approach and model is provided as an introduction.  The X.509 v3 certificate format is described in detail, with additional information regarding the format and semantics of Internet name forms.  Standard certificate extensions are described and two Internet-specific extensions are defined.  A set of required certificate extensions is specified.  The X.509 v2 CRL format is described in detail along with standard and Internet-specific extensions.  An algorithm for X.509 certification path validation is described.  An ASN.1 module and examples are provided in the appendices.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5280"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5280"/>
+        </reference>
+        <reference anchor="RFC5281" target="https://www.rfc-editor.org/info/rfc5281" quoteTitle="true" derivedAnchor="RFC5281">
+          <front>
+            <title>Extensible Authentication Protocol Tunneled Transport Layer Security Authenticated Protocol Version 0 (EAP-TTLSv0)</title>
+            <author initials="P." surname="Funk" fullname="P. Funk">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Blake-Wilson" fullname="S. Blake-Wilson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="August"/>
+            <abstract>
+              <t indent="0">EAP-TTLS is an EAP (Extensible Authentication Protocol) method that encapsulates a TLS (Transport Layer Security) session, consisting of a handshake phase and a data phase.  During the handshake phase, the server is authenticated to the client (or client and server are mutually authenticated) using standard TLS procedures, and keying material is generated in order to create a cryptographically secure tunnel for information exchange in the subsequent data phase.  During the data phase, the client is authenticated to the server (or client and server are mutually authenticated) using an arbitrary authentication mechanism encapsulated within the secure tunnel.  The encapsulated authentication mechanism may itself be EAP, or it may be another authentication protocol such as PAP, CHAP, MS-CHAP, or MS-CHAP-V2.  Thus, EAP-TTLS allows legacy password-based authentication protocols to be used against existing authentication databases, while protecting the security of these legacy protocols against eavesdropping, man-in-the-middle, and other attacks.  The data phase may also be used for additional, arbitrary data exchange.  This memo  provides information for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5281"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5281"/>
+        </reference>
+        <reference anchor="RFC7170" target="https://www.rfc-editor.org/info/rfc7170" quoteTitle="true" derivedAnchor="RFC7170">
+          <front>
+            <title>Tunnel Extensible Authentication Protocol (TEAP) Version 1</title>
+            <author initials="H." surname="Zhou" fullname="H. Zhou">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Cam-Winget" fullname="N. Cam-Winget">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Salowey" fullname="J. Salowey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Hanna" fullname="S. Hanna">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="May"/>
+            <abstract>
+              <t indent="0">This document defines the Tunnel Extensible Authentication Protocol (TEAP) version 1.  TEAP is a tunnel-based EAP method that enables secure communication between a peer and a server by using the Transport Layer Security (TLS) protocol to establish a mutually authenticated tunnel.  Within the tunnel, TLV objects are used to convey authentication-related data between the EAP peer and the EAP server.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7170"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7170"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8446" target="https://www.rfc-editor.org/info/rfc8446" quoteTitle="true" derivedAnchor="RFC8446">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t>
+              <t indent="0">This document updates RFCs 5705 and 6066, and obsoletes RFCs 5077, 5246, and 6961.  This document also specifies new requirements for TLS 1.2 implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8446"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+        <reference anchor="RFC9190" quoteTitle="true" target="https://www.rfc-editor.org/rfc/rfc9190" derivedAnchor="RFC9190">
+          <front>
+            <title>EAP-TLS 1.3: Using the Extensible Authentication Protocol with TLS 1.3</title>
+            <author initials="J." surname="Preuß Mattsson" fullname="John Preuß Mattsson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M" surname="Sethi" fullname="Mohit Sethi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="February" year="2022"/>
+          </front>
+          <seriesInfo name="RFC" value="9190"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9190"/>
+        </reference>
+      </references>
+      <references pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="I-D.mattsson-cose-cbor-cert-compress" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-mattsson-cose-cbor-cert-compress-08" derivedAnchor="CBOR-CERT">
+          <front>
+            <title>CBOR Encoded X.509 Certificates (C509 Certificates)</title>
+            <author initials="S." surname="Raza" fullname="Shahid Raza">
+              <organization showOnFrontPage="true">RISE AB</organization>
+            </author>
+            <author initials="J." surname="Höglund" fullname="Joel Höglund">
+              <organization showOnFrontPage="true">RISE AB</organization>
+            </author>
+            <author initials="G." surname="Selander" fullname="Göran Selander">
+              <organization showOnFrontPage="true">Ericsson AB</organization>
+            </author>
+            <author initials="J." surname="Preuß Mattsson" fullname="John Preuß Mattsson">
+              <organization showOnFrontPage="true">Ericsson AB</organization>
+            </author>
+            <author initials="M." surname="Furuhed" fullname="Martin Furuhed">
+              <organization showOnFrontPage="true">Nexus Group</organization>
+            </author>
+            <date month="February" day="22" year="2021"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mattsson-cose-cbor-cert-compress-08"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="I-D.ietf-tls-ctls" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-tls-ctls-04" derivedAnchor="cTLS">
+          <front>
+            <title>Compact TLS 1.3</title>
+            <author fullname="Eric Rescorla">
+              <organization showOnFrontPage="true">Mozilla</organization>
+            </author>
+            <author fullname="Richard Barnes">
+              <organization showOnFrontPage="true">Cisco</organization>
+            </author>
+            <author fullname="Hannes Tschofenig">
+              <organization showOnFrontPage="true">Arm Limited</organization>
+            </author>
+            <date month="October" day="25" year="2021"/>
+            <abstract>
+              <t indent="0">   This document specifies a "compact" version of TLS 1.3.  It is
+   isomorphic to TLS 1.3 but saves space by trimming obsolete material,
+   tighter encoding, a template-based specialization technique, and
+   alternative cryptographic techniques. cTLS is not directly
+   interoperable with TLS 1.3, but it should eventually be possible for
+   a cTLS/TLS 1.3 server to exist and successfully interoperate.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tls-ctls-04"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-ietf-tls-ctls-04.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="IEEE-802.1X" quoteTitle="true" target="https://doi.org/10.1109/IEEESTD.2020.9018454" derivedAnchor="IEEE-802.1X">
+          <front>
+            <title>IEEE Standard for Local and Metropolitan Area NNetworks--Port-Based Network Access Control</title>
+            <author>
+              <organization showOnFrontPage="true">IEEE</organization>
+            </author>
+            <date month="February" year="2020"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1109/IEEESTD.2020.9018454"/>
+          <seriesInfo name="IEEE Standard" value="802.1X-2020"/>
+        </reference>
+        <reference anchor="PEAP" quoteTitle="true" derivedAnchor="PEAP">
+          <front>
+            <title>[MS-PEAP]: Protected Extensible Authentication Protocol (PEAP)</title>
+            <author>
+              <organization showOnFrontPage="true">Microsoft Corporation</organization>
+            </author>
+            <date month="June" year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="RFC2865" target="https://www.rfc-editor.org/info/rfc2865" quoteTitle="true" derivedAnchor="RFC2865">
+          <front>
+            <title>Remote Authentication Dial In User Service (RADIUS)</title>
+            <author initials="C." surname="Rigney" fullname="C. Rigney">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Willens" fullname="S. Willens">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Rubens" fullname="A. Rubens">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="W." surname="Simpson" fullname="W. Simpson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2000" month="June"/>
+            <abstract>
+              <t indent="0">This document describes a protocol for carrying authentication, authorization, and configuration information between a Network Access Server which desires to authenticate its links and a shared Authentication Server.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2865"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2865"/>
+        </reference>
+        <reference anchor="RFC5246" target="https://www.rfc-editor.org/info/rfc5246" quoteTitle="true" derivedAnchor="RFC5246">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+            <author initials="T." surname="Dierks" fullname="T. Dierks">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies Version 1.2 of the Transport Layer Security (TLS) protocol.  The TLS protocol provides communications security over the Internet.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5246"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5246"/>
+        </reference>
+        <reference anchor="RFC6066" target="https://www.rfc-editor.org/info/rfc6066" quoteTitle="true" derivedAnchor="RFC6066">
+          <front>
+            <title>Transport Layer Security (TLS) Extensions: Extension Definitions</title>
+            <author initials="D." surname="Eastlake 3rd" fullname="D. Eastlake 3rd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="January"/>
+            <abstract>
+              <t indent="0">This document provides specifications for existing TLS extensions.  It is a companion document for RFC 5246, "The Transport Layer Security (TLS) Protocol Version 1.2".  The extensions specified are server_name, max_fragment_length, client_certificate_url, trusted_ca_keys, truncated_hmac, and status_request.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6066"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6066"/>
+        </reference>
+        <reference anchor="RFC6090" target="https://www.rfc-editor.org/info/rfc6090" quoteTitle="true" derivedAnchor="RFC6090">
+          <front>
+            <title>Fundamental Elliptic Curve Cryptography Algorithms</title>
+            <author initials="D." surname="McGrew" fullname="D. McGrew">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Igoe" fullname="K. Igoe">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Salter" fullname="M. Salter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="February"/>
+            <abstract>
+              <t indent="0">This note describes the fundamental algorithms of Elliptic Curve Cryptography (ECC) as they were defined in some seminal references from 1994 and earlier.  These descriptions may be useful for implementing the fundamental algorithms without using any of the specialized methods that were developed in following years.  Only elliptic curves defined over fields of characteristic greater than three are in scope; these curves are those used in Suite B. This document is not an Internet Standards Track specification; it is published for informational purposes.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6090"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6090"/>
+        </reference>
+        <reference anchor="RFC7250" target="https://www.rfc-editor.org/info/rfc7250" quoteTitle="true" derivedAnchor="RFC7250">
+          <front>
+            <title>Using Raw Public Keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
+            <author initials="P." surname="Wouters" fullname="P. Wouters" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Gilmore" fullname="J. Gilmore">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Weiler" fullname="S. Weiler">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Kivinen" fullname="T. Kivinen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="June"/>
+            <abstract>
+              <t indent="0">This document specifies a new certificate type and two TLS extensions for exchanging raw public keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS).  The new certificate type allows raw public keys to be used for authentication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7250"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7250"/>
+        </reference>
+        <reference anchor="RFC7924" target="https://www.rfc-editor.org/info/rfc7924" quoteTitle="true" derivedAnchor="RFC7924">
+          <front>
+            <title>Transport Layer Security (TLS) Cached Information Extension</title>
+            <author initials="S." surname="Santesson" fullname="S. Santesson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="July"/>
+            <abstract>
+              <t indent="0">Transport Layer Security (TLS) handshakes often include fairly static information, such as the server certificate and a list of trusted certification authorities (CAs).  This information can be of considerable size, particularly if the server certificate is bundled with a complete certificate chain (i.e., the certificates of intermediate CAs up to the root CA).</t>
+              <t indent="0">This document defines an extension that allows a TLS client to inform a server of cached information, thereby enabling the server to omit already available information.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7924"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7924"/>
+        </reference>
+        <reference anchor="RFC8032" target="https://www.rfc-editor.org/info/rfc8032" quoteTitle="true" derivedAnchor="RFC8032">
+          <front>
+            <title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title>
+            <author initials="S." surname="Josefsson" fullname="S. Josefsson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="I." surname="Liusvaara" fullname="I. Liusvaara">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="January"/>
+            <abstract>
+              <t indent="0">This document describes elliptic curve signature scheme Edwards-curve Digital Signature Algorithm (EdDSA).  The algorithm is instantiated with recommended parameters for the edwards25519 and edwards448 curves.  An example implementation and test vectors are provided.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8032"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8032"/>
+        </reference>
+        <reference anchor="RFC8392" target="https://www.rfc-editor.org/info/rfc8392" quoteTitle="true" derivedAnchor="RFC8392">
+          <front>
+            <title>CBOR Web Token (CWT)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Wahlstroem" fullname="E. Wahlstroem">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Erdtman" fullname="S. Erdtman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="May"/>
+            <abstract>
+              <t indent="0">CBOR Web Token (CWT) is a compact means of representing claims to be transferred between two parties.  The claims in a CWT are encoded in the Concise Binary Object Representation (CBOR), and CBOR Object Signing and Encryption (COSE) is used for added application-layer security protection.  A claim is a piece of information asserted about a subject and is represented as a name/value pair consisting of a claim name and a claim value.  CWT is derived from JSON Web Token (JWT) but uses CBOR rather than JSON.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8392"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8392"/>
+        </reference>
+        <reference anchor="RFC8422" target="https://www.rfc-editor.org/info/rfc8422" quoteTitle="true" derivedAnchor="RFC8422">
+          <front>
+            <title>Elliptic Curve Cryptography (ECC) Cipher Suites for Transport Layer Security (TLS) Versions 1.2 and Earlier</title>
+            <author initials="Y." surname="Nir" fullname="Y. Nir">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Josefsson" fullname="S. Josefsson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Pegourie-Gonnard" fullname="M. Pegourie-Gonnard">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t indent="0">This document describes key exchange algorithms based on Elliptic Curve Cryptography (ECC) for the Transport Layer Security (TLS) protocol.  In particular, it specifies the use of Ephemeral Elliptic Curve Diffie-Hellman (ECDHE) key agreement in a TLS handshake and the use of the Elliptic Curve Digital Signature Algorithm (ECDSA) and Edwards-curve Digital Signature Algorithm (EdDSA) as authentication mechanisms.</t>
+              <t indent="0">This document obsoletes RFC 4492.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8422"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8422"/>
+        </reference>
+        <reference anchor="RFC8879" target="https://www.rfc-editor.org/info/rfc8879" quoteTitle="true" derivedAnchor="RFC8879">
+          <front>
+            <title>TLS Certificate Compression</title>
+            <author initials="A." surname="Ghedini" fullname="A. Ghedini">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="V." surname="Vasiliev" fullname="V. Vasiliev">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="December"/>
+            <abstract>
+              <t indent="0">In TLS handshakes, certificate chains often take up the majority of the bytes transmitted.</t>
+              <t indent="0">This document describes how certificate chains can be compressed to reduce the amount of data transmitted and avoid some round trips.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8879"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8879"/>
+        </reference>
+        <reference anchor="RFC8949" target="https://www.rfc-editor.org/info/rfc8949" quoteTitle="true" derivedAnchor="RFC8949">
+          <front>
+            <title>Concise Binary Object Representation (CBOR)</title>
+            <author initials="C." surname="Bormann" fullname="C. Bormann">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="December"/>
+            <abstract>
+              <t indent="0">The Concise Binary Object Representation (CBOR) is a data format whose design goals include the possibility of extremely small code size, fairly small message size, and extensibility without the need for version negotiation. These design goals make it different from earlier binary serializations such as ASN.1 and MessagePack.</t>
+              <t indent="0">This document obsoletes RFC 7049, providing editorial improvements, new details, and errata fixes while keeping full compatibility with the interchange format of RFC 7049.  It does not create a new version of the format.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="94"/>
+          <seriesInfo name="RFC" value="8949"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8949"/>
+        </reference>
+        <reference anchor="I-D.tschofenig-tls-cwt" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-tschofenig-tls-cwt-02" derivedAnchor="TLS-CWT">
+          <front>
+            <title>Using CBOR Web Tokens (CWTs) in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
+            <author fullname="Hannes Tschofenig">
+              <organization showOnFrontPage="true">Arm Limited</organization>
+            </author>
+            <author fullname="Mathias Brossard">
+              <organization showOnFrontPage="true">Arm Limited</organization>
+            </author>
+            <date month="July" day="13" year="2020"/>
+            <abstract>
+              <t indent="0">   The TLS protocol supports different credentials, including pre-shared
+   keys, raw public keys, and X.509 certificates.  For use with public
+   key cryptography developers have to decide between raw public keys,
+   which require out-of-band agreement and full-fletched X.509
+   certificates.  For devices where the reduction of code size is
+   important it is desirable to minimize the use of X.509-related
+   libraries.  With the CBOR Web Token (CWT) a structure has been
+   defined that allows CBOR-encoded claims to be protected with CBOR
+   Object Signing and Encryption (COSE).
+
+   This document registers a new value to the "TLS Certificate Types"
+   sub-registry to allow TLS and DTLS to use CWTs.  Conceptually, CWTs
+   can be seen as a certificate format (when with public key
+   cryptography) or a Kerberos ticket (when used with symmetric key
+   cryptography).
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-tschofenig-tls-cwt-02"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-tschofenig-tls-cwt-02.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="TLS-EAP-TYPES" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-emu-tls-eap-types-04" derivedAnchor="TLS-EAP-TYPES">
+          <front>
+            <title>TLS-based EAP types and TLS 1.3</title>
+            <author initials="A" surname="DeKok" fullname="Alan DeKok">
+              <organization showOnFrontPage="true">FreeRADIUS</organization>
+            </author>
+            <date month="January" day="22" year="2022"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-emu-tls-eap-types-04"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="I-D.thomson-tls-sic" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-thomson-tls-sic-00" derivedAnchor="TLS-SIC">
+          <front>
+            <title>Suppressing Intermediate Certificates in TLS</title>
+            <author fullname="Martin Thomson">
+              <organization showOnFrontPage="true">Mozilla</organization>
+            </author>
+            <date month="March" day="27" year="2019"/>
+            <abstract>
+              <t indent="0">   A TLS client that has access to the complete set of published
+   intermediate certificates can inform servers of this fact so that the
+   server can avoid sending intermediates, reducing the size of the TLS
+   handshake.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-thomson-tls-sic-00"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-thomson-tls-sic-00.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">
+		この文書は、<contact fullname="Alan DeKok"/>、<contact fullname="Bernard   Aboba"/>、<contact fullname="Jari Arkko"/>、<contact fullname="Jouni Malinen"/>、<contact fullname="Darshak   Thakore"/>、<contact fullname="Hannes Tschofening"/>との数々の有益な議論の成果です。
+      </t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="M" surname="Sethi" fullname="Mohit Sethi">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <postal>
+            <street/>
+            <city>Jorvas</city>
+            <code>02420</code>
+            <country>Finland</country>
+          </postal>
+          <email>mohit@iki.fi</email>
+        </address>
+      </author>
+      <author initials="J." surname="Preuß Mattsson" fullname="John Preuß Mattsson">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <postal>
+            <street/>
+            <city>Kista</city>
+            <code/>
+            <country>Sweden</country>
+          </postal>
+          <email>john.mattsson@ericsson.com</email>
+        </address>
+      </author>
+      <author initials="S" surname="Turner" fullname="Sean Turner">
+        <organization showOnFrontPage="true">sn3rd</organization>
+        <address>
+          <postal>
+            <street/>
+            <city/>
+            <code/>
+            <country/>
+          </postal>
+          <email>sean@sn3rd.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

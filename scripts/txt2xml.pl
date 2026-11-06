@@ -62,6 +62,8 @@ sub parse_section_name($s) {
 
     $number =~ s/[.:]$//; # 末尾のピリオドやコロンを削除
     my @numbers = split /[.]/, $number;
+    # "1.0 Introduction" のように末尾が ".0" の見出しは、"1.1" などを子に持つ最上位の章として扱う
+    pop @numbers while @numbers > 1 && $numbers[-1] eq "0";
     my $slugified_name = lc($name =~ s/\s+/-/gr);
     return +{
         anchor => $slugified_name,
@@ -491,6 +493,7 @@ my $references_root = {
     type => "references_root",
     parent => undef,
     level => 0,
+    title => { level => 0 },
 };
 my $current_references = undef;
 
@@ -499,6 +502,7 @@ my $appendix_root = {
     type => "appendix-root",
     parent => undef,
     level => 0,
+    title => { level => 0 },
 };
 my $current_appendix = undef;
 
@@ -548,7 +552,7 @@ for my $content(@contents) {
                 push @{$references_root->{contents}}, $new_references;
                 $new_references->{parent} = $references_root;
             } else {
-                my $parent = $current_references;
+                my $parent = $current_references // $references_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
                 while ($parent->{title}->{level} >= $title->{level}) {
                     $parent = $parent->{parent};
                 }
@@ -567,7 +571,7 @@ for my $content(@contents) {
                 push @{$appendix_root->{contents}}, $new_appendix;
                 $new_appendix->{parent} = $appendix_root;
             } else {
-                my $parent = $current_appendix;
+                my $parent = $current_appendix // $appendix_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
                 while ($parent->{title}->{level} >= $title->{level}) {
                     $parent = $parent->{parent};
                 }
@@ -602,7 +606,7 @@ for my $content(@contents) {
                 push @{$root->{contents}}, $new_section;
                 $new_section->{parent} = $root;
             } else {
-                my $parent = $current_section;
+                my $parent = $current_section // $root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
                 while ($parent->{title}->{level} >= $title->{level}) {
                     $parent = $parent->{parent};
                 }

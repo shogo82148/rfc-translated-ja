@@ -1297,6 +1297,10 @@ class HtmlWriter:
         div.set('class', classes)
         div.tail = x.tail
         h.append(div)
+        # anchor が pn と同じ場合は set_pn_id で div 自身に付く ID と重複するので省略する
+        anchor = x.get('anchor')
+        if anchor and anchor != x.get('pn'):
+            div.append(build('span', id='%s-%s'%(anchor,self.lang)))
         pre = build('pre')
         pre.text = x.text
         div.append(pre)
@@ -1308,6 +1312,10 @@ class HtmlWriter:
 
         div = build('div', lang='')
         h.append(div)
+        # anchor が pn と同じ場合は set_pn_id で div 自身に付く ID と重複するので省略する
+        anchor = x.get('anchor')
+        if anchor and anchor != x.get('pn'):
+            div.append(build('span', id='%s-%s'%(anchor,self.lang)))
         if type == 'svg':
             # Extract and append SVG elements
             for child in x:

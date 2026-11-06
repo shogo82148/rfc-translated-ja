@@ -1,0 +1,1107 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-masque-connect-udp-latest" indexInclude="true" ipr="trust200902" number="9298" prepTime="2022-08-24T14:42:32" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true">
+  <link href="https://dx.doi.org/10.17487/rfc9298" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-masque-connect-udp-latest" rel="prev"/>
+  <front>
+    <title>HTTPにおけるUDPのプロキシー</title>
+    <seriesInfo name="RFC" value="9298" stream="IETF"/>
+    <author initials="D." surname="Schinazi" fullname="David Schinazi">
+      <organization showOnFrontPage="true">Google LLC</organization>
+      <address>
+        <postal>
+          <street>1600 Amphitheatre Parkway</street>
+          <city>Mountain View</city>
+          <region>CA</region>
+          <code>94043</code>
+          <country>United States of America</country>
+        </postal>
+        <email>dschinazi.ietf@gmail.com</email>
+      </address>
+    </author>
+    <date month="08" year="2022"/>
+    <area>Transport</area>
+    <workgroup>MASQUE</workgroup>
+    <keyword>quic</keyword>
+    <keyword>http</keyword>
+    <keyword>datagram</keyword>
+    <keyword>udp</keyword>
+    <keyword>proxy</keyword>
+    <keyword>tunnels</keyword>
+    <keyword>quic in quic</keyword>
+    <keyword>turtles all the way down</keyword>
+    <keyword>masque</keyword>
+    <keyword>http-ng</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、HTTPのCONNECTメソッドがHTTPにおけるTCPのプロキシーを可能にしているのと同様に、HTTPにおいてUDPをプロキシーする方法を説明します。
+より具体的には、この文書は、HTTPクライアントがプロキシーとして動作するHTTPサーバーを通じて、UDP通信のためのトンネルを作成できるようにするプロトコルを定義します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9298" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Revised BSD Licenseのテキストを含める必要があり、Revised BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-definitions">表記規則と定義</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-client-configuration">クライアントの設定</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tunneling-udp-over-http">HTTP上でのUDPのトンネリング</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-udp-proxy-handling">UDPプロキシーでの処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-11-request">HTTP/1.1のリクエスト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-11-response">HTTP/1.1のレスポンス</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-2-and-http-3-requests">HTTP/2とHTTP/3のリクエスト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.5">
+                <t indent="0" pn="section-toc.1-1.3.2.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-2-and-http-3-responses">HTTP/2とHTTP/3のレスポンス</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-context-identifiers">コンテキスト識別子</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-datagram-payload-forma">HTTPデータグラムのペイロード形式</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-performance-considerations">パフォーマンスに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mtu-considerations">MTUに関する考慮事項</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tunneling-of-ecn-marks">ECNマークのトンネリング</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-upgrade-token">HTTPアップグレードトークン</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-well-known-uri">Well-Known URI</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-address">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">HTTPは、プロキシーへのTCP <xref target="RFC9293" format="default" sectionFormat="of" derivedContent="TCP"/> トンネルを作成するためのCONNECTメソッド（<xref section="9.3.6" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-9.3.6" derivedContent="HTTP"/>を参照）を提供していますが、この仕様以前には、UDP <xref target="RFC0768" format="default" sectionFormat="of" derivedContent="UDP"/> トラフィックについて同じことを行う方法がありませんでした。</t>
+      <t indent="0" pn="section-1-2">この文書は、HTTP上でUDP専用のプロキシーとして動作するサーバーに向けて、UDPをトンネリングするためのプロトコルを説明します。
+UDPトンネルは、エンドツーエンドの仮想的なコネクションを作成するために一般的に使用され、そのコネクションはQUIC <xref target="RFC9000" format="default" sectionFormat="of" derivedContent="QUIC"/> やUDP上で動作する別のプロトコルを使用して保護できます。
+HTTPのCONNECTメソッドとは異なり、UDPプロキシー自体は、トラフィックの宛先を含む絶対URLによって識別されます。
+<xref target="client-config" format="default" sectionFormat="of" derivedContent="Section 2"/>で説明するように、クライアントはURIテンプレート <xref target="RFC6570" format="default" sectionFormat="of" derivedContent="TEMPLATE"/> を使用してそれらのURLを生成します。</t>
+      <t indent="0" pn="section-1-3">このプロトコルは、HTTPデータグラム <xref target="RFC9297" format="default" sectionFormat="of" derivedContent="HTTP-DGRAM"/> を使用することで、既存のすべてのバージョンのHTTPをサポートします。
+HTTP/2 <xref target="RFC9113" format="default" sectionFormat="of" derivedContent="HTTP/2"/> またはHTTP/3 <xref target="RFC9114" format="default" sectionFormat="of" derivedContent="HTTP/3"/> を使用する場合は、<xref target="RFC8441" format="default" sectionFormat="of" derivedContent="EXT-CONNECT2"/>と<xref target="RFC9220" format="default" sectionFormat="of" derivedContent="EXT-CONNECT3"/>で説明されているHTTPの拡張CONNECT（Extended CONNECT）を使用します。
+HTTP/1.x <xref target="RFC9112" format="default" sectionFormat="of" derivedContent="HTTP/1.1"/> を使用する場合は、<xref section="7.8" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-7.8" derivedContent="HTTP"/>で定義されているHTTPのアップグレード（Upgrade）を使用します。</t>
+      <section anchor="conventions" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-and-definitions">表記規則と定義</name>
+        <t indent="0" pn="section-1.1-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+        <t indent="0" pn="section-1.1-2">この文書では、「UDPプロキシー（UDP proxy）」という用語を、クライアントのUDPトンネリングリクエストに応じてターゲットサーバーへのUDPソケットを開き、そのリクエストに対するレスポンスを生成するHTTPサーバーを指すために使用します。
+クライアントとUDPプロキシーの間にHTTPの仲介者（<xref section="3.7" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-3.7" derivedContent="HTTP"/>で定義）が存在する場合、この文書ではそれらを「仲介者（intermediaries）」と呼びます。</t>
+        <t indent="0" pn="section-1.1-3">使用しているHTTPのバージョンがストリームの多重化をサポートしていない場合（HTTP/1.1など）、この文書における「ストリーム」への言及はすべて、コネクション全体を表すことに注意してください。</t>
+      </section>
+    </section>
+    <section anchor="client-config" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-client-configuration">クライアントの設定</name>
+      <t indent="0" pn="section-2-1">HTTPクライアントは、変数「target_host」と「target_port」を持つURIテンプレート <xref target="RFC6570" format="default" sectionFormat="of" derivedContent="TEMPLATE"/> によって、UDPプロキシーを使用するように設定されます。
+以下に例を示します。</t>
+      <figure anchor="fig-template-examples" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-uri-template-examples">URIテンプレートの例</name>
+        <artwork type="ascii-art" align="left" pn="section-2-2.1">
+https://example.org/.well-known/masque/udp/{target_host}/{target_port}/
+https://proxy.example.org:4443/masque?h={target_host}&amp;p={target_port}
+https://proxy.example.org:4443/masque{?target_host,target_port}
+</artwork>
+      </figure>
+      <t indent="0" pn="section-2-3">URIテンプレートには、次の要件が適用されます。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-4">
+        <li pn="section-2-4.1">URIテンプレートは、レベル3以下のテンプレートで<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-2-4.2">URIテンプレートは、絶対形式で<bcp14>なければなりません（MUST）</bcp14>。
+また、空でないスキーム、オーソリティー、パスの構成要素を含ま<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-2-4.3">URIテンプレートのパス構成要素は、スラッシュ（"/"）で始まら<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-2-4.4">すべてのテンプレート変数は、URIのパスまたはクエリーの構成要素の中に<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-2-4.5">URIテンプレートは、2つの変数「target_host」と「target_port」を含ま<bcp14>なければなりません（MUST）</bcp14>。
+また、他の変数を含んでも<bcp14>よいです（MAY）</bcp14>。</li>
+        <li pn="section-2-4.6">URIテンプレートは、非ASCIIのUnicode文字を含んでは<bcp14>なりません（MUST NOT）</bcp14>。
+また、0x21から0x7Eまで（両端を含む）の範囲のASCII文字のみを含ま<bcp14>なければなりません（MUST）</bcp14>（パーセントエンコーディングは許可されていることに注意してください。<xref section="2.1" sectionFormat="of" target="RFC3986" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3986#section-2.1" derivedContent="URI"/>を参照）。</li>
+        <li pn="section-2-4.7">URIテンプレートは、予約展開（Reserved Expansion、"+"演算子）、フラグメント展開（Fragment Expansion、"#"演算子）、ドット接頭辞付きラベル展開（Label Expansion with Dot-Prefix）、スラッシュ接頭辞付きパスセグメント展開（Path Segment Expansion with Slash-Prefix）、セミコロン接頭辞付きパス形式パラメーター展開（Path-Style Parameter Expansion with Semicolon-Prefix）のいずれも使用しては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+      </ul>
+      <t indent="0" pn="section-2-5">クライアントは、上記の要件を検証<bcp14>すべきです（SHOULD）</bcp14>。
+ただし、クライアントはこの固有の検証を備えていない汎用のURIテンプレート実装を使用しても<bcp14>よいです（MAY）</bcp14>。
+URIテンプレートが上記の要件のいずれかを満たしていないことを検出した場合、クライアントはその設定を拒否し、UDPプロキシーにリクエストを送信せずに中止<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-2-6">元のHTTPのCONNECTメソッドでは、ターゲットのホストとポートを伝えることはできましたが、スキーム、プロキシーのオーソリティー、パス、クエリーを伝えることはできませんでした。
+そのため、ユーザーがプロキシーのホストとポートしか設定できないプロキシー設定インターフェイスを持つクライアントが存在します。
+このような制約を受けるこの仕様のクライアント実装は、デフォルトテンプレートを使用してUDPプロキシーの機能へのアクセスを試みても<bcp14>よいです（MAY）</bcp14>。
+デフォルトテンプレートは「https://$PROXY_HOST:$PROXY_PORT/.well-known/masque/udp/{target_host}/{target_port}/」と定義され、$PROXY_HOSTと$PROXY_PORTはそれぞれ、設定されたUDPプロキシーのホストとポートです。
+UDPプロキシーの運用者は、このようなクライアントと相互運用する必要がある場合、この場所でサービスを提供<bcp14>すべきです（SHOULD）</bcp14>。</t>
+    </section>
+    <section anchor="tunneling-udp-over-http" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-tunneling-udp-over-http">HTTP上でのUDPのトンネリング</name>
+      <t indent="0" pn="section-3-1">HTTP上でのUDPのトンネルのネゴシエーションを可能にするために、この文書は「connect-udp」HTTPアップグレードトークンを定義します。
+結果として得られるUDPトンネルは、<xref target="format" format="default" sectionFormat="of" derivedContent="Section 5"/>で定義される形式のHTTPデータグラムとともに、カプセルプロトコル（Capsule Protocol、<xref section="3.2" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-3.2" derivedContent="HTTP-DGRAM"/>を参照）を使用します。</t>
+      <t indent="0" pn="section-3-2">単一のHTTPストリームに関連付けられたUDPトンネルを開始するために、クライアントは「connect-udp」アップグレードトークンを含むリクエストを発行します。
+トンネルのターゲットは、URIテンプレートの変数「target_host」と「target_port」を介して、クライアントからUDPプロキシーに示されます。<xref target="client-config" format="default" sectionFormat="of" derivedContent="Section 2"/>を参照してください。</t>
+      <t indent="0" pn="section-3-3">「target_host」は、DNS名、IPv6リテラル、IPv4リテラルの使用をサポートします。
+IPv6のスコープ付きアドレスのゾーン識別子はサポートされないことに注意してください。
+<xref target="RFC3986" format="default" sectionFormat="of" derivedContent="URI"/>の用語IPv6address、IPv4address、reg-name、portを使用して、変数「target_host」と「target_port」は、<xref target="RFC2234" format="default" sectionFormat="of" derivedContent="ABNF"/>の記法を用いた<xref target="target-format" format="default" sectionFormat="of" derivedContent="Figure 2"/>の形式に従わ<bcp14>なければなりません（MUST）</bcp14>。
+さらに、次のとおりです。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-4">
+        <li pn="section-3-4.1">変数「target_host」と「target_port」は、どちらも空であっては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+        <li pn="section-3-4.2">「target_host」がIPv6リテラルを含む場合、コロン（":"）はパーセントエンコードされ<bcp14>なければなりません（MUST）</bcp14>。
+たとえば、ターゲットホストが「2001:db8::42」である場合、URI内では「2001%3Adb8%3A%3A42」とエンコードされます。</li>
+        <li pn="section-3-4.3">「target_port」は、1から65535まで（両端を含む）の整数を表さ<bcp14>なければなりません（MUST）</bcp14>。</li>
+      </ul>
+      <figure anchor="target-format" align="left" suppress-title="false" pn="figure-2">
+        <name slugifiedName="name-uri-template-variable-forma">URIテンプレート変数の形式</name>
+        <artwork type="ascii-art" align="left" pn="section-3-5.1">
+target_host = IPv6address / IPv4address / reg-name
+target_port = port
+</artwork>
+      </figure>
+      <t indent="0" pn="section-3-6">UDPプロキシーリクエストを送信する際、クライアントは、リクエストのパスとクエリーを決定するためにURIテンプレートを展開<bcp14>することになります（SHALL）</bcp14>。</t>
+      <t indent="0" pn="section-3-7">リクエストが成功した場合、UDPプロキシーは、トンネルが閉じられるまで、受信したHTTPデータグラムをUDPパケットに変換すること、およびその逆を行うことを約束します。</t>
+      <t indent="0" pn="section-3-8">カプセルプロトコルの定義（<xref section="3.2" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-3.2" derivedContent="HTTP-DGRAM"/>を参照）により、UDPプロキシーリクエストはメッセージコンテンツを一切運びません。
+同様に、成功したUDPプロキシーレスポンスもメッセージコンテンツを一切運びません。</t>
+      <section anchor="handling" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-udp-proxy-handling">UDPプロキシーでの処理</name>
+        <t indent="0" pn="section-3.1-1">UDPプロキシーリクエストを受信したときは、次のようになります。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1-2">
+          <li pn="section-3.1-2.1">受信者が別のHTTPプロキシーを使用するように設定されている場合、受信者はリクエストを別のHTTPサーバーに転送することで、仲介者として動作します。
+リクエストのエンコーディングはバージョンによって異なるため（下記を参照）、そのような仲介者は、受信に使用されたものとは異なるバージョンのHTTPでリクエストを転送する場合、リクエストを再エンコードする必要があるかもしれないことに注意してください。</li>
+          <li pn="section-3.1-2.2">それ以外の場合、受信者はUDPプロキシーとして動作します。受信者は、リクエストヘッダーから再構築したURIから変数「target_host」と「target_port」を抽出し、それらのパーセントエンコーディングをデコードし、要求されたターゲットへのUDPソケットを直接開くことでトンネルを確立します。</li>
+        </ul>
+        <t indent="0" pn="section-3.1-3">TCPとは異なり、UDPはコネクションレスです。
+UDPソケットを開くUDPプロキシーには、宛先に到達可能かどうかを知る方法がありません。
+そのため、UDPプロキシーはターゲットからのパケットを待たずにリクエストに応答する必要があります。
+ただし、「target_host」がDNS名である場合、UDPプロキシーはHTTPリクエストに応答する前にDNSの名前解決を行わ<bcp14>なければなりません（MUST）</bcp14>。
+この処理中にエラーが発生した場合、UDPプロキシーはリクエストを拒否<bcp14>しなければなりません（MUST）</bcp14>。
+その際、適切なProxy-Statusヘッダーフィールド <xref target="RFC9209" format="default" sectionFormat="of" derivedContent="PROXY-STATUS"/> を使用して詳細を送信<bcp14>すべきです（SHOULD）</bcp14>。
+たとえば、DNSの名前解決がエラーを返した場合、プロキシーは<xref section="2.3.2" sectionFormat="of" target="RFC9209" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9209#section-2.3.2" derivedContent="PROXY-STATUS"/>のdns_errorプロキシーエラータイプ（Proxy Error Type）を使用できます。</t>
+        <t indent="0" pn="section-3.1-4">オペレーティングシステムがサポートしている場合、UDPプロキシーは接続済みUDPソケット（connected UDP socket）を使用できます。そうすることで、UDPプロキシーは正しい5タプルに一致するUDPパケットのみを送ってくれるようにカーネルに任せることができるからです。
+UDPプロキシーが接続されていないソケットを使用する場合、受信したパケットのIP送信元アドレスとUDP送信元ポートを検証して、それらがクライアントのリクエストに一致することを確認<bcp14>しなければなりません（MUST）</bcp14>。
+一致しないパケットは、UDPプロキシーによって破棄され<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.1-5">ソケットの存続期間は、リクエストストリームに結び付けられます。
+UDPプロキシーは、リクエストストリームが開いている間、ソケットを開いたままに<bcp14>しなければなりません（MUST）</bcp14>。
+ソケットがもはや使用できないことをオペレーティングシステムから通知された場合、UDPプロキシーはリクエストストリームを閉じ<bcp14>なければなりません（MUST）</bcp14>。
+たとえば、これはICMP Destination Unreachableメッセージを受信したときに起こり得ます。<xref section="3.1" sectionFormat="of" target="RFC4443" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4443#section-3.1" derivedContent="ICMP6"/>を参照してください。
+UDPプロキシーは、一定期間アクティビティーがないことを理由にソケットを閉じることを選択しても<bcp14>よいです（MAY）</bcp14>。
+ただし、ソケットを閉じる際には、リクエストストリームも閉じ<bcp14>なければなりません（MUST）</bcp14>。
+一定期間アクティビティーがない後にソケットを閉じるUDPプロキシーは、2分より短い期間を使用<bcp14>すべきではありません（SHOULD NOT）</bcp14>。<xref section="4.3" sectionFormat="of" target="RFC4787" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4787#section-4.3" derivedContent="BEHAVE"/>を参照してください。</t>
+        <t indent="0" pn="section-3.1-6">成功レスポンス（セクション<xref format="counter" target="resp1" sectionFormat="of" derivedContent="3.3"/>と<xref format="counter" target="resp23" sectionFormat="of" derivedContent="3.5"/>で定義）は、UDPプロキシーが要求されたターゲットへのソケットを開き、UDPペイロードをプロキシーする意思があることを示します。
+成功レスポンス以外のレスポンスはすべて、リクエストが失敗したことを示します。したがって、クライアントはリクエストを中止<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.1-7">UDPプロキシーは、HTTPデータグラムをUDPソケットに転送する際に、IP層でのフラグメンテーションを引き起こしては<bcp14>なりません（MUST NOT）</bcp14>。大きすぎるデータグラムは、何も通知されずに破棄されます。
+IPv4では、経路上でのフラグメンテーションを防ぐために、可能であればDon't Fragment（DF）ビットを設定<bcp14>しなければなりません（MUST）</bcp14>。
+将来の拡張では、これらの要件を取り除いても<bcp14>よいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-3.1-8">UDPプロキシーの実装者は、<xref target="RFC8085" format="default" sectionFormat="of" derivedContent="UDP-USAGE"/>のガイダンスを読むことが有益です。</t>
+      </section>
+      <section anchor="req1" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-http-11-request">HTTP/1.1のリクエスト</name>
+        <t indent="0" pn="section-3.2-1">HTTP/1.1 <xref target="RFC9112" format="default" sectionFormat="of" derivedContent="HTTP/1.1"/> を使用する場合、UDPプロキシーリクエストは次の要件を満たします。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2-2">
+          <li pn="section-3.2-2.1">メソッドは「GET」と<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.2-2.2">リクエストは、UDPプロキシーのオリジンを含む単一のHostヘッダーフィールドを含むものと<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.2-2.3">リクエストは、値が「Upgrade」であるConnectionヘッダーフィールドを含むものと<bcp14>することになります（SHALL）</bcp14>（<xref section="7.6.1" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-7.6.1" derivedContent="HTTP"/>のとおり、この要件は大文字と小文字を区別しないことに注意してください）。</li>
+          <li pn="section-3.2-2.4">リクエストは、値が「connect-udp」であるUpgradeヘッダーフィールドを含むものと<bcp14>することになります（SHALL）</bcp14>。</li>
+        </ul>
+        <t indent="0" pn="section-3.2-3">これらの制約に従わないUDPプロキシーリクエストは、不正な形式です。
+そのような不正な形式のリクエストの受信者は、エラーで応答<bcp14>しなければなりません（MUST）</bcp14>。
+その際、400（Bad Request）ステータスコードを使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-3.2-4">たとえば、クライアントがURIテンプレート「https://example.org/.well-known/masque/udp/{target_host}/{target_port}/」で設定されていて、ターゲット192.0.2.6:443へのUDPプロキシートンネルを開きたい場合、次のリクエストを送信できます。</t>
+        <figure anchor="fig-req-h1" align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-example-http-11-request">HTTP/1.1のリクエストの例</name>
+          <artwork align="left" pn="section-3.2-5.1">
+GET https://example.org/.well-known/masque/udp/192.0.2.6/443/ HTTP/1.1
+Host: example.org
+Connection: Upgrade
+Upgrade: connect-udp
+Capsule-Protocol: ?1
+</artwork>
+        </figure>
+        <t indent="0" pn="section-3.2-6">HTTP/1.1では、このプロトコルはWebSocketプロトコル <xref target="RFC6455" format="default" sectionFormat="of" derivedContent="WEBSOCKET"/> の設計にならってGETメソッドを使用します。</t>
+      </section>
+      <section anchor="resp1" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-http-11-response">HTTP/1.1のレスポンス</name>
+        <t indent="0" pn="section-3.3-1">UDPプロキシーは、次の要件を満たす応答によって成功レスポンスを示すものと<bcp14>することになります（SHALL）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.3-2">
+          <li pn="section-3.3-2.1">レスポンスのHTTPステータスコードは、101（Switching Protocols）と<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.3-2.2">レスポンスは、値が「Upgrade」であるConnectionヘッダーフィールドを含むものと<bcp14>することになります（SHALL）</bcp14>（<xref section="7.6.1" sectionFormat="of" target="RFC9110" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9110#section-7.6.1" derivedContent="HTTP"/>のとおり、この要件は大文字と小文字を区別しないことに注意してください）。</li>
+          <li pn="section-3.3-2.3">レスポンスは、値が「connect-udp」である単一のUpgradeヘッダーフィールドを含むものと<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.3-2.4">レスポンスは、カプセルプロトコルを開始するHTTPレスポンスの要件を満たすものと<bcp14>することになります（SHALL）</bcp14>。<xref section="3.2" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-3.2" derivedContent="HTTP-DGRAM"/>を参照してください。</li>
+        </ul>
+        <t indent="0" pn="section-3.3-3">これらの要件のいずれかが満たされない場合、クライアントはこのプロキシーの試行を失敗したものとして扱い、コネクションを中止<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.3-4">たとえば、UDPプロキシーは次のように応答できます。</t>
+        <figure anchor="fig-resp-h1" align="left" suppress-title="false" pn="figure-4">
+          <name slugifiedName="name-example-http-11-response">HTTP/1.1のレスポンスの例</name>
+          <sourcecode type="http-message" markers="false" pn="section-3.3-5.1">
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: connect-udp
+Capsule-Protocol: ?1
+</sourcecode>
+        </figure>
+      </section>
+      <section anchor="req23" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-http-2-and-http-3-requests">HTTP/2とHTTP/3のリクエスト</name>
+        <t indent="0" pn="section-3.4-1">HTTP/2 <xref target="RFC9113" format="default" sectionFormat="of" derivedContent="HTTP/2"/> またはHTTP/3 <xref target="RFC9114" format="default" sectionFormat="of" derivedContent="HTTP/3"/> を使用する場合、UDPプロキシーリクエストはHTTPの拡張CONNECTを使用します。
+これには、<xref target="RFC8441" format="default" sectionFormat="of" derivedContent="EXT-CONNECT2"/>と<xref target="RFC9220" format="default" sectionFormat="of" derivedContent="EXT-CONNECT3"/>で規定されているとおりにサーバーがHTTPの設定（Setting）を送信することと、リクエストが次の要件を満たすHTTPの疑似ヘッダーフィールドを使用することが必要です。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.4-2">
+          <li pn="section-3.4-2.1">:method疑似ヘッダーフィールドは、「CONNECT」と<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.4-2.2">:protocol疑似ヘッダーフィールドは、「connect-udp」と<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.4-2.3">:authority疑似ヘッダーフィールドは、UDPプロキシーのオーソリティーを含むものと<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.4-2.4">:path疑似ヘッダーフィールドと:scheme疑似ヘッダーフィールドは、空に<bcp14>することはありません（SHALL NOT）</bcp14>。
+それらの値は、URIテンプレートの展開処理が完了した後のURIテンプレートのスキームとパスを含むものと<bcp14>することになります（SHALL）</bcp14>。</li>
+        </ul>
+        <t indent="0" pn="section-3.4-3">これらの制約に従わないUDPプロキシーリクエストは、不正な形式です（<xref section="8.1.1" sectionFormat="of" target="RFC9113" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9113#section-8.1.1" derivedContent="HTTP/2"/>と<xref section="4.1.2" sectionFormat="of" target="RFC9114" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9114#section-4.1.2" derivedContent="HTTP/3"/>を参照）。</t>
+        <t indent="0" pn="section-3.4-4">たとえば、クライアントがURIテンプレート「https://example.org/.well-known/masque/udp/{target_host}/{target_port}/」で設定されていて、ターゲット192.0.2.6:443へのUDPプロキシートンネルを開きたい場合、次のリクエストを送信できます。</t>
+        <figure anchor="fig-req-h2" align="left" suppress-title="false" pn="figure-5">
+          <name slugifiedName="name-example-http-2-request">HTTP/2のリクエストの例</name>
+          <sourcecode type="http-message" markers="false" pn="section-3.4-5.1">
+HEADERS
+:method = CONNECT
+:protocol = connect-udp
+:scheme = https
+:path = /.well-known/masque/udp/192.0.2.6/443/
+:authority = example.org
+capsule-protocol = ?1
+</sourcecode>
+        </figure>
+      </section>
+      <section anchor="resp23" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-http-2-and-http-3-responses">HTTP/2とHTTP/3のレスポンス</name>
+        <t indent="0" pn="section-3.5-1">UDPプロキシーは、次の要件を満たす応答によって成功レスポンスを示すものと<bcp14>することになります（SHALL）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.5-2">
+          <li pn="section-3.5-2.1">レスポンスのHTTPステータスコードは、2xx（Successful）の範囲と<bcp14>することになります（SHALL）</bcp14>。</li>
+          <li pn="section-3.5-2.2">レスポンスは、カプセルプロトコルを開始するHTTPレスポンスの要件を満たすものと<bcp14>することになります（SHALL）</bcp14>。<xref section="3.2" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-3.2" derivedContent="HTTP-DGRAM"/>を参照してください。</li>
+        </ul>
+        <t indent="0" pn="section-3.5-3">これらの要件のいずれかが満たされない場合、クライアントはこのプロキシーの試行を失敗したものとして扱い、リクエストを中止<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-3.5-4">たとえば、UDPプロキシーは次のように応答できます。</t>
+        <figure anchor="fig-resp-h2" align="left" suppress-title="false" pn="figure-6">
+          <name slugifiedName="name-example-http-2-response">HTTP/2のレスポンスの例</name>
+          <sourcecode type="http-message" markers="false" pn="section-3.5-5.1">
+HEADERS
+:status = 200
+capsule-protocol = ?1
+</sourcecode>
+        </figure>
+      </section>
+    </section>
+    <section anchor="context-id" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-context-identifiers">コンテキスト識別子</name>
+      <t indent="0" pn="section-4-1">この文書で定義するHTTPにおけるUDPのプロキシーの仕組みでは、将来の拡張が、UDPペイロードとは異なるセマンティクスを持つHTTPデータグラムを交換できます。
+これらの拡張の中には、UDPペイロードを追加のデータで補強するものもあれば、UDPペイロードとはまったく別のデータを交換するものもあります。
+これを実現するために、UDPプロキシーのリクエストストリームに関連付けられたすべてのHTTPデータグラムは、Context IDフィールドで始まります。<xref target="format" format="default" sectionFormat="of" derivedContent="Section 5"/>を参照してください。</t>
+      <t indent="0" pn="section-4-2">コンテキストID（Context ID）は、62ビットの整数（0から2<sup>62</sup>-1）です。
+コンテキストIDは、可変長整数としてエンコードされます。<xref section="16" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-16" derivedContent="QUIC"/>を参照してください。
+コンテキストIDの値0はUDPペイロード用に予約されており、0以外の値は動的に割り当てられます。
+0以外の偶数のコンテキストIDはクライアントが割り当て、奇数のコンテキストIDはプロキシーが割り当てます。
+コンテキストIDの名前空間は、特定のHTTPリクエストに結び付けられます。同じ数値を持つコンテキストIDが、異なるリクエストで同時に割り当てられることもあり得て、場合によっては異なるセマンティクスを持ちます。
+コンテキストIDは、特定のHTTPの名前空間の中で再割り当てされては<bcp14>なりません（MUST NOT）</bcp14>。
+ただし、任意の順序で割り当てられても<bcp14>よいです（MAY）</bcp14>。
+偶数と奇数のコンテキストIDの使い分けに関する割り当て上の制約は、エンドポイント間で同期をとる必要がないようにするために存在します。
+ただし、いったんコンテキストIDが割り当てられると、それらの制約はそのコンテキストIDの使用には適用されません。どちらのエンドポイントが最初に割り当てたかにかかわらず、任意のクライアントまたはUDPプロキシーがそのコンテキストIDを使用できます。</t>
+      <t indent="0" pn="section-4-3">登録（registration）とは、エンドポイントが、特定のコンテキストIDのセマンティクスと形式をピアに通知する動作です。
+この文書は、登録がどのように行われるかを定義しません。
+将来の拡張では、コンテキストIDを登録するためにHTTPヘッダーフィールドやカプセルを使用しても<bcp14>よいです（MAY）</bcp14>。
+使用される方法によっては、まだ登録されていないコンテキストIDを持つデータグラムを受信することがあり得ます。
+たとえば、これは、伝送中にデータグラムを含むパケットと登録メッセージを含むパケットの順序が入れ替わることによって起こり得ます。</t>
+    </section>
+    <section anchor="format" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-http-datagram-payload-forma">HTTPデータグラムのペイロード形式</name>
+      <t indent="0" pn="section-5-1">HTTPデータグラム（<xref section="2" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-2" derivedContent="HTTP-DGRAM"/>を参照）がUDPプロキシーのリクエストストリームに関連付けられている場合、HTTP Datagram Payloadフィールドは、<xref section="1.3" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-1.3" derivedContent="QUIC"/>の記法を用いた<xref target="dgram-format" format="default" sectionFormat="of" derivedContent="Figure 7"/>で定義される形式を持ちます。
+HTTPデータグラムがQUIC DATAGRAMフレーム <xref target="RFC9221" format="default" sectionFormat="of" derivedContent="QUIC-DGRAM"/> を使用してエンコードされる場合、以下で定義するContext IDフィールドは、QUIC DATAGRAMフレームのペイロードの先頭にあるQuarter Stream IDフィールドの直後に続くことに注意してください。<xref section="2.1" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-2.1" derivedContent="HTTP-DGRAM"/>を参照してください。</t>
+      <figure anchor="dgram-format" align="left" suppress-title="false" pn="figure-7">
+        <name slugifiedName="name-udp-proxying-http-datagram-">UDPプロキシーのHTTPデータグラムの形式</name>
+        <artwork type="ascii-art" align="left" pn="section-5-2.1">
+UDP Proxying HTTP Datagram Payload {
+  Context ID (i),
+  UDP Proxying Payload (..),
+}
+</artwork>
+      </figure>
+      <dl spacing="compact" indent="3" newline="false" pn="section-5-3">
+        <dt pn="section-5-3.1">Context ID:</dt>
+        <dd pn="section-5-3.2">
+          <t indent="0" pn="section-5-3.2.1">コンテキストIDの値を含む可変長整数（<xref section="16" sectionFormat="of" target="RFC9000" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-16" derivedContent="QUIC"/>を参照）です。
+未知のコンテキストIDを運ぶHTTP/3データグラムを受信した場合、受信者はそのデータグラムを何も通知せずに破棄するか、対応するコンテキストIDの登録を待つ間（ラウンドトリップ程度の時間）一時的にバッファー<bcp14>することになります（SHALL）</bcp14>。</t>
+        </dd>
+        <dt pn="section-5-3.3">UDP Proxying Payload:</dt>
+        <dd pn="section-5-3.4">
+          <t indent="0" pn="section-5-3.4.1">データグラムのペイロードです。そのセマンティクスは、前のフィールドの値に依存します。
+このフィールドは空になり得ることに注意してください。</t>
+        </dd>
+      </dl>
+      <t indent="0" pn="section-5-4">UDPパケットは、Context IDフィールドを0に設定したHTTPデータグラムを使用してエンコードされます。
+Context IDフィールドが0に設定されている場合、UDP Proxying Payloadフィールドには、UDPパケットの変更されていないペイロード（<xref target="RFC0768" format="default" sectionFormat="of" derivedContent="UDP"/>ではデータオクテットと呼ばれます）が含まれます。</t>
+      <t indent="0" pn="section-5-5">UDPヘッダー <xref target="RFC0768" format="default" sectionFormat="of" derivedContent="UDP"/> の定義により、65527バイトより長いUDPペイロードをエンコードすることはできません。
+したがって、エンドポイントは、コンテキストID 0を使用して、UDP Proxying Payloadフィールドが65527より長いHTTPデータグラムを送信しては<bcp14>なりません（MUST NOT）</bcp14>。
+コンテキストID 0を使用し、UDP Proxying Payloadフィールドが65527より長いHTTPデータグラムを受信したエンドポイントは、対応するストリームを中止<bcp14>しなければなりません（MUST）</bcp14>。
+下位のリンクMTUのために特定の長さのUDPパケットしか送出できないことをUDPプロキシーが知っている場合、コンテキストID 0を使用し、UDP Proxying Payloadフィールドがその制限より長い受信HTTPデータグラムを破棄するしかありません。
+破棄されたHTTPデータグラムがDATAGRAMカプセルによって運ばれていた場合、受信者はカプセルの内容をバッファーせずにそのカプセルを破棄<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-5-6">UDPプロキシーが、対応するリクエストを受信する前にHTTPデータグラムを受信した場合、UDPプロキシーはそのHTTPデータグラムを何も通知せずに破棄するか、対応するリクエストを待つ間（ラウンドトリップ程度の時間）一時的にバッファー<bcp14>することになります（SHALL）</bcp14>。</t>
+      <t indent="0" pn="section-5-7">（リクエストをまだ受信していないため、またはコンテキストIDがまだ既知でないために）データグラムをバッファーすることは、リソースを消費することに注意してください。
+データグラムをバッファーする受信者は、リソース枯渇が発生するリスクを減らすために、バッファリングの制限を適用<bcp14>すべきです（SHOULD）</bcp14>。
+たとえば、受信者は、ストリームごと、コンテキストごと、またはコネクションごとに、バッファーされたデータグラムの総数や、バッファーされたデータグラムの累積サイズを制限できます。</t>
+      <t indent="0" pn="section-5-8">クライアントは、UDPプロキシーリクエストに対するレスポンスを受信する前に、楽観的にHTTPデータグラムでUDPパケットの送信を開始しても<bcp14>よいです（MAY）</bcp14>。
+ただし、UDPプロキシーがリクエストに失敗で応答した場合や、プロキシーされたパケットがリクエストより前にUDPプロキシーに受信され、UDPプロキシーがそれらをバッファーしないことを選択した場合には、そのようなプロキシーされたパケットはUDPプロキシーによって処理されない可能性があることに、実装者は注意すべきです。</t>
+    </section>
+    <section anchor="performance" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-performance-considerations">パフォーマンスに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">バースト性のあるトラフィックは、しばしば時間的に相関したパケットロスにつながり、その結果、UDP上で動作するプロトコルの輻輳制御器（congestion controller）の応答が最適でなくなることがあります。
+これを避けるために、UDPプロキシーはUDPトラフィックのバースト性を高めないように努める<bcp14>べきです（SHOULD）</bcp14>。
+UDPプロキシーは、バッチ処理を増やす目的でパケットをキューに入れる<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+      <t indent="0" pn="section-6-2">プロキシーされるUDP上で動作するプロトコルが輻輳制御を使用する場合（たとえば<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="QUIC"/>）、プロキシーされるトラフィックは、少なくとも2つの入れ子になった輻輳制御器の影響を受けます。
+下位のHTTPコネクションは、内側のトラフィックが輻輳制御されていることを完全に確実に知る帯域外の方法を持っていない限り、輻輳制御を無効にしては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      <t indent="0" pn="section-6-3">UDPプロキシーのリクエストストリームを含むコネクションを持つクライアントまたはUDPプロキシーが輻輳制御を無効にする場合、そのコネクションで明示的輻輳通知（Explicit Congestion Notification、ECN） <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="ECN"/> のサポートを通知しては<bcp14>なりません（MUST NOT）</bcp14>。
+つまり、すべてのIPヘッダーにNot-ECTコードポイントを設定<bcp14>しなければなりません（MUST）</bcp14>。
+ピアは輻輳制御を無効にしていないかもしれないため、QUICのACK_ECNフレームやTCPのECEビットを介してECNフィードバックを報告し続けても<bcp14>よいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-6-4">プロキシーされるUDP上で動作するプロトコルがロスリカバリーを使用し（たとえば<xref target="RFC9000" format="default" sectionFormat="of" derivedContent="QUIC"/>）、かつ下位のHTTPコネクションがTCP上で動作する場合、プロキシーされるトラフィックは、少なくとも2つの入れ子になったロスリカバリーの仕組みの影響を受けます。
+両者が独立して同じデータを再送することがあるため、これによりパフォーマンスが低下する可能性があります。
+これを避けるために、QUIC DATAGRAMフレームを活用できるよう、UDPのプロキシーはHTTP/3上で実行<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <section anchor="mtu-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-mtu-considerations">MTUに関する考慮事項</name>
+        <t indent="0" pn="section-6.1-1">QUICデータグラム拡張 <xref target="RFC9221" format="default" sectionFormat="of" derivedContent="QUIC-DGRAM"/> とともにHTTP/3を使用する場合、UDPペイロードはQUIC DATAGRAMフレームで送信されます。
+これらのフレームはフラグメント化できないため、QUICコネクションの設定とパスMTU（PMTU）によって決まる一定の長さまでのペイロードしか運べません。
+UDPプロキシーがQUIC DATAGRAMフレームを使用していて、QUIC DATAGRAMフレームに収まらないUDPペイロードをターゲットから受信した場合、UDPプロキシーはそのUDPペイロードをDATAGRAMカプセルで送信<bcp14>すべきではありません（SHOULD NOT）</bcp14>。そうすると、データグラムパケット化層PMTU探索（Datagram Packetization Layer PMTU Discovery、DPLPMTUD） <xref target="RFC8899" format="default" sectionFormat="of" derivedContent="DPLPMTUD"/> などの方法が依存している、エンドツーエンドで信頼性がないという特性が損なわれるからです。
+このシナリオでは、UDPプロキシーはそのUDPペイロードを破棄し、ターゲットにICMP Packet Too Bigメッセージを送信<bcp14>すべきです（SHOULD）</bcp14>。<xref section="3.2" sectionFormat="of" target="RFC4443" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4443#section-3.2" derivedContent="ICMP6"/>を参照してください。</t>
+      </section>
+      <section anchor="tunneling-of-ecn-marks" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-tunneling-of-ecn-marks">ECNマークのトンネリング</name>
+        <t indent="0" pn="section-6.2-1">UDPのプロキシーはIP-in-IPトンネルを作成しないため、内側と外側のIPヘッダーの間でECNマークを転送することに関する<xref target="RFC6040" format="default" sectionFormat="of" derivedContent="ECN-TUNNEL"/>のガイダンスは適用されません。
+UDPプロキシーのトンネルには、内側のIPヘッダーは存在しません。</t>
+        <t indent="0" pn="section-6.2-2">この仕様では、UDPプロキシーのクライアントは、UDPプロキシーがターゲットに送信するUDPパケットのECNコードポイントを制御する能力を持たず、UDPプロキシーも、ターゲットからUDPプロキシーへの各UDPパケットのマーキングを伝えることはできないことに注意してください。</t>
+        <t indent="0" pn="section-6.2-3">UDPプロキシーは、ターゲットから受信したUDPパケットのIPヘッダーにあるECNビットを無視<bcp14>しなければなりません（MUST）</bcp14>。
+また、ターゲットに送信するUDPパケットのECNビットをNot-ECTに設定<bcp14>しなければなりません（MUST）</bcp14>。
+これらは、クライアントとUDPプロキシーの間で送信されるパケットのECNマーキングとは一切関係ありません。</t>
+      </section>
+    </section>
+    <section anchor="security" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">任意のクライアントが任意のターゲットへのトンネルを確立できるようにすることには、重大なリスクがあります。悪意のある者がトラフィックを送信し、それをUDPプロキシーによるものとみなさせることが可能になるからです。
+UDPのプロキシーをサポートするHTTPサーバーは、その使用を認証済みのユーザーに制限すべきです。</t>
+      <t indent="0" pn="section-7-2">受信したリクエストの送信元IPアドレスに基づいてアクセス制御のチェックを行うソフトウェアやネットワークの運用形態が存在します。
+たとえば、127.0.0.1から発信された場合には認証されていない設定変更を許可するソフトウェアもあります。
+そのようなソフトウェアは、UDPプロキシーと同じホスト上や、同じブロードキャストドメイン内で動作している可能性があります。
+その場合、プロキシーされたUDPトラフィックは、UDPプロキシーに属する送信元IPアドレスで受信されることになります。
+この送信元アドレスがアクセス制御に使用されている場合、UDPプロキシーのクライアントは、UDPプロキシーを使用して、本来持ち得る以上のアクセス権限に昇格できてしまう可能性があります。
+UDPプロキシーが、UDPプロキシー自身のアドレスや、localhost、リンクローカル、マルチキャスト、ブロードキャストのアドレスなどの脆弱なターゲットへのUDPプロキシーリクエストを禁止しない限り、UDPプロキシーのクライアントによる不正アクセスにつながる可能性があります。
+UDPプロキシーは、そのようなリクエストを拒否する際に、<xref section="2.3.5" sectionFormat="of" target="RFC9209" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9209#section-2.3.5" derivedContent="PROXY-STATUS"/>のdestination_ip_prohibitedプロキシーエラータイプを使用できます。</t>
+      <t indent="0" pn="section-7-3">サービス妨害（DoS）攻撃を可能にする悪用の基盤として考えた場合、UDPプロキシーはTCPのCONNECTプロキシーと多くの類似点を持っています。
+どちらも、攻撃者の送信元アドレスを攻撃対象から隠すことができます。
+ステートレスな大量トラフィック攻撃（たとえば、TCP SYNフラッドやUDPフラッド）の場合、どちらの種類のプロキシーも、トラフィックをターゲットホストに渡します。
+ステートフルな大量トラフィック攻撃（たとえば、HTTPフラッディング）がTCPのCONNECTプロキシーを介して送られる場合、プロキシーは、ターゲットがTCP SYN-ACKで応答してデータを受け入れる意思を示した場合にのみデータを送信します。
+ターゲットへの経路があふれると、TCPのCONNECTプロキシーはターゲットから応答を受信しなくなり、データの送信を停止します。
+UDPは、UDPプロキシーとターゲットの間で共有状態を確立しないため、そのような状況でも、UDPプロキシーはターゲットにデータを送信し続ける可能性があります。
+UDPプロキシーは、ターゲットからの応答を観測するまで転送するUDPパケットの数を制限することもできるかもしれませんが、UDP上で動作するプロトコルが応答し、それがUDPプロキシーによってUDPを受け入れる意思と解釈されてしまうような、開いているUDPポートを攻撃対象とするDoS攻撃に対しては、限定的な保護しか提供しません。
+そのようなパケット数の制限は、正当なトラフィックにも問題を引き起こす可能性があります。</t>
+      <t indent="0" pn="section-7-4"><xref section="4" sectionFormat="of" target="RFC9297" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9297#section-4" derivedContent="HTTP-DGRAM"/>で説明されているセキュリティーに関する考慮事項も、ここに適用されます。
+UDP上でIPパケットをトンネリングすることが可能であるため、<xref target="RFC6169" format="default" sectionFormat="of" derivedContent="TUNNEL-SECURITY"/>のガイダンスが適用される場合があります。</t>
+    </section>
+    <section anchor="iana" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="iana-upgrade" numbered="true" removeInRFC="false" toc="include" pn="section-8.1">
+        <name slugifiedName="name-http-upgrade-token">HTTPアップグレードトークン</name>
+        <t indent="0" pn="section-8.1-1">IANAは、&lt;<eref target="https://www.iana.org/assignments/http-upgrade-tokens" brackets="none"/>&gt;で管理されている「HTTP Upgrade Tokens」レジストリーに「connect-udp」を登録しました。</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-8.1-2">
+          <dt pn="section-8.1-2.1">値:</dt>
+          <dd pn="section-8.1-2.2">
+            <t indent="0" pn="section-8.1-2.2.1">connect-udp</t>
+          </dd>
+          <dt pn="section-8.1-2.3">説明:</dt>
+          <dd pn="section-8.1-2.4">
+            <t indent="0" pn="section-8.1-2.4.1">Proxying of UDP Payloads</t>
+          </dd>
+          <dt pn="section-8.1-2.5">期待されるバージョントークン:</dt>
+          <dd pn="section-8.1-2.6">
+            <t indent="0" pn="section-8.1-2.6.1">None</t>
+          </dd>
+          <dt pn="section-8.1-2.7">参照:</dt>
+          <dd pn="section-8.1-2.8">
+            <t indent="0" pn="section-8.1-2.8.1">RFC 9298</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="iana-uri" numbered="true" removeInRFC="false" toc="include" pn="section-8.2">
+        <name slugifiedName="name-well-known-uri">Well-Known URI</name>
+        <t indent="0" pn="section-8.2-1">IANAは、&lt;<eref target="https://www.iana.org/assignments/well-known-uris" brackets="none"/>&gt;で管理されている「Well-Known URIs」レジストリーに「masque」を登録しました。</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-8.2-2">
+          <dt pn="section-8.2-2.1">URIサフィックス:</dt>
+          <dd pn="section-8.2-2.2">
+            <t indent="0" pn="section-8.2-2.2.1">masque</t>
+          </dd>
+          <dt pn="section-8.2-2.3">変更管理者:</dt>
+          <dd pn="section-8.2-2.4">
+            <t indent="0" pn="section-8.2-2.4.1">IETF</t>
+          </dd>
+          <dt pn="section-8.2-2.5">参照:</dt>
+          <dd pn="section-8.2-2.6">
+            <t indent="0" pn="section-8.2-2.6.1">RFC 9298</t>
+          </dd>
+          <dt pn="section-8.2-2.7">ステータス:</dt>
+          <dd pn="section-8.2-2.8">
+            <t indent="0" pn="section-8.2-2.8.1">permanent</t>
+          </dd>
+          <dt pn="section-8.2-2.9">関連情報:</dt>
+          <dd pn="section-8.2-2.10">
+            <t indent="0" pn="section-8.2-2.10.1">パス接頭辞「/.well-known/masque/udp/」で識別されるすべてのリソースを含みます</t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="RFC9112" to="HTTP/1.1"/>
+    <displayreference target="RFC9113" to="HTTP/2"/>
+    <displayreference target="RFC9114" to="HTTP/3"/>
+    <displayreference target="RFC9110" to="HTTP"/>
+    <displayreference target="RFC9293" to="TCP"/>
+    <displayreference target="RFC0768" to="UDP"/>
+    <displayreference target="RFC9000" to="QUIC"/>
+    <displayreference target="RFC6570" to="TEMPLATE"/>
+    <displayreference target="RFC9297" to="HTTP-DGRAM"/>
+    <displayreference target="RFC8441" to="EXT-CONNECT2"/>
+    <displayreference target="RFC9220" to="EXT-CONNECT3"/>
+    <displayreference target="RFC9209" to="PROXY-STATUS"/>
+    <displayreference target="RFC9221" to="QUIC-DGRAM"/>
+    <displayreference target="RFC3168" to="ECN"/>
+    <displayreference target="RFC3986" to="URI"/>
+    <displayreference target="RFC4443" to="ICMP6"/>
+    <displayreference target="RFC4787" to="BEHAVE"/>
+    <displayreference target="RFC8085" to="UDP-USAGE"/>
+    <displayreference target="RFC6455" to="WEBSOCKET"/>
+    <displayreference target="RFC8899" to="DPLPMTUD"/>
+    <displayreference target="RFC6040" to="ECN-TUNNEL"/>
+    <displayreference target="RFC6169" to="TUNNEL-SECURITY"/>
+    <displayreference target="RFC2234" to="ABNF"/>
+    <displayreference target="I-D.schwartz-httpbis-helium" to="HELIUM"/>
+    <displayreference target="I-D.pardue-httpbis-http-network-tunnelling" to="HiNT"/>
+    <displayreference target="I-D.schinazi-masque" to="MASQUE-ORIGINAL"/>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2234" target="https://www.rfc-editor.org/info/rfc2234" quoteTitle="true" derivedAnchor="ABNF">
+          <front>
+            <title>Augmented BNF for Syntax Specifications: ABNF</title>
+            <author initials="D." surname="Crocker" fullname="D. Crocker" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Overell" fullname="P. Overell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="November"/>
+            <abstract>
+              <t indent="0">In the early days of the Arpanet, each specification contained its own definition of ABNF.  This included the email specifications, RFC733 and then RFC822 which have come to be the common citations for defining ABNF.  The current document separates out that definition, to permit selective reference.  Predictably, it also provides some modifications and enhancements.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2234"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2234"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="ECN">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author initials="K." surname="Ramakrishnan" fullname="K. Ramakrishnan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Floyd" fullname="S. Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Black" fullname="D. Black">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2001" month="September"/>
+            <abstract>
+              <t indent="0">This memo specifies the incorporation of ECN (Explicit Congestion Notification) to TCP and IP, including ECN's use of two bits in the IP header.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC8441" target="https://www.rfc-editor.org/info/rfc8441" quoteTitle="true" derivedAnchor="EXT-CONNECT2">
+          <front>
+            <title>Bootstrapping WebSockets with HTTP/2</title>
+            <author initials="P." surname="McManus" fullname="P. McManus">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="September"/>
+            <abstract>
+              <t indent="0">This document defines a mechanism for running the WebSocket Protocol (RFC 6455) over a single stream of an HTTP/2 connection.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8441"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8441"/>
+        </reference>
+        <reference anchor="RFC9220" target="https://www.rfc-editor.org/info/rfc9220" quoteTitle="true" derivedAnchor="EXT-CONNECT3">
+          <front>
+            <title>Bootstrapping WebSockets with HTTP/3</title>
+            <author initials="R." surname="Hamilton" fullname="R. Hamilton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">The mechanism for running the WebSocket Protocol over a single stream of an HTTP/2 connection is equally applicable to HTTP/3, but the HTTP-version-specific details need to be specified. This document describes how the mechanism is adapted for HTTP/3.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9220"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9220"/>
+        </reference>
+        <reference anchor="RFC9110" target="https://www.rfc-editor.org/info/rfc9110" quoteTitle="true" derivedAnchor="HTTP">
+          <front>
+            <title>HTTP Semantics</title>
+            <author initials="R." surname="Fielding" fullname="R. Fielding" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Nottingham" fullname="M. Nottingham" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Reschke" fullname="J. Reschke" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems. This document describes the overall architecture of HTTP, establishes common terminology, and defines aspects of the protocol that are shared by all versions. In this definition are core protocol elements, extensibility mechanisms, and the "http" and "https" Uniform Resource Identifier (URI) schemes. </t>
+              <t indent="0">This document updates RFC 3864 and obsoletes RFCs 2818, 7231, 7232, 7233, 7235, 7538, 7615, 7694, and portions of 7230.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="97"/>
+          <seriesInfo name="RFC" value="9110"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9110"/>
+        </reference>
+        <reference anchor="RFC9297" target="https://www.rfc-editor.org/info/rfc9297" quoteTitle="true" derivedAnchor="HTTP-DGRAM">
+          <front>
+            <title>HTTP Datagrams and the Capsule Protocol</title>
+            <author initials="D." surname="Schinazi" fullname="D. Schinazi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Pardue" fullname="L. Pardue">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="August"/>
+            <abstract>
+              <t indent="0">This document describes HTTP Datagrams, a convention for conveying multiplexed, potentially unreliable datagrams inside an HTTP connection.</t>
+              <t indent="0">In HTTP/3, HTTP Datagrams can be sent unreliably using the QUIC DATAGRAM extension. When the QUIC DATAGRAM frame is unavailable or undesirable, HTTP Datagrams can be sent using the Capsule Protocol, which is a more general convention for conveying data in HTTP connections.</t>
+              <t indent="0">HTTP Datagrams and the Capsule Protocol are intended for use by HTTP extensions, not applications.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9297"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9297"/>
+        </reference>
+        <reference anchor="RFC9112" target="https://www.rfc-editor.org/info/rfc9112" quoteTitle="true" derivedAnchor="HTTP/1.1">
+          <front>
+            <title>HTTP/1.1</title>
+            <author initials="R." surname="Fielding" fullname="R. Fielding" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Nottingham" fullname="M. Nottingham" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Reschke" fullname="J. Reschke" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems. This document specifies the HTTP/1.1 message syntax, message parsing, connection management, and related security concerns. </t>
+              <t indent="0">This document obsoletes portions of RFC 7230.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="99"/>
+          <seriesInfo name="RFC" value="9112"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9112"/>
+        </reference>
+        <reference anchor="RFC9113" target="https://www.rfc-editor.org/info/rfc9113" quoteTitle="true" derivedAnchor="HTTP/2">
+          <front>
+            <title>HTTP/2</title>
+            <author initials="M." surname="Thomson" fullname="M. Thomson" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Benfield" fullname="C. Benfield" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">This specification describes an optimized expression of the semantics of the Hypertext Transfer Protocol (HTTP), referred to as HTTP version 2 (HTTP/2). HTTP/2 enables a more efficient use of network resources and a reduced latency by introducing field compression and allowing multiple concurrent exchanges on the same connection.</t>
+              <t indent="0">This document obsoletes RFCs 7540 and 8740.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9113"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9113"/>
+        </reference>
+        <reference anchor="RFC9114" target="https://www.rfc-editor.org/info/rfc9114" quoteTitle="true" derivedAnchor="HTTP/3">
+          <front>
+            <title>HTTP/3</title>
+            <author initials="M." surname="Bishop" fullname="M. Bishop" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">The QUIC transport protocol has several features that are desirable in a transport for HTTP, such as stream multiplexing, per-stream flow control, and low-latency connection establishment.  This document describes a mapping of HTTP semantics over QUIC.  This document also identifies HTTP/2 features that are subsumed by QUIC and describes how HTTP/2 extensions can be ported to HTTP/3.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9114"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9114"/>
+        </reference>
+        <reference anchor="RFC9209" target="https://www.rfc-editor.org/info/rfc9209" quoteTitle="true" derivedAnchor="PROXY-STATUS">
+          <front>
+            <title>The Proxy-Status HTTP Response Header Field</title>
+            <author initials="M." surname="Nottingham" fullname="M. Nottingham">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Sikora" fullname="P. Sikora">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="June"/>
+            <abstract>
+              <t indent="0">This document defines the Proxy-Status HTTP response field to convey the details of an intermediary's response handling, including generated errors.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9209"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9209"/>
+        </reference>
+        <reference anchor="RFC9000" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="QUIC">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author initials="J." surname="Iyengar" fullname="J. Iyengar" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Thomson" fullname="M. Thomson" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="May"/>
+            <abstract>
+              <t indent="0">This document defines the core of the QUIC transport protocol.  QUIC provides applications with flow-controlled streams for structured communication, low-latency connection establishment, and network path migration. QUIC includes security measures that ensure confidentiality, integrity, and availability in a range of deployment circumstances.  Accompanying documents describe the integration of TLS for key negotiation, loss detection, and an exemplary congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC9221" target="https://www.rfc-editor.org/info/rfc9221" quoteTitle="true" derivedAnchor="QUIC-DGRAM">
+          <front>
+            <title>An Unreliable Datagram Extension to QUIC</title>
+            <author fullname="T. Pauly" surname="Pauly"/>
+            <author fullname="E. Kinnear" surname="Kinnear"/>
+            <author fullname="D. Schinazi" surname="Schinazi"/>
+            <date month="March" year="2022"/>
+            <abstract>
+              <t indent="0">This document defines an extension to the QUIC transport protocol to add support for sending and receiving unreliable datagrams over a QUIC connection.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9221"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9221"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" surname="Leiba"/>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC9293" target="https://www.rfc-editor.org/info/rfc9293" quoteTitle="true" derivedAnchor="TCP">
+          <front>
+            <title>Transmission Control Protocol (TCP)</title>
+            <author initials="W." surname="Eddy" fullname="W. Eddy" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2022" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies the Transmission Control Protocol (TCP).  TCP is an important transport-layer protocol in the Internet protocol stack, and it has continuously evolved over decades of use and growth of the Internet.  Over this time, a number of changes have been made to TCP as it was specified in RFC 793, though these have only been documented in a piecemeal fashion.  This document collects and brings those changes together with the protocol specification from RFC 793.  This document obsoletes RFC 793, as well as RFCs 879, 2873, 6093, 6429, 6528, and 6691 that updated parts of RFC 793.  It updates RFCs 1011 and 1122, and it should be considered as a replacement for the portions of those documents dealing with TCP requirements.  It also updates RFC 5961 by adding a small clarification in reset handling while in the SYN-RECEIVED state.  The TCP header control bits from RFC 793 have also been updated based on RFC 3168.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="9293"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9293"/>
+        </reference>
+        <reference anchor="RFC6570" target="https://www.rfc-editor.org/info/rfc6570" quoteTitle="true" derivedAnchor="TEMPLATE">
+          <front>
+            <title>URI Template</title>
+            <author initials="J." surname="Gregorio" fullname="J. Gregorio">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Fielding" fullname="R. Fielding">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Hadley" fullname="M. Hadley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Nottingham" fullname="M. Nottingham">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Orchard" fullname="D. Orchard">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="March"/>
+            <abstract>
+              <t indent="0">A URI Template is a compact sequence of characters for describing a range of Uniform Resource Identifiers through variable expansion. This specification defines the URI Template syntax and the process for expanding a URI Template into a URI reference, along with guidelines for the use of URI Templates on the Internet.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6570"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6570"/>
+        </reference>
+        <reference anchor="RFC0768" target="https://www.rfc-editor.org/info/rfc768" quoteTitle="true" derivedAnchor="UDP">
+          <front>
+            <title>User Datagram Protocol</title>
+            <author initials="J." surname="Postel" fullname="J. Postel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1980" month="August"/>
+          </front>
+          <seriesInfo name="STD" value="6"/>
+          <seriesInfo name="RFC" value="768"/>
+          <seriesInfo name="DOI" value="10.17487/RFC0768"/>
+        </reference>
+        <reference anchor="RFC3986" target="https://www.rfc-editor.org/info/rfc3986" quoteTitle="true" derivedAnchor="URI">
+          <front>
+            <title>Uniform Resource Identifier (URI): Generic Syntax</title>
+            <author initials="T." surname="Berners-Lee" fullname="T. Berners-Lee">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Fielding" fullname="R. Fielding">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Masinter" fullname="L. Masinter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2005" month="January"/>
+            <abstract>
+              <t indent="0">A Uniform Resource Identifier (URI) is a compact sequence of characters that identifies an abstract or physical resource.  This specification defines the generic URI syntax and a process for resolving URI references that might be in relative form, along with guidelines and security considerations for the use of URIs on the Internet.  The URI syntax defines a grammar that is a superset of all valid URIs, allowing an implementation to parse the common components of a URI reference without knowing the scheme-specific requirements of every possible identifier.  This specification does not define a generative grammar for URIs; that task is performed by the individual specifications of each URI scheme.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="66"/>
+          <seriesInfo name="RFC" value="3986"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3986"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC4787" target="https://www.rfc-editor.org/info/rfc4787" quoteTitle="true" derivedAnchor="BEHAVE">
+          <front>
+            <title>Network Address Translation (NAT) Behavioral Requirements for Unicast UDP</title>
+            <author initials="F." surname="Audet" fullname="F. Audet" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Jennings" fullname="C. Jennings">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2007" month="January"/>
+            <abstract>
+              <t indent="0">This document defines basic terminology for describing different types of Network Address Translation (NAT) behavior when handling Unicast UDP and also defines a set of requirements that would allow many applications, such as multimedia communications or online gaming, to work consistently.  Developing NATs that meet this set of requirements will greatly increase the likelihood that these applications will function properly.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="127"/>
+          <seriesInfo name="RFC" value="4787"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4787"/>
+        </reference>
+        <reference anchor="RFC8899" target="https://www.rfc-editor.org/info/rfc8899" quoteTitle="true" derivedAnchor="DPLPMTUD">
+          <front>
+            <title>Packetization Layer Path MTU Discovery for Datagram Transports</title>
+            <author initials="G." surname="Fairhurst" fullname="G. Fairhurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Jones" fullname="T. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Tüxen" fullname="M. Tüxen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="I." surname="Rüngeler" fullname="I. Rüngeler">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Völker" fullname="T. Völker">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="September"/>
+            <abstract>
+              <t indent="0">This document specifies Datagram Packetization Layer Path MTU Discovery (DPLPMTUD). This is a robust method for Path MTU Discovery (PMTUD) for datagram Packetization Layers (PLs). It allows a PL, or a datagram application that uses a PL, to discover whether a network path can support the current size of datagram.  This can be used to detect and reduce the message size when a sender encounters a packet black hole. It can also probe a network path to discover whether the maximum packet size can be increased.  This provides functionality for datagram transports that is equivalent to the PLPMTUD specification for TCP, specified in RFC 4821, which it updates. It also updates the UDP Usage Guidelines to refer to this method for use with UDP datagrams and updates SCTP.</t>
+              <t indent="0">The document provides implementation notes for incorporating Datagram PMTUD into IETF datagram transports or applications that use datagram transports.</t>
+              <t indent="0">This specification updates RFC 4960, RFC 4821, RFC 6951, RFC 8085, and RFC 8261.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8899"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8899"/>
+        </reference>
+        <reference anchor="RFC6040" target="https://www.rfc-editor.org/info/rfc6040" quoteTitle="true" derivedAnchor="ECN-TUNNEL">
+          <front>
+            <title>Tunnelling of Explicit Congestion Notification</title>
+            <author initials="B." surname="Briscoe" fullname="B. Briscoe">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="November"/>
+            <abstract>
+              <t indent="0">This document redefines how the explicit congestion notification (ECN) field of the IP header should be constructed on entry to and exit from any IP-in-IP tunnel.  On encapsulation, it updates RFC 3168 to bring all IP-in-IP tunnels (v4 or v6) into line with RFC 4301 IPsec ECN processing.  On decapsulation, it updates both RFC 3168 and RFC 4301 to add new behaviours for previously unused combinations of inner and outer headers.  The new rules ensure the ECN field is correctly propagated across a tunnel whether it is used to signal one or two severity levels of congestion; whereas before, only one severity level was supported.  Tunnel endpoints can be updated in any order without affecting pre-existing uses of the ECN field, thus ensuring backward compatibility.  Nonetheless, operators wanting to support two severity levels (e.g., for pre-congestion notification -- PCN) can require compliance with this new specification.  A thorough analysis of the reasoning for these changes and the implications is included.  In the unlikely event that the new rules do not meet a specific need, RFC 4774 gives guidance on designing alternate ECN semantics, and this document extends that to include tunnelling issues.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6040"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6040"/>
+        </reference>
+        <reference anchor="I-D.schwartz-httpbis-helium" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-schwartz-httpbis-helium-00" derivedAnchor="HELIUM">
+          <front>
+            <title>Hybrid Encapsulation Layer for IP and UDP Messages (HELIUM)</title>
+            <author initials="B. M." surname="Schwartz" fullname="Benjamin M. Schwartz">
+              <organization showOnFrontPage="true">Google</organization>
+            </author>
+            <date month="June" day="25" year="2018"/>
+            <abstract>
+              <t indent="0">   HELIUM is a protocol that can be used to implement a UDP proxy, a
+   VPN, or a hybrid of these.  It is intended to run over a reliable,
+   secure substrate transport.  It can serve a variety of use cases, but
+   its initial purpose is to enable HTTP proxies to forward non-TCP
+   flows.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schwartz-httpbis-helium-00"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-schwartz-httpbis-helium-00.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="I-D.pardue-httpbis-http-network-tunnelling" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-pardue-httpbis-http-network-tunnelling-00" derivedAnchor="HiNT">
+          <front>
+            <title>HTTP-initiated Network Tunnelling (HiNT)</title>
+            <author initials="L." surname="Pardue" fullname="Lucas Pardue">
+              <organization showOnFrontPage="true">BBC Research &amp; Development</organization>
+            </author>
+            <date month="July" day="2" year="2018"/>
+            <abstract>
+              <t indent="0">   The HTTP CONNECT method allows an HTTP client to initiate, via a
+   proxy, a TCP-based tunnel to a single destination origin.  This memo
+   explores options for expanding HTTP-initiated Network Tunnelling
+   (HiNT) to cater for diverse UDP and IP associations.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-pardue-httpbis-http-network-tunnelling-00"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-pardue-httpbis-http-network-tunnelling-00.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC4443" target="https://www.rfc-editor.org/info/rfc4443" quoteTitle="true" derivedAnchor="ICMP6">
+          <front>
+            <title>Internet Control Message Protocol (ICMPv6) for the Internet Protocol Version 6 (IPv6) Specification</title>
+            <author fullname="A. Conta" surname="Conta"/>
+            <author fullname="S. Deering" surname="Deering"/>
+            <author fullname="M. Gupta" role="editor" surname="Gupta"/>
+            <date month="March" year="2006"/>
+            <abstract>
+              <t indent="0">This document describes the format of a set of control messages used in ICMPv6 (Internet Control Message Protocol).  ICMPv6 is the Internet Control Message Protocol for Internet Protocol version 6 (IPv6). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="89"/>
+          <seriesInfo name="RFC" value="4443"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4443"/>
+        </reference>
+        <reference anchor="I-D.schinazi-masque" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-schinazi-masque-00" derivedAnchor="MASQUE-ORIGINAL">
+          <front>
+            <title>The MASQUE Protocol</title>
+            <author initials="D." surname="Schinazi" fullname="David Schinazi">
+              <organization showOnFrontPage="true">Google LLC</organization>
+            </author>
+            <date month="February" day="28" year="2019"/>
+            <abstract>
+              <t indent="0">   This document describes MASQUE (Multiplexed Application Substrate
+   over QUIC Encryption).  MASQUE is a mechanism that allows co-locating
+   and obfuscating networking applications behind an HTTPS web server.
+   The currently prevalent use-case is to allow running a VPN server
+   that is indistinguishable from an HTTPS server to any unauthenticated
+   observer.  We do not expect major providers and CDNs to deploy this
+   behind their main TLS certificate, as they are not willing to take
+   the risk of getting blocked, as shown when domain fronting was
+   blocked.  An expected use would be for individuals to enable this
+   behind their personal websites via easy to configure open-source
+   software.
+
+   This document is a straw-man proposal.  It does not contain enough
+   details to implement the protocol, and is currently intended to spark
+   discussions on the approach it is taking.  As we have not yet found a
+   home for this work, discussion is encouraged to happen on the GitHub
+   repository which contains the draft:
+   https://github.com/DavidSchinazi/masque-drafts [1].
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schinazi-masque-00"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-schinazi-masque-00.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC6169" target="https://www.rfc-editor.org/info/rfc6169" quoteTitle="true" derivedAnchor="TUNNEL-SECURITY">
+          <front>
+            <title>Security Concerns with IP Tunneling</title>
+            <author fullname="S. Krishnan" surname="Krishnan"/>
+            <author fullname="D. Thaler" surname="Thaler"/>
+            <author fullname="J. Hoagland" surname="Hoagland"/>
+            <date month="April" year="2011"/>
+            <abstract>
+              <t indent="0">A number of security concerns with IP tunnels are documented in this memo.  The intended audience of this document includes network administrators and future protocol developers.  The primary intent of this document is to raise the awareness level regarding the security issues with IP tunnels as deployed and propose strategies for the mitigation of those issues. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6169"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6169"/>
+        </reference>
+        <reference anchor="RFC8085" target="https://www.rfc-editor.org/info/rfc8085" quoteTitle="true" derivedAnchor="UDP-USAGE">
+          <front>
+            <title>UDP Usage Guidelines</title>
+            <author initials="L." surname="Eggert" fullname="L. Eggert">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Fairhurst" fullname="G. Fairhurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Shepherd" fullname="G. Shepherd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="March"/>
+            <abstract>
+              <t indent="0">The User Datagram Protocol (UDP) provides a minimal message-passing transport that has no inherent congestion control mechanisms.  This document provides guidelines on the use of UDP for the designers of applications, tunnels, and other protocols that use UDP.  Congestion control guidelines are a primary focus, but the document also provides guidance on other topics, including message sizes, reliability, checksums, middlebox traversal, the use of Explicit Congestion Notification (ECN), Differentiated Services Code Points (DSCPs), and ports.</t>
+              <t indent="0">Because congestion control is critical to the stable operation of the Internet, applications and other protocols that choose to use UDP as an Internet transport must employ mechanisms to prevent congestion collapse and to establish some degree of fairness with concurrent traffic.  They may also need to implement additional mechanisms, depending on how they use UDP.</t>
+              <t indent="0">Some guidance is also applicable to the design of other protocols (e.g., protocols layered directly on IP or via IP-based tunnels), especially when these protocols do not themselves provide congestion control.</t>
+              <t indent="0">This document obsoletes RFC 5405 and adds guidelines for multicast UDP usage.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="145"/>
+          <seriesInfo name="RFC" value="8085"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8085"/>
+        </reference>
+        <reference anchor="RFC6455" target="https://www.rfc-editor.org/info/rfc6455" quoteTitle="true" derivedAnchor="WEBSOCKET">
+          <front>
+            <title>The WebSocket Protocol</title>
+            <author initials="I." surname="Fette" fullname="I. Fette">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Melnikov" fullname="A. Melnikov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="December"/>
+            <abstract>
+              <t indent="0">The WebSocket Protocol enables two-way communication between a client running untrusted code in a controlled environment to a remote host that has opted-in to communications from that code.  The security model used for this is the origin-based security model commonly used by web browsers.  The protocol consists of an opening handshake followed by basic message framing, layered over TCP.  The goal of this technology is to provide a mechanism for browser-based applications that need two-way communication with servers that does not rely on opening multiple HTTP connections (e.g., using XMLHttpRequest or &lt;iframe&gt;s and long polling).  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6455"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6455"/>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" anchor="acknowledgments" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書はMASQUEワーキンググループの成果物であり、著者はMASQUEに熱心に取り組んだすべての人々の貢献に感謝します。
+この提案は、多くの人々による先行研究、特に<contact fullname="Ben Schwartz"/>による<xref target="I-D.schwartz-httpbis-helium" format="default" sectionFormat="of" derivedContent="HELIUM"/>、<contact fullname="Lucas Pardue"/>による<xref target="I-D.pardue-httpbis-http-network-tunnelling" format="default" sectionFormat="of" derivedContent="HiNT"/>、およびこの文書の著者によるオリジナルのMASQUEプロトコル <xref target="I-D.schinazi-masque" format="default" sectionFormat="of" derivedContent="MASQUE-ORIGINAL"/> から、直接的または間接的に着想を得ました。</t>
+      <t indent="0" pn="section-appendix.a-2">著者は、UDPをプロキシーするためにHTTPメソッドを使用することを提案してくれた<contact fullname="Eric       Rescorla"/>に感謝します。
+著者は、この文書に多くの改善をもたらしてくれた<contact fullname="Mark       Nottingham"/>と<contact fullname="Lucas Pardue"/>に深く感謝します。
+この文書の拡張性の設計は、HTTP Datagrams Design Teamから生まれたものであり、そのメンバーは<contact fullname="Alan Frindell"/>、<contact fullname="Alex       Chernyakhovsky"/>、<contact fullname="Ben Schwartz"/>、<contact fullname="Eric Rescorla"/>、<contact fullname="Lucas Pardue"/>、<contact fullname="Marcus Ihlar"/>、<contact fullname="Martin       Thomson"/>、<contact fullname="Mike Bishop"/>、<contact fullname="Tommy Pauly"/>、<contact fullname="Victor Vasiliev"/>、およびこの文書の著者です。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author initials="D." surname="Schinazi" fullname="David Schinazi">
+        <organization showOnFrontPage="true">Google LLC</organization>
+        <address>
+          <postal>
+            <street>1600 Amphitheatre Parkway</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>dschinazi.ietf@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

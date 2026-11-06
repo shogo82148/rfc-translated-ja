@@ -1,0 +1,770 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-dashevskyi-dnsrr-antipatterns-06" indexInclude="true" ipr="trust200902" number="9267" prepTime="2022-07-28T06:47:07" scripts="Common,Latin" sortRefs="true" submissionType="independent" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-dashevskyi-dnsrr-antipatterns-06" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9267" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Vulnerabilities in DNS RR Processing">ドメインネームシステム（DNS）のリソースレコード（RR）処理に関連する一般的な実装のアンチパターン</title>
+    <seriesInfo name="RFC" value="9267" stream="independent"/>
+    <author initials="S." surname="Dashevskyi" fullname="Stanislav Dashevskyi">
+      <organization showOnFrontPage="true">Forescout Technologies</organization>
+      <address>
+        <postal>
+          <street>John F. Kennedylaan, 2</street>
+          <city>Eindhoven</city>
+          <code>5612AB</code>
+          <country>Netherlands</country>
+        </postal>
+        <email>stanislav.dashevskyi@forescout.com</email>
+      </address>
+    </author>
+    <author initials="D." surname="dos Santos" fullname="Daniel dos Santos">
+      <organization showOnFrontPage="true">Forescout Technologies</organization>
+      <address>
+        <postal>
+          <street>John F. Kennedylaan, 2</street>
+          <city>Eindhoven</city>
+          <code>5612AB</code>
+          <country>Netherlands</country>
+        </postal>
+        <email>daniel.dossantos@forescout.com</email>
+      </address>
+    </author>
+    <author initials="J." surname="Wetzels" fullname="Jos Wetzels">
+      <organization showOnFrontPage="true">Forescout Technologies</organization>
+      <address>
+        <postal>
+          <street>John F. Kennedylaan, 2</street>
+          <city>Eindhoven</city>
+          <code>5612AB</code>
+          <country>Netherlands</country>
+        </postal>
+        <email>jos.wetzels@forescout.com</email>
+      </address>
+    </author>
+    <author initials="A." surname="Amri" fullname="Amine Amri">
+      <organization showOnFrontPage="true">Forescout Technologies</organization>
+      <address>
+        <postal>
+          <street>John F. Kennedylaan, 2</street>
+          <city>Eindhoven</city>
+          <code>5612AB</code>
+          <country>Netherlands</country>
+        </postal>
+        <email>amine.amri@forescout.com</email>
+      </address>
+    </author>
+    <date month="07" year="2022"/>
+    <keyword>vulnerabilities</keyword>
+    <keyword>vulnerability</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このメモは、いくつかのDNSクライアント実装で見られる、ドメインネームシステム（DNS）のリソースレコード（RR）処理に関連する一般的な脆弱性について説明します。これらの脆弱性は、影響を受けるソフトウェアに対するサービス拒否攻撃やリモートコード実行攻撃の成功につながる可能性があります。該当する場合は、RFC 1035への違反についても言及します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1-2">これは、他のいかなるRFCストリームからも独立した、RFCシリーズへの寄稿です。RFCエディターは自らの裁量でこの文書の公開を選択しており、実装や展開における価値については何ら表明していません。RFCエディターによって公開が承認された文書は、いずれのレベルのインターネット標準の候補にもなりません。RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1-3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="https://www.rfc-editor.org/info/rfc9267" brackets="none"/> で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2022 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compression-pointer-and-off">圧縮ポインターとオフセットの検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-label-and-name-length-valid">ラベルと名前の長さの検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-null-terminator-placement-v">Null終端文字の配置の検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-response-data-length-valida">応答データ長の検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-record-count-validation">レコード数の検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="sect-1" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">最近、<xref target="SIGRED" format="default" sectionFormat="of" derivedContent="SIGRED"/>、<xref target="SADDNS" format="default" sectionFormat="of" derivedContent="SADDNS"/>、および<xref target="DNSPOOQ" format="default" sectionFormat="of" derivedContent="DNSPOOQ"/>（後者はDNSフォワーダー「dnsmasq」に影響する7つの重大な問題の集まりです）で議論されているように、DNS実装における重大な脆弱性が明らかになり、このプロトコルが重要な攻撃ベクトルとして注目を集めました。</t>
+      <t indent="0" pn="section-1-2">このメモの著者は、いくつかの主要なTCP/IPプロトコルスタックのDNSクライアント実装を分析し、共通の実装上の欠陥（アンチパターン）を持つ一連の脆弱性を発見しました。これらの欠陥は、DNSリソースレコード（RR）（<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で説明されています）の処理に関連しており、重大なセキュリティー脆弱性につながる可能性があります。</t>
+      <t indent="0" pn="section-1-3">実装上の欠陥はソフトウェアプロジェクトごとに異なる場合がありますが、これらのアンチパターンは複数の実装にまたがって存在する可能性が非常に高いです。実際、アンチパターンの1つに関連する最初期の「共通脆弱性識別子（Common Vulnerabilities and Exposures、CVE）」文書の1つ<xref target="CVE-2000-0333" format="default" sectionFormat="of" derivedContent="CVE-2000-0333"/>は、2000年にまでさかのぼります。この観察結果はDNSクライアント実装に限ったものではありません。ファイアウォール、侵入検知システム、汎用のDNSパケットディセクター（たとえば、WiresharkのDNSディセクター。<xref target="CVE-2017-9345" format="default" sectionFormat="of" derivedContent="CVE-2017-9345"/>を参照）など、DNS RRを処理するあらゆるソフトウェアが影響を受ける可能性があります。同様の問題は、DNS over HTTPS <xref target="RFC8484" format="default" sectionFormat="of" derivedContent="RFC8484"/>やDNS over TLS <xref target="RFC7858" format="default" sectionFormat="of" derivedContent="RFC7858"/>の実装でも発生する可能性があります。ただし、DNSのワイヤーフォーマットを扱う実装はすべて、この文書で説明する考慮事項の対象となります。</t>
+      <t indent="0" pn="section-1-4"><xref target="I-D.ietf-dnsind-local-compression" format="default" sectionFormat="of" derivedContent="DNS-COMPRESSION"/>と<xref target="RFC5625" format="default" sectionFormat="of" derivedContent="RFC5625"/>はこれらのアンチパターンのいくつかに簡単に言及していますが、このメモの主な目的は、よくある誤りを根絶できるよう、これらのアンチパターンの背後にある技術的な詳細を提供することです。</t>
+      <t indent="0" pn="section-1-5">私たちは、アンチパターンを緩和するための一般的な推奨事項を示します。また、すべての実装が、悪意のある、あるいは不正な形式のDNS応答を破棄し、（任意で）ログに記録することを提案します。</t>
+    </section>
+    <section anchor="sect-2" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-compression-pointer-and-off">圧縮ポインターとオフセットの検証</name>
+      <t indent="0" pn="section-2-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、メッセージのサイズを削減するために使用できるDNSメッセージ圧縮方式を定義しています。この方式を使用すると、ドメイン名全体または複数の名前ラベルが、同じ名前の以前の出現箇所への（圧縮）ポインターに置き換えられます。</t>
+      <t indent="0" pn="section-2-2">圧縮ポインターは2つのオクテットの組み合わせです。最上位の2ビットは1に設定され、残りの14ビットはOFFSETフィールドです。このフィールドは、別のドメイン名またはラベルが配置されている位置を、DNSヘッダーの先頭からのオフセットとして指定します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-3">
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+| 1  1|                OFFSET                   |
++--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+</artwork>
+      <t indent="0" pn="section-2-4">メッセージ圧縮方式では、ドメイン名を次のいずれかで表現することが明示的に許可されています。(1) ゼロオクテットで終わる、圧縮されていないラベルの並び、(2) ポインター、(3) ポインターで終わるラベルの並び。</t>
+      <t indent="0" pn="section-2-5">しかし、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、あらゆる種類の圧縮ポインターを盲目的にたどることが有害になりうることを明示していません<xref target="I-D.ietf-dnsind-local-compression" format="default" sectionFormat="of" derivedContent="DNS-COMPRESSION"/>。その後に登場するさまざまな実装について、何の前提も置きようがなかったためです。</t>
+      <t indent="0" pn="section-2-6">しかし、OFFSETの値を検証せずにドメイン名を展開しようとするDNSパケットパーサーは、メモリー破壊のバグやバッファーオーバーランの影響を受けやすいと考えられます。これらのバグにより、サービス拒否攻撃が容易になり、リモートコード実行攻撃が成功する可能性もあります。</t>
+      <t indent="0" pn="section-2-7">壊れたドメイン名解析の実装の典型的な例を示す疑似コードを以下に示します（<xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>）。</t>
+      <figure anchor="snippet_1" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-a-broken-implementation-of-">DNSドメイン名の展開に使用される関数の壊れた実装（疑似コード）</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-2-8.1">
+ 1: decompress_domain_name(*name, *dns_payload) {
+ 2:
+ 3:   name_buffer[255];
+ 4:   copy_offset = 0;
+ 5:
+ 6:   label_len_octet = name;
+ 7:   dest_octet = name_buffer;
+ 8:
+ 9:   while (*label_len_octet != 0x00) {
+10:
+11:      if (is_compression_pointer(*label_len_octet)) {
+12:          ptr_offset = get_offset(label_len_octet,
+                                        label_len_octet+1);
+13:          label_len_octet = dns_payload + ptr_offset + 1;
+14:      }
+15:
+16:      else {
+17:          length = *label_len_octet;
+18:          copy(dest_octet + copy_offset,
+                        label_len_octet+1, *length);
+19:
+20:         copy_offset += length;
+21:          label_len_octet += length + 1;
+22:      }
+23:
+24:   }
+25: }
+</sourcecode>
+      </figure>
+      <t indent="0" pn="section-2-9">このような実装は通常、ドメイン名を展開するための専用の関数を持っています（たとえば、<xref target="CVE-2020-24338" format="default" sectionFormat="of" derivedContent="CVE-2020-24338"/>と<xref target="CVE-2020-27738" format="default" sectionFormat="of" derivedContent="CVE-2020-27738"/>を参照）。これらの関数は、他のパラメーターとともに、RR内の最初の名前ラベルの先頭へのポインター（「name」）と、圧縮ポインターの起点として使用されるDNSペイロードの先頭へのポインター（「dns_payload」）を受け取ることがあります。ドメイン名の格納先バッファー（「name_buffer」）は通常、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>に従って255バイトに制限されており、スタックとヒープのどちらかのメモリー領域に割り当てられます。</t>
+      <t indent="0" pn="section-2-10"><xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の関数のコードは、ドメイン名の終わりを示すNULオクテット（「0x00」）に到達するまで、RRからドメイン名をラベルごとに読み取ります。現在のラベル長オクテット（「label_len_octet」）が圧縮ポインターである場合、コードは圧縮オフセットの値を抽出し、それを使用して別のラベル長オクテットに「ジャンプ」します。現在のラベル長オクテットが圧縮ポインターでない場合、ラベルのバイトが名前バッファーにコピーされ、コピーされるバイト数は現在のラベル長オクテットの値に対応します。コピー操作の後、コードは次のラベル長オクテットに進みます。</t>
+      <t indent="0" pn="section-2-11">この実装の1つ目の問題は、圧縮オフセットの値がチェックされていないことに起因します。2つ目の問題は、ポインターが最終的に展開済みのドメインラベルに到達することを保証するチェックがないことに起因します。以下では、これらの問題について詳しく説明します。</t>
+      <t indent="0" pn="section-2-12"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、圧縮ポインターは「a pointer to a prior occurance [sic] of the same name.」（同じ名前の以前の出現箇所へのポインター）であると述べています。また、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>によると、UDPで送信できるDNSパケットの最大サイズは512オクテットに制限されています。</t>
+      <t indent="0" pn="section-2-13"><xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の疑似コードは、DNSパケットの境界外を読み取るようコードに強制する圧縮ポインターを受け入れてしまうため、これらの制約に違反しています。たとえば、「0xffff」に設定された圧縮ポインターは16383オクテットのオフセットを生成し、これはほぼ確実に元のDNSパケットの境界を越えたどこかにあるラベル長オクテットを指します。このようなオフセット値を与えると、メモリー破壊の問題が引き起こされる可能性が高く、サービス拒否状態（たとえば、「label_len_octet」がメモリー上の無効なアドレスに設定された後のNullポインターの逆参照）につながる可能性があります。その他の例については、<xref target="CVE-2020-25767" format="default" sectionFormat="of" derivedContent="CVE-2020-25767"/>、<xref target="CVE-2020-24339" format="default" sectionFormat="of" derivedContent="CVE-2020-24339"/>、<xref target="CVE-2020-24335" format="default" sectionFormat="of" derivedContent="CVE-2020-24335"/>を参照してください。</t>
+      <t indent="0" pn="section-2-14"><xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の疑似コードは、ある圧縮ポインターから別の圧縮ポインターへのジャンプを許可しており、そのようなジャンプの回数を制限していません。つまり、現在解析中のラベル長オクテットが圧縮ポインターである場合、コードは別のラベルへジャンプし、その別のラベルも圧縮ポインターであれば、さらにジャンプを行い、展開済みのラベルに到達するまでこれを繰り返します。これは、セキュリティー上の問題をもたらす予期しない副作用につながる可能性があります。</t>
+      <t indent="0" pn="section-2-15">以下に示すDNSパケットの抜粋を考えてみます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-16">
+        +----+----+----+----+----+----+----+----+----+----+----+----+
+  +0x00 |    ID   |  FLAGS  | QDCOUNT | ANCOUNT | NSCOUNT | ARCOUNT |
+        +----+----+----+----+----+----+----+----+----+----+----+----+
+-&gt;+0x0c |0xc0|0x0c|   TYPE  |  CLASS  |0x04| t  | e  | s  | t  |0x03|
+|       +----+--|-+----+----+----+----+----+----+----+----+----+----+
+| +0x18 | c  | o| | m  |0x00|  TYPE   |  CLASS  | ................  |
+|       +----+--|-+----+----+----+----+----+----+----+----+----+----+
+|               |
+-----------------
+</artwork>
+      <t indent="0" pn="section-2-17">パケットはオフセット+0x00のDNSヘッダーで始まり、そのDNSペイロードにはいくつかのRRが含まれています。最初のRRは12オクテットのオフセット（+0x0c）から始まり、その最初のラベル長オクテットには値「0xc0」が設定されています。これは、それが圧縮ポインターであることを示しています。圧縮ポインターのオフセットは2つのオクテット「0xc00c」から計算され、12になります。<xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の壊れた実装はこのオフセット値を盲目的にたどるため、ポインターは最初のRRの最初のオクテット（+0x0c）へ何度もジャンプして戻ります。<xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>のコードは「while」ループの「TRUE」分岐から抜け出すことがないため、無限ループ状態に陥ります。</t>
+      <t indent="0" pn="section-2-18"><xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の実装上の欠陥を突くと、無限ループを引き起こすこと以外にも、他の望ましくない影響をもたらすさまざまなポインターループを作り出せます。たとえば、以下に示すDNSパケットの抜粋を考えてみます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-19">
+        +----+----+----+----+----+----+----+----+----+----+----+----+
+  +0x00 |    ID   |  FLAGS  | QDCOUNT | ANCOUNT | NSCOUNT | ARCOUNT |
+        +----+----+----+----+----+----+----+----+----+----+----+----+
+-&gt;+0x0c |0x04| t  | e  | s  | t  |0xc0|0x0c| ...................... |
+|       +----+----+----+----+----+----+--|-+----+----+----+----+----+
+|                                        |
+------------------------------------------
+</artwork>
+      <t indent="0" pn="section-2-20">このようなドメイン名の場合、<xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の実装は、まずオフセット「0xc0」にあるドメインラベル（「test」）をコピーします。続いて、次のラベル長オクテットを取得しますが、これはたまたま圧縮ポインター（「0xc0」）です。圧縮ポインターのオフセットは2つのオクテット「0xc00c」から計算され、12オクテットになります。コードは、最初のラベル「test」が配置されているオフセット「0xc0」にジャンプして戻ります。コードは再び「test」ラベルをコピーし、圧縮ポインターをたどってそこへジャンプして戻ることを何度も繰り返します。</t>
+      <t indent="0" pn="section-2-21"><xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>には、同じ圧縮ポインターからの複数回のジャンプを制限するロジックがなく、名前バッファー（「name_buffer」）に255オクテットを超えてコピーされないことも保証していません。実際には、</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-22">
+        <li pn="section-2-22.1">コードはラベル「test」を名前バッファーに書き込み続け、名前バッファーとスタックやヒープのメタデータを上書きします。</li>
+        <li pn="section-2-22.2">攻撃者は、ラベルと圧縮ポインターのさまざまな組み合わせで任意のコピーチェーンを作成できるため、シェルコードを構築するうえでかなりの自由度を持つことになります。</li>
+      </ul>
+      <t indent="0" pn="section-2-23">したがって、圧縮ポインターを盲目的にたどることは、<xref target="I-D.ietf-dnsind-local-compression" format="default" sectionFormat="of" derivedContent="DNS-COMPRESSION"/>で指摘されているようにサービス拒否状態につながるだけでなく、対応するコード内に他の実装上の問題が存在する可能性があるため、リモートコード実行攻撃の成功にもつながる可能性があります。</t>
+      <t indent="0" pn="section-2-24">一部の実装は、次のように述べている<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>に従っていない場合があります。</t>
+      <blockquote pn="section-2-25">最初の2ビットは1です。ラベルは63オクテット以下に制限されているため、ラベルは2つのゼロビットで始まる必要があり、これによりポインターをラベルと区別できます。（10と01の組み合わせは将来の使用のために予約されています。）</blockquote>
+      <t indent="0" pn="section-2-26">図<xref target="snippet_2" format="counter" sectionFormat="of" derivedContent="2"/>と図<xref target="snippet_3" format="counter" sectionFormat="of" derivedContent="3"/>は、与えられたオクテットが圧縮ポインターであるかどうかをチェックする2つの関数を実装した疑似コードを示しています。<xref target="snippet_2" format="default" sectionFormat="of" derivedContent="Figure 2"/>は正しい実装を、<xref target="snippet_3" format="default" sectionFormat="of" derivedContent="Figure 3"/>は誤った（壊れた）実装を示しています。</t>
+      <figure anchor="snippet_2" align="left" suppress-title="false" pn="figure-2">
+        <name slugifiedName="name-correct-compression-pointer">正しい圧縮ポインターのチェック</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-2-27.1">
+1: unsigned char is_compression_pointer(*octet) {
+2:     if ((*octet &amp; 0xc0) == 0xc0)
+3:         return true;
+4:     } else {
+5:         return false;
+6:     }
+7: }
+</sourcecode>
+      </figure>
+      <figure anchor="snippet_3" align="left" suppress-title="false" pn="figure-3">
+        <name slugifiedName="name-broken-compression-pointer-">壊れた圧縮ポインターのチェック</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-2-28.1">
+1: unsigned char is_compression_pointer(*octet) {
+2:     if (*octet &amp; 0xc0) {
+3:         return true;
+4:     } else {
+5:         return false;
+6:     }
+7: }
+</sourcecode>
+      </figure>
+      <t indent="0" pn="section-2-29">正しい実装（<xref target="snippet_2" format="default" sectionFormat="of" derivedContent="Figure 2"/>）はオクテットの最上位2ビットが両方とも設定されていることを確認しますが、壊れた実装（<xref target="snippet_3" format="default" sectionFormat="of" derivedContent="Figure 3"/>）は2ビットのうち一方だけが設定されたオクテットも圧縮ポインターとみなしてしまいます。このような圧縮ポインターの値をサポートすることには何の利点もないため、これは<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>への意図的な違反というよりも、実装上の誤りである可能性が高いです。<xref target="CVE-2020-24338" format="default" sectionFormat="of" derivedContent="CVE-2020-24338"/>と<xref target="CVE-2020-24335" format="default" sectionFormat="of" derivedContent="CVE-2020-24335"/>に関連する実装には、<xref target="snippet_3" format="default" sectionFormat="of" derivedContent="Figure 3"/>に示すコードと同様の、壊れた圧縮ポインターのチェックがありました。</t>
+      <t indent="0" pn="section-2-30">誤った実装はそれ単独では脆弱性につながりませんが、他の脆弱性と組み合わさると予期しない副作用をもたらす可能性があります。たとえば、値「0x4130」の最初のオクテットは、壊れた実装によってラベル長と誤って解釈される可能性があります。そのようなラベル長（65）は無効であり、（<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>によれば）63より大きいため、この値を持つパケットは破棄されるべきです。しかし、<xref target="snippet_3" format="default" sectionFormat="of" derivedContent="Figure 3"/>に示す関数は「0x41」を有効な圧縮ポインターとみなすため、パケットが検証ステップを通過してしまう可能性があります。</t>
+      <t indent="0" pn="section-2-31">これにより、攻撃者はペイロードを構築し、既存のDNSパケット検証メカニズムを回避するための手段をさらに得る可能性があります。</t>
+      <t indent="0" pn="section-2-32">RR内で最初に出現する圧縮ポインター（最上位2ビットが1に設定されたオクテット）は、DNSレコード内の、値が0より大きく（つまり、Null終端文字ではなく）64未満であるオクテットを指していなければなりません。このオクテットが配置されているオフセットは、圧縮ポインターが配置されているオフセットよりも小さくなければなりません。実装がこれを確実にすれば、圧縮ポインターのループは決して発生しません。</t>
+      <t indent="0" pn="section-2-33">小規模なDNS実装（たとえば、組み込みTCP/IPスタック）では、ネストされた圧縮ポインター（圧縮された名前を指すポインター）のサポートは避けるべきです。性能面で得られるものはごくわずかであるのに対し、前述のような誤りを持ち込む可能性は高いからです。</t>
+      <t indent="0" pn="section-2-34">ドメイン名の解析を実装するコードは、パケットの境界に対してだけでなく、対象の圧縮ポインターとの相対的な位置についてもオフセットをチェックすべきです。圧縮ポインターを2回以上「たどる」ことがあってはなりません。私たちは、圧縮ポインターを一定回数以上たどらないことを保証するチェックを使用している実装をいくつか見てきました。より良い代替策は、圧縮ポインターのターゲットがパケット内で常にポインターの位置より前にあることを保証することかもしれません。</t>
+    </section>
+    <section anchor="sect-3" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-label-and-name-length-valid">ラベルと名前の長さの検証</name>
+      <t indent="0" pn="section-3-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、名前ラベルの長さを63オクテットに、ドメイン名の長さを255オクテット（つまり、ラベルのオクテットとラベル長オクテット）に制限しています。一部の実装は、これらの制限を明示的に適用していません。</t>
+      <t indent="0" pn="section-3-2">以下の<xref target="snippet_4" format="default" sectionFormat="of" derivedContent="Figure 4"/>に示す関数「copy_domain_name()」を考えてみます。この関数は「decompress_domain_name()」関数（<xref target="snippet_1" format="default" sectionFormat="of" derivedContent="Figure 1"/>）の変種であり、圧縮されたラベルをサポートせず、展開済みのラベルのみを名前バッファーにコピーするという違いがあります。</t>
+      <figure anchor="snippet_4" align="left" suppress-title="false" pn="figure-4">
+        <name slugifiedName="name-a-broken-implementation-of-a">圧縮されていないドメイン名のコピーに使用される関数の壊れた実装</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-3-3.1">
+ 1: copy_domain_name(*name, *dns_payload) {
+ 2:
+ 3:   name_buffer[255];
+ 4:   copy_offset = 0;
+ 5:
+ 6:   label_len_octet = name;
+ 7:   dest_octet = name_buffer;
+ 8:
+ 9:   while (*label_len_octet != 0x00) {
+10:
+11:      if (is_compression_pointer(*label_len_octet)) {
+12:          length = 2;
+13:          label_len_octet += length + 1;
+14:      }
+15:
+16:      else {
+17:          length = *label_len_octet;
+18:          copy(dest_octet + copy_offset,
+                             label_len_octet+1, *length);
+19:
+20:         copy_offset += length;
+21:          label_len_octet += length + 1;
+22:      }
+23:
+24:  }
+25: }
+</sourcecode>
+      </figure>
+      <t indent="0" pn="section-3-4">この実装は、ラベル長オクテットの値を明示的にチェックしていません。この値は最大255オクテットになる可能性があり、1つのラベルで名前バッファーを埋めることができます。ターゲットのメモリーレイアウト、名前バッファーの割り当て方法、不正な形式のパケットのサイズによっては、さまざまなメモリー破壊の問題を引き起こせます。</t>
+      <t indent="0" pn="section-3-5">図<xref target="snippet_1" format="counter" sectionFormat="of" derivedContent="1"/>と図<xref target="snippet_4" format="counter" sectionFormat="of" derivedContent="4"/>はどちらも名前バッファーのサイズを255オクテットに制限していますが、このバッファーに実際にコピーされるオクテット数には制限がありません。この場合、（パケット内に別のラベルが存在すると）後続のコピー操作が名前バッファーを越えて書き込み、ヒープやスタックのメタデータを意図したとおりに上書きできてしまいます。</t>
+      <t indent="0" pn="section-3-6">脆弱な実装の同様の例は、<xref target="CVE-2020-25110" format="default" sectionFormat="of" derivedContent="CVE-2020-25110"/>、<xref target="CVE-2020-15795" format="default" sectionFormat="of" derivedContent="CVE-2020-15795"/>、<xref target="CVE-2020-27009" format="default" sectionFormat="of" derivedContent="CVE-2020-27009"/>に関連するコードに見られます。</t>
+      <t indent="0" pn="section-3-7">一般的な推奨事項として、ドメインラベル長オクテットの値は0より大きく64未満でなければなりません<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>。そうでない場合、パケット内で無効な値が与えられているか、パケット内の他のエラー（たとえば、Null終端文字の位置の誤りや無効な圧縮ポインター）のために、無効な位置にある値がドメイン名の長さとして解釈されている可能性があります。</t>
+      <t indent="0" pn="section-3-8">ドメインラベルの文字数は、ドメインラベルオクテットの値と一致しなければなりません。ドメインラベルの文字を解釈する際の誤りを避けるため、開発者は<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で概説されている推奨ドメイン名構文に関する推奨事項を考慮するとよいでしょう。</t>
+      <t indent="0" pn="section-3-9">ドメイン名の長さは、展開されたドメイン名のサイズも含めて、255オクテットを超えてはなりません。NULオクテット（「0x00」）はドメイン名の末尾に存在し、かつ名前の最大長（255オクテット）の範囲内になければなりません。</t>
+    </section>
+    <section anchor="sect-4" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-null-terminator-placement-v">Null終端文字の配置の検証</name>
+      <t indent="0" pn="section-4-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>によれば、ドメイン名はNUL（「0x00」）オクテットで終わらなければなりません。図<xref target="snippet_1" format="counter" sectionFormat="of" derivedContent="1"/>と図<xref target="snippet_4" format="counter" sectionFormat="of" derivedContent="4"/>に示す実装は、処理するRRについてこれが成り立つことを前提としていますが、RR内の適切な位置にNULオクテットが配置されていない名前を破棄しません。</t>
+      <t indent="0" pn="section-4-2">この問題は、ラベルと名前の長さのチェックがないことと密接に関連しています。たとえば、図<xref target="snippet_1" format="counter" sectionFormat="of" derivedContent="1"/>と図<xref target="snippet_4" format="counter" sectionFormat="of" derivedContent="4"/>のロジックは、NULオクテットに遭遇するまで名前バッファーにオクテットをコピーし続けます。このオクテットは、RR内の任意の位置に配置されることもあれば、まったく配置されないこともあります。</t>
+      <t indent="0" pn="section-4-3"><xref target="snippet_5" format="default" sectionFormat="of" derivedContent="Figure 5"/>に示す疑似コードの関数を考えてみます。この関数は、他の場所で使用する（たとえば、特定のサイズの名前バッファーを割り当てる）ためにドメイン名（「name」）の長さをオクテット単位で返します。圧縮されたドメイン名の場合、関数は2を返します。展開済みの名前の場合は、「strlen(3)」関数を使用してその実際の長さを返します。</t>
+      <figure anchor="snippet_5" align="left" suppress-title="false" pn="figure-5">
+        <name slugifiedName="name-a-broken-implementation-of-a-">ドメイン名の長さを返す関数の壊れた実装</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-4-4.1">
+1: get_name_length(*name) {
+2:
+3:     if (is_compression_pointer(name))
+4:         return 2;
+5:
+6:     name_len = strlen(name) + 1;
+7:     return name_len;
+8: }
+</sourcecode>
+      </figure>
+      <t indent="0" pn="section-4-5">「strlen(3)」は、NUL（「0x00」）オクテットで終端された文字の並びの長さを返す標準Cライブラリー関数です。この関数も名前が明示的にNull終端されていることを前提としているため、「strlen(3)」の戻り値も攻撃者によって制御される可能性があります。攻撃者は「name_len」の値を通じて、実装の詳細に応じて、内部バッファーの割り当てを制御したり、これらのバッファーにコピーされるオクテット数を指定したり、その他の操作を行ったりできる可能性があります。</t>
+      <t indent="0" pn="section-4-6">NULオクテットの配置に関する明示的なチェックがないと、攻撃者による制御されたメモリーの読み書きも容易になる可能性があります。脆弱な実装の例は、<xref target="CVE-2020-25107" format="default" sectionFormat="of" derivedContent="CVE-2020-25107"/>、<xref target="CVE-2020-17440" format="default" sectionFormat="of" derivedContent="CVE-2020-17440"/>、<xref target="CVE-2020-24383" format="default" sectionFormat="of" derivedContent="CVE-2020-24383"/>、<xref target="CVE-2020-27736" format="default" sectionFormat="of" derivedContent="CVE-2020-27736"/>に関連するコードに見られます。</t>
+      <t indent="0" pn="section-4-7">このような問題を緩和するための一般的な推奨事項として、開発者は、ユーザーデータがNull終端されていると決して信頼すべきではありません。たとえば、<xref target="snippet_5" format="default" sectionFormat="of" derivedContent="Figure 5"/>のコードに示す問題を修正または緩和するには、開発者は最大でX文字（関数の第2引数）までしか読み取らない関数「strnlen(3)」を使用し、Xが名前用に割り当てられたバッファーより大きくないことを確認すべきです。</t>
+    </section>
+    <section anchor="sect-5" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-response-data-length-valida">応答データ長の検証</name>
+      <t indent="0" pn="section-5-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>に記載されているように、すべてのRRには、取得したリソースデータ（RDATA）（たとえば、問い合わせ対象のドメイン名に対応するIPアドレス）を含む可変長のオクテット列が含まれています。RDATAフィールドの長さは、同じくRRに存在するリソースデータ長フィールド（RDLENGTH）によって規定されます。</t>
+      <t indent="0" pn="section-5-2">RRを処理する実装は、RDATAを取得する際にRDLENGTHフィールドの値の妥当性をチェックしない場合があります。チェックを怠ると範囲外読み取りの問題につながる可能性があり、その影響は実装の詳細によって大きく異なります。私たちは、サービス拒否状態や情報漏洩の事例を観測しています。</t>
+      <t indent="0" pn="section-5-3">したがって、応答DNSレコードのデータ長バイト（RDLENGTH）の値は、リソースを記述するフィールド（RDATA）で利用可能なバイト数を反映していなければなりません。RDATAの形式は、RRのTYPEフィールドとCLASSフィールドに従っていなければなりません。</t>
+      <t indent="0" pn="section-5-4">脆弱な実装の例は、<xref target="CVE-2020-25108" format="default" sectionFormat="of" derivedContent="CVE-2020-25108"/>、<xref target="CVE-2020-24336" format="default" sectionFormat="of" derivedContent="CVE-2020-24336"/>、<xref target="CVE-2020-27009" format="default" sectionFormat="of" derivedContent="CVE-2020-27009"/>に関連するコードに見られます。</t>
+    </section>
+    <section anchor="sect-6" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-record-count-validation">レコード数の検証</name>
+      <t indent="0" pn="section-6-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>によれば、DNSヘッダーには、質問レコード（QDCOUNT）、回答レコード（ANCOUNT）、権威レコード（NSCOUNT）、追加レコード（ARCOUNT）の数を指定する4つの2オクテットフィールドが含まれています。</t>
+      <t indent="0" pn="section-6-2"><xref target="snippet_6" format="default" sectionFormat="of" derivedContent="Figure 6"/>は、DNS RRを処理する関数において繰り返し見られる実装のアンチパターンを示しています。関数「process_dns_records()」は、ANCOUNTの値（「num_answers」）とDNSデータペイロードへのポインター（「data_ptr」）を抽出します。この関数はループ内で回答レコードを処理し、各レコードを処理するたびに「num_answers」の値をデクリメントして、「num_answers」の値がゼロになるまで続けます。簡単のため、回答ごとにドメイン名は1つだけであると仮定します。ループ内で、コードはドメイン名の長さ（「name_length」）を計算し、ポインターが最初の回答レコードに到達するよう、「name_length + 1」に対応するオフセットだけデータペイロードポインター（「data_ptr」）を進めます。次に、回答レコードが取得されて処理され、「num_answers」の値がデクリメントされます。</t>
+      <figure anchor="snippet_6" align="left" suppress-title="false" pn="figure-6">
+        <name slugifiedName="name-a-broken-implementation-of-a-f">RRを処理する関数の壊れた実装</name>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6-3.1">
+ 1: process_dns_records(dns_header, ...) {
+        // ...
+ 2:     num_answers = dns_header-&gt;ancount
+ 3:     data_ptr = dns_header-&gt;data
+ 4:
+ 5:     while (num_answers &gt; 0) {
+ 6:         name_length = get_name_length(data_ptr);
+ 7:         data_ptr += name_length + 1;
+ 8:
+ 9:         answer = (struct dns_answer_record *)data_ptr;
+10:
+11:         // 回答レコードを処理する
+12:
+13:         --num_answers;
+14:     }
+        // ...
+15: }
+</sourcecode>
+      </figure>
+      <t indent="0" pn="section-6-4">ヘッダーから取得したANCOUNTの数（「dns_header-&gt;ancount」）が、パケット内で利用可能なデータ量に対してチェックされず、たとえば利用可能な回答レコードの数より大きい場合、データポインター（「data_ptr」）はパケットの境界外を読み取ります。これにより、サービス拒否状態が発生する可能性があります。</t>
+      <t indent="0" pn="section-6-5">このセクションでは、回答レコードの処理を例として使用しました。しかし、同じロジックは、他の種類のレコード、たとえば質問（QDCOUNT）、権威（NSCOUNT）、追加（ARCOUNT）レコードの数の処理を実装する際にもよく再利用されます。これらのレコードについて指定された数は、パケット内に存在する実際のデータと一致しなければなりません。したがって、パケットの内容を完全に解析する前に、すべてのレコード数フィールドをチェックしなければなりません。具体的には、<xref target="RFC5625" sectionFormat="of" section="6.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc5625#section-6.3" derivedContent="RFC5625"/>は、このような不正な形式のDNSパケットを破棄し、（任意で）ログに記録すべきであると推奨しています。</t>
+      <t indent="0" pn="section-6-6">脆弱な実装の例は、<xref target="CVE-2020-25109" format="default" sectionFormat="of" derivedContent="CVE-2020-25109"/>、<xref target="CVE-2020-24340" format="default" sectionFormat="of" derivedContent="CVE-2020-24340"/>、<xref target="CVE-2020-24334" format="default" sectionFormat="of" derivedContent="CVE-2020-24334"/>、<xref target="CVE-2020-27737" format="default" sectionFormat="of" derivedContent="CVE-2020-27737"/>に関連するコードに見られます。</t>
+    </section>
+    <section anchor="sect-7" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">セキュリティー上の問題は、このメモ全体を通して議論されています。このメモでは、DNS RRを処理する機能に影響を与える実装上の欠陥（アンチパターン）について説明しています。このようなアンチパターンが存在すると、バッファーオーバーフロー、範囲外読み取り、無限ループの問題を引き起こすバグにつながります。これらの問題は、情報漏洩、サービス拒否攻撃、リモートコード実行攻撃というセキュリティー上の影響をもたらします。</t>
+      <t indent="0" pn="section-7-2">この文書は、DNSレコード解析機能の開発者向けに、そうした実装上の欠陥を防ぐための一般的な推奨事項（たとえば、ネットワーク経由で受信したデータを処理する前に厳密にチェックすること）を挙げています。</t>
+    </section>
+    <section anchor="sect-8" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">この文書にはIANAアクションはありません。DNSによって導入されたIANAに関する考慮事項の全体像については、<xref target="RFC6895" format="default" sectionFormat="of" derivedContent="RFC6895"/>を参照してください。</t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.ietf-dnsind-local-compression" to="DNS-COMPRESSION"/>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1035" target="https://www.rfc-editor.org/info/rfc1035" quoteTitle="true" derivedAnchor="RFC1035">
+          <front>
+            <title>Domain names - implementation and specification</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t indent="0">This RFC is the revised specification of the protocol and format used in the implementation of the Domain Name System.  It obsoletes RFC-883. This memo documents the details of the domain name client - server communication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1035"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1035"/>
+        </reference>
+        <reference anchor="RFC5625" target="https://www.rfc-editor.org/info/rfc5625" quoteTitle="true" derivedAnchor="RFC5625">
+          <front>
+            <title>DNS Proxy Implementation Guidelines</title>
+            <author initials="R." surname="Bellis" fullname="R. Bellis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2009" month="August"/>
+            <abstract>
+              <t indent="0">This document provides guidelines for the implementation of DNS proxies, as found in broadband gateways and other similar network devices.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="152"/>
+          <seriesInfo name="RFC" value="5625"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5625"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="CVE-2000-0333" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0333" quoteTitle="true" derivedAnchor="CVE-2000-0333">
+          <front>
+            <title>CVE-2000-0333: A denial-of-service vulnerability in tcpdump, Ethereal, and other sniffer packages via malformed DNS packets</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2000"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2017-9345" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-9345" quoteTitle="true" derivedAnchor="CVE-2017-9345">
+          <front>
+            <title>CVE-2017-9345: An infinite loop in the DNS dissector of Wireshark</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2017"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-15795" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-15795" quoteTitle="true" derivedAnchor="CVE-2020-15795">
+          <front>
+            <title>CVE-2020-15795: A denial-of-service and remote code execution vulnerability DNS domain name label parsing functionality of Nucleus NET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-17440" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-17440" quoteTitle="true" derivedAnchor="CVE-2020-17440">
+          <front>
+            <title>CVE-2020-17440 A denial-of-service vulnerability in the DNS name parsing implementation of uIP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24334" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24334" quoteTitle="true" derivedAnchor="CVE-2020-24334">
+          <front>
+            <title>CVE-2020-24334: An out-of-bounds read and denial-of-service vulnerability in the DNS response parsing functionality of uIP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24335" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24335" quoteTitle="true" derivedAnchor="CVE-2020-24335">
+          <front>
+            <title>CVE-2020-24335: A memory corruption vulnerability in domain name parsing routines of uIP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24336" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24336" quoteTitle="true" derivedAnchor="CVE-2020-24336">
+          <front>
+            <title>CVE-2020-24336: A buffer overflow vulnerability in the DNS implementation of Contiki and Contiki-NG</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24338" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24338" quoteTitle="true" derivedAnchor="CVE-2020-24338">
+          <front>
+            <title>CVE-2020-24338: A denial-of-service and remote code execution vulnerability in the DNS domain name record decompression functionality of picoTCP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24339" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24339" quoteTitle="true" derivedAnchor="CVE-2020-24339">
+          <front>
+            <title>CVE-2020-24339: An out-of-bounds read and denial-of-service vulnerability in the DNS domain name record decompression functionality of picoTCP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24340" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24340" quoteTitle="true" derivedAnchor="CVE-2020-24340">
+          <front>
+            <title>CVE-2020-24340: An out-of-bounds read and denial-of-service vulnerability in the DNS response parsing functionality of picoTCP</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-24383" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-24383" quoteTitle="true" derivedAnchor="CVE-2020-24383">
+          <front>
+            <title>CVE-2020-24383: An information leak and denial-of-service vulnerability while parsing mDNS resource records in FNET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-25107" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-25107" quoteTitle="true" derivedAnchor="CVE-2020-25107">
+          <front>
+            <title>CVE-2020-25107: A denial-of-service and remote code execution vulnerability in the DNS implementation of Ethernut Nut/OS</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-25108" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-25108" quoteTitle="true" derivedAnchor="CVE-2020-25108">
+          <front>
+            <title>CVE-2020-25108: A denial-of-service and remote code execution vulnerability in the DNS implementation of Ethernut Nut/OS</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-25109" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-25109" quoteTitle="true" derivedAnchor="CVE-2020-25109">
+          <front>
+            <title>CVE-2020-25109: A denial-of-service and remote code execution vulnerability in the DNS implementation of Ethernut Nut/OS</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-25110" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-25110" quoteTitle="true" derivedAnchor="CVE-2020-25110">
+          <front>
+            <title>CVE-2020-25110: A denial-of-service and remote code execution vulnerability in the DNS implementation of Ethernut Nut/OS</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-25767" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-25767" quoteTitle="true" derivedAnchor="CVE-2020-25767">
+          <front>
+            <title>CVE-2020-25767: An out-of-bounds read and denial-of-service vulnerability in the DNS name parsing routine of HCC Embedded NicheStack</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-27009" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-27009" quoteTitle="true" derivedAnchor="CVE-2020-27009">
+          <front>
+            <title>CVE-2020-27009: A denial-of-service and remote code execution vulnerability DNS domain name record decompression functionality of Nucleus NET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-27736" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-27736" quoteTitle="true" derivedAnchor="CVE-2020-27736">
+          <front>
+            <title>CVE-2020-27736: An information leak and denial-of-service vulnerability in the DNS name parsing functionality of Nucleus NET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-27737" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-27737" quoteTitle="true" derivedAnchor="CVE-2020-27737">
+          <front>
+            <title>CVE-2020-27737: An information leak and denial-of-service vulnerability in the DNS response parsing functionality of Nucleus NET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="CVE-2020-27738" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-27738" quoteTitle="true" derivedAnchor="CVE-2020-27738">
+          <front>
+            <title>CVE-2020-27738: A denial-of-service and remote code execution vulnerability DNS domain name record decompression functionality of Nucleus NET</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2021"/>
+          </front>
+        </reference>
+        <reference anchor="I-D.ietf-dnsind-local-compression" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-ietf-dnsind-local-compression-05" derivedAnchor="DNS-COMPRESSION">
+          <front>
+            <title>A New Scheme for the Compression of Domain Names</title>
+            <author initials="P." surname="Koch" fullname="Peter Koch">
+              <organization showOnFrontPage="true">Universitaet Bielefeld</organization>
+            </author>
+            <date month="June" day="30" year="1999"/>
+            <abstract>
+              <t indent="0">The compression of domain names in DNS messages was introduced in
+[RFC1035].  Although some remarks were made about applicability to
+future defined resource record types, no method has been deployed yet
+to support interoperable DNS compression for RR types specified since
+then.
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-dnsind-local-compression-05"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-ietf-dnsind-local-compression-05.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="DNSPOOQ" target="https://www.jsof-tech.com/wp-content/uploads/2021/01/DNSpooq-Technical-WP.pdf" quoteTitle="true" derivedAnchor="DNSPOOQ">
+          <front>
+            <title>DNSpooq: Cache Poisoning and RCE in Popular DNS Forwarder dnsmasq</title>
+            <author initials="M." surname="Kol" fullname="Moshe Kol">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Oberman" fullname="Shlomi Oberman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="January" year="2021"/>
+          </front>
+          <refcontent>JSOF Technical Report</refcontent>
+        </reference>
+        <reference anchor="RFC6895" target="https://www.rfc-editor.org/info/rfc6895" quoteTitle="true" derivedAnchor="RFC6895">
+          <front>
+            <title>Domain Name System (DNS) IANA Considerations</title>
+            <author initials="D." surname="Eastlake 3rd" fullname="D. Eastlake 3rd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="April"/>
+            <abstract>
+              <t indent="0">This document specifies Internet Assigned Numbers Authority (IANA) parameter assignment considerations for the allocation of Domain Name System (DNS) resource record types, CLASSes, operation codes, error codes, DNS protocol message header bits, and AFSDB resource record subtypes.  It obsoletes RFC 6195 and updates RFCs 1183, 2845, 2930, and 3597.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="42"/>
+          <seriesInfo name="RFC" value="6895"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6895"/>
+        </reference>
+        <reference anchor="RFC7858" target="https://www.rfc-editor.org/info/rfc7858" quoteTitle="true" derivedAnchor="RFC7858">
+          <front>
+            <title>Specification for DNS over Transport Layer Security (TLS)</title>
+            <author initials="Z." surname="Hu" fullname="Z. Hu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Zhu" fullname="L. Zhu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Heidemann" fullname="J. Heidemann">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Wessels" fullname="D. Wessels">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="May"/>
+            <abstract>
+              <t indent="0">This document describes the use of Transport Layer Security (TLS) to provide privacy for DNS.  Encryption provided by TLS eliminates opportunities for eavesdropping and on-path tampering with DNS queries in the network, such as discussed in RFC 7626.  In addition, this document specifies two usage profiles for DNS over TLS and provides advice on performance considerations to minimize overhead from using TCP and TLS with DNS.</t>
+              <t indent="0">This document focuses on securing stub-to-recursive traffic, as per the charter of the DPRIVE Working Group.  It does not prevent future applications of the protocol to recursive-to-authoritative traffic.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7858"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7858"/>
+        </reference>
+        <reference anchor="RFC8484" target="https://www.rfc-editor.org/info/rfc8484" quoteTitle="true" derivedAnchor="RFC8484">
+          <front>
+            <title>DNS Queries over HTTPS (DoH)</title>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="McManus" fullname="P. McManus">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="October"/>
+            <abstract>
+              <t indent="0">This document defines a protocol for sending DNS queries and getting DNS responses over HTTPS.  Each DNS query-response pair is mapped into an HTTP exchange.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8484"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8484"/>
+        </reference>
+        <reference anchor="SADDNS" target="https://dl.acm.org/doi/pdf/10.1145/3372297.3417280" quoteTitle="true" derivedAnchor="SADDNS">
+          <front>
+            <title>DNS Cache Poisoning Attack Reloaded: Revolutions with Side Channels</title>
+            <author initials="K." surname="Man" fullname="Keyu Man">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Z." surname="Qian" fullname="Zhiyun Qian">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Z." surname="Wang" fullname="Zhongjie Wang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="X." surname="Zheng" fullname="Xiaofeng Zheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Huang" fullname="Youjun Huang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Duan" fullname="Haixin Duan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="November" year="2020"/>
+          </front>
+          <refcontent>Proc. 2020 ACM SIGSAC Conference on Computer and Communications Security, CCS '20</refcontent>
+          <seriesInfo name="DOI" value="10.1145/3372297.3417280"/>
+        </reference>
+        <reference anchor="SIGRED" target="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-1350" quoteTitle="true" derivedAnchor="SIGRED">
+          <front>
+            <title>CVE-2020-1350: A remote code execution vulnerability in Windows Domain Name System servers</title>
+            <author>
+              <organization showOnFrontPage="true">Common Vulnerabilities and Exposures</organization>
+            </author>
+            <date year="2020"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section numbered="false" anchor="acknowledgements" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書の作成につながった研究に多大な貢献をしてくださった<contact fullname="Shlomi Oberman"/>に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="S." surname="Dashevskyi" fullname="Stanislav Dashevskyi">
+        <organization showOnFrontPage="true">Forescout Technologies</organization>
+        <address>
+          <postal>
+            <street>John F. Kennedylaan, 2</street>
+            <city>Eindhoven</city>
+            <code>5612AB</code>
+            <country>Netherlands</country>
+          </postal>
+          <email>stanislav.dashevskyi@forescout.com</email>
+        </address>
+      </author>
+      <author initials="D." surname="dos Santos" fullname="Daniel dos Santos">
+        <organization showOnFrontPage="true">Forescout Technologies</organization>
+        <address>
+          <postal>
+            <street>John F. Kennedylaan, 2</street>
+            <city>Eindhoven</city>
+            <code>5612AB</code>
+            <country>Netherlands</country>
+          </postal>
+          <email>daniel.dossantos@forescout.com</email>
+        </address>
+      </author>
+      <author initials="J." surname="Wetzels" fullname="Jos Wetzels">
+        <organization showOnFrontPage="true">Forescout Technologies</organization>
+        <address>
+          <postal>
+            <street>John F. Kennedylaan, 2</street>
+            <city>Eindhoven</city>
+            <code>5612AB</code>
+            <country>Netherlands</country>
+          </postal>
+          <email>jos.wetzels@forescout.com</email>
+        </address>
+      </author>
+      <author initials="A." surname="Amri" fullname="Amine Amri">
+        <organization showOnFrontPage="true">Forescout Technologies</organization>
+        <address>
+          <postal>
+            <street>John F. Kennedylaan, 2</street>
+            <city>Eindhoven</city>
+            <code>5612AB</code>
+            <country>Netherlands</country>
+          </postal>
+          <email>amine.amri@forescout.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

@@ -69,10 +69,20 @@ sub parse_section_name($s) {
         anchor => $slugified_name,
         pn => "section-$number",
         number => $number,
+        numbers => [@numbers],
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
         name => $name,
     };
+}
+
+sub is_prefix($parent, $title) {
+    my $p = $parent->{title}->{numbers} or return 1;
+    my $t = $title->{numbers} or return 1;
+    for my $i(0..$#$p) {
+        return 0 unless defined $t->[$i] && lc($p->[$i]) eq lc($t->[$i]);
+    }
+    return 1;
 }
 
 sub parse_appendix_name($s) {
@@ -91,6 +101,7 @@ sub parse_appendix_name($s) {
         anchor => $slugified_name,
         pn => lc($appendix ? "section-appendix.$number" : "section-$number"),
         number => $number,
+        numbers => [@numbers],
         level => scalar(@numbers),
         slugified_name => "name-$slugified_name",
         name => $name,
@@ -553,7 +564,7 @@ for my $content(@contents) {
                 $new_references->{parent} = $references_root;
             } else {
                 my $parent = $current_references // $references_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
-                while ($parent->{title}->{level} >= $title->{level}) {
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 push @{$parent->{contents}}, $new_references;
@@ -572,7 +583,7 @@ for my $content(@contents) {
                 $new_appendix->{parent} = $appendix_root;
             } else {
                 my $parent = $current_appendix // $appendix_root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
-                while ($parent->{title}->{level} >= $title->{level}) {
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 push @{$parent->{contents}}, $new_appendix;
@@ -607,7 +618,7 @@ for my $content(@contents) {
                 $new_section->{parent} = $root;
             } else {
                 my $parent = $current_section // $root; # 最初の見出しがレベル 1 でない場合はルートにぶら下げる
-                while ($parent->{title}->{level} >= $title->{level}) {
+                while ($parent->{title}->{level} >= $title->{level} || !is_prefix($parent, $title)) {
                     $parent = $parent->{parent};
                 }
                 $parent->{contents} = [] unless $parent->{contents};

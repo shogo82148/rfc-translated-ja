@@ -1,0 +1,891 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-bess-datacenter-gateway-13" indexInclude="true" ipr="trust200902" number="9125" prepTime="2021-08-28T10:08:47" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-bess-datacenter-gateway-13" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9125" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="SR DC Gateways">セグメントルーティングを使用したサイト相互接続のためのゲートウェイの自動検出と経路広告</title>
+    <seriesInfo name="RFC" value="9125" stream="IETF"/>
+    <author fullname="Adrian Farrel" initials="A." surname="Farrel">
+      <organization showOnFrontPage="true">Old Dog Consulting</organization>
+      <address>
+        <email>adrian@olddog.co.uk</email>
+      </address>
+    </author>
+    <author fullname="John Drake" initials="J." surname="Drake">
+      <organization showOnFrontPage="true">Juniper Networks</organization>
+      <address>
+        <email>jdrake@juniper.net</email>
+      </address>
+    </author>
+    <author fullname="Eric Rosen" initials="E." surname="Rosen">
+      <organization showOnFrontPage="true">Juniper Networks</organization>
+      <address>
+        <email>erosen52@gmail.com</email>
+      </address>
+    </author>
+    <author fullname="Keyur Patel" initials="K." surname="Patel">
+      <organization showOnFrontPage="true">Arrcus, Inc.</organization>
+      <address>
+        <email>keyur@arrcus.com</email>
+      </address>
+    </author>
+    <author fullname="Luay Jalil" initials="L" surname="Jalil">
+      <organization showOnFrontPage="true">Verizon</organization>
+      <address>
+        <email>luay.jalil@verizon.com</email>
+      </address>
+    </author>
+    <date month="08" year="2021"/>
+    <area>Routing</area>
+    <workgroup>BESS</workgroup>
+    <keyword>SR</keyword>
+    <keyword>GW</keyword>
+    <keyword>BGP</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">データセンターは、ゲートウェイルーターによってインターネットまたはバックボーンネットワークに接続されます。
+      1つのデータセンターは、商業上の理由、負荷分散、耐障害性のために、通常は複数のゲートウェイを持ちます。
+      アクセスネットワークなどの他のサイトも、ゲートウェイを介してバックボーンネットワーク越しに接続される必要があります。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、BGPトンネルカプセル化属性を使用して、データセンターゲートウェイルーターがサイト内で到達可能なプレフィックスへの経路を広告できるようにするメカニズムを定義します。
+      これには、同じサイトの他のゲートウェイに代わって広告することも含まれます。
+      これにより、セグメントルーティングを使用して、異なるゲートウェイ間でインターネットまたはバックボーンネットワークを横断する複数のパスを識別できるようになります。
+      これらのパスは、負荷分散、耐障害性、品質の目的で選択できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9125" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-site-gateway-auto-discovery">サイトゲートウェイの自動検出</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relationship-to-bgp-link-st">BGP - Link Stateおよび出口ピアエンジニアリングとの関係</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-advertising-a-site-route-ex">サイト経路の外部への広告</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encapsulation">カプセル化</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-manageability-consideration">管理性に関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relationship-to-route-targe">Route Target Constraintとの関係</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">データセンター（DC）は、ネットワーク運用者が顧客にサービスを提供するために使用するインフラストラクチャーの重要なコンポーネントです。
+      DC（サイト）は、任意の数のプライベートネットワークやインターネットから構成されるバックボーンネットワークによって相互接続されます。
+      DCは、ゲートウェイ（GW）であるルーターによってバックボーンネットワークに接続されます。
+      1つのDCは、商業上の選好、負荷分散、コネクションやデバイスの障害に対する耐障害性など、さまざまな理由から、通常は複数のGWを持ちます。</t>
+      <t indent="0" pn="section-1-2">セグメントルーティング（SR）（<xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>）は、DC内で使用できるだけでなく、2つのDCサイト間を流れるトラフィックの誘導にも使用できるプロトコルメカニズムです。
+      SRを使用する送信元サイト（入口サイト（ingress site）とも呼ばれます）が、宛先サイト（出口サイト（egress site）とも呼ばれます）に送信するフローを負荷分散するためには、2つのDCを接続するバックボーンネットワークから見たその出口DCの入口ノード（つまりGW）の完全な集合を知る必要があります。
+      なお、接続されたDCサイトの集合と、DCサイトを接続するパス上にあるバックボーンネットワーク内の境界ノードは、同じSR BGP - Link State（LS）インスタンス（<xref target="RFC7752" format="default" sectionFormat="of" derivedContent="RFC7752"/>と<xref target="RFC9086" format="default" sectionFormat="of" derivedContent="RFC9086"/>を参照）の一部であり、これらのフローにSRを使用したトラフィックエンジニアリングを使用できることを前提としています。</t>
+      <t indent="0" pn="section-1-3">アクセスネットワークなどの他のサイトも、ゲートウェイを介してバックボーンネットワーク越しに接続される必要があります。
+      説明のために、<xref target="david_hockney" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示す入口サイトと出口サイトを、それぞれ別個の自律システム（AS）として考えます（サイトは、接続先のASの一部として実装される場合もあれば、別個のASとして実装される場合もあることに注意してください）。
+
+      入口サイトと出口サイトの間の接続性を提供するさまざまなASは、それぞれ異なる方法で構築され、IP、BGPからのグローバルテーブルのルーティング情報を使用するMPLS、MPLS IP VPN、SR-MPLS IP VPN、SRv6 IP VPNなどの異なる技術を使用している場合があります。
+
+      つまり、入口サイトと出口サイトは、さまざまな技術にまたがるトンネルによって接続できます。
+      この文書では、入口サイトと出口サイトの間のパスを識別するために、SRのセグメント識別子（SID）をどのように使用するかを説明します。</t>
+      <t indent="0" pn="section-1-4">この文書で説明する解決策は、トランジットASがSRの能力を持つかどうかには依存しません。
+      この解決策は、SRを使用して、GW間およびAS境界ルーター（ASBR）を経由するパスセグメントをつなぎ合わせます。
+      したがって、GWとASBRはSRに対応している必要があります。
+      この解決策では、入口サイトと出口サイトがSRに対応している場合、SRパスをそれらのサイト内まで延長することもサポートします。</t>
+      <t indent="0" pn="section-1-5">この文書で定義する解決策は、<xref target="I-D.farrel-spring-sr-domain-interconnect" format="default" sectionFormat="of" derivedContent="SR-INTERCONNECT"/>のサイト相互接続というより広い文脈の中で捉えることができます。
+      その文書は、既存の他のプロトコル要素をこの文書で定義する解決策と組み合わせて完全なシステムを提供する方法を示していますが、この文書を理解するために必要な参照ではありません。</t>
+      <t indent="0" pn="section-1-6"><xref target="david_hockney" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示すように、ある出口サイトに2つのゲートウェイGW1とGW2があり、それぞれが出口サイト内にあるプレフィックスXへの経路を、自身をネクストホップに設定して広告するとします。
+      Xに対するGWは経路のネクストホップフィールドから推測できると考えるかもしれませんが、通常、両方の経路がバックボーン全体に配布されるわけではありません。
+      むしろ、BGPによって選択された最良経路だけが配布されます。
+      このため、両方のGWにフローを負荷分散することができません。</t>
+      <figure anchor="david_hockney" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-example-site-interconnectio">サイト相互接続の例</name>
+        <artwork align="center" name="" type="" alt="" pn="section-1-7.1">
+      -----------------                    ---------------------
+     | Ingress         |                  | Egress     ------   |
+     | Site            |                  | Site      |Prefix|  |
+     |                 |                  |           |   X  |  |
+     |                 |                  |            ------   |
+     |       --        |                  |   ---          ---  |
+     |      |GW|       |                  |  |GW1|        |GW2| |
+      -------++--------                    ----+-----------+-+--
+             | \                               |          /  |
+             |  \                              |         /   |
+             |  -+-------------        --------+--------+--  |
+             | ||ASBR|     ----|      |----  |ASBR| |ASBR| | |
+             | | ----     |ASBR+------+ASBR|  ----   ----  | |
+             | |           ----|      |----                | |
+             | |               |      |                    | |
+             | |           ----|      |----                | |
+             | | AS1      |ASBR+------+ASBR|           AS2 | |
+             | |           ----|      |----                | |
+             |  ---------------        --------------------  |
+           --+-----------------------------------------------+--
+          | |ASBR|                                       |ASBR| |
+          |  ----               AS3                       ----  |
+          |                                                     |
+           -----------------------------------------------------
+       </artwork>
+      </figure>
+      <t indent="0" pn="section-1-8">この問題に対する明白な解決策は、BGPで複数のパスを広告できるようにするBGPの機能（Add-Pathsとして知られています）（<xref target="RFC7911" format="default" sectionFormat="of" derivedContent="RFC7911"/>）を使用して、Xへのすべての経路がBGPによって広告されるようにすることです。
+      しかし、そうしたとしても、自身をネクストホップに設定するASBRを経由して経路が配布されると、すぐにGWの識別情報は失われます。
+      さらに、バックボーン内に複数のASがある場合、ネクストホップが何度も変わるだけでなく、Add-Paths手法はスケーリングの問題に直面します。
+      これらはすべて、Add-Pathsによるアプローチが、事実上、単一のASを介して接続されたサイトに限定されることを意味します。</t>
+      <t indent="0" pn="section-1-9">この文書では、この制限を克服し、1つ以上のASから構築されたバックボーンでも同様に機能する解決策を、トンネルカプセル化属性（<xref target="RFC9012" format="default" sectionFormat="of" derivedContent="RFC9012"/>）を使用して次のように定義します。
+      </t>
+      <ul empty="true" spacing="normal" bare="false" indent="3" pn="section-1-10">
+        <li pn="section-1-10.1">あるサイトへのGWが、そのサイト内のプレフィックスXへの経路を広告するとき、自身を含むそのサイトへの各GWが広告したトンネルカプセル化属性の和集合を含むトンネルカプセル化属性を含めます。</li>
+      </ul>
+      <t indent="0" pn="section-1-11">言い換えると、GWが広告する各経路は、同じサイトへのすべてのGWを識別します（GWが互いを検出する方法については<xref target="DCGWautodisco" format="default" sectionFormat="of" derivedContent="Section 3"/>を参照してください）。
+      つまり、各GWが広告するトンネルカプセル化属性には複数のTunnel TLVが含まれ、アクティブな各GWから1つ以上のTunnel TLVが含まれます。
+      そして、各Tunnel TLVには、そのTunnel TLVに対応するGWを識別するTunnel Egress EndpointサブTLVが含まれます。
+      したがって、経路のうち1つだけが他のASに配布されたとしても、トンネルカプセル化属性は変わらないため、ネクストホップが何回変わっても問題になりません。</t>
+      <t indent="0" pn="section-1-12"><xref target="david_hockney" format="default" sectionFormat="of" derivedContent="Figure 1"/>の文脈に当てはめると、GW1とGW2は互いを出口サイトのゲートウェイとして検出します。
+      GW1とGW2はどちらも、自身がプレフィックスXへの経路を持つことを広告します。
+      さらに、GW1は、自身のトンネルカプセル化属性とGW2のトンネルカプセル化属性の和集合であるトンネルカプセル化属性を含めます。
+      同様に、GW2は、自身のトンネルカプセル化属性とGW1のトンネルカプセル化属性の和集合であるトンネルカプセル化属性を含めます。
+      これにより、入口サイトのゲートウェイは、どの経路が伝播されてきたかにかかわらず、出口サイト内のXへのすべての可能なパスを把握でき、適切と判断するとおりに1つを選択したり、トラフィックフローを分散したりできます。</t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-requirements-language">要件言語</name>
+      <t indent="0" pn="section-2-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+    </section>
+    <section anchor="DCGWautodisco" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-site-gateway-auto-discovery">サイトゲートウェイの自動検出</name>
+      <t indent="0" pn="section-3-1">あるサイトのGWが互いを自動検出し、動作を協調できるようにするために、次の手順を実装します。
+
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-2">
+        <li pn="section-3-2.1">各GWの自動検出経路（後述）には、ルートターゲット（<xref target="RFC4360" format="default" sectionFormat="of" derivedContent="RFC4360"/>）を付与<bcp14>しなければなりません（MUST）</bcp14>。
+        また、その値はサイト識別子を示す値に設定<bcp14>しなければなりません（MUST）</bcp14>。
+        ルートターゲットを構築する規則の詳細は<xref target="RFC4360" format="default" sectionFormat="of" derivedContent="RFC4360"/>に記載されています。
+        Type x00またはx02のルートターゲットを使用することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</li>
+        <li pn="section-3-2.2">サイト識別子は設定によって指定します。
+        サイト識別子は、そのサイトへのすべてのGWで同じで<bcp14>なければなりません（MUST）</bcp14>（つまり、同じサイトへのすべてのGWが同じ識別子を使用します）。
+        また、接続されるすべてのサイトにわたって一意で<bcp14>なければなりません（MUST）</bcp14>（つまり、相互接続されるすべてのサイトへのすべてのGWにわたって一意です）。</li>
+        <li pn="section-3-2.3">各GWは、GW自身が使用するのと同じサイト識別子を持つルートターゲットを運ぶ経路をすべてインポートするインポートフィルタリング規則を構築<bcp14>しなければなりません（MUST）</bcp14>。
+        これは、これらのGWだけがそれらの経路をインポートし、同じサイトへのすべてのGWが互いの経路をインポートして、そのサイトのアクティブなGWの現在の集合を学習（自動検出）することを意味します。</li>
+      </ul>
+      <t indent="0" pn="section-3-3">各GWが広告する自動検出経路は、次のもので構成されます。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-4">
+        <li pn="section-3-4.1">GWのループバックアドレスの1つを含む、IPv4またはIPv6のネットワーク層到達可能性情報（NLRI）（<xref target="RFC4760" format="default" sectionFormat="of" derivedContent="RFC4760"/>）（つまり、AFI/SAFIの組が次のいずれかであるもの：ユニキャスト転送に使用されるIPv4/NLRI（1/1）、ユニキャスト転送に使用されるIPv6/NLRI（2/1）、MPLSラベル付きIPv4/NLRI（1/4）、MPLSラベル付きIPv6/NLRI（2/4））。</li>
+        <li pn="section-3-4.2">1つ以上のTunnel TLVにエンコードされたGWのカプセル化情報を含むトンネルカプセル化属性（<xref target="RFC9012" format="default" sectionFormat="of" derivedContent="RFC9012"/>）。</li>
+      </ul>
+      <t indent="0" pn="section-3-5">GW自身宛てのパケットにトンネルカプセル化属性が適用されるという副作用を避けるため、自動検出のために広告するアドレスは、ゲートウェイ自身に向けたパケットのために広告するループバックアドレスとは異なるループバックアドレスで<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-6"><xref target="introduction" format="default" sectionFormat="of" derivedContent="Section 1"/>で説明したように、各GWは、サイトの外部に広告するすべての経路に、そのサイトのアクティブな各GW（自身を含む）のGWカプセル化情報を含むトンネルカプセル化属性を含めます。
+      アクティブなGWの現在の集合が（新しいGWの追加や、既存のGWの障害や削除によって）変化すると、外部に広告された各経路は、アクティブなGWの現在の集合を反映した新しいトンネルカプセル化属性とともに再広告されます。</t>
+      <t indent="0" pn="section-3-7">ゲートウェイがバックボーンネットワークから切断された場合、またはサイト運用者がゲートウェイの活動を終了すると決定した場合、そのゲートウェイは上記の広告を取り下げ<bcp14>なければなりません（MUST）</bcp14>。
+      これは、他のサイトにあるリモートのゲートウェイが、このゲートウェイからの広告やこのゲートウェイに関する広告を見なくなることを意味します。
+      なお、サイト内のルーティングが壊れている場合（たとえば、あるGWから別のGWへの経路はあるが逆方向の経路はない場合）、着信トラフィックが宛先プレフィックスに到達するために誤ったGWにルーティングされる可能性があります。
+      このような劣化したネットワーク状況では、トラフィックが破棄される可能性があります。</t>
+      <t indent="0" pn="section-3-8">なお、あるGWが同じサイトへの他のGWとは異なるサイト識別子で（誤って）設定されている場合、そのGWは他のGWによって自動検出されません（また、そのGWも他のGWを自動検出しません）。
+      その結果、別のサイトのGWは、BGPの最良経路に含まれるトンネルカプセル化属性、つまり（誤って）設定されたGWのトンネルカプセル化属性か、他のGWのトンネルカプセル化属性のどちらかしか受信しなくなります。</t>
+    </section>
+    <section anchor="EPE" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-relationship-to-bgp-link-st">BGP - Link Stateおよび出口ピアエンジニアリングとの関係</name>
+      <t indent="0" pn="section-4-1">リモートのGWは、プレフィックスXへの経路を受信すると、その経路に含まれるトンネルカプセル化属性内のTunnel Egress EndpointサブTLVを使用して、Xに到達できるGWを識別します。
+      リモートのGWは、この情報を使用して、SR BGP - Link State（BGP-LS）（<xref target="RFC9085" format="default" sectionFormat="of" derivedContent="RFC9085"/>）で自身に広告された情報を参照し、サイト識別情報を使って関連付けることで、バックボーンネットワークを横断するSRトラフィックエンジニアリング（SR TE）パスを計算します。
+      SR出口ピアエンジニアリング（EPE）（<xref target="RFC9086" format="default" sectionFormat="of" derivedContent="RFC9086"/>）を使用して、BGP-LSで広告される情報を補完できます。</t>
+    </section>
+    <section anchor="advertising" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-advertising-a-site-route-ex">サイト経路の外部への広告</name>
+      <t indent="0" pn="section-5-1">プレフィックスX宛てのパケットが、Xを含むサイトのGWへのSR TEパス上で送信される場合（つまり、パケットが、出口サイト内の部分を含むパス全体を記述したSR TEパス上で入口サイト内から送信される場合）、そのパケットは、受信するGWのXに対するSIDを運ぶ必要があります。
+      このSIDは、GWがパケットの処理を完了する前に処理されるべき次のSIDになります。
+      これを実現するために、トンネルカプセル化属性内の各Tunnel TLVには、Xに対するPrefix-SIDサブTLV（<xref target="RFC9012" format="default" sectionFormat="of" derivedContent="RFC9012"/>）が含まれます。</t>
+      <t indent="0" pn="section-5-2"><xref target="RFC9012" format="default" sectionFormat="of" derivedContent="RFC9012"/>で定義されているように、Prefix-SIDサブTLVはIPv4/IPV6ラベル付きユニキャスト経路専用であるため、この文書で説明する解決策はそれらのタイプの経路にのみ適用されます。
+      将来、他のタイプの経路に対するPrefix-SIDサブTLVの使用が定義された場合は、この文書と整合する形でサイト相互接続におけるその使用方法を説明する文書がさらに必要になります。</t>
+      <t indent="0" pn="section-5-3">あるいは、MPLS SRが使用されており、ある出口サイトのGWが、リモートの入口サイトにあるGWがプレフィックスXに対してその出口サイトを通るSR TEを実行できるように設定されている場合、出口サイトへの各GWは、出口サイトを通ってXに至るSR TEパスを計算し、それぞれをそのGWのSR Tunnel TLV内のMPLS Label StackサブTLV（<xref target="RFC9012" format="default" sectionFormat="of" derivedContent="RFC9012"/>）に格納します。</t>
+      <t indent="0" pn="section-5-4">この場合にSIDスタックがどのように構築され、広告がどのように機能するかの実例については、<xref target="I-D.farrel-spring-sr-domain-interconnect" sectionFormat="of" section="7" format="default" derivedLink="https://datatracker.ietf.org/doc/html/draft-farrel-spring-sr-domain-interconnect-06#section-7" derivedContent="SR-INTERCONNECT"/>を参照してください。</t>
+    </section>
+    <section anchor="encaps" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-encapsulation">カプセル化</name>
+      <t indent="0" pn="section-6-1">
+ サイトが、リモートのGWがそのサイトのネイティブなカプセル化でパケットを送信できるように設定されている場合、そのサイトへの各GWは、外部に広告する経路に、そのネイティブなカプセル化のTunnel TLVのインスタンスを、GWごとに1つずつ、複数含めます。
+ 各Tunnel TLVには、そのTunnel TLVが識別するGWのアドレスを持つTunnel Egress EndpointサブTLVが含まれます。
+ リモートのGWは、各Tunnel TLVに含まれるサブTLVによって定義された規則に従ってパケットをカプセル化できます。</t>
+    </section>
+    <section anchor="iana" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">
+ IANAは、「Border Gateway Protocol (BGP) Tunnel Encapsulation」レジストリー内に「BGP Tunnel Encapsulation Attribute Tunnel Types」レジストリーを管理しています。
+</t>
+      <t indent="0" pn="section-7-2">
+ IANAは以前、この文書をインターネットドラフトとして参照し、このサブレジストリーから値17を「SR Tunnel」に割り当てていました。
+ 当時、このレジストリーのこの範囲の割り当てポリシーは「First Come First Served」<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>でした。
+</t>
+      <t indent="0" pn="section-7-3">
+
+IANAはその割り当てを非推奨としてマークしました。
+IANAは、レジストリーが枯渇した時点でそのコードポイントを再利用することがあります。
+
+</t>
+    </section>
+    <section anchor="security" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">プロトコルの観点からは、この文書で説明するメカニズムは、BGPのためにすでに定義されているセキュリティーメカニズムを活用できます。
+      BGPのセキュリティーに関する考慮事項のさらなる議論は、BGP仕様そのもの（<xref target="RFC4271" format="default" sectionFormat="of" derivedContent="RFC4271"/>）とBGPのセキュリティー分析（<xref target="RFC4272" format="default" sectionFormat="of" derivedContent="RFC4272"/>）にあります。
+      BGPセッションを保護するためのTCP MD5署名オプションの使用に関する当初の議論は<xref target="RFC5925" format="default" sectionFormat="of" derivedContent="RFC5925"/>にあり、<xref target="RFC6952" format="default" sectionFormat="of" derivedContent="RFC6952"/>にはBGPの鍵管理と認証の問題の分析が含まれています。</t>
+      <t indent="0" pn="section-8-2">この文書で説明するメカニズムでは、サイト間でルーティング情報や到達可能性情報を共有するため、通常はサイト内にとどまる情報を開示することになる場合があります。
+      したがって、サイトの境界に基づく通常のセキュリティーパラダイムが弱まり、BGPメッセージが傍受されると情報が第三者に開示される可能性があることを理解しておく必要があります。
+      VPNに関するこれらの問題の議論は<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>にあり、<xref target="RFC7926" format="default" sectionFormat="of" derivedContent="RFC7926"/>はサイト間でのトポロジー情報やTE情報の交換に関連する多くの問題を説明しています。</t>
+      <t indent="0" pn="section-8-3">この作業によって生じる具体的な露出には、次のものがあります。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-8-4">
+        <li pn="section-8-4.1">サイトへのゲートウェイは、同じサイトへの他のすべてのゲートウェイについて知ることになります。
+        この特徴はサイト内に適用されるため、大きな露出ではありません。
+        しかし、サイト内のBGPのやり取りが盗み見られたり、ゲートウェイが乗っ取られたりした場合、攻撃者がサイトへのゲートウェイの完全な集合を知る可能性があることを意味します。
+        これにより、そのサイトに対するより効果的な攻撃が容易になります。</li>
+        <li pn="section-8-4.2">サイトへの複数のゲートウェイの存在が、バックボーン全体、さらにはリモートのサイトにまで見えやすくなります。
+        これは、ローカルに接続されたバックボーンネットワーク（たとえば、サイトを収容するAS）だけがサイトへのすべてのゲートウェイを見ることができる場合よりも、攻撃者がより包括的な攻撃を準備できることを意味します。
+        たとえば、単一のGWに対するサービス拒否攻撃は他のGWの存在によって緩和されますが、攻撃者がすべてのゲートウェイについて知っていれば、その全体を一度に攻撃できます。</li>
+        <li pn="section-8-4.3">外部BGPピアリングを持たない（つまり、実際にはサイトゲートウェイではなく、バックボーンネットワークに向けてBGPを話すことができない）サイト内のノードが、他の正規のゲートウェイに自身を検出させる（サイト内でそれらとBGPを話すことによって）ことで、自身をゲートウェイとして広告させられる可能性があります。
+        その結果、それらの正規のゲートウェイに、自身をゲートウェイとしてバックボーンネットワークへ広告させることができてしまう可能性があります。
+        これにより、悪意のあるノードは、サイト外のノードとの安全なBGPピアリングを持たなくてもトラフィックを引き寄せることができてしまいます。</li>
+        <li pn="section-8-4.4">サイト間のどこかでBGPメッセージを傍受する外部の当事者は、サイトの機能やエンドポイントの位置に関する情報を知る可能性があります。
+        これは必ずしも重大なセキュリティーやプライバシーのリスクではありませんが、この情報の開示が攻撃者に利用される可能性はあります。</li>
+        <li pn="section-8-4.5">バックボーン内でBGPメッセージを改変できる場合、ゲートウェイの存在を偽装できる可能性があります。
+        これにより、トラフィックが特定のノードに引き寄せられ、トラフィックが配送されなくなる可能性があります。
+	</li>
+      </ul>
+      <t indent="0" pn="section-8-5">上記のリストの問題はいずれもサイト相互接続を妨害する可能性がありますが、これらは新しいプロトコルの脆弱性というよりも、情報の新たな露出です。
+      こうした露出からは、BGPメッセージが流れるTCPセッションを保護するなど、既存のプロトコルメカニズムを使用して保護<bcp14>すべきです（SHOULD）</bcp14>。
+      さらに、一般的な所見として、これらの攻撃が可能であれば、ルーティングシステムに対してはるかに重大な攻撃が行われる可能性が高いといえます。
+      BGPピアリングは検出されるものではなく、常に明示的な設定から生じることに注意すべきです。</t>
+      <t indent="0" pn="section-8-6">ゲートウェイとASBRは、信頼できないネットワークの部分を通過する可能性のあるトンネルによって接続されるため、このネットワークで示したアプローチを使用するデータセンター運用者は、データセンターのトラフィックを保護するためにゲートウェイ間の暗号化の使用を検討<bcp14>しなければなりません（MUST）</bcp14>。
+      さらに、トランスポートに公衆ネットワークや信頼できないネットワークを使用するあらゆるトラフィックの場合と同様に、エンドツーエンドのトラフィックの暗号化についても十分に考慮<bcp14>しなければなりません（MUST）</bcp14>。</t>
+    </section>
+    <section anchor="manageability" numbered="true" toc="include" removeInRFC="false" pn="section-9">
+      <name slugifiedName="name-manageability-consideration">管理性に関する考慮事項</name>
+      <t indent="0" pn="section-9-1">この解決策によって追加される主な設定項目は、サイト識別子の割り当てです。
+      同じサイトへのすべてのGWには同じ識別子を割り当て<bcp14>なければなりません（MUST）</bcp14>。
+      また、各サイトは異なる識別子を持た<bcp14>なければなりません（MUST）</bcp14>。
+      これには、おそらく中央の管理エージェントを介した調整が必要です。</t>
+      <t indent="0" pn="section-9-2">BGPピアリングは検出されるものではなく、常に明示的な設定から生じることに注意すべきです。
+      これは、他のBGPの運用と何ら変わりません。</t>
+      <t indent="0" pn="section-9-3">設定されてルートターゲットで運ばれるサイト識別子（<xref target="DCGWautodisco" format="default" sectionFormat="of" derivedContent="Section 3"/>を参照）は、サイトへのすべてのゲートウェイが互いを検出することを保証するための重要な機能です。
+      したがって、この値を誤って設定しないことが重要です。
+      誤って設定すると、ゲートウェイが互いを検出せず、互いを広告しなくなるためです。</t>
+      <section anchor="rtc" numbered="true" toc="include" removeInRFC="false" pn="section-9.1">
+        <name slugifiedName="name-relationship-to-route-targe">Route Target Constraintとの関係</name>
+        <t indent="0" pn="section-9.1-1">
+
+ あるルートリフレクターで保持されるVPNルーティング情報を制限するために、<xref target="RFC4364" format="default" sectionFormat="of" derivedContent="RFC4364"/>はルートリフレクターが「Cooperative Route Filtering」を使用することを提案しています。
+ これは「Outbound Route Filtering」と改名され、<xref target="RFC5291" format="default" sectionFormat="of" derivedContent="RFC5291"/>で定義されました。
+
+
+<xref target="RFC4684" format="default" sectionFormat="of" derivedContent="RFC4684"/>は、複数の自律システムと、ハブアンドスポークなどの非対称なVPNトポロジーのサポートを含めるように、そのメカニズムの拡張を定義しています。
+        RFC 4684のメカニズムは、Route Target Constraint（RTC）として知られています。</t>
+        <t indent="0" pn="section-9.1-2">運用者は通常、どのAFI/SAFIの組み合わせに対してもデフォルトでRTCを設定することはなく、慎重に検討した後にのみ有効にします。
+        この文書で定義するメカニズムを使用する場合、運用者は経路のフィルタリングの影響を慎重に検討すべきです。
+        場合によってはこれが望ましいこともありますが、それ以外の場合は手順の有効性を制限する可能性があります。</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.farrel-spring-sr-domain-interconnect" to="SR-INTERCONNECT"/>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4271" target="https://www.rfc-editor.org/info/rfc4271" quoteTitle="true" derivedAnchor="RFC4271">
+          <front>
+            <title>A Border Gateway Protocol 4 (BGP-4)</title>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Li" fullname="T. Li" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Hares" fullname="S. Hares" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="January"/>
+            <abstract>
+              <t indent="0">This document discusses the Border Gateway Protocol (BGP), which is an inter-Autonomous System routing protocol.</t>
+              <t indent="0">The primary function of a BGP speaking system is to exchange network reachability information with other BGP systems.  This network reachability information includes information on the list of Autonomous Systems (ASes) that reachability information traverses. This information is sufficient for constructing a graph of AS connectivity for this reachability from which routing loops may be pruned, and, at the AS level, some policy decisions may be enforced.</t>
+              <t indent="0">BGP-4 provides a set of mechanisms for supporting Classless Inter-Domain Routing (CIDR).  These mechanisms include support for advertising a set of destinations as an IP prefix, and eliminating the concept of network "class" within BGP.  BGP-4 also introduces mechanisms that allow aggregation of routes, including aggregation of AS paths.</t>
+              <t indent="0">This document obsoletes RFC 1771.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4271"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4271"/>
+        </reference>
+        <reference anchor="RFC4360" target="https://www.rfc-editor.org/info/rfc4360" quoteTitle="true" derivedAnchor="RFC4360">
+          <front>
+            <title>BGP Extended Communities Attribute</title>
+            <author initials="S." surname="Sangli" fullname="S. Sangli">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Tappan" fullname="D. Tappan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="February"/>
+            <abstract>
+              <t indent="0">This document describes the "extended community" BGP-4 attribute.  This attribute provides a mechanism for labeling information carried in BGP-4.  These labels can be used to control the distribution of this information, or for other applications.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4360"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4360"/>
+        </reference>
+        <reference anchor="RFC4760" target="https://www.rfc-editor.org/info/rfc4760" quoteTitle="true" derivedAnchor="RFC4760">
+          <front>
+            <title>Multiprotocol Extensions for BGP-4</title>
+            <author initials="T." surname="Bates" fullname="T. Bates">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Chandra" fullname="R. Chandra">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Katz" fullname="D. Katz">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2007" month="January"/>
+            <abstract>
+              <t indent="0">This document defines extensions to BGP-4 to enable it to carry routing information for multiple Network Layer protocols (e.g., IPv6, IPX, L3VPN, etc.).  The extensions are backward compatible - a router that supports the extensions can interoperate with a router that doesn't support the extensions.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4760"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4760"/>
+        </reference>
+        <reference anchor="RFC5925" target="https://www.rfc-editor.org/info/rfc5925" quoteTitle="true" derivedAnchor="RFC5925">
+          <front>
+            <title>The TCP Authentication Option</title>
+            <author initials="J." surname="Touch" fullname="J. Touch">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Mankin" fullname="A. Mankin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Bonica" fullname="R. Bonica">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="June"/>
+            <abstract>
+              <t indent="0">This document specifies the TCP Authentication Option (TCP-AO), which obsoletes the TCP MD5 Signature option of RFC 2385 (TCP MD5).  TCP-AO specifies the use of stronger Message Authentication Codes (MACs), protects against replays even for long-lived TCP connections, and provides more details on the association of security with TCP connections than TCP MD5.  TCP-AO is compatible with either a static Master Key Tuple (MKT) configuration or an external, out-of-band MKT management mechanism; in either case, TCP-AO also protects connections when using the same MKT across repeated instances of a connection, using traffic keys derived from the MKT, and coordinates MKT changes between endpoints.  The result is intended to support current infrastructure uses of TCP MD5, such as to protect long-lived connections (as used, e.g., in BGP and LDP), and to support a larger set of MACs with minimal other system and operational changes.  TCP-AO uses a different option identifier than TCP MD5, even though TCP-AO and TCP MD5 are never permitted to be used simultaneously.  TCP-AO supports IPv6, and is fully compatible with the proposed requirements for the replacement of TCP MD5.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5925"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5925"/>
+        </reference>
+        <reference anchor="RFC7752" target="https://www.rfc-editor.org/info/rfc7752" quoteTitle="true" derivedAnchor="RFC7752">
+          <front>
+            <title>North-Bound Distribution of Link-State and Traffic Engineering (TE) Information Using BGP</title>
+            <author initials="H." surname="Gredler" fullname="H. Gredler" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Medved" fullname="J. Medved">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Previdi" fullname="S. Previdi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Farrel" fullname="A. Farrel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Ray" fullname="S. Ray">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="March"/>
+            <abstract>
+              <t indent="0">In a number of environments, a component external to a network is called upon to perform computations based on the network topology and current state of the connections within the network, including Traffic Engineering (TE) information.  This is information typically distributed by IGP routing protocols within the network.</t>
+              <t indent="0">This document describes a mechanism by which link-state and TE information can be collected from networks and shared with external components using the BGP routing protocol.  This is achieved using a new BGP Network Layer Reachability Information (NLRI) encoding format.  The mechanism is applicable to physical and virtual IGP links.  The mechanism described is subject to policy control.</t>
+              <t indent="0">Applications of this technique include Application-Layer Traffic Optimization (ALTO) servers and Path Computation Elements (PCEs).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7752"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7752"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC9012" target="https://www.rfc-editor.org/info/rfc9012" quoteTitle="true" derivedAnchor="RFC9012">
+          <front>
+            <title>The BGP Tunnel Encapsulation Attribute</title>
+            <author initials="K." surname="Patel" fullname="K. Patel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Van de Velde" fullname="G. Van de Velde">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Sangli" fullname="S. Sangli">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Scudder" fullname="J. Scudder">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="April"/>
+            <abstract>
+              <t indent="0">This document defines a BGP path attribute known as the "Tunnel Encapsulation attribute", which can be used with BGP UPDATEs of various Subsequent Address Family Identifiers (SAFIs) to provide information needed to create tunnels and their corresponding encapsulation headers. It provides encodings for a number of tunnel types, along with procedures for choosing between alternate tunnels and routing packets into tunnels.</t>
+              <t indent="0">This document obsoletes RFC 5512, which provided an earlier definition of the Tunnel Encapsulation attribute. RFC 5512 was never deployed in production. Since RFC 5566 relies on RFC 5512, it is likewise obsoleted. This document updates RFC 5640 by indicating that the Load-Balancing Block sub-TLV may be included in any Tunnel Encapsulation attribute where load balancing is desired.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9012"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9012"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC4272" target="https://www.rfc-editor.org/info/rfc4272" quoteTitle="true" derivedAnchor="RFC4272">
+          <front>
+            <title>BGP Security Vulnerabilities Analysis</title>
+            <author initials="S." surname="Murphy" fullname="S. Murphy">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="January"/>
+            <abstract>
+              <t indent="0">Border Gateway Protocol 4 (BGP-4), along with a host of other infrastructure protocols designed before the Internet environment became perilous, was originally designed with little consideration for protection of the information it carries.  There are no mechanisms internal to BGP that protect against attacks that modify, delete, forge, or replay data, any of which has the potential to disrupt overall network routing behavior.</t>
+              <t indent="0">This document discusses some of the security issues with BGP routing data dissemination.  This document does not discuss security issues with forwarding of packets.  This memo provides information for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4272"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4272"/>
+        </reference>
+        <reference anchor="RFC4364" target="https://www.rfc-editor.org/info/rfc4364" quoteTitle="true" derivedAnchor="RFC4364">
+          <front>
+            <title>BGP/MPLS IP Virtual Private Networks (VPNs)</title>
+            <author initials="E." surname="Rosen" fullname="E. Rosen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="February"/>
+            <abstract>
+              <t indent="0">This document describes a method by which a Service Provider may use an IP backbone to provide IP Virtual Private Networks (VPNs) for its customers.  This method uses a "peer model", in which the customers' edge routers (CE routers) send their routes to the Service Provider's edge routers (PE routers); there is no "overlay" visible to the customer's routing algorithm, and CE routers at different sites do not peer with each other.  Data packets are tunneled through the backbone, so that the core routers do not need to know the VPN routes.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4364"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4364"/>
+        </reference>
+        <reference anchor="RFC4684" target="https://www.rfc-editor.org/info/rfc4684" quoteTitle="true" derivedAnchor="RFC4684">
+          <front>
+            <title>Constrained Route Distribution for Border Gateway Protocol/MultiProtocol Label Switching (BGP/MPLS) Internet Protocol (IP) Virtual Private Networks (VPNs)</title>
+            <author initials="P." surname="Marques" fullname="P. Marques">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Bonica" fullname="R. Bonica">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Fang" fullname="L. Fang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Martini" fullname="L. Martini">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Raszuk" fullname="R. Raszuk">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Patel" fullname="K. Patel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Guichard" fullname="J. Guichard">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="November"/>
+            <abstract>
+              <t indent="0">This document defines Multi-Protocol BGP (MP-BGP) procedures that allow BGP speakers to exchange Route Target reachability information.  This information can be used to build a route distribution graph in order to limit the propagation of Virtual Private Network (VPN) Network Layer Reachability Information (NLRI) between different autonomous systems or distinct clusters of the same autonomous system.  This document updates RFC 4364.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4684"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4684"/>
+        </reference>
+        <reference anchor="RFC5291" target="https://www.rfc-editor.org/info/rfc5291" quoteTitle="true" derivedAnchor="RFC5291">
+          <front>
+            <title>Outbound Route Filtering Capability for BGP-4</title>
+            <author initials="E." surname="Chen" fullname="E. Chen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="August"/>
+            <abstract>
+              <t indent="0">This document defines a BGP-based mechanism that allows a BGP speaker to send to its BGP peer a set of Outbound Route Filters (ORFs) that the peer would use to constrain/filter its outbound routing updates to the speaker.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5291"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5291"/>
+        </reference>
+        <reference anchor="RFC6952" target="https://www.rfc-editor.org/info/rfc6952" quoteTitle="true" derivedAnchor="RFC6952">
+          <front>
+            <title>Analysis of BGP, LDP, PCEP, and MSDP Issues According to the Keying and Authentication for Routing Protocols (KARP) Design Guide</title>
+            <author initials="M." surname="Jethanandani" fullname="M. Jethanandani">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Patel" fullname="K. Patel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Zheng" fullname="L. Zheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="May"/>
+            <abstract>
+              <t indent="0">This document analyzes TCP-based routing protocols, the Border Gateway Protocol (BGP), the Label Distribution Protocol (LDP), the Path Computation Element Communication Protocol (PCEP), and the Multicast Source Distribution Protocol (MSDP), according to guidelines set forth in Section 4.2 of "Keying and Authentication for            Routing Protocols Design Guidelines", RFC 6518.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6952"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6952"/>
+        </reference>
+        <reference anchor="RFC7911" target="https://www.rfc-editor.org/info/rfc7911" quoteTitle="true" derivedAnchor="RFC7911">
+          <front>
+            <title>Advertisement of Multiple Paths in BGP</title>
+            <author initials="D." surname="Walton" fullname="D. Walton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Retana" fullname="A. Retana">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Chen" fullname="E. Chen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Scudder" fullname="J. Scudder">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="July"/>
+            <abstract>
+              <t indent="0">This document defines a BGP extension that allows the advertisement of multiple paths for the same address prefix without the new paths implicitly replacing any previous ones.  The essence of the extension is that each path is identified by a Path Identifier in addition to the address prefix.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7911"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7911"/>
+        </reference>
+        <reference anchor="RFC7926" target="https://www.rfc-editor.org/info/rfc7926" quoteTitle="true" derivedAnchor="RFC7926">
+          <front>
+            <title>Problem Statement and Architecture for Information Exchange between Interconnected Traffic-Engineered Networks</title>
+            <author initials="A." surname="Farrel" fullname="A. Farrel" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Drake" fullname="J. Drake">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Bitar" fullname="N. Bitar">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Swallow" fullname="G. Swallow">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Ceccarelli" fullname="D. Ceccarelli">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="X." surname="Zhang" fullname="X. Zhang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="July"/>
+            <abstract>
+              <t indent="0">In Traffic-Engineered (TE) systems, it is sometimes desirable to establish an end-to-end TE path with a set of constraints (such as bandwidth) across one or more networks from a source to a destination.  TE information is the data relating to nodes and TE links that is used in the process of selecting a TE path.  TE information is usually only available within a network.  We call such a zone of visibility of TE information a domain.  An example of a domain may be an IGP area or an Autonomous System.</t>
+              <t indent="0">In order to determine the potential to establish a TE path through a series of connected networks, it is necessary to have available a certain amount of TE information about each network.  This need not be the full set of TE information available within each network but does need to express the potential of providing TE connectivity. This subset of TE information is called TE reachability information.</t>
+              <t indent="0">This document sets out the problem statement for the exchange of TE information between interconnected TE networks in support of end-to-end TE path establishment and describes the best current practice architecture to meet this problem statement.  For reasons that are explained in this document, this work is limited to simple TE constraints and information that determine TE reachability.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="206"/>
+          <seriesInfo name="RFC" value="7926"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7926"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Narten" fullname="T. Narten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="June"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters.  To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper.  For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed.  This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8402" target="https://www.rfc-editor.org/info/rfc8402" quoteTitle="true" derivedAnchor="RFC8402">
+          <front>
+            <title>Segment Routing Architecture</title>
+            <author initials="C." surname="Filsfils" fullname="C. Filsfils" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Previdi" fullname="S. Previdi" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Ginsberg" fullname="L. Ginsberg">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Decraene" fullname="B. Decraene">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Litkowski" fullname="S. Litkowski">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Shakir" fullname="R. Shakir">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="July"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) leverages the source routing paradigm.  A node steers a packet through an ordered list of instructions, called "segments".  A segment can represent any instruction, topological or service based.  A segment can have a semantic local to an SR node or global within an SR domain.  SR provides a mechanism that allows a flow to be restricted to a specific topological path, while maintaining per-flow state only at the ingress node(s) to the SR domain.</t>
+              <t indent="0">SR can be directly applied to the MPLS architecture with no change to the forwarding plane.  A segment is encoded as an MPLS label.  An ordered list of segments is encoded as a stack of labels.  The segment to process is on the top of the stack.  Upon completion of a segment, the related label is popped from the stack.</t>
+              <t indent="0">SR can be applied to the IPv6 architecture, with a new type of routing header.  A segment is encoded as an IPv6 address.  An ordered list of segments is encoded as an ordered list of IPv6 addresses in the routing header.  The active segment is indicated by the Destination Address (DA) of the packet.  The next active segment is indicated by a pointer in the new routing header.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8402"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8402"/>
+        </reference>
+        <reference anchor="RFC9085" target="https://www.rfc-editor.org/info/rfc9085" quoteTitle="true" derivedAnchor="RFC9085">
+          <front>
+            <title>Border Gateway Protocol - Link State (BGP-LS) Extensions for Segment Routing</title>
+            <author initials="S." surname="Previdi" fullname="S. Previdi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Talaulikar" fullname="K. Talaulikar" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Filsfils" fullname="C. Filsfils">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Gredler" fullname="H. Gredler">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Chen" fullname="M. Chen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="August"/>
+            <abstract>
+              <t indent="0">Segment Routing (SR) allows for a flexible definition of end-to-end paths by encoding paths as sequences of topological subpaths, called "segments". These segments are advertised by routing protocols, e.g., by the link-state routing protocols (IS-IS, OSPFv2, and OSPFv3) within IGP topologies.</t>
+              <t indent="0">This document defines extensions to the Border Gateway Protocol - Link State (BGP-LS) address family in order to carry SR information via BGP.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9085"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9085"/>
+        </reference>
+        <reference anchor="RFC9086" target="https://www.rfc-editor.org/info/rfc9086" quoteTitle="true" derivedAnchor="RFC9086">
+          <front>
+            <title>Border Gateway Protocol - Link State (BGP-LS) Extensions for Segment Routing BGP Egress Peer Engineering</title>
+            <author initials="S." surname="Previdi" fullname="S. Previdi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Talaulikar" fullname="K. Talaulikar" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Filsfils" fullname="C. Filsfils">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Patel" fullname="K. Patel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Ray" fullname="S. Ray">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Dong" fullname="J. Dong">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2021" month="August"/>
+            <abstract>
+              <t indent="0">A node steers a packet through a controlled set of instructions, called segments, by prepending the packet with a list of segment identifiers (SIDs).  A segment can represent any instruction, topological or service based. SR segments allow steering a flow through any topological path and service chain while maintaining per-flow state only at the ingress node of the SR domain.</t>
+              <t indent="0">This document describes an extension to Border Gateway Protocol - Link State (BGP-LS) for advertisement of BGP Peering Segments along with their BGP peering node information so that efficient BGP Egress Peer Engineering (EPE) policies and strategies can be computed based on Segment Routing.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="9086"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9086"/>
+        </reference>
+        <reference anchor="I-D.farrel-spring-sr-domain-interconnect" quoteTitle="true" target="https://datatracker.ietf.org/doc/html/draft-farrel-spring-sr-domain-interconnect-06" derivedAnchor="SR-INTERCONNECT">
+          <front>
+            <title>Interconnection of Segment Routing Sites - Problem Statement and Solution Landscape</title>
+            <author fullname="Adrian Farrel">
+              <organization showOnFrontPage="true">Old Dog Consulting</organization>
+            </author>
+            <author fullname="John Drake">
+              <organization showOnFrontPage="true">Juniper Networks</organization>
+            </author>
+            <date month="May" day="19" year="2021"/>
+            <abstract>
+              <t indent="0">   Segment Routing (SR) is a forwarding paradigm for use in MPLS and
+   IPv6 networks.  It is intended to be deployed in discrete sites that
+   may be data centers, access networks, or other networks that are
+   under the control of a single operator and that can easily be
+   upgraded to support this new technology.
+
+   Traffic originating in one SR site often terminates in another SR
+   site, but must transit a backbone network that provides
+   interconnection between those sites.
+
+   This document describes a mechanism for providing connectivity
+   between SR sites to enable end-to-end or site-to-site traffic
+   engineering.
+
+   The approach described allows connectivity between SR sites, utilizes
+   traffic engineering mechanisms (such as RSVP-TE or Segment Routing)
+   across the backbone network, makes heavy use of pre-existing
+   technologies, and requires the specification of very few additional
+   mechanisms.
+
+   This document provides some background and a problem statement,
+   explains the solution mechanism, gives references to other documents
+   that define protocol mechanisms, and provides examples.  It does not
+   define any new protocol mechanisms.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-farrel-spring-sr-domain-interconnect-06"/>
+          <format type="TXT" target="https://www.ietf.org/archive/id/draft-farrel-spring-sr-domain-interconnect-06.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acks" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">レビューコメントをくださった<contact fullname="Bruno Rijsman"/>、<contact fullname="Stephane Litkowski"/>、<contact fullname="Boris Hassanov"/>、<contact fullname="Linda Dunbar"/>、<contact fullname="Ravi Singh"/>、<contact fullname="Daniel Migault"/>、そして有益な議論をしてくださった<contact fullname="Robert Raszuk"/>に感謝します。
+      <contact fullname="Gyan Mishra"/>は有益なGenArtレビューを提供し、<contact fullname="John Scudder"/>と<contact fullname="Benjamin Kaduk"/>はIESGレビューの際に有益なコメントをしてくれました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Adrian Farrel" initials="A." surname="Farrel">
+        <organization showOnFrontPage="true">Old Dog Consulting</organization>
+        <address>
+          <email>adrian@olddog.co.uk</email>
+        </address>
+      </author>
+      <author fullname="John Drake" initials="J." surname="Drake">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <email>jdrake@juniper.net</email>
+        </address>
+      </author>
+      <author fullname="Eric Rosen" initials="E." surname="Rosen">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <email>erosen52@gmail.com</email>
+        </address>
+      </author>
+      <author fullname="Keyur Patel" initials="K." surname="Patel">
+        <organization showOnFrontPage="true">Arrcus, Inc.</organization>
+        <address>
+          <email>keyur@arrcus.com</email>
+        </address>
+      </author>
+      <author fullname="Luay Jalil" initials="L" surname="Jalil">
+        <organization showOnFrontPage="true">Verizon</organization>
+        <address>
+          <email>luay.jalil@verizon.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

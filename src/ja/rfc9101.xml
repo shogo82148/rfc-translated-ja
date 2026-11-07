@@ -1,0 +1,1686 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-oauth-jwsreq-34" indexInclude="true" ipr="trust200902" number="9101" prepTime="2021-08-21T00:17:00" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-oauth-jwsreq-34" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9101" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="OAuth JAR">OAuth 2.0認可フレームワーク：JWTで保護された認可リクエスト（JAR）</title>
+    <seriesInfo name="RFC" value="9101" stream="IETF"/>
+    <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
+      <organization showOnFrontPage="true">NAT.Consulting</organization>
+      <address>
+        <postal>
+          <street>Kunitachi</street>
+          <region>Tokyo 186-0004</region>
+          <extaddr>2-22-17 Naka</extaddr>
+          <country>Japan</country>
+        </postal>
+        <phone>+81-42-580-7401</phone>
+        <email>nat@nat.consulting</email>
+        <uri>https://nat.sakimura.org/</uri>
+      </address>
+    </author>
+    <author fullname="John Bradley" initials="J." surname="Bradley">
+      <organization showOnFrontPage="true">Yubico</organization>
+      <address>
+        <postal>
+          <street>Casilla 177</street>
+          <extaddr>Sucursal Talagante</extaddr>
+          <city>Talagante</city>
+          <region>RM</region>
+          <code/>
+          <country>Chile</country>
+        </postal>
+        <phone>+1.202.630.5272</phone>
+        <email>rfc9101@ve7jtb.com</email>
+        <uri>http://www.thread-safe.com/</uri>
+      </address>
+    </author>
+    <author fullname="Michael B. Jones" surname="Jones" initials="M.">
+      <organization showOnFrontPage="true">Microsoft</organization>
+      <address>
+        <postal>
+          <street>One Microsoft Way</street>
+          <city>Redmond</city>
+          <region>Washington</region>
+          <code>98052</code>
+          <country>United States of America</country>
+        </postal>
+        <email>mbj@microsoft.com</email>
+        <uri>https://self-issued.info/</uri>
+      </address>
+    </author>
+    <date month="08" year="2021"/>
+    <area>Security</area>
+    <workgroup>OAuth Working Group</workgroup>
+    <keyword>Assertion</keyword>
+    <keyword>Claim</keyword>
+    <keyword>Security Token</keyword>
+    <keyword>OAuth</keyword>
+    <keyword>JavaScript Object Notation</keyword>
+    <keyword>JSON</keyword>
+    <keyword>JSON Web Token</keyword>
+    <keyword>JWT</keyword>
+    <keyword>JSON Web Signature</keyword>
+    <keyword>JWS</keyword>
+    <keyword>JSON Web Encryption</keyword>
+    <keyword>JWE</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">RFC 6749で記述されているOAuth 2.0の認可リクエストは、クエリーパラメーターによるシリアル化を利用しています。
+      つまり、認可リクエストのパラメーターはリクエストのURIにエンコードされ、Webブラウザーなどのユーザーエージェントを経由して送信されます。
+      これは実装が容易である一方、a）ユーザーエージェントを経由する通信は完全性保護されておらず、そのためパラメーターが改ざんされる可能性があること、b）通信の送信元が認証されないこと、c）ユーザーエージェントを経由する通信が監視される可能性があること、を意味します。
+      これらの弱点のために、このプロトコルに対するいくつかの攻撃がすでに提示されています。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、代わりにリクエストパラメーターをJSON Web Token（JWT）で送信する能力を導入します。
+      これにより、リクエストをJSON Web Signature（JWS）で署名し、JSON Web Encryption（JWE）で暗号化できるようになり、認可リクエストの完全性、送信元認証、機密性という特性が得られます。
+      リクエストは値渡しまたは参照渡しで送信できます。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9101" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-object">リクエストオブジェクト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-object-uri">リクエストオブジェクトURI</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-symbols-and-abbreviated-ter">記号と略語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-object-2">リクエストオブジェクト</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-authorization-request">認可リクエスト</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-passing-a-request-object-by">リクエストオブジェクトの値渡し</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-passing-a-request-object-by-">リクエストオブジェクトの参照渡し</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.2.2">
+                  <li pn="section-toc.1-1.5.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.5.2.2.2.1.1"><xref derivedContent="5.2.1" format="counter" sectionFormat="of" target="section-5.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-uri-referencing-the-request">リクエストオブジェクトを参照するURI</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.5.2.2.2.2.1"><xref derivedContent="5.2.2" format="counter" sectionFormat="of" target="section-5.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-using-the-request_u">「request_uri」リクエストパラメーターを使用したリクエスト</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.5.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.5.2.2.2.3.1"><xref derivedContent="5.2.3" format="counter" sectionFormat="of" target="section-5.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-authorization-server-fetche">認可サーバーによるリクエストオブジェクトの取得</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-validating-jwt-based-reques">JWTベースのリクエストの検証</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-jwe-encrypted-request-objec">JWEで暗号化されたリクエストオブジェクト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-jws-signed-request-object">JWSで署名されたリクエストオブジェクト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.3">
+                <t indent="0" pn="section-toc.1-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-parameter-assembly-">リクエストパラメーターの組み立てと検証</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-authorization-server-respon">認可サーバーのレスポンス</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tls-requirements">TLSの要件</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-oauth-parameters-registrati">OAuthパラメーターの登録</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-oauth-authorization-server-">OAuth Authorization Server Metadataレジストリー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.3">
+                <t indent="0" pn="section-toc.1-1.9.2.3.1"><xref derivedContent="9.3" format="counter" sectionFormat="of" target="section-9.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-oauth-dynamic-client-regist">OAuth Dynamic Client Registration Metadataレジストリー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.4">
+                <t indent="0" pn="section-toc.1-1.9.2.4.1"><xref derivedContent="9.4" format="counter" sectionFormat="of" target="section-9.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-media-type-registration">メディアタイプの登録</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2.4.2">
+                  <li pn="section-toc.1-1.9.2.4.2.1">
+                    <t indent="0" pn="section-toc.1-1.9.2.4.2.1.1"><xref derivedContent="9.4.1" format="counter" sectionFormat="of" target="section-9.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-registry-contents">レジストリーの内容</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-choice-of-algorithms">アルゴリズムの選択</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-source-authenticati">リクエストの送信元認証</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.3">
+                <t indent="0" pn="section-toc.1-1.10.2.3.1"><xref derivedContent="10.3" format="counter" sectionFormat="of" target="section-10.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-endpoints">明示的なエンドポイント</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.4">
+                <t indent="0" pn="section-toc.1-1.10.2.4.1"><xref derivedContent="10.4" format="counter" sectionFormat="of" target="section-10.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-risks-associated-with-reque">request_uriに関連するリスク</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2.4.2">
+                  <li pn="section-toc.1-1.10.2.4.2.1">
+                    <t indent="0" pn="section-toc.1-1.10.2.4.2.1.1"><xref derivedContent="10.4.1" format="counter" sectionFormat="of" target="section-10.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ddos-attack-on-the-authoriz">認可サーバーに対するDDoS攻撃</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.10.2.4.2.2">
+                    <t indent="0" pn="section-toc.1-1.10.2.4.2.2.1"><xref derivedContent="10.4.2" format="counter" sectionFormat="of" target="section-10.4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-uri-rewrite">リクエストURIの書き換え</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.10.2.5">
+                <t indent="0" pn="section-toc.1-1.10.2.5.1"><xref derivedContent="10.5" format="counter" sectionFormat="of" target="section-10.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-downgrade-attack">ダウングレード攻撃</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.6">
+                <t indent="0" pn="section-toc.1-1.10.2.6.1"><xref derivedContent="10.6" format="counter" sectionFormat="of" target="section-10.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tls-security-considerations">TLSのセキュリティーに関する考慮事項</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.7">
+                <t indent="0" pn="section-toc.1-1.10.2.7.1"><xref derivedContent="10.7" format="counter" sectionFormat="of" target="section-10.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-parameter-mismatches">パラメーターの不一致</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.8">
+                <t indent="0" pn="section-toc.1-1.10.2.8.1"><xref derivedContent="10.8" format="counter" sectionFormat="of" target="section-10.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-cross-jwt-confusion">JWT間の混同</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-considerations">プライバシーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="11.1" format="counter" sectionFormat="of" target="section-11.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-collection-limitation">収集の制限</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="11.2" format="counter" sectionFormat="of" target="section-11.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-disclosure-limitation">開示の制限</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2.2.2">
+                  <li pn="section-toc.1-1.11.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.1.1"><xref derivedContent="11.2.1" format="counter" sectionFormat="of" target="section-11.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-request-disclosure">リクエストの開示</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.11.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.11.2.2.2.2.1"><xref derivedContent="11.2.2" format="counter" sectionFormat="of" target="section-11.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tracking-using-request-obje">リクエストオブジェクトURIを使用した追跡</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.12.2">
+              <li pn="section-toc.1-1.12.2.1">
+                <t indent="0" pn="section-toc.1-1.12.2.1.1"><xref derivedContent="12.1" format="counter" sectionFormat="of" target="section-12.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.12.2.2">
+                <t indent="0" pn="section-toc.1-1.12.2.2.1"><xref derivedContent="12.2" format="counter" sectionFormat="of" target="section-12.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">      <xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>の認可リクエストは、クエリーパラメーターによるシリアル化を利用しており、通常はWebブラウザーなどのユーザーエージェントを経由して送信されます。
+      </t>
+      <t indent="0" pn="section-1-2">      たとえば、パラメーター<tt>response_type</tt>、<tt>client_id</tt>、<tt>state</tt>、<tt>redirect_uri</tt>は、リクエストのURIに次のようにエンコードされます。
+      </t>
+      <sourcecode type="http-message" markers="false" pn="section-1-3">
+    GET /authorize?response_type=code&amp;client_id=s6BhdRkqt3&amp;state=xyz
+    &amp;redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb HTTP/1.1
+    Host: server.example.com
+</sourcecode>
+      <t indent="0" pn="section-1-4">      これは実装が容易である一方、URIへのエンコードでは、機密性と完全性保護を提供するためにアプリケーション層のセキュリティーを使用できません。
+      クライアントとユーザーエージェントの間、およびユーザーエージェントと認可サーバーの間の通信セキュリティーを提供するためにTLSが使用されますが、TLSセッションはユーザーエージェントで終端されます。
+      さらに、TLSセッションは、何らかのミドルボックス（ロードバランサーなど）で途中で終端される場合があります。
+      </t>
+      <t indent="0" pn="section-1-5">      その結果、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>の認可リクエストには、次のような欠点があります。
+      </t>
+      <ol spacing="normal" type="(%c)" indent="adaptive" start="1" pn="section-1-6">
+        <li pn="section-1-6.1" derivedCounter="(a)">ユーザーエージェントを経由する通信は完全性保護されておらず、そのためパラメーターが改ざんされる可能性があります（完全性保護の欠如）。</li>
+        <li pn="section-1-6.2" derivedCounter="(b)">通信の送信元が認証されません（送信元認証の欠如）。</li>
+        <li pn="section-1-6.3" derivedCounter="(c)">ユーザーエージェントを経由する通信が監視される可能性があります（封じ込め／機密性の欠如）。</li>
+      </ol>
+      <t indent="0" pn="section-1-7">      こうした本質的な弱点のために、リダイレクトURIの書き換えなど、このプロトコルに対するいくつかの攻撃が特定されています。
+      </t>
+      <t indent="0" pn="section-1-8">      アプリケーション層のセキュリティーを使用すると、これらの問題が緩和されます。
+      </t>
+      <t indent="0" pn="section-1-9">      アプリケーション層のセキュリティーを使用すると、信頼できる第三者がリクエストを準備できるようになるため、クライアントアプリケーションは事前に合意した以上の権限をリクエストできなくなります。
+      </t>
+      <t indent="0" pn="section-1-10">      さらに、リクエストを参照渡しすることで、通信路上のオーバーヘッドを削減できます。
+      </t>
+      <t indent="0" pn="section-1-11"><xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>エンコーディングが選ばれた理由は次のとおりです。</t>
+      <ol spacing="normal" type="(%d)" indent="adaptive" start="1" pn="section-1-12">
+        <li pn="section-1-12.1" derivedCounter="(1)">OAuthのレスポンス形式として使用されているJSONと密接な関係があること</li>
+        <li pn="section-1-12.2" derivedCounter="(2)">テキスト形式であるため開発者にとって扱いやすいこと</li>
+        <li pn="section-1-12.3" derivedCounter="(3)">XMLと比べて比較的コンパクトであること</li>
+        <li pn="section-1-12.4" derivedCounter="(4)">関連する署名と暗号化の方式<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515"/> <xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516"/>とともに、提案標準という開発状況にあること</li>
+        <li pn="section-1-12.5" derivedCounter="(5)">XML SignatureおよびXML Encryptionと比べて、JWSとJWEが比較的容易であること</li>
+      </ol>
+      <t indent="0" pn="section-1-13">パラメーター<tt>request</tt>と<tt>request_uri</tt>は、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>フローのための追加の認可リクエストパラメーターとして導入されます。
+      <tt>request</tt>パラメーターは、JSONエンコードされたOAuth 2.0の認可リクエストパラメーターをJWTクレームセット（JWT Claims Set）に保持する<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JSON Web Token（JWT）</xref>です。
+      RFC 7519とは対照的に、クレームセットの要素はエンコードされたOAuthリクエストパラメーター<xref target="IANA.OAuth.Parameters" format="default" sectionFormat="of" derivedContent="IANA.OAuth.Parameters"/>であり、IANAが管理するJSON Web Tokenクレーム<xref target="IANA.JWT.Claims" format="default" sectionFormat="of" derivedContent="IANA.JWT.Claims"/>のうちごく一部（特に<tt>iss</tt>と<tt>aud</tt>）だけで補完されていることに注意してください。
+      <tt>request</tt>パラメーター内のJWTは、JWSを使用して完全性保護および送信元認証されます。
+      </t>
+      <t indent="0" pn="section-1-14">      <xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>は参照渡しで認可エンドポイントに渡すこともできます。
+      その場合は、<tt>request</tt>の代わりにパラメーター<tt>request_uri</tt>を使用します。</t>
+      <t indent="0" pn="section-1-15">リクエストのエンコーディングとしてクエリーパラメーターの代わりに<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>を使用することには、いくつかの利点があります。</t>
+      <ol spacing="normal" type="(%c)" indent="adaptive" start="1" pn="section-1-16">
+        <li pn="section-1-16.1" derivedCounter="(a)">完全性保護。
+		  リクエストに署名することで、リクエストの完全性を検査できます。</li>
+        <li pn="section-1-16.2" derivedCounter="(b)">送信元認証。
+		  リクエストに署名することで、署名者を認証できます。</li>
+        <li pn="section-1-16.3" derivedCounter="(c)">機密性保護。
+		  リクエストを暗号化することで、TLSコネクションがどこか（ユーザーエージェントやその手前を含む）で終端されたとしても、エンドツーエンドの機密性を提供できます。</li>
+        <li pn="section-1-16.4" derivedCounter="(d)">収集の最小化。
+        認可リクエストが特定のポリシーに準拠していることを証明する信頼できる第三者が、リクエストに署名できます。
+        たとえば、エンドユーザーが求めた処理を実行するために、リクエストされたすべての個人データが厳密に必要であることを確認するよう、信頼できる第三者がリクエストを事前に審査し、その後、その信頼できる第三者がリクエストに署名することが考えられます。
+        認可サーバーはその署名を検査し、エンドユーザーに準拠状況を表示します。
+        エンドユーザーは、リクエストを認可する際に、リクエストの正当性についてある程度の保証を得られます。
+        場合によっては、そのような状況では認可ダイアログを省略することが望ましいことさえあります。
+		  </li>
+      </ol>
+      <t indent="0" pn="section-1-17">リクエストの参照渡しが有用な場合として、次のようなものがあります。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-1-18">
+        <li pn="section-1-18.1" derivedCounter="1.">送信するリクエストのサイズを削減することが望ましい場合。
+        アプリケーション層のセキュリティーを使用すると、特に公開鍵暗号を使用する場合に、リクエストのサイズが増加します。</li>
+        <li pn="section-1-18.2" derivedCounter="2.">クライアントがアプリケーションレベルの暗号処理を行いたくない場合。
+        認可サーバーは、クライアントとの直接通信を通じて認可リクエストを受け付けるエンドポイントを提供してもよく、これによりクライアントは認証され、チャネルはTLSで保護されます。</li>
+      </ol>
+      <t indent="0" pn="section-1-19">この能力はOpenID Connect <xref target="OpenID.Core" format="default" sectionFormat="of" derivedContent="OpenID.Core"/>で使用されています。</t>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-1.1-1">    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+    </section>
+    <section anchor="Terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">この仕様では、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0フレームワーク</xref>、<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515">JSON Web Signature</xref>、<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JSON Web Encryption</xref>で定義されているものに加えて、次の用語と定義を適用します。</t>
+      <section anchor="request_object" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-request-object">リクエストオブジェクト</name>
+        <t indent="0" pn="section-2.1-1">      リクエストオブジェクト（Request Object）は、JSONエンコードされたOAuth 2.0の認可リクエストパラメーターをJWTクレームセットに保持する<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JSON Web Token（JWT）</xref>です。
+        </t>
+      </section>
+      <section anchor="request_uri" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-request-object-uri">リクエストオブジェクトURI</name>
+        <t indent="0" pn="section-2.2-1">リクエストオブジェクトURI（Request Object URI）は、OAuth 2.0の認可リクエストを構成するパラメーターの集合を参照する絶対URIです。
+        URIが参照するリソースのコンテンツは<xref target="request_object" format="default" sectionFormat="of" derivedContent="Section 2.1">リクエストオブジェクト</xref>です。
+        ただし、そのURIが同じ認可サーバーからクライアントに提供された場合は例外で、その場合のコンテンツは認可サーバーの裁量による実装の詳細です。
+        コンテンツがリクエストオブジェクトであることは、<tt>request_uri</tt>の提供者が利用者とは別のエンティティーである場合、たとえば、クライアントのバックエンドサービスに保存され、HTTPSでアクセス可能にされたリクエストオブジェクトを参照するURIをクライアントが提供する場合に、相互運用性を確保するためのものです。
+        後者の場合、つまり、リクエストオブジェクトと引き換えにURIを提供するエンドポイントを認可サーバーが提供する場合のように、認可サーバーがURIの提供者と利用者の両方である場合には、この相互運用性の懸念は当てはまりません。</t>
+      </section>
+    </section>
+    <section anchor="abbreviation" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-symbols-and-abbreviated-ter">記号と略語</name>
+      <t indent="0" pn="section-3-1">      この仕様では、次の略語を共通して使用します。
+      </t>
+      <dl newline="false" spacing="normal" indent="3" pn="section-3-2">
+        <dt pn="section-3-2.1">JSON:</dt>
+        <dd pn="section-3-2.2">JavaScript Object Notation</dd>
+        <dt pn="section-3-2.3">JWT:</dt>
+        <dd pn="section-3-2.4">JSON Web Token</dd>
+        <dt pn="section-3-2.5">JWS:</dt>
+        <dd pn="section-3-2.6">JSON Web Signature</dd>
+        <dt pn="section-3-2.7">JWE:</dt>
+        <dd pn="section-3-2.8">JSON Web Encryption</dd>
+        <dt pn="section-3-2.9">URI:</dt>
+        <dd pn="section-3-2.10">Uniform Resource Identifier</dd>
+        <dt pn="section-3-2.11">URL:</dt>
+        <dd pn="section-3-2.12">Uniform Resource Locator</dd>
+      </dl>
+    </section>
+    <section anchor="authorization_request_object" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-request-object-2">リクエストオブジェクト</name>
+      <t indent="0" pn="section-4-1"><xref target="request_object" format="default" sectionFormat="of" derivedContent="Section 2.1">リクエストオブジェクト</xref>は、OAuth 2.0の認可リクエストに認可リクエストパラメーターを提供するために使用されます。
+      リクエストオブジェクトには、この文書で定義する<tt>request</tt>パラメーターと<tt>request_uri</tt>パラメーターを除き、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>の認可リクエストの処理に使用されるすべてのパラメーター（拡張パラメーターを含む）を含め<bcp14>なければなりません（MUST）</bcp14>。
+      パラメーターは、オブジェクトのJWTクレームとして表現されます。
+      パラメーター名と文字列値は、JSON文字列として含め<bcp14>なければなりません（MUST）</bcp14>。
+      リクエストオブジェクトはドメインをまたいで、また閉じたエコシステムの外部で扱われる可能性があるため、<xref target="RFC8259" sectionFormat="of" section="8.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8259#section-8.1" derivedContent="RFC8259"/>に従い、これらのJSON文字列はUTF-8 <xref target="RFC3629" format="default" sectionFormat="of" derivedContent="RFC3629"/>を使用してエンコード<bcp14>しなければなりません（MUST）</bcp14>。
+      数値は、JSONの数値として含め<bcp14>なければなりません（MUST）</bcp14>。
+      リクエストオブジェクトには、任意の拡張パラメーターを含めても<bcp14>よいです（MAY）</bcp14>。
+
+      この<xref target="RFC8259" format="default" sectionFormat="of" derivedContent="RFC8259">JSON</xref>オブジェクトは、<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>で定義されているJWTクレームセットを構成します。
+      その後、JWTクレームセットは署名されるか、署名されたうえで暗号化されます。 </t>
+      <t indent="0" pn="section-4-2">署名には、<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515">JSON Web Signature（JWS）</xref>を使用します。
+      その結果はJWSで署名された<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>になります。
+      署名される場合、認可リクエストオブジェクトには、メンバーとしてクレーム<tt>iss</tt>（発行者）と<tt>aud</tt>（オーディエンス）を含める<bcp14>べきです（SHOULD）</bcp14>。
+      それらのセマンティクスは<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519">JWT</xref>仕様で定義されているものと同じです。
+      <tt>aud</tt>の値は、<xref target="RFC8414" format="default" sectionFormat="of" derivedContent="RFC8414">RFC 8414</xref>で定義されている認可サーバー（AS）の<tt>issuer</tt>の値であるべきです。</t>
+      <t indent="0" pn="section-4-3">暗号化には、<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JWE</xref>を使用します。
+      署名と暗号化の両方を適用する場合は、<xref target="RFC7519" sectionFormat="of" section="11.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-11.2" derivedContent="RFC7519"/>で説明されているように、JWTに署名してから暗号化<bcp14>しなければなりません（MUST）</bcp14>。
+      その結果は、<xref target="RFC7519" format="default" sectionFormat="of" derivedContent="RFC7519"/>で定義されているNested JWTになります。
+      </t>
+      <t indent="0" pn="section-4-4">      リクエストオブジェクトの署名と暗号化に使用するアルゴリズムは、クライアントが決定します。
+      選択したアルゴリズムは、クライアントと認可サーバーの両方がサポートしている必要があります。
+      クライアントは、動的クライアント登録メタデータ<xref target="RFC7591" format="default" sectionFormat="of" derivedContent="RFC7591"/>、具体的にはメタデータ値<tt>request_object_signing_alg</tt>、<tt>request_object_encryption_alg</tt>、<tt>request_object_encryption_enc</tt>で、自身がサポートするアルゴリズムを認可サーバーに通知できます。
+      同様に、認可サーバーは、認可サーバーメタデータ<xref target="RFC8414" format="default" sectionFormat="of" derivedContent="RFC8414"/>、具体的にはメタデータ値<tt>request_object_signing_alg_values_supported</tt>、<tt>request_object_encryption_alg_values_supported</tt>、<tt>request_object_encryption_enc_values_supported</tt>で、自身がサポートするアルゴリズムをクライアントに通知できます。
+      </t>
+      <t indent="0" pn="section-4-5">      リクエストオブジェクトは、<xref target="RequestParameter" format="default" sectionFormat="of" derivedContent="Section 5.1"/>で説明するように値渡しで、または<xref target="RequestUriParameter" format="default" sectionFormat="of" derivedContent="Section 5.2"/>で説明するように参照渡しで送信<bcp14>してもよいです（MAY）</bcp14>。
+      リクエストオブジェクトには、<tt>request</tt>パラメーターと<tt>request_uri</tt>パラメーターを含めては<bcp14>なりません（MUST NOT）</bcp14>。
+      </t>
+      <t indent="0" pn="section-4-6">      <xref target="request_object" format="default" sectionFormat="of" derivedContent="Section 2.1">リクエストオブジェクト</xref>のメディアタイプ<xref target="RFC2046" format="default" sectionFormat="of" derivedContent="RFC2046"/>は<tt>application/oauth-authz-req+jwt</tt>です。
+      既存の展開の中には、代わりに<tt>application/jwt</tt>タイプを使用しているものがあるかもしれないことに注意してください。
+      </t>
+      <t keepWithNext="true" indent="0" pn="section-4-7">      次は、base64url <xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515"/>エンコーディングと署名を行う前の、リクエストオブジェクト内のクレームの例です。
+      拡張パラメーター<tt>nonce</tt>と<tt>max_age</tt>が含まれていることに注意してください。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-4-8">
+  {
+   "iss": "s6BhdRkqt3",
+   "aud": "https://server.example.com",
+   "response_type": "code id_token",
+   "client_id": "s6BhdRkqt3",
+   "redirect_uri": "https://client.example.org/cb",
+   "scope": "openid",
+   "state": "af0ifjsldkj",
+   "nonce": "n-0S6_WzA2Mj",
+   "max_age": 86400
+  }
+</sourcecode>
+      <t keepWithNext="true" indent="0" pn="section-4-9">      これを<tt>RS256</tt>アルゴリズム<xref target="RFC7518" format="default" sectionFormat="of" derivedContent="RFC7518"/>で署名すると、次のリクエストオブジェクトの値になります（値の中の改行は表示上の都合によるものです）。
+      </t>
+      <sourcecode type="jwt" markers="false" pn="section-4-10">
+  eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ewogICAgImlzcyI6ICJzNkJoZF
+  JrcXQzIiwKICAgICJhdWQiOiAiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLAog
+  ICAgInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsCiAgICAiY2xpZW50X2
+  lkIjogInM2QmhkUmtxdDMiLAogICAgInJlZGlyZWN0X3VyaSI6ICJodHRwczovL2Ns
+  aWVudC5leGFtcGxlLm9yZy9jYiIsCiAgICAic2NvcGUiOiAib3BlbmlkIiwKICAgIC
+  JzdGF0ZSI6ICJhZjBpZmpzbGRraiIsCiAgICAibm9uY2UiOiAibi0wUzZfV3pBMk1q
+  IiwKICAgICJtYXhfYWdlIjogODY0MDAKfQ.Nsxa_18VUElVaPjqW_ToI1yrEJ67BgK
+  b5xsuZRVqzGkfKrOIX7BCx0biSxYGmjK9KJPctH1OC0iQJwXu5YVY-vnW0_PLJb1C2
+  HG-ztVzcnKZC2gE4i0vgQcpkUOCpW3SEYXnyWnKzuKzqSb1wAZALo5f89B_p6QA6j6
+  JwBSRvdVsDPdulW8lKxGTbH82czCaQ50rLAg3EYLYaCb4ik4I1zGXE4fvim9FIMs8O
+  CMmzwIB5S-ujFfzwFjoyuPEV4hJnoVUmXR_W9typPf846lGwA8h9G9oNTIuX8Ft2jf
+  pnZdFmLg3_wr3Wa5q3a-lfbgF3S9H_8nN3j1i7tLR_5Nz-g
+</sourcecode>
+      <t keepWithNext="true" indent="0" pn="section-4-11">      JSON Web Key（JWK）形式で表現された次のRSA公開鍵を使用して、この例および以降のリクエストオブジェクトの例におけるリクエストオブジェクトの署名を検証できます（値の中の改行は表示上の都合によるものです）。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-4-12">
+  {
+   "kty":"RSA",
+   "kid":"k2bdc",
+   "n":"x5RbkAZkmpRxia65qRQ1wwSMSxQUnS7gcpVTV_cdHmfmG2ltd2yabEO9XadD8
+        pJNZubINPpmgHh3J1aD9WRwS05ucmFq3CfFsluLt13_7oX5yDRSKX7poXmT_5
+        ko8k4NJZPMAO8fPToDTH7kHYbONSE2FYa5GZ60CUsFhSonI-dcMDJ0Ary9lxI
+        w5k2z4TAdARVWcS7sD07VhlMMshrwsPHBQgTatlkxyIHXbYdtak8fqvNAwr7O
+        lVEvM_Ipf5OfmdB8Sd-wjzaBsyP4VhJKoi_qdgSzpC694XZeYPq45Sw-q51iF
+        UlcOlTCI7z6jltUtnR6ySn6XDGFnzH5Fe5ypw",
+   "e":"AQAB"
+  }
+</sourcecode>
+    </section>
+    <section anchor="authreq" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-authorization-request">認可リクエスト</name>
+      <t indent="0" pn="section-5-1">クライアントは、<tt>application/x-www-form-urlencoded</tt>形式を使用して、認可エンドポイントURIのクエリーコンポーネントに次のパラメーターを追加することで、認可リクエストURIを構築します。</t>
+      <dl newline="true" spacing="normal" indent="3" pn="section-5-2">
+        <dt pn="section-5-2.1">request</dt>
+        <dd pn="section-5-2.2">          <tt>request_uri</tt>が指定されていない場合は<bcp14>要求されています（REQUIRED）</bcp14>。
+          <xref target="RFC6749" sectionFormat="of" section="4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6749#section-4" derivedContent="RFC6749"/>（OAuth 2.0）に記載されている認可リクエストパラメーターを保持する<xref target="request_object" format="default" sectionFormat="of" derivedContent="Section 2.1">リクエストオブジェクト</xref>です。
+          このパラメーターが認可リクエストに存在する場合、<tt>request_uri</tt>は存在しては<bcp14>なりません（MUST NOT）</bcp14>。
+          </dd>
+        <dt pn="section-5-2.3">request_uri</dt>
+        <dd pn="section-5-2.4">          <tt>request</tt>が指定されていない場合は<bcp14>要求されています（REQUIRED）</bcp14>。
+          <xref target="RFC6749" sectionFormat="of" section="4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6749#section-4" derivedContent="RFC6749"/>（OAuth 2.0）に記載されている認可リクエストパラメーターを参照する<xref target="request_uri" format="default" sectionFormat="of" derivedContent="Section 2.2">リクエストオブジェクトURI</xref>である、<xref target="RFC3986" format="default" sectionFormat="of" derivedContent="RFC3986">RFC 3986</xref>で定義されている絶対URIです。
+          このパラメーターが認可リクエストに存在する場合、<tt>request</tt>は存在しては<bcp14>なりません（MUST NOT）</bcp14>。
+          </dd>
+        <dt pn="section-5-2.5">client_id</dt>
+        <dd pn="section-5-2.6">          <bcp14>要求されています（REQUIRED）</bcp14>。
+          <xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>の<tt>client_id</tt>です。
+          この値は、<tt>request</tt>または<tt>request_uri</tt>の<xref target="request_object" format="default" sectionFormat="of" derivedContent="Section 2.1">リクエストオブジェクト</xref>の<tt>client_id</tt>と一致し<bcp14>なければなりません（MUST）</bcp14>。</dd>
+      </dl>
+      <t indent="0" pn="section-5-3">クライアントは、HTTPリダイレクトレスポンスを使用して、またはユーザーエージェントを介して利用可能なその他の手段によって、構築したURIへリソースオーナーを誘導します。</t>
+      <t indent="0" pn="section-5-4">たとえば、クライアントはエンドユーザーのユーザーエージェントに、次のHTTPSリクエストを行うよう指示します。</t>
+      <sourcecode type="http-message" markers="false" pn="section-5-5">
+GET /authz?client_id=s6BhdRkqt3&amp;request=eyJhbG..AlMGzw HTTP/1.1
+Host: server.example.com
+</sourcecode>
+      <t keepWithPrevious="true" indent="0" pn="section-5-6">      requestパラメーターの値は簡潔さのために省略しています。
+      </t>
+      <t indent="0" pn="section-5-7">認可リクエストオブジェクトは、次のいずれかで<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <ol spacing="normal" type="(%c)" indent="adaptive" start="1" pn="section-5-8">
+        <li pn="section-5-8.1" derivedCounter="(a)">JWSで署名されたもの</li>
+        <li pn="section-5-8.2" derivedCounter="(b)">JWSで署名され、JWEで暗号化されたもの</li>
+      </ol>
+      <t indent="0" pn="section-5-9">後方互換性などのために、クライアントはリクエストオブジェクトに含まれるパラメーターを、クエリーパラメーターにも重複して送信<bcp14>してもよいです（MAY）</bcp14>。
+      ただし、この仕様をサポートする認可サーバーは、リクエストオブジェクトに含まれるパラメーターだけを使用<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <section anchor="RequestParameter" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-passing-a-request-object-by">リクエストオブジェクトの値渡し</name>
+        <t indent="0" pn="section-5.1-1">クライアントは、認可リクエストをリクエストオブジェクトとして、<tt>request</tt>パラメーターの値として認可エンドポイントに送信します。</t>
+        <t keepWithNext="true" indent="0" pn="section-5.1-2">次は、<tt>request</tt>パラメーターを使用した認可リクエストの例です（値の中の改行は表示上の都合によるものです）。
+        </t>
+        <sourcecode type="url" markers="false" pn="section-5.1-3">
+  https://server.example.com/authorize?client_id=s6BhdRkqt3&amp;
+    request=eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ewogICAgImlzcyI6
+    ICJzNkJoZFJrcXQzIiwKICAgICJhdWQiOiAiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBs
+    ZS5jb20iLAogICAgInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsCiAg
+    ICAiY2xpZW50X2lkIjogInM2QmhkUmtxdDMiLAogICAgInJlZGlyZWN0X3VyaSI6
+    ICJodHRwczovL2NsaWVudC5leGFtcGxlLm9yZy9jYiIsCiAgICAic2NvcGUiOiAi
+    b3BlbmlkIiwKICAgICJzdGF0ZSI6ICJhZjBpZmpzbGRraiIsCiAgICAibm9uY2Ui
+    OiAibi0wUzZfV3pBMk1qIiwKICAgICJtYXhfYWdlIjogODY0MDAKfQ.Nsxa_18VU
+    ElVaPjqW_ToI1yrEJ67BgKb5xsuZRVqzGkfKrOIX7BCx0biSxYGmjK9KJPctH1OC
+    0iQJwXu5YVY-vnW0_PLJb1C2HG-ztVzcnKZC2gE4i0vgQcpkUOCpW3SEYXnyWnKz
+    uKzqSb1wAZALo5f89B_p6QA6j6JwBSRvdVsDPdulW8lKxGTbH82czCaQ50rLAg3E
+    YLYaCb4ik4I1zGXE4fvim9FIMs8OCMmzwIB5S-ujFfzwFjoyuPEV4hJnoVUmXR_W
+    9typPf846lGwA8h9G9oNTIuX8Ft2jfpnZdFmLg3_wr3Wa5q3a-lfbgF3S9H_8nN3
+    j1i7tLR_5Nz-g
+</sourcecode>
+      </section>
+      <section anchor="RequestUriParameter" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-passing-a-request-object-by-">リクエストオブジェクトの参照渡し</name>
+        <t indent="0" pn="section-5.2-1">      <tt>request_uri</tt>認可リクエストパラメーターを使用すると、OAuthの認可リクエストを値渡しではなく参照渡しで渡せるようになります。
+      このパラメーターは<tt>request</tt>パラメーターと同じように使用されますが、リクエストオブジェクトの値が値渡しされるのではなく、指定されたURIで識別されるリソースから取得される点が異なります。
+        </t>
+        <t indent="0" pn="section-5.2-2">      リクエストURI全体は、ASCII文字で512文字を超える<bcp14>べきではありません（SHOULD NOT）</bcp14>。
+      この制限には2つの理由があります。
+        </t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-5.2-3">
+          <li pn="section-5.2-3.1" derivedCounter="1.">執筆時点で市場に出回っている多くの電話機は、いまだに大きなペイロードを受け付けません。
+          その制限は、通常ASCII文字で512文字または1024文字です。</li>
+          <li pn="section-5.2-3.2" derivedCounter="2.">2Gモバイル接続のような低速な接続では、大きなURLはレスポンスの遅延を引き起こします。
+          したがって、ユーザー体験の観点から、そのようなURLの使用は推奨できません。
+          </li>
+        </ol>
+        <t indent="0" pn="section-5.2-4">      <tt>request_uri</tt>が参照するリソースのコンテンツは、リクエストオブジェクトで<bcp14>なければなりません（MUST）</bcp14>。
+      また、そのURIが認可サーバーからクライアントに提供されたものでない限り、そのリソースは認可サーバーから到達可能で<bcp14>なければなりません（MUST）</bcp14>。
+      前者の場合、<tt>request_uri</tt>は、<xref target="RFC7230" sectionFormat="of" section="2.7.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7230#section-2.7.2" derivedContent="RFC7230"/>で規定されている<tt>https</tt> URIで<bcp14>なければなりません（MUST）</bcp14>。
+      後者の場合、それは<xref target="RFC8141" format="default" sectionFormat="of" derivedContent="RFC8141"/>で規定されているURNで<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+        <t keepWithNext="true" indent="0" pn="section-5.2-5">次は、<tt>request_uri</tt>で参照できるリクエストオブジェクトリソースのコンテンツの例です（値の中の改行は表示上の都合によるものです）。</t>
+        <sourcecode type="jwt" markers="false" pn="section-5.2-6">
+  eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ewogICAgImlzcyI6ICJzNkJoZF
+  JrcXQzIiwKICAgICJhdWQiOiAiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLAog
+  ICAgInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsCiAgICAiY2xpZW50X2
+  lkIjogInM2QmhkUmtxdDMiLAogICAgInJlZGlyZWN0X3VyaSI6ICJodHRwczovL2Ns
+  aWVudC5leGFtcGxlLm9yZy9jYiIsCiAgICAic2NvcGUiOiAib3BlbmlkIiwKICAgIC
+  JzdGF0ZSI6ICJhZjBpZmpzbGRraiIsCiAgICAibm9uY2UiOiAibi0wUzZfV3pBMk1q
+  IiwKICAgICJtYXhfYWdlIjogODY0MDAKfQ.Nsxa_18VUElVaPjqW_ToI1yrEJ67BgK
+  b5xsuZRVqzGkfKrOIX7BCx0biSxYGmjK9KJPctH1OC0iQJwXu5YVY-vnW0_PLJb1C2
+  HG-ztVzcnKZC2gE4i0vgQcpkUOCpW3SEYXnyWnKzuKzqSb1wAZALo5f89B_p6QA6j6
+  JwBSRvdVsDPdulW8lKxGTbH82czCaQ50rLAg3EYLYaCb4ik4I1zGXE4fvim9FIMs8O
+  CMmzwIB5S-ujFfzwFjoyuPEV4hJnoVUmXR_W9typPf846lGwA8h9G9oNTIuX8Ft2jf
+  pnZdFmLg3_wr3Wa5q3a-lfbgF3S9H_8nN3j1i7tLR_5Nz-g
+</sourcecode>
+        <section anchor="CreateRequestUri" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.1">
+          <name slugifiedName="name-uri-referencing-the-request">リクエストオブジェクトを参照するURI</name>
+          <t indent="0" pn="section-5.2.1-1">      クライアントは、リクエストオブジェクトリソースを、ローカルに、または認可サーバーがアクセスできるURIでリモートに保存します。
+      そのような機能は、認可サーバーまたは信頼できる第三者が提供してもかまいません。
+      たとえば、認可サーバーは、クライアントがリクエストオブジェクトをPOSTしてリクエストURIを取得するためのURLを提供することが考えられます。
+      このURIが、リクエストオブジェクトURI、すなわち<tt>request_uri</tt>です。
+          </t>
+          <t indent="0" pn="section-5.2.1-2">      リクエストオブジェクトには、認可サーバーだけに開示されるべき値が含まれる可能性があります。
+      そのため、<tt>request_uri</tt>は、公開で取得可能な場合でもURIを推測できないように、その有効期間に見合った適切なエントロピーを持た<bcp14>なければなりません（MUST）</bcp14>。
+      ガイダンスについては、<xref target="RFC6819" sectionFormat="of" section="5.1.4.2.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6819#section-5.1.4.2.2" derivedContent="RFC6819"/>と「<xref target="CapURLs" format="title" sectionFormat="of" derivedContent="Good Practices for Capability URLs"/>」<xref target="CapURLs" format="default" sectionFormat="of" derivedContent="CapURLs"/>を参照してください。
+      アクセス制御の措置が講じられていない限り、<tt>request_uri</tt>は妥当なタイムアウト後に削除することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+          </t>
+          <t keepWithNext="true" indent="0" pn="section-5.2.1-3">次は、リクエストオブジェクトURIの値の例です（値の中の改行は表示上の都合によるものです）。
+      この例では、信頼できる第三者のサービスがリクエストオブジェクトをホストしています。
+          </t>
+          <sourcecode type="url" markers="false" pn="section-5.2.1-4">
+  https://tfp.example.org/request.jwt/
+    GkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM
+</sourcecode>
+        </section>
+        <section anchor="UseRequestUri" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.2">
+          <name slugifiedName="name-request-using-the-request_u">「request_uri」リクエストパラメーターを使用したリクエスト</name>
+          <t indent="0" pn="section-5.2.2-1">クライアントは、認可リクエストを認可エンドポイントに送信します。</t>
+          <t keepWithNext="true" indent="0" pn="section-5.2.2-2">次は、<tt>request_uri</tt>パラメーターを使用した認可リクエストの例です（値の中の改行は表示上の都合によるものです）。</t>
+          <sourcecode type="url" markers="false" pn="section-5.2.2-3">
+  https://server.example.com/authorize?
+    client_id=s6BhdRkqt3
+    &amp;request_uri=https%3A%2F%2Ftfp.example.org%2Frequest.jwt
+    %2FGkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM
+</sourcecode>
+        </section>
+        <section anchor="GetRequestUri" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.3">
+          <name slugifiedName="name-authorization-server-fetche">認可サーバーによるリクエストオブジェクトの取得</name>
+          <t indent="0" pn="section-5.2.3-1">リクエストを受信すると、認可サーバーは、参照されているリクエストオブジェクトを取得するために、<tt>request_uri</tt>へHTTP <tt>GET</tt>リクエストを送信<bcp14>しなければなりません（MUST）</bcp14>。
+          ただし、サーバーが他のメカニズムを通じて安全にリクエストオブジェクトを取得し、それを解析して認可リクエストパラメーターを再構成できるような方法でリクエストオブジェクトが保存されている場合は除きます。</t>
+          <t keepWithNext="true" indent="0" pn="section-5.2.3-2">次は、この取得処理の例です。
+          この例では、信頼できる第三者のサービスがリクエストオブジェクトをホストしています。
+          </t>
+          <sourcecode type="http-message" markers="false" pn="section-5.2.3-3">
+GET /request.jwt/GkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM HTTP/1.1
+Host: tfp.example.org
+</sourcecode>
+          <t keepWithNext="true" indent="0" pn="section-5.2.3-4">次は、取得のレスポンスの例です。</t>
+          <sourcecode type="http-message" markers="false" pn="section-5.2.3-5">
+  HTTP/1.1 200 OK
+  Date: Thu, 20 Aug 2020 23:52:39 GMT
+  Server: Apache/2.4.43 (tfp.example.org)
+  Content-type: application/oauth-authz-req+jwt
+  Content-Length: 797
+  Last-Modified: Wed, 19 Aug 2020 23:52:32 GMT
+
+  eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ewogICAgImlzcyI6ICJzNkJoZF
+  JrcXQzIiwKICAgICJhdWQiOiAiaHR0cHM6Ly9zZXJ2ZXIuZXhhbXBsZS5jb20iLAog
+  ICAgInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsCiAgICAiY2xpZW50X2
+  lkIjogInM2QmhkUmtxdDMiLAogICAgInJlZGlyZWN0X3VyaSI6ICJodHRwczovL2Ns
+  aWVudC5leGFtcGxlLm9yZy9jYiIsCiAgICAic2NvcGUiOiAib3BlbmlkIiwKICAgIC
+  JzdGF0ZSI6ICJhZjBpZmpzbGRraiIsCiAgICAibm9uY2UiOiAibi0wUzZfV3pBMk1q
+  IiwKICAgICJtYXhfYWdlIjogODY0MDAKfQ.Nsxa_18VUElVaPjqW_ToI1yrEJ67BgK
+  b5xsuZRVqzGkfKrOIX7BCx0biSxYGmjK9KJPctH1OC0iQJwXu5YVY-vnW0_PLJb1C2
+  HG-ztVzcnKZC2gE4i0vgQcpkUOCpW3SEYXnyWnKzuKzqSb1wAZALo5f89B_p6QA6j6
+  JwBSRvdVsDPdulW8lKxGTbH82czCaQ50rLAg3EYLYaCb4ik4I1zGXE4fvim9FIMs8O
+  CMmzwIB5S-ujFfzwFjoyuPEV4hJnoVUmXR_W9typPf846lGwA8h9G9oNTIuX8Ft2jf
+  pnZdFmLg3_wr3Wa5q3a-lfbgF3S9H_8nN3j1i7tLR_5Nz-g
+</sourcecode>
+        </section>
+      </section>
+    </section>
+    <section anchor="JWTRequestValidation" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-validating-jwt-based-reques">JWTベースのリクエストの検証</name>
+      <section anchor="EncryptedRequestObject" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-jwe-encrypted-request-objec">JWEで暗号化されたリクエストオブジェクト</name>
+        <t indent="0" pn="section-6.1-1">      リクエストオブジェクトが暗号化されている場合、認可サーバーは<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JSON Web Encryption</xref>仕様に従ってJWTを復号<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-6.1-2">      その結果は、署名されたリクエストオブジェクトになります。
+        </t>
+        <t indent="0" pn="section-6.1-3">      復号に失敗した場合、認可サーバーは、認可リクエストへのレスポンスとして、クライアントに<tt>invalid_request_object</tt>エラーを返さ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+      <section anchor="SignedRequestObject" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-jws-signed-request-object">JWSで署名されたリクエストオブジェクト</name>
+        <t indent="0" pn="section-6.2-1">      認可サーバーは、JWSで署名された<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515"/>リクエストオブジェクトの署名を検証<bcp14>しなければなりません（MUST）</bcp14>。
+      <tt>kid</tt>ヘッダーパラメーターが存在する場合、それによって識別される鍵が使用された鍵で<bcp14>なければなりません（MUST）</bcp14>。
+      また、その鍵はクライアントに関連付けられた鍵で<bcp14>なければなりません（MUST）</bcp14>。
+      署名は、クライアントに関連付けられた鍵と、<tt>alg</tt>ヘッダーパラメーターで指定されたアルゴリズムを使用して検証<bcp14>しなければなりません（MUST）</bcp14>。
+      <xref target="RFC8725" format="default" sectionFormat="of" derivedContent="RFC8725"/>のセクション<xref target="RFC8725" format="default" sectionFormat="bare" section="3.1" derivedLink="https://rfc-editor.org/rfc/rfc8725#section-3.1" derivedContent="RFC8725"/>と<xref target="RFC8725" format="default" sectionFormat="bare" section="3.2" derivedLink="https://rfc-editor.org/rfc/rfc8725#section-3.2" derivedContent="RFC8725"/>で規定されているように、アルゴリズムの検証を実行<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+        <t indent="0" pn="section-6.2-2">      鍵がクライアントに関連付けられていない場合、または署名の検証に失敗した場合、認可サーバーは、認可リクエストへのレスポンスとして、クライアントに<tt>invalid_request_object</tt>エラーを返さ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+      <section anchor="RequestParameterValidation" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-request-parameter-assembly-">リクエストパラメーターの組み立てと検証</name>
+        <t indent="0" pn="section-6.3-1">      認可サーバーは、リクエストオブジェクトの値から認可リクエストパラメーターの集合を抽出<bcp14>しなければなりません（MUST）</bcp14>。
+      同じパラメーターがクエリーパラメーターで提供されている場合でも、認可サーバーはリクエストオブジェクト内のパラメーターだけを使用<bcp14>しなければなりません（MUST）</bcp14>。
+      <tt>client_id</tt>リクエストパラメーターのクライアントIDの値と、リクエストオブジェクトの<tt>client_id</tt>クレームのクライアントIDの値は同一で<bcp14>なければなりません（MUST）</bcp14>。
+      その後、認可サーバーは、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>で規定されているとおりにリクエストを検証します。
+        </t>
+        <t indent="0" pn="section-6.3-2">      クライアントIDの検査またはリクエストの検証に失敗した場合、認可サーバーは、<xref target="RFC6749" section="5.2" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6749#section-5.2" derivedContent="RFC6749"/>（OAuth 2.0）で規定されているように、認可リクエストへのレスポンスとしてクライアントにエラーを返さ<bcp14>なければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-authorization-server-respon">認可サーバーのレスポンス</name>
+      <t indent="0" pn="section-7-1">認可サーバーのレスポンスは、<xref target="RFC6749" sectionFormat="of" section="4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6749#section-4" derivedContent="RFC6749"/>（OAuth 2.0）と同様に作成され、クライアントに送信されます。</t>
+      <t indent="0" pn="section-7-2">さらに、この文書では次の追加のエラー値を使用します。
+      </t>
+      <dl newline="true" spacing="normal" indent="3" pn="section-7-3">
+        <dt pn="section-7-3.1">invalid_request_uri</dt>
+        <dd pn="section-7-3.2">      認可リクエスト内の<tt>request_uri</tt>がエラーを返すか、無効なデータを含んでいます。</dd>
+        <dt pn="section-7-3.3">invalid_request_object</dt>
+        <dd pn="section-7-3.4">      requestパラメーターに無効なリクエストオブジェクトが含まれています。</dd>
+        <dt pn="section-7-3.5">request_not_supported</dt>
+        <dd pn="section-7-3.6">      認可サーバーは<tt>request</tt>パラメーターの使用をサポートしていません。</dd>
+        <dt pn="section-7-3.7">request_uri_not_supported</dt>
+        <dd pn="section-7-3.8">      認可サーバーは<tt>request_uri</tt>パラメーターの使用をサポートしていません。</dd>
+      </dl>
+    </section>
+    <section anchor="tlsreq" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-tls-requirements">TLSの要件</name>
+      <t indent="0" pn="section-8-1">      リクエストオブジェクトURIの方法をサポートするクライアント実装は、<xref target="RFC7525" format="default" sectionFormat="of" derivedContent="RFC7525">「Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)」</xref>に従ってTLSをサポート<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t indent="0" pn="section-8-2">      情報の漏洩と改ざんから保護するために、機密性と完全性保護を提供する暗号スイートを用いたTLSを使用して、機密性保護を適用<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t indent="0" pn="section-8-3">      HTTPクライアントは、中間者攻撃を避けるために、DNS-ID <xref target="RFC6125" format="default" sectionFormat="of" derivedContent="RFC6125"/>を使用してTLSサーバー証明書も検証<bcp14>しなければなりません（MUST）</bcp14>。
+      <xref target="RFC6125" format="default" sectionFormat="of" derivedContent="RFC6125"/>で定義されている規則とガイドラインがここで適用されますが、次の考慮事項があります。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-8-4">
+        <li pn="section-8-4.1">      DNS-ID識別子タイプ（つまり、subjectAltName拡張内のdNSNameアイデンティティー）のサポートは<bcp14>要求されています（REQUIRED）</bcp14>。
+      サーバー証明書を発行する認証局は、DNS-ID識別子タイプをサポート<bcp14>しなければなりません（MUST）</bcp14>。
+      また、DNS-ID識別子タイプはサーバー証明書に存在し<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-8-4.2">      サーバー証明書内のDNS名には、ワイルドカード文字<tt>*</tt>を含めても<bcp14>よいです（MAY）</bcp14>。</li>
+        <li pn="section-8-4.3">      クライアントはCN-ID識別子を使用しては<bcp14>なりません（MUST NOT）</bcp14>。
+      サーバー証明書のサブジェクト名にCommon Nameフィールド（CNフィールド）が存在する場合がありますが、<xref target="RFC7525" format="default" sectionFormat="of" derivedContent="RFC7525"/>で説明されている規則の範囲内で、それを認証に使用しては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+        <li pn="section-8-4.4">      <xref target="RFC6125" sectionFormat="of" section="6.5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6125#section-6.5" derivedContent="RFC6125"/>で説明されているSRV-IDとURI-IDを比較に使用しては<bcp14>なりません（MUST NOT）</bcp14>。
+      </li>
+      </ul>
+    </section>
+    <section anchor="IANA" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="OAuthParametersRegistry" numbered="true" removeInRFC="false" toc="include" pn="section-9.1">
+        <name slugifiedName="name-oauth-parameters-registrati">OAuthパラメーターの登録</name>
+        <t indent="0" pn="section-9.1-1">リクエストオブジェクトはJWTであるため、中核となるJWTクレームは、リクエストオブジェクト内でJWTが規定する用途以外の目的に使用できません。
+        そのため、将来のOAuth拡張がそれらを異なる意味で使用することを避けるために、これらはOAuthの認可リクエストパラメーターとして登録されています。</t>
+        <t indent="0" pn="section-9.1-2">この仕様は、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>で確立された「OAuth Parameters」レジストリー<xref target="IANA.OAuth.Parameters" format="default" sectionFormat="of" derivedContent="IANA.OAuth.Parameters"/>に次の値を追加します。</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-3">
+          <dt pn="section-9.1-3.1">Name:</dt>
+          <dd pn="section-9.1-3.2">
+            <tt>iss</tt></dd>
+          <dt pn="section-9.1-3.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-3.4">authorization request</dd>
+          <dt pn="section-9.1-3.5">Change Controller:</dt>
+          <dd pn="section-9.1-3.6">IETF</dd>
+          <dt pn="section-9.1-3.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-3.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.1" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-4">
+          <dt pn="section-9.1-4.1">Name:</dt>
+          <dd pn="section-9.1-4.2">
+            <tt>sub</tt></dd>
+          <dt pn="section-9.1-4.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-4.4">authorization request</dd>
+          <dt pn="section-9.1-4.5">Change Controller:</dt>
+          <dd pn="section-9.1-4.6">IETF</dd>
+          <dt pn="section-9.1-4.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-4.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.2" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-5">
+          <dt pn="section-9.1-5.1">Name:</dt>
+          <dd pn="section-9.1-5.2">
+            <tt>aud</tt></dd>
+          <dt pn="section-9.1-5.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-5.4">authorization request</dd>
+          <dt pn="section-9.1-5.5">Change Controller:</dt>
+          <dd pn="section-9.1-5.6">IETF</dd>
+          <dt pn="section-9.1-5.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-5.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.3" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-6">
+          <dt pn="section-9.1-6.1">Name:</dt>
+          <dd pn="section-9.1-6.2">
+            <tt>exp</tt></dd>
+          <dt pn="section-9.1-6.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-6.4">authorization request</dd>
+          <dt pn="section-9.1-6.5">Change Controller:</dt>
+          <dd pn="section-9.1-6.6">IETF</dd>
+          <dt pn="section-9.1-6.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-6.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.4" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-7">
+          <dt pn="section-9.1-7.1">Name:</dt>
+          <dd pn="section-9.1-7.2">
+            <tt>nbf</tt></dd>
+          <dt pn="section-9.1-7.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-7.4">authorization request</dd>
+          <dt pn="section-9.1-7.5">Change Controller:</dt>
+          <dd pn="section-9.1-7.6">IETF</dd>
+          <dt pn="section-9.1-7.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-7.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.5" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-8">
+          <dt pn="section-9.1-8.1">Name:</dt>
+          <dd pn="section-9.1-8.2">
+            <tt>iat</tt></dd>
+          <dt pn="section-9.1-8.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-8.4">authorization request</dd>
+          <dt pn="section-9.1-8.5">Change Controller:</dt>
+          <dd pn="section-9.1-8.6">IETF</dd>
+          <dt pn="section-9.1-8.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-8.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.6" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.6" derivedContent="RFC7519"/>.</dd>
+        </dl>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.1-9">
+          <dt pn="section-9.1-9.1">Name:</dt>
+          <dd pn="section-9.1-9.2">
+            <tt>jti</tt></dd>
+          <dt pn="section-9.1-9.3">Parameter Usage Location:</dt>
+          <dd pn="section-9.1-9.4">authorization request</dd>
+          <dt pn="section-9.1-9.5">Change Controller:</dt>
+          <dd pn="section-9.1-9.6">IETF</dd>
+          <dt pn="section-9.1-9.7">Specification Document(s):</dt>
+          <dd pn="section-9.1-9.8">This document and <xref target="RFC7519" sectionFormat="of" section="4.1.7" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7519#section-4.1.7" derivedContent="RFC7519"/>.</dd>
+        </dl>
+      </section>
+      <section anchor="OAuthAuthorizationServerMetadataRegistry" numbered="true" removeInRFC="false" toc="include" pn="section-9.2">
+        <name slugifiedName="name-oauth-authorization-server-">OAuth Authorization Server Metadataレジストリー</name>
+        <t indent="0" pn="section-9.2-1">この仕様は、<xref target="RFC8414" format="default" sectionFormat="of" derivedContent="RFC8414"/>で確立された「OAuth Authorization Server Metadata」レジストリー<xref target="IANA.OAuth.Parameters" format="default" sectionFormat="of" derivedContent="IANA.OAuth.Parameters"/>に次の値を追加します。</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.2-2">
+          <dt pn="section-9.2-2.1">Metadata Name:</dt>
+          <dd pn="section-9.2-2.2">
+            <tt>require_signed_request_object</tt></dd>
+          <dt pn="section-9.2-2.3">Metadata Description:</dt>
+          <dd pn="section-9.2-2.4">Indicates where authorization
+	  request needs to be protected as Request Object and provided through
+	  either <tt>request</tt> or <tt>request_uri parameter</tt>.</dd>
+          <dt pn="section-9.2-2.5">Change Controller:</dt>
+          <dd pn="section-9.2-2.6">IETF</dd>
+          <dt pn="section-9.2-2.7">Specification Document(s):</dt>
+          <dd pn="section-9.2-2.8">
+            <xref target="require_signed_request_object" format="default" sectionFormat="of" derivedContent="Section 10.5"/> of this document.</dd>
+        </dl>
+      </section>
+      <section anchor="OAuthDynamicClientRegistrationMetadataRegistry" numbered="true" removeInRFC="false" toc="include" pn="section-9.3">
+        <name slugifiedName="name-oauth-dynamic-client-regist">OAuth Dynamic Client Registration Metadataレジストリー</name>
+        <t indent="0" pn="section-9.3-1">この仕様は、<xref target="RFC7591" format="default" sectionFormat="of" derivedContent="RFC7591"/>で確立された「OAuth Dynamic Client Registration Metadata」レジストリー<xref target="IANA.OAuth.Parameters" format="default" sectionFormat="of" derivedContent="IANA.OAuth.Parameters"/>に次の値を追加します。</t>
+        <dl spacing="compact" indent="3" newline="false" pn="section-9.3-2">
+          <dt pn="section-9.3-2.1">Metadata Name:</dt>
+          <dd pn="section-9.3-2.2">
+            <tt>require_signed_request_object</tt></dd>
+          <dt pn="section-9.3-2.3">Metadata Description:</dt>
+          <dd pn="section-9.3-2.4">Indicates where authorization
+	  request needs to be protected as Request Object and provided through
+	  either <tt>request</tt> or <tt>request_uri parameter</tt>. </dd>
+          <dt pn="section-9.3-2.5">Change Controller:</dt>
+          <dd pn="section-9.3-2.6">IETF</dd>
+          <dt pn="section-9.3-2.7">Specification Document(s):</dt>
+          <dd pn="section-9.3-2.8">
+            <xref target="require_signed_request_object" format="default" sectionFormat="of" derivedContent="Section 10.5"/> of this document.</dd>
+        </dl>
+      </section>
+      <section anchor="MediaReg" numbered="true" removeInRFC="false" toc="include" pn="section-9.4">
+        <name slugifiedName="name-media-type-registration">メディアタイプの登録</name>
+        <section anchor="MediaContents" numbered="true" removeInRFC="false" toc="include" pn="section-9.4.1">
+          <name slugifiedName="name-registry-contents">レジストリーの内容</name>
+          <t indent="0" pn="section-9.4.1-1">      このセクションでは、<xref target="RFC6838" format="default" sectionFormat="of" derivedContent="RFC6838"/>で説明されている方法で、「Media Types」レジストリー<xref target="IANA.MediaTypes" format="default" sectionFormat="of" derivedContent="IANA.MediaTypes"/>に<tt>application/oauth-authz-req+jwt</tt>メディアタイプ<xref target="RFC2046" format="default" sectionFormat="of" derivedContent="RFC2046"/>を登録します。
+      これは、コンテンツがリクエストオブジェクトのクレームを含むJWTであることを示すために使用できます。
+          </t>
+          <dl spacing="compact" indent="3" newline="false" pn="section-9.4.1-2">
+            <dt pn="section-9.4.1-2.1">Type name:</dt>
+            <dd pn="section-9.4.1-2.2">application</dd>
+            <dt pn="section-9.4.1-2.3">Subtype name:</dt>
+            <dd pn="section-9.4.1-2.4">oauth-authz-req+jwt</dd>
+            <dt pn="section-9.4.1-2.5">Required parameters:</dt>
+            <dd pn="section-9.4.1-2.6">N/A</dd>
+            <dt pn="section-9.4.1-2.7">Optional parameters:</dt>
+            <dd pn="section-9.4.1-2.8">N/A</dd>
+            <dt pn="section-9.4.1-2.9">Encoding considerations:</dt>
+            <dd pn="section-9.4.1-2.10">binary;
+            a Request Object is a JWT;
+            JWT values are encoded as a
+            series of base64url-encoded values (some of which may be the
+            empty string) separated by period (<tt>.</tt>) characters.</dd>
+            <dt pn="section-9.4.1-2.11">Security considerations:</dt>
+            <dd pn="section-9.4.1-2.12">See <xref target="Security" format="default" sectionFormat="of" derivedContent="Section 10"/>
+	    of RFC 9101</dd>
+            <dt pn="section-9.4.1-2.13">Interoperability considerations:</dt>
+            <dd pn="section-9.4.1-2.14">N/A</dd>
+            <dt pn="section-9.4.1-2.15">Published specification:</dt>
+            <dd pn="section-9.4.1-2.16">
+              <xref target="authorization_request_object" format="default" sectionFormat="of" derivedContent="Section 4"/> of RFC 9101</dd>
+            <dt pn="section-9.4.1-2.17">Applications that use this media type:</dt>
+            <dd pn="section-9.4.1-2.18">Applications
+	    that use Request Objects to make an OAuth 2.0 authorization
+	    request</dd>
+            <dt pn="section-9.4.1-2.19">Fragment identifier considerations:</dt>
+            <dd pn="section-9.4.1-2.20">N/A</dd>
+            <dt pn="section-9.4.1-2.21">Additional information:</dt>
+            <dd pn="section-9.4.1-2.22">
+              <t indent="0" pn="section-9.4.1-2.22.1"><br/></t>
+              <dl spacing="compact" indent="3" newline="false" pn="section-9.4.1-2.22.2">
+                <dt pn="section-9.4.1-2.22.2.1">Deprecated alias names for this type:</dt>
+                <dd pn="section-9.4.1-2.22.2.2">N/A</dd>
+                <dt pn="section-9.4.1-2.22.2.3">Magic number(s):</dt>
+                <dd pn="section-9.4.1-2.22.2.4">N/A</dd>
+                <dt pn="section-9.4.1-2.22.2.5">File extension(s):</dt>
+                <dd pn="section-9.4.1-2.22.2.6">N/A</dd>
+                <dt pn="section-9.4.1-2.22.2.7">Macintosh file type code(s):</dt>
+                <dd pn="section-9.4.1-2.22.2.8">N/A</dd>
+              </dl>
+            </dd>
+            <dt pn="section-9.4.1-2.23">Person &amp; email address to contact for further
+	    information:</dt>
+            <dd pn="section-9.4.1-2.24">
+              <br/>Nat Sakimura &lt;nat@nat.consulting&gt;</dd>
+            <dt pn="section-9.4.1-2.25">Intended usage:</dt>
+            <dd pn="section-9.4.1-2.26">COMMON</dd>
+            <dt pn="section-9.4.1-2.27">Restrictions on usage:</dt>
+            <dd pn="section-9.4.1-2.28">none</dd>
+            <dt pn="section-9.4.1-2.29">Author:</dt>
+            <dd pn="section-9.4.1-2.30">Nat Sakimura &lt;nat@nat.consulting&gt;</dd>
+            <dt pn="section-9.4.1-2.31">Change controller:</dt>
+            <dd pn="section-9.4.1-2.32">IETF</dd>
+            <dt pn="section-9.4.1-2.33">Provisional registration?</dt>
+            <dd pn="section-9.4.1-2.34">No</dd>
+          </dl>
+        </section>
+      </section>
+    </section>
+    <section anchor="Security" numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-10-1"><xref target="RFC6819" format="default" sectionFormat="of" derivedContent="RFC6819">OAuth 2.0で議論されているセキュリティーに関するすべての考慮事項</xref>に加えて、<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515"/>、<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516"/>、<xref target="RFC7518" format="default" sectionFormat="of" derivedContent="RFC7518"/>、<xref target="RFC8725" format="default" sectionFormat="of" derivedContent="RFC8725"/>のセキュリティーに関する考慮事項を考慮する必要があります。
+      また、<xref target="BASIN" format="default" sectionFormat="of" derivedContent="BASIN"/>のように、OAuthのようなプロトコルのセキュリティー特性について有用な洞察を提供する学術論文がいくつかあります。
+      </t>
+      <t indent="0" pn="section-10-2">      以上を踏まえて、この文書では、次のセキュリティーに関する考慮事項を考慮に入れることを勧めます。
+      </t>
+      <section anchor="alg_choice" numbered="true" removeInRFC="false" toc="include" pn="section-10.1">
+        <name slugifiedName="name-choice-of-algorithms">アルゴリズムの選択</name>
+        <t indent="0" pn="section-10.1-1"><tt>request</tt>パラメーターを通じて認可リクエストオブジェクトを送信する場合、その時点で適切と考えられるアルゴリズムを用いて、<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515">JWS</xref>で署名するか、<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515">JWS</xref>で署名したうえで<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JWE</xref>で暗号化<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="src_authn" numbered="true" removeInRFC="false" toc="include" pn="section-10.2">
+        <name slugifiedName="name-request-source-authenticati">リクエストの送信元認証</name>
+        <t indent="0" pn="section-10.2-1">      認可リクエストの送信元は、常に検証<bcp14>しなければなりません（MUST）</bcp14>。
+      その方法はいくつかあります。
+        </t>
+        <ol spacing="normal" type="(%c)" indent="adaptive" start="1" pn="section-10.2-2">
+          <li pn="section-10.2-2.1" derivedCounter="(a)">リクエストオブジェクトのJWS署名を検証する。</li>
+          <li pn="section-10.2-2.2" derivedCounter="(b)">JWEが対称暗号を使用している場合は、JWE暗号化の対称鍵が正しいものであることを検証する。
+          ただし、公開鍵暗号を使用している場合は、どの当事者でもその公開鍵に対して暗号化できるため、暗号化によって送信元認証は実現されないことに注意してください。</li>
+          <li pn="section-10.2-2.3" derivedCounter="(c)">リクエストオブジェクトURIのTLSサーバーアイデンティティーを検証する。
+      この場合、認可サーバーは、クライアントがそのリクエストオブジェクトURIを使用し、そのTLS証明書の対象がそのクライアントだけであることを、帯域外で知ってい<bcp14>なければなりません（MUST）</bcp14>。
+      一般に、これは信頼できる方法ではありません。
+      </li>
+          <li pn="section-10.2-2.4" derivedCounter="(d)">認可サーバーが、リクエストオブジェクトと引き換えにリクエストオブジェクトURIを返すサービスを実装する場合、認可サーバーは、リクエストオブジェクトを受け付けるためにクライアント認証を実行し、提供するリクエストオブジェクトURIにクライアント識別子を結び付け<bcp14>なければなりません（MUST）</bcp14>。
+      認可サーバーは、（a）に従って署名を検証<bcp14>しなければなりません（MUST）</bcp14>。
+      リクエストオブジェクトURIはリプレイされる可能性があるため、リクエストオブジェクトURIの有効期間は短く<bcp14>なければなりません（MUST）</bcp14>。
+      また、1回限りの使用とすることが望ましいです。
+      リクエストオブジェクトURIのエントロピーは十分に大きく<bcp14>なければなりません（MUST）</bcp14>。
+      リクエストオブジェクトURIの有効期間をどの程度短くすべきか、およびエントロピーをどの程度にすべきかは、保護されるリソースの価値に基づくリスク計算に依存します。
+      この仕様の執筆時点での一般的なガイダンスとしては、有効期間は1分未満であり、リクエストオブジェクトURIには128ビット以上の暗号論的な乱数値を含めることになります。
+      </li>
+          <li pn="section-10.2-2.5" derivedCounter="(e)">信頼できる第三者のサービスが、リクエストオブジェクトと引き換えにリクエストオブジェクトURIを返す場合、そのサービスは（a）に従って署名を検証<bcp14>しなければなりません（MUST）</bcp14>。
+          さらに、認可サーバーは第三者のサービスから信頼されてい<bcp14>なければなりません（MUST）</bcp14>。
+          また、認可サーバーは、クライアントもその第三者のサービスから信頼されていることを、帯域外で知ってい<bcp14>なければなりません（MUST）</bcp14>。
+      </li>
+        </ol>
+      </section>
+      <section anchor="explicit_endpoints" numbered="true" removeInRFC="false" toc="include" pn="section-10.3">
+        <name slugifiedName="name-explicit-endpoints">明示的なエンドポイント</name>
+        <t indent="0" pn="section-10.3-1">      この仕様では要求していませんが、<xref target="BASIN" format="default" sectionFormat="of" derivedContent="BASIN"/>などの研究では、開始者の意図が曖昧にならないように、意図したやり取りのエンドポイントと、シーケンス内でのメッセージの位置を、改ざんが検知可能な方法で明示的に示すことがよい慣行であると指摘されています。
+      この仕様では、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>、<xref target="RFC6750" format="default" sectionFormat="of" derivedContent="RFC6750"/>、<xref target="RFC8414" format="default" sectionFormat="of" derivedContent="RFC8414"/>で定義されている次のエンドポイントについて、この慣行を用いることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+        </t>
+        <ol spacing="normal" type="(%c)" indent="adaptive" start="1" pn="section-10.3-2">
+          <li pn="section-10.3-2.1" derivedCounter="(a)">保護されたリソース（<tt>protected_resources</tt>）</li>
+          <li pn="section-10.3-2.2" derivedCounter="(b)">認可エンドポイント（<tt>authorization_endpoint</tt>）</li>
+          <li pn="section-10.3-2.3" derivedCounter="(c)">リダイレクトURI（<tt>redirect_uri</tt>）</li>
+          <li pn="section-10.3-2.4" derivedCounter="(d)">トークンエンドポイント（<tt>token_endpoint</tt>）</li>
+        </ol>
+        <t indent="0" pn="section-10.3-3">      さらに、動的ディスカバリーを使用する場合は、この慣行はディスカバリー関連のエンドポイントにも適用されます。
+        </t>
+        <t indent="0" pn="section-10.3-4">      <xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>では、リダイレクトURIは認可リクエストに含まれますが、それ以外は含まれません。
+      その結果、認可リクエストオブジェクトについても同じことが当てはまります。
+        </t>
+      </section>
+      <section anchor="request_uri_threats" numbered="true" removeInRFC="false" toc="include" pn="section-10.4">
+        <name slugifiedName="name-risks-associated-with-reque">request_uriに関連するリスク</name>
+        <t indent="0" pn="section-10.4-1">      <tt>request_uri</tt>の導入により、いくつかの攻撃の可能性が生じます。
+      URIに関連するリスクの詳細については、<xref target="RFC3986" sectionFormat="of" section="7" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3986#section-7" derivedContent="RFC3986"/>のセキュリティーに関する考慮事項を参照してください。
+        </t>
+        <section anchor="ddos_on_authz_server" numbered="true" removeInRFC="false" toc="include" pn="section-10.4.1">
+          <name slugifiedName="name-ddos-attack-on-the-authoriz">認可サーバーに対するDDoS攻撃</name>
+          <t indent="0" pn="section-10.4.1-1">      悪意のあるクライアントの集団は、きわめて大きなコンテンツを返すURIや、応答がきわめて遅いURIを<tt>request_uri</tt>で指すことによって、認可サーバーに対するDoS攻撃を仕掛けることができます。
+      そのような攻撃を受けると、サーバーはリソースを使い果たし、障害を起こし始める可能性があります。
+          </t>
+          <t indent="0" pn="section-10.4.1-2">      同様に、悪意のあるクライアントは、<tt>request_uri</tt>を使用する認可リクエストURIをそれ自体が指すような<tt>request_uri</tt>の値を指定して、再帰的な参照を引き起こすことができます。
+          </t>
+          <t indent="0" pn="section-10.4.1-3">      そのような攻撃が成功するのを防ぐために、サーバーは、a）<tt>request_uri</tt>パラメーターの値が予期しない場所を指していないことを確認し、b）レスポンスのメディアタイプが<tt>application/oauth-authz-req+jwt</tt>であることを確認し、c）<tt>request_uri</tt>のコンテンツ取得にタイムアウトを実装し、d）<tt>request_uri</tt>に対して再帰的なGETを実行しないようにすべきです。
+          </t>
+        </section>
+        <section anchor="request_uri_rewrite" numbered="true" removeInRFC="false" toc="include" pn="section-10.4.2">
+          <name slugifiedName="name-request-uri-rewrite">リクエストURIの書き換え</name>
+          <t indent="0" pn="section-10.4.2-1">      <tt>request_uri</tt>の値は署名されていません。
+      そのため、man-in-the-browser攻撃者によって改ざんされる可能性があります。
+      このことから、いくつかの攻撃の可能性が生じます。
+      たとえば、a）攻撃者は、書き換えたURIが指す別のファイルを作成して、追加のスコープをリクエストできるようにするかもしれません。
+      また、b）攻撃者は、<tt>request_uri</tt>の値を被害者サイトのものに設定することで、被害者サイトに対するDoS攻撃を仕掛けるかもしれません。
+          </t>
+          <t indent="0" pn="section-10.4.2-2">      そのような攻撃が成功するのを防ぐために、サーバーは、a）<tt>request_uri</tt>パラメーターの値が予期しない場所を指していないことを確認し、b）レスポンスのメディアタイプが<tt>application/oauth-authz-req+jwt</tt>であることを確認し、c）<tt>request_uri</tt>のコンテンツ取得にタイムアウトを実装すべきです。
+          </t>
+        </section>
+      </section>
+      <section anchor="require_signed_request_object" numbered="true" removeInRFC="false" toc="include" pn="section-10.5">
+        <name slugifiedName="name-downgrade-attack">ダウングレード攻撃</name>
+        <t indent="0" pn="section-10.5-1">      クライアントとサーバーが使用するプロトコルが、OAuth JWT-Secured Authorization Request（JAR）を使用するように固定されていない限り、攻撃者はRFC 6749のリクエストを使用して、この仕様が提供するすべての保護を回避できます。
+        </t>
+        <t indent="0" pn="section-10.5-2">      この種の攻撃を防ぐために、この仕様では、新しいクライアントメタデータ値とサーバーメタデータ値を定義します。
+      どちらも<tt>require_signed_request_object</tt>という名前で、値はどちらも真偽値です。
+        </t>
+        <t indent="0" pn="section-10.5-3">      クライアントメタデータとしての値が<tt>true</tt>の場合、サーバーは、この仕様に準拠していないそのクライアントからの認可リクエストを拒否<bcp14>しなければなりません（MUST）</bcp14>。
+      また、このサーバーメタデータの値が<tt>true</tt>のときに、リクエストオブジェクトが<tt>alg</tt>の値として<tt>none</tt>を使用している場合も、サーバーはそのリクエストを拒否<bcp14>しなければなりません（MUST）</bcp14>。
+      省略した場合のデフォルト値は<tt>false</tt>です。
+        </t>
+        <t indent="0" pn="section-10.5-4">      サーバーメタデータとしての値が<tt>true</tt>の場合、サーバーは、この仕様に準拠していない任意のクライアントからの認可リクエストを拒否<bcp14>しなければなりません（MUST）</bcp14>。
+      また、リクエストオブジェクトが<tt>alg</tt>の値として<tt>none</tt>を使用している場合も、サーバーはそのリクエストを拒否<bcp14>しなければなりません（MUST）</bcp14>。
+      省略した場合のデフォルト値は<tt>false</tt>です。
+        </t>
+        <t indent="0" pn="section-10.5-5"><tt>require_signed_request_object</tt>メタデータの値が存在しない場合でも、クライアントとサーバーが相互にサポートする署名アルゴリズムがあれば、クライアントは署名されたリクエストオブジェクトを使用<bcp14>してもよいです（MAY）</bcp14>。
+      署名アルゴリズムのメタデータの使用については、<xref target="authorization_request_object" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明しています。</t>
+      </section>
+      <section anchor="tls_sec" numbered="true" removeInRFC="false" toc="include" pn="section-10.6">
+        <name slugifiedName="name-tls-security-considerations">TLSのセキュリティーに関する考慮事項</name>
+        <t indent="0" pn="section-10.6-1">現在のセキュリティーに関する考慮事項は、「<xref target="RFC7525" format="title" sectionFormat="of" derivedContent="Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)"/>」<xref target="RFC7525" format="default" sectionFormat="of" derivedContent="RFC7525"/>にあります。
+      これは、<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749">OAuth 2.0</xref>におけるTLSバージョンの推奨事項に優先します。</t>
+      </section>
+      <section anchor="ParameterMismatches" numbered="true" removeInRFC="false" toc="include" pn="section-10.7">
+        <name slugifiedName="name-parameter-mismatches">パラメーターの不一致</name>
+        <t indent="0" pn="section-10.7-1">      OAuthパラメーターの値は、通常のOAuthパラメーターとして、そしてリクエストオブジェクトのクレームとして、2つの異なる場所で送信されることを考えると、実装は、一致しないパラメーター値を使用して意図しない結果を得る攻撃を防ぐ必要があります。
+      このため、2つのクライアントIDの値は一致し<bcp14>なければなりません（MUST）</bcp14>。
+      同じ理由から、リクエストオブジェクトのパラメーター値だけを使用することになっており、<tt>request</tt>も<tt>request_uri</tt>もリクエストオブジェクトに出現できないことになっています。
+        </t>
+      </section>
+      <section anchor="CrossJWT" numbered="true" removeInRFC="false" toc="include" pn="section-10.8">
+        <name slugifiedName="name-cross-jwt-confusion">JWT間の混同</name>
+        <t indent="0" pn="section-10.8-1">      <xref target="RFC8725" sectionFormat="of" section="2.8" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8725#section-2.8" derivedContent="RFC8725"/>で説明されているように、攻撃者は、ある目的のために発行されたJWTを、意図されていない文脈で使用しようとする場合があります。
+      これらの攻撃に対して説明されている緩和策は、リクエストオブジェクトにも適用できます。
+        </t>
+        <t indent="0" pn="section-10.8-2">      攻撃者がリクエストオブジェクトを別の目的に転用しようとする方法の1つは、<xref target="RFC7523" sectionFormat="of" section="2.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc7523#section-2.2" derivedContent="RFC7523"/>で説明されているクライアント認証用JWTとして使用しようとすることです。
+      これを防ぐ簡単な方法は、リクエストオブジェクトの<tt>sub</tt>の値としてクライアントIDを決して使用しないことです。
+        </t>
+        <t indent="0" pn="section-10.8-3">      JWT間の混同を防ぐもう1つの方法は、<xref target="RFC8725" sectionFormat="of" section="3.11" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8725#section-3.11" derivedContent="RFC8725"/>で説明されている明示的な型付けを使用することです。
+      リクエストオブジェクトに明示的に型を付けるには、値が<tt>oauth-authz-req+jwt</tt>（<xref target="MediaContents" format="default" sectionFormat="of" derivedContent="Section 9.4.1"/>で登録されています）である<tt>typ</tt>ヘッダーパラメーターを含めます。
+      ただし、既存のクライアントは、特にOpenID Connect <xref target="OpenID.Core" format="default" sectionFormat="of" derivedContent="OpenID.Core"/>において、すでに型付けされていないリクエストオブジェクトを一般的に使用しているため、既存の認可サーバーで明示的に型付けされたリクエストオブジェクトを要求すると、既存の展開のほとんどが機能しなくなることに注意してください。
+      とはいえ、既存の展開との互換性を考慮する必要のない新しいOAuth展開プロファイルでは、明示的な型付けを要求するのはよい考えです。
+        </t>
+        <t indent="0" pn="section-10.8-4">  最後に、JWT間の混同を防ぐさらに別の方法は、リクエストオブジェクトの署名に使用する鍵を、他の目的に使用する鍵と識別可能な形で区別する鍵管理体制を用いることです。
+  そうすれば、敵対者がリクエストオブジェクトを別の文脈で転用しようとした場合に鍵の不一致が発生し、攻撃を阻止できます。</t>
+      </section>
+    </section>
+    <section anchor="Privacy" numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-privacy-considerations">プライバシーに関する考慮事項</name>
+      <t indent="0" pn="section-11-1">      個人データを含む保護されたリソースへのアクセスがクライアントに許可される場合、クライアントと認可サーバーの両方がプライバシー原則を遵守する必要があります。
+      「<xref target="RFC6973" format="title" sectionFormat="of" derivedContent="Privacy Considerations for Internet Protocols"/>」<xref target="RFC6973" format="default" sectionFormat="of" derivedContent="RFC6973"/>は、プロトコルの設計と実装の改善に関する優れたガイダンスを提供しています。
+      そこに挙げられている規定には従うべきです。
+      </t>
+      <t indent="0" pn="section-11-2">      規定のほとんどは、「<xref target="RFC6749" format="title" sectionFormat="of" derivedContent="The OAuth 2.0 Authorization Framework"/>」<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>と「<xref target="RFC6750" format="title" sectionFormat="of" derivedContent="The OAuth 2.0 Authorization Framework: Bearer Token Usage"/>」<xref target="RFC6750" format="default" sectionFormat="of" derivedContent="RFC6750"/>に適用されるものであり、この仕様に固有のものではありません。
+      以下では、この仕様に固有の規定だけを記します。
+      </t>
+      <section anchor="collection_limitation" numbered="true" removeInRFC="false" toc="include" pn="section-11.1">
+        <name slugifiedName="name-collection-limitation">収集の制限</name>
+        <t indent="0" pn="section-11.1-1">      個人データを含む保護されたリソースへのアクセスがクライアントに許可される場合、クライアントは、個人データの収集を、適用される法律の範囲内で、かつ特定された目的のために厳密に必要なものに制限<bcp14>すべきです（SHOULD）</bcp14>。
+        </t>
+        <t indent="0" pn="section-11.1-2">      リクエストされた個人データが厳密に必要かどうかを、ユーザーが判断するのは難しいことがよくあります。
+      信頼できる第三者のサービスは、クライアントのリクエストを審査し、クライアントが提案する処理と比較して、リクエストを認定することで、ユーザーを支援できます。
+      認定後、クライアントは、認可リクエストを行う際に、信頼できる第三者のサービスに認可リクエストを提出してリクエストオブジェクトURIを取得できます。
+      このプロセスには2つの段階があります。
+        </t>
+        <ol spacing="normal" type="(%d)" indent="adaptive" start="1" pn="section-11.1-3">
+          <li pn="section-11.1-3.1" derivedCounter="(1)">（認定プロセス）信頼できる第三者のサービスは、クライアントの業務プロセスを審査し、クライアントが必要とするクレームを決定します。
+          これが認定プロセスです。
+          クライアントが認定されると、<tt>request_uri</tt>を取得するために信頼できる第三者のサービスにリクエストオブジェクトをプッシュする際の認証に用いるクライアントクレデンシャルが、クライアントに発行されます。</li>
+          <li pn="section-11.1-3.2" derivedCounter="(2)">（変換プロセス）クライアントは、取得したクライアントクレデンシャルを使用して、信頼できる第三者のサービスにリクエストオブジェクトをプッシュし、<tt>request_uri</tt>を取得します。
+          信頼できる第三者のサービスは、前の段階に基づいて、リクエストオブジェクトがクライアントに資格のあるクレームと整合していることも検証します。
+				</li>
+        </ol>
+        <t indent="0" pn="section-11.1-4">      認可リクエストでそのようなリクエストオブジェクトURIを受信すると、認可サーバーはまず、リクエストオブジェクトURIのオーソリティー部分が、その信頼できる第三者のサービスにとって正当なものであることを検証します。
+      次に、認可サーバーは、リクエストオブジェクトURIに対してHTTP GETリクエストを発行します。
+      接続時に、認可サーバーは、TLS証明書で表されるサーバーアイデンティティーがそのリクエストオブジェクトURIにとって正当なものであることを検証<bcp14>しなければなりません（MUST）</bcp14>。
+      その後、認可サーバーは、クライアントを表す<tt>client_id</tt>を含むリクエストオブジェクトを取得できます。
+        </t>
+        <t indent="0" pn="section-11.1-5">      同意画面は、クライアントを示さ<bcp14>なければなりません（MUST）</bcp14>。
+      また、同意画面は、リクエストが収集制限の原則を遵守していることを信頼できる第三者のサービスが審査済みであることを示す<bcp14>べきです（SHOULD）</bcp14>。
+        </t>
+      </section>
+      <section anchor="disclosure_limitation" numbered="true" removeInRFC="false" toc="include" pn="section-11.2">
+        <name slugifiedName="name-disclosure-limitation">開示の制限</name>
+        <section anchor="request_disclosure" numbered="true" removeInRFC="false" toc="include" pn="section-11.2.1">
+          <name slugifiedName="name-request-disclosure">リクエストの開示</name>
+          <t indent="0" pn="section-11.2.1-1">      この仕様では、拡張パラメーターを許可しています。
+      これらには、機密となりうる情報が含まれる可能性があります。
+      URIのクエリーパラメーターはさまざまな手段、特にリファラーやブラウザー履歴を通じて漏洩する可能性があるため、認可リクエストに機密となりうるパラメーターが含まれる場合、クライアントは<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JWE</xref>を使用してリクエストオブジェクトを暗号化<bcp14>すべきです（SHOULD）</bcp14>。
+          </t>
+          <t indent="0" pn="section-11.2.1-2">      リクエストオブジェクトURIの方法を使用している場合に、リクエストオブジェクトに個人を特定できる情報や機密情報が含まれているときは、<tt>request_uri</tt>は1回だけ使用し、有効期間を短くする<bcp14>べきです（SHOULD）</bcp14>。
+      また、リクエストオブジェクト自体が<xref target="RFC7516" format="default" sectionFormat="of" derivedContent="RFC7516">JWE</xref>を使用して暗号化されていない限り、そのURIは、適用されるセキュリティーポリシーに対して十分なエントロピーを持た<bcp14>なければなりません（MUST）</bcp14>。
+      リクエストオブジェクトURIの有効期間をどの程度短くすべきか、およびエントロピーをどの程度にすべきかは、保護されるリソースの価値に基づくリスク計算に依存します。
+      この仕様の執筆時点での一般的なガイダンスとしては、有効期間は1分未満であり、リクエストオブジェクトURIには128ビット以上の暗号論的な乱数値を含めることになります。
+
+          </t>
+        </section>
+        <section anchor="tracking" numbered="true" removeInRFC="false" toc="include" pn="section-11.2.2">
+          <name slugifiedName="name-tracking-using-request-obje">リクエストオブジェクトURIを使用した追跡</name>
+          <t indent="0" pn="section-11.2.2-1">      保護されたリソースに個人を特定できる情報が含まれていない場合でも、ユーザーごとに永続的で静的なリクエストオブジェクトURIが使用されていると、そのリクエストオブジェクトURIを通じてユーザーを特定できる場合があります。
+      第三者は、ブラウザー履歴などを通じてそれを観察し、それを使用してユーザーの活動の相関を取り始める可能性があります。
+      ある意味では、これもデータの開示であり、避けるべきです。
+          </t>
+          <t indent="0" pn="section-11.2.2-2">      したがって、ユーザーごとの永続的なリクエストオブジェクトURIは避けるべきです。
+      1回限りのリクエストオブジェクトURIは、代替手段の1つです。
+          </t>
+        </section>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-12">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-12.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3629" target="https://www.rfc-editor.org/info/rfc3629" quoteTitle="true" derivedAnchor="RFC3629">
+          <front>
+            <title>UTF-8, a transformation format of ISO 10646</title>
+            <author initials="F." surname="Yergeau" fullname="F. Yergeau">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2003" month="November"/>
+            <abstract>
+              <t indent="0">ISO/IEC 10646-1 defines a large character set called the Universal Character Set (UCS) which encompasses most of the world's writing systems.  The originally proposed encodings of the UCS, however, were not compatible with many current applications and protocols, and this has led to the development of UTF-8, the object of this memo.  UTF-8 has the characteristic of preserving the full US-ASCII range, providing compatibility with file systems, parsers and other software that rely on US-ASCII values but are transparent to other values.  This memo obsoletes and replaces RFC 2279.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="63"/>
+          <seriesInfo name="RFC" value="3629"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3629"/>
+        </reference>
+        <reference anchor="RFC3986" target="https://www.rfc-editor.org/info/rfc3986" quoteTitle="true" derivedAnchor="RFC3986">
+          <front>
+            <title>Uniform Resource Identifier (URI): Generic Syntax</title>
+            <author initials="T." surname="Berners-Lee" fullname="T. Berners-Lee">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Fielding" fullname="R. Fielding">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Masinter" fullname="L. Masinter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2005" month="January"/>
+            <abstract>
+              <t indent="0">A Uniform Resource Identifier (URI) is a compact sequence of characters that identifies an abstract or physical resource.  This specification defines the generic URI syntax and a process for resolving URI references that might be in relative form, along with guidelines and security considerations for the use of URIs on the Internet.  The URI syntax defines a grammar that is a superset of all valid URIs, allowing an implementation to parse the common components of a URI reference without knowing the scheme-specific requirements of every possible identifier.  This specification does not define a generative grammar for URIs; that task is performed by the individual specifications of each URI scheme.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="66"/>
+          <seriesInfo name="RFC" value="3986"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3986"/>
+        </reference>
+        <reference anchor="RFC6125" target="https://www.rfc-editor.org/info/rfc6125" quoteTitle="true" derivedAnchor="RFC6125">
+          <front>
+            <title>Representation and Verification of Domain-Based Application Service Identity within Internet Public Key Infrastructure Using X.509 (PKIX) Certificates in the Context of Transport Layer Security (TLS)</title>
+            <author initials="P." surname="Saint-Andre" fullname="P. Saint-Andre">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Hodges" fullname="J. Hodges">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="March"/>
+            <abstract>
+              <t indent="0">Many application technologies enable secure communication between two entities by means of Internet Public Key Infrastructure Using X.509 (PKIX) certificates in the context of Transport Layer Security (TLS). This document specifies procedures for representing and verifying the identity of application services in such interactions.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6125"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6125"/>
+        </reference>
+        <reference anchor="RFC6749" target="https://www.rfc-editor.org/info/rfc6749" quoteTitle="true" derivedAnchor="RFC6749">
+          <front>
+            <title>The OAuth 2.0 Authorization Framework</title>
+            <author initials="D." surname="Hardt" fullname="D. Hardt" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="October"/>
+            <abstract>
+              <t indent="0">The OAuth 2.0 authorization framework enables a third-party application to obtain limited access to an HTTP service, either on behalf of a resource owner by orchestrating an approval interaction between the resource owner and the HTTP service, or by allowing the third-party application to obtain access on its own behalf.  This specification replaces and obsoletes the OAuth 1.0 protocol described in RFC 5849.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6749"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6749"/>
+        </reference>
+        <reference anchor="RFC6750" target="https://www.rfc-editor.org/info/rfc6750" quoteTitle="true" derivedAnchor="RFC6750">
+          <front>
+            <title>The OAuth 2.0 Authorization Framework: Bearer Token Usage</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Hardt" fullname="D. Hardt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="October"/>
+            <abstract>
+              <t indent="0">This specification describes how to use bearer tokens in HTTP requests to access OAuth 2.0 protected resources.  Any party in possession of a bearer token (a "bearer") can use it to get access to the associated resources (without demonstrating possession of a cryptographic key).  To prevent misuse, bearer tokens need to be protected from disclosure in storage and in transport.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6750"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6750"/>
+        </reference>
+        <reference anchor="RFC7230" target="https://www.rfc-editor.org/info/rfc7230" quoteTitle="true" derivedAnchor="RFC7230">
+          <front>
+            <title>Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing</title>
+            <author initials="R." surname="Fielding" fullname="R. Fielding" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Reschke" fullname="J. Reschke" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="June"/>
+            <abstract>
+              <t indent="0">The Hypertext Transfer Protocol (HTTP) is a stateless application-level protocol for distributed, collaborative, hypertext information systems.  This document provides an overview of HTTP architecture and its associated terminology, defines the "http" and "https" Uniform Resource Identifier (URI) schemes, defines the HTTP/1.1 message syntax and parsing requirements, and describes related security concerns for implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7230"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7230"/>
+        </reference>
+        <reference anchor="RFC7515" target="https://www.rfc-editor.org/info/rfc7515" quoteTitle="true" derivedAnchor="RFC7515">
+          <front>
+            <title>JSON Web Signature (JWS)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Bradley" fullname="J. Bradley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Sakimura" fullname="N. Sakimura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">JSON Web Signature (JWS) represents content secured with digital signatures or Message Authentication Codes (MACs) using JSON-based data structures.  Cryptographic algorithms and identifiers for use with this specification are described in the separate JSON Web Algorithms (JWA) specification and an IANA registry defined by that specification.  Related encryption capabilities are described in the separate JSON Web Encryption (JWE) specification.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7515"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7515"/>
+        </reference>
+        <reference anchor="RFC7516" target="https://www.rfc-editor.org/info/rfc7516" quoteTitle="true" derivedAnchor="RFC7516">
+          <front>
+            <title>JSON Web Encryption (JWE)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Hildebrand" fullname="J. Hildebrand">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">JSON Web Encryption (JWE) represents encrypted content using JSON-based data structures.  Cryptographic algorithms and identifiers for use with this specification are described in the separate JSON Web Algorithms (JWA) specification and IANA registries defined by that specification.  Related digital signature and Message Authentication Code (MAC) capabilities are described in the separate JSON Web Signature (JWS) specification.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7516"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7516"/>
+        </reference>
+        <reference anchor="RFC7518" target="https://www.rfc-editor.org/info/rfc7518" quoteTitle="true" derivedAnchor="RFC7518">
+          <front>
+            <title>JSON Web Algorithms (JWA)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">This specification registers cryptographic algorithms and identifiers to be used with the JSON Web Signature (JWS), JSON Web Encryption (JWE), and JSON Web Key (JWK) specifications.  It defines several IANA registries for these identifiers.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7518"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7518"/>
+        </reference>
+        <reference anchor="RFC7519" target="https://www.rfc-editor.org/info/rfc7519" quoteTitle="true" derivedAnchor="RFC7519">
+          <front>
+            <title>JSON Web Token (JWT)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Bradley" fullname="J. Bradley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Sakimura" fullname="N. Sakimura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">JSON Web Token (JWT) is a compact, URL-safe means of representing claims to be transferred between two parties.  The claims in a JWT are encoded as a JSON object that is used as the payload of a JSON Web Signature (JWS) structure or as the plaintext of a JSON Web Encryption (JWE) structure, enabling the claims to be digitally signed or integrity protected with a Message Authentication Code (MAC) and/or encrypted.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7519"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7519"/>
+        </reference>
+        <reference anchor="RFC7525" target="https://www.rfc-editor.org/info/rfc7525" quoteTitle="true" derivedAnchor="RFC7525">
+          <front>
+            <title>Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
+            <author initials="Y." surname="Sheffer" fullname="Y. Sheffer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Holz" fullname="R. Holz">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Saint-Andre" fullname="P. Saint-Andre">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) are widely used to protect data exchanged over application protocols such as HTTP, SMTP, IMAP, POP, SIP, and XMPP.  Over the last few years, several serious attacks on TLS have emerged, including attacks on its most commonly used cipher suites and their modes of operation.  This document provides recommendations for improving the security of deployed services that use TLS and DTLS. The recommendations are applicable to the majority of use cases.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="195"/>
+          <seriesInfo name="RFC" value="7525"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7525"/>
+        </reference>
+        <reference anchor="RFC8141" target="https://www.rfc-editor.org/info/rfc8141" quoteTitle="true" derivedAnchor="RFC8141">
+          <front>
+            <title>Uniform Resource Names (URNs)</title>
+            <author initials="P." surname="Saint-Andre" fullname="P. Saint-Andre">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Klensin" fullname="J. Klensin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="April"/>
+            <abstract>
+              <t indent="0">A Uniform Resource Name (URN) is a Uniform Resource Identifier (URI) that is assigned under the "urn" URI scheme and a particular URN namespace, with the intent that the URN will be a persistent, location-independent resource identifier.  With regard to URN syntax, this document defines the canonical syntax for URNs (in a way that is consistent with URI syntax), specifies methods for determining URN-equivalence, and discusses URI conformance.  With regard to URN namespaces, this document specifies a method for defining a URN namespace and associating it with a namespace identifier, and it describes procedures for registering namespace identifiers with the Internet Assigned Numbers Authority (IANA).  This document obsoletes both RFCs 2141 and 3406.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8141"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8141"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8259" target="https://www.rfc-editor.org/info/rfc8259" quoteTitle="true" derivedAnchor="RFC8259">
+          <front>
+            <title>The JavaScript Object Notation (JSON) Data Interchange Format</title>
+            <author initials="T." surname="Bray" fullname="T. Bray" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="December"/>
+            <abstract>
+              <t indent="0">JavaScript Object Notation (JSON) is a lightweight, text-based, language-independent data interchange format.  It was derived from the ECMAScript Programming Language Standard.  JSON defines a small set of formatting rules for the portable representation of structured data.</t>
+              <t indent="0">This document removes inconsistencies with other specifications of JSON, repairs specification errors, and offers experience-based interoperability guidance.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="90"/>
+          <seriesInfo name="RFC" value="8259"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8259"/>
+        </reference>
+        <reference anchor="RFC8414" target="https://www.rfc-editor.org/info/rfc8414" quoteTitle="true" derivedAnchor="RFC8414">
+          <front>
+            <title>OAuth 2.0 Authorization Server Metadata</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Sakimura" fullname="N. Sakimura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Bradley" fullname="J. Bradley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="June"/>
+            <abstract>
+              <t indent="0">This specification defines a metadata format that an OAuth 2.0 client can use to obtain the information needed to interact with an OAuth 2.0 authorization server, including its endpoint locations and authorization server capabilities.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8414"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8414"/>
+        </reference>
+      </references>
+      <references pn="section-12.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="BASIN" target="https://www.cs.ox.ac.uk/people/cas.cremers/downloads/papers/BCM2012-iso9798.pdf" quoteTitle="true" derivedAnchor="BASIN">
+          <front>
+            <title>Provably Repairing the ISO/IEC 9798 Standard for Entity Authentication</title>
+            <author fullname="David Basin" initials="D." surname="Basin"/>
+            <author fullname="Cas Cremers" initials="C." surname="Cremers"/>
+            <author fullname="Simon Meier" initials="S." surname="Meier"/>
+            <date month="November" year="2013"/>
+          </front>
+          <refcontent>Journal of Computer Security - Security and Trust Principles, Volume 21, Issue 6, pp. 817-846</refcontent>
+        </reference>
+        <reference anchor="CapURLs" target="https://www.w3.org/TR/capability-urls/" quoteTitle="true" derivedAnchor="CapURLs">
+          <front>
+            <title>Good Practices for Capability URLs</title>
+            <author fullname="Jeni Tennison" initials="J." surname="Tennison" role="editor"/>
+            <date day="18" month="February" year="2014"/>
+          </front>
+          <refcontent>W3C First Public Working Draft</refcontent>
+        </reference>
+        <reference anchor="IANA.JWT.Claims" target="https://www.iana.org/assignments/jwt" quoteTitle="true" derivedAnchor="IANA.JWT.Claims">
+          <front>
+            <title>JSON Web Token (JWT)</title>
+            <author>
+              <organization showOnFrontPage="true">IANA</organization>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="IANA.MediaTypes" target="https://www.iana.org/assignments/media-types" quoteTitle="true" derivedAnchor="IANA.MediaTypes">
+          <front>
+            <title>Media Types</title>
+            <author>
+              <organization showOnFrontPage="true">IANA</organization>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="IANA.OAuth.Parameters" target="https://www.iana.org/assignments/oauth-parameters" quoteTitle="true" derivedAnchor="IANA.OAuth.Parameters">
+          <front>
+            <title>OAuth Parameters</title>
+            <author>
+              <organization showOnFrontPage="true">IANA</organization>
+            </author>
+            <date/>
+          </front>
+        </reference>
+        <reference anchor="OpenID.Core" target="http://openid.net/specs/openid-connect-core-1_0.html" quoteTitle="true" derivedAnchor="OpenID.Core">
+          <front>
+            <title>OpenID Connect Core 1.0 incorporating errata set 1</title>
+            <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
+              <organization abbrev="NAT Consulting" showOnFrontPage="true">NAT Consulting</organization>
+            </author>
+            <author fullname="John Bradley" initials="J." surname="Bradley">
+              <organization abbrev="Ping Identity" showOnFrontPage="true">Ping Identity</organization>
+            </author>
+            <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+              <organization abbrev="Microsoft" showOnFrontPage="true">Microsoft</organization>
+            </author>
+            <author fullname="Breno de Medeiros" initials="B." surname="de Medeiros">
+              <organization abbrev="Google" showOnFrontPage="true">Google</organization>
+            </author>
+            <author fullname="Chuck Mortimore" initials="C." surname="Mortimore">
+              <organization abbrev="Salesforce" showOnFrontPage="true">Salesforce</organization>
+            </author>
+            <date day="8" month="November" year="2014"/>
+          </front>
+          <refcontent>OpenID Foundation Standards</refcontent>
+        </reference>
+        <reference anchor="RFC2046" target="https://www.rfc-editor.org/info/rfc2046" quoteTitle="true" derivedAnchor="RFC2046">
+          <front>
+            <title>Multipurpose Internet Mail Extensions (MIME) Part Two: Media Types</title>
+            <author initials="N." surname="Freed" fullname="N. Freed">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Borenstein" fullname="N. Borenstein">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="November"/>
+            <abstract>
+              <t indent="0">This second document defines the general structure of the MIME media typing system and defines an initial set of media types.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2046"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2046"/>
+        </reference>
+        <reference anchor="RFC6819" target="https://www.rfc-editor.org/info/rfc6819" quoteTitle="true" derivedAnchor="RFC6819">
+          <front>
+            <title>OAuth 2.0 Threat Model and Security Considerations</title>
+            <author initials="T." surname="Lodderstedt" fullname="T. Lodderstedt" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="McGloin" fullname="M. McGloin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hunt" fullname="P. Hunt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="January"/>
+            <abstract>
+              <t indent="0">This document gives additional security considerations for OAuth, beyond those in the OAuth 2.0 specification, based on a comprehensive threat model for the OAuth 2.0 protocol.  This document is not an  Internet Standards Track specification; it is published for  informational purposes.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6819"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6819"/>
+        </reference>
+        <reference anchor="RFC6838" target="https://www.rfc-editor.org/info/rfc6838" quoteTitle="true" derivedAnchor="RFC6838">
+          <front>
+            <title>Media Type Specifications and Registration Procedures</title>
+            <author initials="N." surname="Freed" fullname="N. Freed">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Klensin" fullname="J. Klensin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Hansen" fullname="T. Hansen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="January"/>
+            <abstract>
+              <t indent="0">This document defines procedures for the specification and registration of media types for use in HTTP, MIME, and other Internet protocols.  This memo documents an Internet Best Current Practice.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="13"/>
+          <seriesInfo name="RFC" value="6838"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6838"/>
+        </reference>
+        <reference anchor="RFC6973" target="https://www.rfc-editor.org/info/rfc6973" quoteTitle="true" derivedAnchor="RFC6973">
+          <front>
+            <title>Privacy Considerations for Internet Protocols</title>
+            <author initials="A." surname="Cooper" fullname="A. Cooper">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Aboba" fullname="B. Aboba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Peterson" fullname="J. Peterson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Morris" fullname="J. Morris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Hansen" fullname="M. Hansen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Smith" fullname="R. Smith">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="July"/>
+            <abstract>
+              <t indent="0">This document offers guidance for developing privacy considerations for inclusion in protocol specifications.  It aims to make designers, implementers, and users of Internet protocols aware of privacy-related design choices.  It suggests that whether any individual RFC warrants a specific privacy considerations section will depend on the document's content.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6973"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6973"/>
+        </reference>
+        <reference anchor="RFC7523" target="https://www.rfc-editor.org/info/rfc7523" quoteTitle="true" derivedAnchor="RFC7523">
+          <front>
+            <title>JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Campbell" fullname="B. Campbell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Mortimore" fullname="C. Mortimore">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t indent="0">This specification defines the use of a JSON Web Token (JWT) Bearer Token as a means for requesting an OAuth 2.0 access token as well as for client authentication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7523"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7523"/>
+        </reference>
+        <reference anchor="RFC7591" target="https://www.rfc-editor.org/info/rfc7591" quoteTitle="true" derivedAnchor="RFC7591">
+          <front>
+            <title>OAuth 2.0 Dynamic Client Registration Protocol</title>
+            <author initials="J." surname="Richer" fullname="J. Richer" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Bradley" fullname="J. Bradley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Machulak" fullname="M. Machulak">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hunt" fullname="P. Hunt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="July"/>
+            <abstract>
+              <t indent="0">This specification defines mechanisms for dynamically registering OAuth 2.0 clients with authorization servers.  Registration requests send a set of desired client metadata values to the authorization server.  The resulting registration responses return a client identifier to use at the authorization server and the client metadata values registered for the client.  The client can then use this registration information to communicate with the authorization server using the OAuth 2.0 protocol.  This specification also defines a set of common client metadata fields and values for clients to use during registration.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7591"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7591"/>
+        </reference>
+        <reference anchor="RFC8725" target="https://www.rfc-editor.org/info/rfc8725" quoteTitle="true" derivedAnchor="RFC8725">
+          <front>
+            <title>JSON Web Token Best Current Practices</title>
+            <author initials="Y." surname="Sheffer" fullname="Y. Sheffer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Hardt" fullname="D. Hardt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2020" month="February"/>
+            <abstract>
+              <t indent="0">JSON Web Tokens, also known as JWTs, are URL-safe JSON-based security tokens that contain a set of claims that can be signed and/or encrypted. JWTs are being widely used and deployed as a simple security token format in numerous protocols and applications, both in the area of digital identity and in other application areas.  This Best Current Practices document updates RFC 7519 to provide actionable guidance leading to secure implementation and deployment of JWTs.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="225"/>
+          <seriesInfo name="RFC" value="8725"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8725"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="Acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">      以下の方々が、OAuthワーキンググループおよびIETFのその他の役割において、この文書の作成に貢献しました（所属は貢献時点のものです）。
+      </t>
+      <t indent="0" pn="section-appendix.a-2">
+	    <contact fullname="Annabelle Backman"/>（Amazon）、
+	    <contact fullname="Dirk Balfanz"/>（Google）、
+	    <contact fullname="Sergey Beryozkin"/>、
+	    <contact fullname="Ben Campbell"/>（ADとして）、
+	    <contact fullname="Brian Campbell"/>（Ping Identity）、
+	    <contact fullname="Roman Danyliw"/>（ADとして）、
+	    <contact fullname="Martin Duke"/>（ADとして）、
+	    <contact fullname="Vladimir Dzhuvinov"/>（Connect2id）、
+	    <contact fullname="Lars Eggert"/>（ADとして）、
+	    <contact fullname="Joel Halpern"/>（GENARTとして）、
+	    <contact fullname="Benjamin Kaduk"/>（ADとして）、
+	    <contact fullname="Stephen Kent"/>（SECDIRとして）、
+	    <contact fullname="Murray Kucherawy"/>（ADとして）、
+	    <contact fullname="Warren Kumari"/>（OPSDIRとして）、
+	    <contact fullname="Watson Ladd"/>（SECDIRとして）、
+	    <contact fullname="Torsten Lodderstedt"/>（yes.com）、
+	    <contact fullname="Jim Manico"/>、
+	    <contact fullname="James H. Manger"/>（Telstra）、
+	    <contact fullname="Kathleen Moriarty"/>（ADとして）、
+	    <contact fullname="Axel Nennker"/>（Deutsche Telecom）、
+	    <contact fullname="John Panzer"/>（Google）、
+	    <contact fullname="Francesca Palombini"/>（ADとして）、
+	    <contact fullname="David Recordon"/>（Facebook）、
+	    <contact fullname="Marius Scurtescu"/>（Google）、
+	    <contact fullname="Luke Shepard"/>（Facebook）、
+	    <contact fullname="Filip Skokan"/>（Auth0）、
+	    <contact fullname="Hannes Tschofenig"/>（ARM）、
+	    <contact fullname="Éric Vyncke"/>（ADとして）、
+	    <contact fullname="Robert Wilton"/>（ADとして）。
+      </t>
+      <t indent="0" pn="section-appendix.a-3">次の方々は、<xref target="OpenID.Core" format="default" sectionFormat="of" derivedContent="OpenID.Core">OpenID Connect Core 1.0</xref>を通じてこの文書の作成に貢献しました。</t>
+      <t indent="0" pn="section-appendix.a-4">
+	  <contact fullname="Brian Campbell"/>（Ping Identity）、<contact fullname="George Fletcher"/>（AOL）、<contact fullname="Ryo Itou"/>（Mixi）、<contact fullname="Edmund Jay"/>（Illumila）、<contact fullname="Breno de Medeiros"/>（Google）、<contact fullname="Hideki    Nara"/>（TACT）、<contact fullname="Justin Richer"/>（MITRE）。
+      </t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
+        <organization showOnFrontPage="true">NAT.Consulting</organization>
+        <address>
+          <postal>
+            <street>Kunitachi</street>
+            <region>Tokyo 186-0004</region>
+            <extaddr>2-22-17 Naka</extaddr>
+            <country>Japan</country>
+          </postal>
+          <phone>+81-42-580-7401</phone>
+          <email>nat@nat.consulting</email>
+          <uri>https://nat.sakimura.org/</uri>
+        </address>
+      </author>
+      <author fullname="John Bradley" initials="J." surname="Bradley">
+        <organization showOnFrontPage="true">Yubico</organization>
+        <address>
+          <postal>
+            <street>Casilla 177</street>
+            <extaddr>Sucursal Talagante</extaddr>
+            <city>Talagante</city>
+            <region>RM</region>
+            <code/>
+            <country>Chile</country>
+          </postal>
+          <phone>+1.202.630.5272</phone>
+          <email>rfc9101@ve7jtb.com</email>
+          <uri>http://www.thread-safe.com/</uri>
+        </address>
+      </author>
+      <author fullname="Michael B. Jones" surname="Jones" initials="M.">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <postal>
+            <street>One Microsoft Way</street>
+            <city>Redmond</city>
+            <region>Washington</region>
+            <code>98052</code>
+            <country>United States of America</country>
+          </postal>
+          <email>mbj@microsoft.com</email>
+          <uri>https://self-issued.info/</uri>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

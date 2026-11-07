@@ -351,6 +351,13 @@ request / response、connection、content は「プロトコル一般」を参�
 | topology | トポロジー | |
 | on-path / off-path | 経路上 / 経路外 | オンパス / オフパス |
 | reachability | 到達可能性 | 到達性 |
+| IP Fast Reroute (FRR) | IP高速リルート（FRR） | 高速再ルーティング、高速再経路 |
+| route target / route distinguisher (RD) | ルートターゲット / ルート識別子（RD） | ルートディスティングイッシャー |
+| Integrated Routing and Bridging (IRB) | 統合ルーティング・ブリッジング（IRB） | EVPN |
+| Tenant System (TS) | テナントシステム（TS） | EVPN |
+| Information-Centric Networking (ICN) | 情報指向ネットワーキング（ICN） | |
+| Named Data Networking (NDN) | 名前付きデータネットワーキング（NDN） | |
+| Pending Interest Table (PIT) | 保留中Interestテーブル（PIT） | Interest、Data、Content Object は英語のまま |
 
 ## DNS
 
@@ -391,6 +398,8 @@ request / response、connection、content は「プロトコル一般」を参�
 | tree diagram | ツリー図 | |
 | operational state | 運用状態 | |
 | access control / access control list | アクセス制御 / アクセス制御リスト | |
+| Network Configuration Access Control Model (NACM) | ネットワーク設定アクセス制御モデル（NACM） | ネットワーク構成アクセス制御モデル |
+| key chain | 鍵チェーン | キーチェーン |
 
 ## メール・メディア・テキスト
 
@@ -503,6 +512,13 @@ request / response、connection、content は「プロトコル一般」を参�
 | request forgery | リクエストフォージェリー | |
 | fingerprint / tracking / correlation | フィンガープリント / 追跡 / 相関 | 指紋、トラッキング |
 | anonymity / pseudonym / consent | 匿名性 / 仮名 / 同意 | |
+| record layer（TLS/DTLS） | レコード層 | レコードレイヤー |
+| epoch / flight（DTLS） | エポック / フライト | |
+| Connection ID (CID)（DTLS） | コネクションID（CID） | 接続ID |
+| return routability check | リターンルータビリティーチェック | |
+| signal channel / data channel（DOTS） | シグナルチャネル / データチャネル | シグナルチャンネル |
+| mitigation request / mitigation scope（DOTS） | 緩和リクエスト / 緩和スコープ | |
+| mitigator（DOTS） | 緩和装置 | |
 
 ## データ形式（JSON・CBOR・CDDL・ASN.1・Structured Fields）
 
@@ -637,6 +653,9 @@ request / response、connection、content は「プロトコル一般」を参�
 | header parameter | ヘッダーパラメーター | |
 | compact serialization | コンパクトシリアル化 | コンパクトシリアライゼーション |
 | JSON Web Token | JSON Web Token（JWT） | 英語のまま |
+| Request Object / Request Object URI | リクエストオブジェクト / リクエストオブジェクトURI | |
+| pushed authorization request (PAR) | プッシュ型認可リクエスト（PAR） | |
+| by value / by reference | 値渡し / 参照渡し | |
 
 ## 既存訳の揺れ
 

@@ -337,6 +337,7 @@ request / response、connection、content は「プロトコル一般」を参�
 | forward / forwarding | 転送する / 転送 | フォワーディング |
 | autonomous system | 自律システム | |
 | link state | リンクステート | リンク状態 |
+| shortest path tree (SPT) | 最短パスツリー（SPT） | 最短経路ツリー |
 | flooding | フラッディング | |
 | area / border router | エリア / 境界ルーター | |
 | control plane / data plane / management plane | コントロールプレーン / データプレーン / 管理プレーン | 制御プレーン |

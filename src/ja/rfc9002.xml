@@ -1,0 +1,1932 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-quic-recovery-34" indexInclude="true" ipr="trust200902" number="9002" prepTime="2021-05-27T14:14:16" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://dx.doi.org/10.17487/rfc9002" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-quic-recovery-34" rel="prev"/>
+  <front>
+    <title abbrev="QUIC Loss Detection">QUICの損失検出と輻輳制御</title>
+    <seriesInfo name="RFC" value="9002" stream="IETF"/>
+    <author initials="J." surname="Iyengar" fullname="Jana Iyengar" role="editor">
+      <organization showOnFrontPage="true">Fastly</organization>
+      <address>
+        <email>jri.ietf@gmail.com</email>
+      </address>
+    </author>
+    <author initials="I." surname="Swett" fullname="Ian Swett" role="editor">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <email>ianswett@google.com</email>
+      </address>
+    </author>
+    <date month="05" year="2021"/>
+    <area>Transport</area>
+    <workgroup>QUIC</workgroup>
+    <keyword>bbr</keyword>
+    <keyword>delay-sensitive congestion control</keyword>
+    <keyword>fec</keyword>
+    <keyword>loss-tolerant congestion control</keyword>
+    <keyword>next generation</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書では、QUICの損失検出と輻輳制御のメカニズムについて説明します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">            これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1-2">            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1-3">            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9002" brackets="none"/> で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-definitions">表記規則と定義</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-of-the-quic-transmis">QUICの送信メカニズムの設計</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relevant-differences-betwee">QUICとTCPの関連する相違点</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-separate-packet-number-spac">個別のパケット番号空間</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-monotonically-increasing-pa">単調増加するパケット番号</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-clearer-loss-epoch">より明確な損失エポック</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-no-reneging">取り消しの禁止</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-more-ack-ranges">より多くのACK範囲</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.6">
+                <t indent="0" pn="section-toc.1-1.4.2.6.1"><xref derivedContent="4.6" format="counter" sectionFormat="of" target="section-4.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-correction-for-del">遅延確認応答の明示的な補正</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.7">
+                <t indent="0" pn="section-toc.1-1.4.2.7.1"><xref derivedContent="4.7" format="counter" sectionFormat="of" target="section-4.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probe-timeout-replaces-rto-">RTOとTLPを置き換えるプローブタイムアウト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.8">
+                <t indent="0" pn="section-toc.1-1.4.2.8.1"><xref derivedContent="4.8" format="counter" sectionFormat="of" target="section-4.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-minimum-congestion-wind">最小輻輳ウィンドウは2パケット</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.9">
+                <t indent="0" pn="section-toc.1-1.4.2.9.1"><xref derivedContent="4.9" format="counter" sectionFormat="of" target="section-4.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handshake-packets-are-not-s">ハンドシェイクパケットは特別ではない</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-estimating-the-round-trip-t">往復時間の推定</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-generating-rtt-samples">RTTサンプルの生成</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-estimating-min_rtt">min_rttの推定</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-estimating-smoothed_rtt-and">smoothed_rttとrttvarの推定</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-loss-detection">損失検出</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgment-based-detect">確認応答に基づく検出</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2.1.2">
+                  <li pn="section-toc.1-1.6.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.6.2.1.2.1.1"><xref derivedContent="6.1.1" format="counter" sectionFormat="of" target="section-6.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-packet-threshold">パケットしきい値</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.6.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.6.2.1.2.2.1"><xref derivedContent="6.1.2" format="counter" sectionFormat="of" target="section-6.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-time-threshold">時間しきい値</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probe-timeout">プローブタイムアウト</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2.2.2">
+                  <li pn="section-toc.1-1.6.2.2.2.1">
+                    <t indent="0" pn="section-toc.1-1.6.2.2.2.1.1"><xref derivedContent="6.2.1" format="counter" sectionFormat="of" target="section-6.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-computing-pto">PTOの計算</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.6.2.2.2.2">
+                    <t indent="0" pn="section-toc.1-1.6.2.2.2.2.1"><xref derivedContent="6.2.2" format="counter" sectionFormat="of" target="section-6.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handshakes-and-new-paths">ハンドシェイクと新しいパス</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.6.2.2.2.3">
+                    <t indent="0" pn="section-toc.1-1.6.2.2.2.3.1"><xref derivedContent="6.2.3" format="counter" sectionFormat="of" target="section-6.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-speeding-up-handshake-compl">ハンドシェイク完了の高速化</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.6.2.2.2.4">
+                    <t indent="0" pn="section-toc.1-1.6.2.2.2.4.1"><xref derivedContent="6.2.4" format="counter" sectionFormat="of" target="section-6.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sending-probe-packets">プローブパケットの送信</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.6.2.3">
+                <t indent="0" pn="section-toc.1-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-retry-packets">Retryパケットの処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.4">
+                <t indent="0" pn="section-toc.1-1.6.2.4.1"><xref derivedContent="6.4" format="counter" sectionFormat="of" target="section-6.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discarding-keys-and-packet-">鍵とパケットの状態の破棄</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-congestion-control">輻輳制御</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-congestion-notific">明示的輻輳通知</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-initial-and-minimum-congest">初期輻輳ウィンドウと最小輻輳ウィンドウ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-congestion-control-states">輻輳制御の状態</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2.3.2">
+                  <li pn="section-toc.1-1.7.2.3.2.1">
+                    <t indent="0" pn="section-toc.1-1.7.2.3.2.1.1"><xref derivedContent="7.3.1" format="counter" sectionFormat="of" target="section-7.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-slow-start">スロースタート</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.3.2.2">
+                    <t indent="0" pn="section-toc.1-1.7.2.3.2.2.1"><xref derivedContent="7.3.2" format="counter" sectionFormat="of" target="section-7.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-recovery">回復</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.3.2.3">
+                    <t indent="0" pn="section-toc.1-1.7.2.3.2.3.1"><xref derivedContent="7.3.3" format="counter" sectionFormat="of" target="section-7.3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-congestion-avoidance">輻輳回避</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.7.2.4">
+                <t indent="0" pn="section-toc.1-1.7.2.4.1"><xref derivedContent="7.4" format="counter" sectionFormat="of" target="section-7.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ignoring-loss-of-undecrypta">復号できないパケットの損失の無視</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.5">
+                <t indent="0" pn="section-toc.1-1.7.2.5.1"><xref derivedContent="7.5" format="counter" sectionFormat="of" target="section-7.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probe-timeout-2">プローブタイムアウト</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.6">
+                <t indent="0" pn="section-toc.1-1.7.2.6.1"><xref derivedContent="7.6" format="counter" sectionFormat="of" target="section-7.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-persistent-congestion">持続的な輻輳</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2.6.2">
+                  <li pn="section-toc.1-1.7.2.6.2.1">
+                    <t indent="0" pn="section-toc.1-1.7.2.6.2.1.1"><xref derivedContent="7.6.1" format="counter" sectionFormat="of" target="section-7.6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-duration">期間</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.6.2.2">
+                    <t indent="0" pn="section-toc.1-1.7.2.6.2.2.1"><xref derivedContent="7.6.2" format="counter" sectionFormat="of" target="section-7.6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-establishing-persistent-con">持続的な輻輳の確定</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.6.2.3">
+                    <t indent="0" pn="section-toc.1-1.7.2.6.2.3.1"><xref derivedContent="7.6.3" format="counter" sectionFormat="of" target="section-7.6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example">例</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.7.2.7">
+                <t indent="0" pn="section-toc.1-1.7.2.7.1"><xref derivedContent="7.7" format="counter" sectionFormat="of" target="section-7.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-pacing">ペーシング</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.8">
+                <t indent="0" pn="section-toc.1-1.7.2.8.1"><xref derivedContent="7.8" format="counter" sectionFormat="of" target="section-7.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-underutilizing-the-congesti">輻輳ウィンドウの活用不足</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-loss-and-congestion-signals">損失と輻輳のシグナル</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-traffic-analysis">トラフィック分析</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.3">
+                <t indent="0" pn="section-toc.1-1.8.2.3.1"><xref derivedContent="8.3" format="counter" sectionFormat="of" target="section-8.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-misreporting-ecn-markings">ECNマークの虚偽報告</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-loss-recovery-pseudocode">損失回復の疑似コード</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="A.1" format="counter" sectionFormat="of" target="section-a.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tracking-sent-packets">送信したパケットの追跡</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2.1.2">
+                  <li pn="section-toc.1-1.10.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.10.2.1.2.1.1"><xref derivedContent="A.1.1" format="counter" sectionFormat="of" target="section-a.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sent-packet-fields">送信したパケットのフィールド</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="A.2" format="counter" sectionFormat="of" target="section-a.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-constants-of-interest">関連する定数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.3">
+                <t indent="0" pn="section-toc.1-1.10.2.3.1"><xref derivedContent="A.3" format="counter" sectionFormat="of" target="section-a.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-variables-of-interest">関連する変数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.4">
+                <t indent="0" pn="section-toc.1-1.10.2.4.1"><xref derivedContent="A.4" format="counter" sectionFormat="of" target="section-a.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-initialization">初期化</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.5">
+                <t indent="0" pn="section-toc.1-1.10.2.5.1"><xref derivedContent="A.5" format="counter" sectionFormat="of" target="section-a.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-sending-a-packet">パケットの送信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.6">
+                <t indent="0" pn="section-toc.1-1.10.2.6.1"><xref derivedContent="A.6" format="counter" sectionFormat="of" target="section-a.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-receiving-a-datagram">データグラムの受信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.7">
+                <t indent="0" pn="section-toc.1-1.10.2.7.1"><xref derivedContent="A.7" format="counter" sectionFormat="of" target="section-a.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-receiving-an-acknowledgm">確認応答の受信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.8">
+                <t indent="0" pn="section-toc.1-1.10.2.8.1"><xref derivedContent="A.8" format="counter" sectionFormat="of" target="section-a.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-setting-the-loss-detection-">損失検出タイマーの設定</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.9">
+                <t indent="0" pn="section-toc.1-1.10.2.9.1"><xref derivedContent="A.9" format="counter" sectionFormat="of" target="section-a.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-timeout">タイムアウト時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.10">
+                <t indent="0" pn="section-toc.1-1.10.2.10.1"><xref derivedContent="A.10" format="counter" sectionFormat="of" target="section-a.10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-detecting-lost-packets">失われたパケットの検出</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.11">
+                <t indent="0" pn="section-toc.1-1.10.2.11.1"><xref derivedContent="A.11" format="counter" sectionFormat="of" target="section-a.11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-upon-dropping-initial-or-ha">Initial鍵またはHandshake鍵の破棄時</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="Appendix B" format="default" sectionFormat="of" target="section-appendix.b"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-congestion-control-pseudoco">輻輳制御の疑似コード</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t indent="0" pn="section-toc.1-1.11.2.1.1"><xref derivedContent="B.1" format="counter" sectionFormat="of" target="section-b.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-constants-of-interest-2">関連する定数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.2">
+                <t indent="0" pn="section-toc.1-1.11.2.2.1"><xref derivedContent="B.2" format="counter" sectionFormat="of" target="section-b.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-variables-of-interest-2">関連する変数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.3">
+                <t indent="0" pn="section-toc.1-1.11.2.3.1"><xref derivedContent="B.3" format="counter" sectionFormat="of" target="section-b.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-initialization-2">初期化</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.4">
+                <t indent="0" pn="section-toc.1-1.11.2.4.1"><xref derivedContent="B.4" format="counter" sectionFormat="of" target="section-b.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-packet-sent">パケットの送信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.5">
+                <t indent="0" pn="section-toc.1-1.11.2.5.1"><xref derivedContent="B.5" format="counter" sectionFormat="of" target="section-b.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-packet-acknowledgment">パケットの確認応答時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.6">
+                <t indent="0" pn="section-toc.1-1.11.2.6.1"><xref derivedContent="B.6" format="counter" sectionFormat="of" target="section-b.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-new-congestion-event">新しい輻輳イベントの発生時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.7">
+                <t indent="0" pn="section-toc.1-1.11.2.7.1"><xref derivedContent="B.7" format="counter" sectionFormat="of" target="section-b.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-process-ecn-information">ECN情報の処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.8">
+                <t indent="0" pn="section-toc.1-1.11.2.8.1"><xref derivedContent="B.8" format="counter" sectionFormat="of" target="section-b.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-on-packets-lost">パケットの損失時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.11.2.9">
+                <t indent="0" pn="section-toc.1-1.11.2.9.1"><xref derivedContent="B.9" format="counter" sectionFormat="of" target="section-b.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-removing-discarded-packets-">破棄したパケットの送信中のバイト数からの除外</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.d"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">QUICは、<xref target="QUIC-TRANSPORT" format="default" sectionFormat="of" derivedContent="QUIC-TRANSPORT"/>で説明されている、安全で汎用的なトランスポートプロトコルです。この文書では、QUICの損失検出と輻輳制御のメカニズムについて説明します。</t>
+    </section>
+    <section anchor="conventions-and-definitions" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-conventions-and-definitions">表記規則と定義</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      <t indent="0" pn="section-2-2">この文書で使用する用語の定義は次のとおりです。</t>
+      <dl indent="3" newline="false" spacing="normal" pn="section-2-3">
+        <dt pn="section-2-3.1">確認応答誘発フレーム（Ack-eliciting frames）：</dt>
+        <dd pn="section-2-3.2">
+          <t indent="0" pn="section-2-3.2.1">ACK、PADDING、CONNECTION_CLOSE以外のすべてのフレームは、確認応答誘発（ack-eliciting）であるとみなされます。</t>
+        </dd>
+        <dt pn="section-2-3.3">確認応答誘発パケット（Ack-eliciting packets）：</dt>
+        <dd pn="section-2-3.4">
+          <t indent="0" pn="section-2-3.4.1">確認応答誘発フレームを含むパケットは、最大確認応答遅延の範囲内で受信者からACKを誘発するもので、確認応答誘発パケットと呼ばれます。</t>
+        </dd>
+        <dt pn="section-2-3.5">送信中のパケット（In-flight packets）：</dt>
+        <dd pn="section-2-3.6">
+          <t indent="0" pn="section-2-3.6.1">パケットは、確認応答誘発であるかPADDINGフレームを含んでおり、かつ送信されたものの、確認応答されておらず、損失が宣言されておらず、古い鍵とともに破棄されてもいない場合に、送信中（in flight）であるとみなされます。</t>
+        </dd>
+      </dl>
+    </section>
+    <section anchor="design-of-the-quic-transmission-machinery" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-design-of-the-quic-transmis">QUICの送信メカニズムの設計</name>
+      <t indent="0" pn="section-3-1">QUICのすべての送信は、パケットレベルのヘッダー付きで送られます。このヘッダーは暗号化レベルを示し、パケットのシーケンス番号（以下ではパケット番号と呼びます）を含みます。<xref section="12.3" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-12.3" derivedContent="QUIC-TRANSPORT"/>で説明されているとおり、暗号化レベルはパケット番号空間を示します。パケット番号は、コネクションの存続期間中、1つのパケット番号空間内で繰り返されることはありません。パケット番号は空間内で単調増加の順に送信されるため、曖昧さが生じません。一部のパケット番号が一度も使われず、意図的な欠番が残ることも許されています。</t>
+      <t indent="0" pn="section-3-2">この設計により、最初の送信と再送を区別する必要がなくなります。これにより、QUICにおけるTCPの損失検出メカニズムの解釈から、大きな複雑さが取り除かれます。</t>
+      <t indent="0" pn="section-3-3">QUICパケットは、異なる種類の複数のフレームを含むことができます。回復メカニズムは、信頼性のある配送が必要なデータとフレームが、確認応答されるか、損失が宣言されて必要に応じて新しいパケットで送信されることを保証します。パケットに含まれるフレームの種類は、回復と輻輳制御のロジックに影響します。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-4">
+        <li pn="section-3-4.1">すべてのパケットは確認応答されます。ただし、確認応答誘発フレームを含まないパケットは、確認応答誘発パケットとあわせてのみ確認応答されます。</li>
+        <li pn="section-3-4.2">CRYPTOフレームを含むロングヘッダーパケットは、QUICハンドシェイクの性能にとって重要であり、確認応答に短いタイマーを使います。</li>
+        <li pn="section-3-4.3">ACKフレームまたはCONNECTION_CLOSEフレーム以外のフレームを含むパケットは、輻輳制御の制限に算入され、送信中であるとみなされます。</li>
+        <li pn="section-3-4.4">PADDINGフレームは、直接確認応答の送信を引き起こすことなく、パケットを送信中のバイト数に算入させます。</li>
+      </ul>
+    </section>
+    <section anchor="relevant-differences-between-quic-and-tcp" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-relevant-differences-betwee">QUICとTCPの関連する相違点</name>
+      <t indent="0" pn="section-4-1">TCPの損失検出と輻輳制御に詳しい読者は、よく知られたTCPのアルゴリズムに対応するアルゴリズムをここに見いだすでしょう。しかし、QUICとTCPのプロトコルの違いが、アルゴリズムの違いにつながっています。以下では、これらのプロトコルの違いを簡単に説明します。</t>
+      <section anchor="separate-packet-number-spaces" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-separate-packet-number-spac">個別のパケット番号空間</name>
+        <t indent="0" pn="section-4.1-1">QUICは暗号化レベルごとに個別のパケット番号空間を使います。ただし、0-RTTとすべての世代の1-RTT鍵は同じパケット番号空間を使います。パケット番号空間を分けることで、ある暗号化レベルで送信されたパケットの確認応答が、別の暗号化レベルで送信されたパケットの誤った再送を引き起こさないことが保証されます。輻輳制御と往復時間（RTT）の測定は、パケット番号空間をまたいで統合されています。</t>
+      </section>
+      <section anchor="monotonically-increasing-packet-numbers" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-monotonically-increasing-pa">単調増加するパケット番号</name>
+        <t indent="0" pn="section-4.2-1">TCPは送信者における送信順序と受信者における配送順序を混同しており、その結果、再送の曖昧さの問題<xref target="RETRANSMISSION" format="default" sectionFormat="of" derivedContent="RETRANSMISSION"/>が生じます。QUICは送信順序と配送順序を分離しています。パケット番号は送信順序を示し、配送順序はSTREAMフレーム内のストリームオフセットによって決まります。</t>
+        <t indent="0" pn="section-4.2-2">QUICのパケット番号は、パケット番号空間内で厳密に増加し、送信順序を直接表します。大きいパケット番号は、そのパケットが後で送信されたことを意味し、小さいパケット番号は、そのパケットが先に送信されたことを意味します。確認応答誘発フレームを含むパケットの損失が検出されると、QUICは必要なフレームを新しいパケット番号を持つ新しいパケットに含めます。これにより、ACKを受信したときにどのパケットが確認応答されたのかについての曖昧さがなくなります。その結果、より正確なRTT測定が可能になり、誤った再送は容易に検出され、高速再送（Fast Retransmit）などのメカニズムをパケット番号だけに基づいて普遍的に適用できます。</t>
+        <t indent="0" pn="section-4.2-3">この設計上の要点により、QUICの損失検出メカニズムは大幅に単純になります。TCPのメカニズムのほとんどは、TCPのシーケンス番号に基づいて送信順序を暗黙的に推測しようとします。これは、特にTCPタイムスタンプが利用できない場合には簡単ではない作業です。</t>
+      </section>
+      <section anchor="clearer-loss-epoch" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-clearer-loss-epoch">より明確な損失エポック</name>
+        <t indent="0" pn="section-4.3-1">QUICは、パケットが失われたときに損失エポックを開始します。損失エポックは、エポックの開始後に送信されたいずれかのパケットが確認応答されたときに終了します。TCPはシーケンス番号空間の欠落が埋まるのを待つため、あるセグメントが連続して複数回失われた場合、損失エポックが数往復にわたって終了しないことがあります。どちらもエポックごとに1回だけ輻輳ウィンドウを縮小すべきであるため、QUICは損失が発生した往復ごとに1回縮小しますが、TCPは複数の往復にわたって1回しか縮小しないことがあります。</t>
+      </section>
+      <section anchor="no-reneging" numbered="true" toc="include" removeInRFC="false" pn="section-4.4">
+        <name slugifiedName="name-no-reneging">取り消しの禁止</name>
+        <t indent="0" pn="section-4.4-1">QUICのACKフレームは、TCPの選択的確認応答（SACK）<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/>に含まれる情報と同様の情報を含みます。しかし、QUICはパケットの確認応答を取り消す（renege）ことを許しません。これにより、双方の実装が大幅に単純になり、送信者のメモリーへの負荷も軽減されます。</t>
+      </section>
+      <section anchor="more-ack-ranges" numbered="true" toc="include" removeInRFC="false" pn="section-4.5">
+        <name slugifiedName="name-more-ack-ranges">より多くのACK範囲</name>
+        <t indent="0" pn="section-4.5-1">TCPのSACK範囲が3つであるのに対して、QUICは多数のACK範囲をサポートします。損失の多い環境では、これにより回復が速くなり、誤った再送が減り、タイムアウトに頼ることなく前進が保証されます。</t>
+      </section>
+      <section anchor="explicit-correction-for-delayed-acknowledgments" numbered="true" toc="include" removeInRFC="false" pn="section-4.6">
+        <name slugifiedName="name-explicit-correction-for-del">遅延確認応答の明示的な補正</name>
+        <t indent="0" pn="section-4.6-1">QUICのエンドポイントは、パケットを受信してから対応する確認応答を送信するまでに生じた遅延を測定します。これにより、ピアはより正確なRTT推定値を維持できます。<xref section="13.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+      </section>
+      <section anchor="probe-timeout-replaces-rto-and-tlp" numbered="true" toc="include" removeInRFC="false" pn="section-4.7">
+        <name slugifiedName="name-probe-timeout-replaces-rto-">RTOとTLPを置き換えるプローブタイムアウト</name>
+        <t indent="0" pn="section-4.7-1">QUICは、TCPの再送タイムアウト（RTO）の計算（<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>を参照）に基づくタイマーを用いたプローブタイムアウト（PTO。<xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>を参照）を使います。QUICのPTOは、固定の最小タイムアウトを使う代わりに、ピアの想定最大確認応答遅延を含めます。</t>
+        <t indent="0" pn="section-4.7-2">TCPのRACK-TLP損失検出アルゴリズム<xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>と同様に、QUICはPTOが期限切れになっても輻輳ウィンドウを縮小させません。末尾での単一のパケット損失は、持続的な輻輳を示すものではないからです。代わりに、QUICは持続的な輻輳が宣言されたときに輻輳ウィンドウを縮小させます。<xref target="persistent-congestion" format="default" sectionFormat="of" derivedContent="Section 7.6"/>を参照してください。こうすることで、QUICは不要な輻輳ウィンドウの縮小を回避し、Forward RTO-Recovery（F-RTO）<xref target="RFC5682" format="default" sectionFormat="of" derivedContent="RFC5682"/>のような補正メカニズムを不要にしています。QUICはPTOの期限切れ時に輻輳ウィンドウを縮小させないため、QUICの送信者は、利用可能な輻輳ウィンドウがまだ残っていれば、PTOの期限切れ後に送信中のパケットをさらに送信することを制限されません。これは、送信者がアプリケーション制限の状態にあり、PTOタイマーが期限切れになったときに起こります。これは、アプリケーション制限の状態ではTCPのRTOメカニズムよりも積極的ですが、アプリケーション制限の状態でなければ同一です。</t>
+        <t indent="0" pn="section-4.7-3">QUICでは、タイマーが期限切れになるたびに、プローブパケットが一時的に輻輳ウィンドウを超えることを許しています。</t>
+      </section>
+      <section anchor="the-minimum-congestion-window-is-two-packets" numbered="true" toc="include" removeInRFC="false" pn="section-4.8">
+        <name slugifiedName="name-the-minimum-congestion-wind">最小輻輳ウィンドウは2パケット</name>
+        <t indent="0" pn="section-4.8-1">TCPは1パケットの最小輻輳ウィンドウを使います。しかし、その1つのパケットが失われると、送信者は回復するためにPTOを待つ必要があり（<xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>）、それはRTTよりもはるかに長くなる場合があります。また、確認応答誘発パケットを1つだけ送信すると、受信者が確認応答を遅延させた場合に追加の遅延が生じる可能性が高まります。</t>
+        <t indent="0" pn="section-4.8-2">したがって、QUICは最小輻輳ウィンドウを2パケットにすることを推奨しています。これによりネットワークの負荷は増えますが、送信者は持続的な輻輳の下では依然として送信レートを指数関数的に低下させるため（<xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>）、安全であると考えられます。</t>
+      </section>
+      <section anchor="handshake-packets-are-not-special" numbered="true" toc="include" removeInRFC="false" pn="section-4.9">
+        <name slugifiedName="name-handshake-packets-are-not-s">ハンドシェイクパケットは特別ではない</name>
+        <t indent="0" pn="section-4.9-1">TCPは、SYNパケットまたはSYN-ACKパケットの損失を持続的な輻輳として扱い、輻輳ウィンドウを1パケットに縮小します。<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>を参照してください。QUICは、ハンドシェイクデータを含むパケットの損失を、他の損失と同じように扱います。</t>
+      </section>
+    </section>
+    <section anchor="compute-rtt" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-estimating-the-round-trip-t">往復時間の推定</name>
+      <t indent="0" pn="section-5-1">大まかに言うと、エンドポイントは、パケットが送信されてから確認応答されるまでの時間をRTTサンプルとして測定します。エンドポイントは、RTTサンプルと、ピアが報告するホストでの遅延（<xref section="13.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2" derivedContent="QUIC-TRANSPORT"/>を参照）を使って、ネットワークパスのRTTの統計的な記述を生成します。エンドポイントは、パスごとに次の3つの値を計算します。一定期間における最小値（min_rtt）、指数加重移動平均（smoothed_rtt）、そして観測されたRTTサンプルの平均偏差（この文書の以降では「変動（variation）」と呼びます）（rttvar）です。</t>
+      <section anchor="latest-rtt" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-generating-rtt-samples">RTTサンプルの生成</name>
+        <t indent="0" pn="section-5.1-1">エンドポイントは、次の2つの条件を満たすACKフレームを受信したときに、RTTサンプルを生成します。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.1-2">
+          <li pn="section-5.1-2.1">確認応答された最大のパケット番号が新たに確認応答されたものであること、かつ</li>
+          <li pn="section-5.1-2.2">新たに確認応答されたパケットのうち少なくとも1つが確認応答誘発であったこと。</li>
+        </ul>
+        <t indent="0" pn="section-5.1-3">RTTサンプルであるlatest_rttは、確認応答された最大のパケットが送信されてからの経過時間として生成されます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-5.1-4">
+latest_rtt = ack_time - send_time_of_largest_acked
+</sourcecode>
+        <t indent="0" pn="section-5.1-5">RTTサンプルは、受信したACKフレーム内で確認応答された最大のパケットだけを使って生成されます。これは、ピアがACKフレーム内で確認応答された最大のパケットについてのみ確認応答遅延を報告するためです。報告された確認応答遅延はRTTサンプルの測定には使われませんが、以降のsmoothed_rttとrttvarの計算（<xref target="smoothed-rtt" format="default" sectionFormat="of" derivedContent="Section 5.3"/>）でRTTサンプルを調整するために使われます。</t>
+        <t indent="0" pn="section-5.1-6">1つのパケットに対して複数のRTTサンプルを生成するのを避けるため、確認応答された最大のパケットを新たに確認応答しないACKフレームを、RTT推定値の更新に使う<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+        <t indent="0" pn="section-5.1-7">少なくとも1つの確認応答誘発パケットを新たに確認応答するのでないACKフレームを受信したときに、RTTサンプルを生成しては<bcp14>なりません（MUST NOT）</bcp14>。ピアは通常、確認応答誘発でないパケットだけを受信したときにはACKフレームを送信しません。したがって、確認応答誘発でないパケットに対する確認応答だけを含むACKフレームには、任意の大きさのACK Delayの値が含まれている可能性があります。そのようなACKフレームを無視することで、以降のsmoothed_rttとrttvarの計算における面倒な問題を回避できます。</t>
+        <t indent="0" pn="section-5.1-8">1RTTの間に複数のACKフレームを受信した場合、送信者はRTTごとに複数のRTTサンプルを生成することがあります。<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>で示唆されているように、そうするとsmoothed_rttとrttvarの履歴が不十分になる可能性があります。RTT推定値が十分な履歴を保持するようにすることは、未解決の研究課題です。</t>
+      </section>
+      <section anchor="min-rtt" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-estimating-min_rtt">min_rttの推定</name>
+        <t indent="0" pn="section-5.2-1">min_rttは、あるネットワークパスについて一定期間に観測された最小のRTTの、送信者による推定値です。この文書では、min_rttは、損失検出においてありえないほど小さいRTTサンプルを除外するために使われます。</t>
+        <t indent="0" pn="section-5.2-2">最初のRTTサンプルでは、min_rttをlatest_rttに設定し<bcp14>なければなりません（MUST）</bcp14>。それ以外のすべてのサンプルでは、min_rttを、min_rttとlatest_rtt（<xref target="latest-rtt" format="default" sectionFormat="of" derivedContent="Section 5.1"/>）のうち小さいほうに設定し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.2-3">エンドポイントは、min_rttの計算においてローカルで観測した時間だけを使い、ピアが報告した確認応答遅延による調整は行いません。こうすることで、エンドポイントは、完全に自身の観測に基づいてsmoothed_rttの下限を設定でき（<xref target="smoothed-rtt" format="default" sectionFormat="of" derivedContent="Section 5.3"/>を参照）、ピアが誤って報告した遅延による過小評価の可能性を抑えられます。</t>
+        <t indent="0" pn="section-5.2-4">ネットワークパスのRTTは時間とともに変化することがあります。パスの実際のRTTが減少した場合、min_rttは最初の小さいサンプルですぐに追従します。しかし、パスの実際のRTTが増加した場合、min_rttはそれに追従しないため、新しいRTTよりも小さい将来のRTTサンプルがsmoothed_rttに取り込まれることを許します。</t>
+        <t indent="0" pn="section-5.2-5">エンドポイントは、持続的な輻輳が確定した後、min_rttを最新のRTTサンプルに設定す<bcp14>べきです（SHOULD）</bcp14>。これにより、RTTが増加したときに持続的な輻輳を繰り返し宣言することが避けられます。また、これによって、コネクションは、ネットワークを混乱させるイベントの後にmin_rttとsmoothed_rttの推定値をリセットできます。<xref target="smoothed-rtt" format="default" sectionFormat="of" derivedContent="Section 5.3"/>を参照してください。</t>
+        <t indent="0" pn="section-5.2-6">エンドポイントは、トラフィック量が少なく、確認応答遅延の小さい確認応答を受信したときなど、コネクション中のほかの時点でmin_rttを再設定<bcp14>してもよいです（MAY）</bcp14>。パスの実際の最小RTTは頻繁に観測できるものではないため、実装はmin_rttの値をあまり頻繁に更新す<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+      </section>
+      <section anchor="smoothed-rtt" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-estimating-smoothed_rtt-and">smoothed_rttとrttvarの推定</name>
+        <t indent="0" pn="section-5.3-1">smoothed_rttはエンドポイントのRTTサンプルの指数加重移動平均であり、rttvarは平均変動を用いてRTTサンプルの変動を推定したものです。</t>
+        <t indent="0" pn="section-5.3-2">smoothed_rttの計算には、確認応答遅延を考慮して調整した後のRTTサンプルを使います。これらの遅延は、<xref section="19.3" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-19.3" derivedContent="QUIC-TRANSPORT"/>で説明されているとおり、ACKフレームのACK Delayフィールドからデコードされます。</t>
+        <t indent="0" pn="section-5.3-3">ピアは、ハンドシェイク中に、ピアのmax_ack_delayよりも大きい確認応答遅延を報告することがあります（<xref section="13.2.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2.1" derivedContent="QUIC-TRANSPORT"/>）。これを考慮して、エンドポイントは、<xref section="4.1.2" sectionFormat="of" target="QUIC-TLS" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.1.2" derivedContent="QUIC-TLS"/>で定義されているハンドシェイクの確認が行われるまで、max_ack_delayを無視す<bcp14>べきです（SHOULD）</bcp14>。このような大きな確認応答遅延が発生した場合、それは繰り返されることはなく、ハンドシェイクに限られる可能性が高いです。したがって、エンドポイントはそれらをmax_ack_delayに制限せずに使うことができ、RTT推定値が不必要に膨らむのを避けられます。</t>
+        <t indent="0" pn="section-5.3-4">ピアによる確認応答遅延の報告と、エンドポイントのmin_rttの推定値のどちらかに誤りがある場合、大きな確認応答遅延によってsmoothed_rttが大幅に膨らむ可能性があることに注意してください。したがって、ハンドシェイクの確認より前は、確認応答遅延を考慮してRTTサンプルを調整するとサンプルがmin_rtt未満になってしまう場合、エンドポイントはそのRTTサンプルを無視<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-5">ハンドシェイクの確認後は、ピアが報告した確認応答遅延のうちピアのmax_ack_delayを超えるものは、ピアにおけるスケジューラーの遅延や以前の確認応答の損失など、意図的ではないが繰り返し発生する可能性のある遅延によるものとみなされます。超過した遅延は、準拠していない受信者によるものである可能性もあります。したがって、これらの余分な遅延は実質的にパスの遅延の一部とみなされ、RTT推定値に組み込まれます。</t>
+        <t indent="0" pn="section-5.3-6">したがって、ピアが報告した確認応答遅延を使ってRTTサンプルを調整する際、エンドポイントは次のようにします。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5.3-7">
+          <li pn="section-5.3-7.1">Initialパケットに対する確認応答はピアによって遅延されないため（<xref section="13.2.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2.1" derivedContent="QUIC-TRANSPORT"/>）、Initialパケットについては確認応答遅延を無視<bcp14>してもよいです（MAY）</bcp14>。</li>
+          <li pn="section-5.3-7.2">ハンドシェイクの確認が行われるまでは、ピアのmax_ack_delayを無視す<bcp14>べきです（SHOULD）</bcp14>。</li>
+          <li pn="section-5.3-7.3">ハンドシェイクの確認後は、確認応答遅延とピアのmax_ack_delayのうち小さいほうを使わ<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-5.3-7.4">結果の値がmin_rttより小さくなる場合は、RTTサンプルから確認応答遅延を差し引いては<bcp14>なりません（MUST NOT）</bcp14>。これにより、誤った報告をするピアによるsmoothed_rttの過小評価が抑えられます。</li>
+        </ul>
+        <t indent="0" pn="section-5.3-8">さらに、エンドポイントは、対応する復号鍵がすぐに利用できない場合、確認応答の処理を延期することがあります。たとえば、クライアントは、1-RTTパケット保護鍵がまだ利用できないために復号できない0-RTTパケットに対する確認応答を受信することがあります。そのような場合、エンドポイントは、ハンドシェイクの確認が行われるまで、そのようなローカルの遅延をRTTサンプルから差し引く<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-9"><xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>と同様に、smoothed_rttとrttvarは次のように計算されます。</t>
+        <t indent="0" pn="section-5.3-10">エンドポイントは、コネクションの確立時と、コネクションマイグレーション中に推定器がリセットされたときに、RTT推定器を初期化します。<xref section="9.4" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-9.4" derivedContent="QUIC-TRANSPORT"/>を参照してください。新しいパスでRTTサンプルがまだ得られていないとき、または推定器がリセットされたときは、推定器は初期RTTを使って初期化されます。<xref target="pto-handshake" format="default" sectionFormat="of" derivedContent="Section 6.2.2"/>を参照してください。</t>
+        <t indent="0" pn="section-5.3-11">smoothed_rttとrttvarは次のように初期化されます。ここで、kInitialRttは初期RTTの値を格納しています。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-5.3-12">
+smoothed_rtt = kInitialRtt
+rttvar = kInitialRtt / 2
+</sourcecode>
+        <t indent="0" pn="section-5.3-13">ネットワークパスのRTTサンプルはlatest_rttに記録されます。<xref target="latest-rtt" format="default" sectionFormat="of" derivedContent="Section 5.1"/>を参照してください。初期化後の最初のRTTサンプルでは、推定器はそのサンプルを使ってリセットされます。これにより、推定器は過去のサンプルの履歴を保持しないことが保証されます。<xref section="9.4" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-9.4" derivedContent="QUIC-TRANSPORT"/>で説明されているとおり、他のパスで送信されたパケットは、現在のパスのRTTサンプルとしては使われません。</t>
+        <t indent="0" pn="section-5.3-14">初期化後の最初のRTTサンプルでは、smoothed_rttとrttvarは次のように設定されます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-5.3-15">
+smoothed_rtt = latest_rtt
+rttvar = latest_rtt / 2
+</sourcecode>
+        <t indent="0" pn="section-5.3-16">以降のRTTサンプルでは、smoothed_rttとrttvarは次のように更新されます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-5.3-17">
+ack_delay = decoded acknowledgment delay from ACK frame
+if (handshake confirmed):
+  ack_delay = min(ack_delay, max_ack_delay)
+adjusted_rtt = latest_rtt
+if (latest_rtt &gt;= min_rtt + ack_delay):
+  adjusted_rtt = latest_rtt - ack_delay
+smoothed_rtt = 7/8 * smoothed_rtt + 1/8 * adjusted_rtt
+rttvar_sample = abs(smoothed_rtt - adjusted_rtt)
+rttvar = 3/4 * rttvar + 1/4 * rttvar_sample
+</sourcecode>
+      </section>
+    </section>
+    <section anchor="loss-detection" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-loss-detection">損失検出</name>
+      <t indent="0" pn="section-6-1">QUICの送信者は、失われたパケットを検出するために確認応答を使い、確認応答が受信されることを保証するためにPTOを使います。<xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>を参照してください。このセクションでは、これらのアルゴリズムについて説明します。</t>
+      <t indent="0" pn="section-6-2">パケットが失われた場合、QUICトランスポートは、データを再送する、更新したフレームを送信する、フレームを破棄するなどして、その損失から回復する必要があります。詳しくは、<xref section="13.3" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.3" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+      <t indent="0" pn="section-6-3">RTTの測定や輻輳制御とは異なり、損失検出はパケット番号空間ごとに別々に行われます。RTTと輻輳制御はパスの特性ですが、損失検出は鍵が利用可能かどうかにも依存するためです。</t>
+      <section anchor="ack-loss-detection" numbered="true" toc="include" removeInRFC="false" pn="section-6.1">
+        <name slugifiedName="name-acknowledgment-based-detect">確認応答に基づく検出</name>
+        <t indent="0" pn="section-6.1-1">確認応答に基づく損失検出は、TCPの高速再送（Fast Retransmit）<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、早期再送（Early Retransmit）<xref target="RFC5827" format="default" sectionFormat="of" derivedContent="RFC5827"/>、Forward Acknowledgment <xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>、SACKによる損失回復<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>、RACK-TLP <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>の考え方を実現するものです。このセクションでは、これらのアルゴリズムがQUICでどのように実装されているかの概要を示します。</t>
+        <t indent="0" pn="section-6.1-2">パケットは、次の条件をすべて満たす場合に、損失が宣言されます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-6.1-3">
+          <li pn="section-6.1-3.1">そのパケットが確認応答されておらず、送信中であり、確認応答されたパケットよりも前に送信されたものであること。</li>
+          <li pn="section-6.1-3.2">そのパケットが、確認応答されたパケットよりkPacketThresholdパケット前に送信されたものであるか（<xref target="packet-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.1"/>）、十分に昔に送信されたものであること（<xref target="time-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.2"/>）。</li>
+        </ul>
+        <t indent="0" pn="section-6.1-4">確認応答は後から送信されたパケットが配送されたことを示しており、パケットのしきい値と時間のしきい値は、パケットの順序入れ替わりに対してある程度の許容範囲を与えます。</t>
+        <t indent="0" pn="section-6.1-5">パケットの損失を誤って宣言すると不要な再送につながり、損失を検出した際の輻輳コントローラーの動作によって性能が低下するおそれがあります。実装は、誤った再送を検出し、パケットまたは時間の順序入れ替わりのしきい値を大きくすることで、将来の誤った再送と損失イベントを減らすことができます。適応的な時間しきい値を持つ実装は、回復の遅延を最小化するために、小さい初期の順序入れ替わりしきい値から始めることを選択<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <section anchor="packet-threshold" numbered="true" toc="include" removeInRFC="false" pn="section-6.1.1">
+          <name slugifiedName="name-packet-threshold">パケットしきい値</name>
+          <t indent="0" pn="section-6.1.1-1">TCPの損失検出のベストプラクティス<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>に基づき、パケットの順序入れ替わりしきい値（kPacketThreshold）の初期値は3が<bcp14>推奨されます（RECOMMENDED）</bcp14>。TCPとの類似性を保つため、実装は3未満のパケットしきい値を使う<bcp14>べきではありません（SHOULD NOT）</bcp14>。<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>を参照してください。</t>
+          <t indent="0" pn="section-6.1.1-2">ネットワークによっては、パケットの順序入れ替わりがより多く発生し、送信者が誤った損失を検出する原因になることがあります。さらに、TCPパケットを観測して順序を入れ替える可能性のあるネットワーク要素がQUICに対してはそれを行えないことと、QUICのパケット番号が暗号化されていることから、QUICではTCPよりもパケットの順序入れ替わりが一般的になる可能性があります。RACK <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>のように、損失を誤って検出した後に順序入れ替わりしきい値を大きくするアルゴリズムは、TCPで有用であることが実証されており、QUICでも少なくとも同程度に有用であると期待されます。</t>
+        </section>
+        <section anchor="time-threshold" numbered="true" toc="include" removeInRFC="false" pn="section-6.1.2">
+          <name slugifiedName="name-time-threshold">時間しきい値</name>
+          <t indent="0" pn="section-6.1.2-1">同じパケット番号空間内の後のパケットが確認応答された時点で、エンドポイントは、それより前のパケットがしきい値以上の時間前に送信されたものであれば、その損失を宣言す<bcp14>べきです（SHOULD）</bcp14>。パケットの損失を早すぎる時点で宣言するのを避けるため、この時間しきい値は、少なくともkGranularity定数で示されるローカルのタイマー粒度に設定し<bcp14>なければなりません（MUST）</bcp14>。時間しきい値は次のとおりです。</t>
+          <sourcecode type="pseudocode" markers="false" pn="section-6.1.2-2">
+max(kTimeThreshold * max(smoothed_rtt, latest_rtt), kGranularity)
+</sourcecode>
+          <t indent="0" pn="section-6.1.2-3">確認応答された最大のパケットより前に送信されたパケットの損失をまだ宣言できない場合は、残りの時間についてタイマーを設定す<bcp14>べきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-6.1.2-4">max(smoothed_rtt, latest_rtt)を使うことで、次の2つの場合に対処できます。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-6.1.2-5">
+            <li pn="section-6.1.2-5.1">最新のRTTサンプルが平滑化RTTより小さい場合。これは、確認応答がより短いパスを通ったことによる順序入れ替わりが原因である可能性があります。</li>
+            <li pn="section-6.1.2-5.2">最新のRTTサンプルが平滑化RTTより大きい場合。これは、実際のRTTが持続的に増加したにもかかわらず、平滑化RTTがまだ追いついていないことが原因である可能性があります。</li>
+          </ul>
+          <t indent="0" pn="section-6.1.2-6">RTTの倍数として表される時間しきい値（kTimeThreshold）は9/8が<bcp14>推奨されます（RECOMMENDED）</bcp14>。タイマー粒度（kGranularity）の値は1ミリ秒が<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+          <aside pn="section-6.1.2-7">
+            <t indent="0" pn="section-6.1.2-7.1">注：TCPのRACK <xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>は、同様の目的で、5/4に相当するわずかに大きいしきい値を規定しています。QUICでの経験から、9/8がうまく機能することがわかっています。</t>
+          </aside>
+          <t indent="0" pn="section-6.1.2-8">実装は、絶対的なしきい値、以前のコネクションから得たしきい値、適応的なしきい値、あるいはRTTの変動を含めることを試しても<bcp14>よいです（MAY）</bcp14>。しきい値を小さくすると順序入れ替わりへの耐性が下がって誤った再送が増え、しきい値を大きくすると損失検出の遅延が増えます。</t>
+        </section>
+      </section>
+      <section anchor="pto" numbered="true" toc="include" removeInRFC="false" pn="section-6.2">
+        <name slugifiedName="name-probe-timeout">プローブタイムアウト</name>
+        <t indent="0" pn="section-6.2-1">プローブタイムアウト（PTO）は、確認応答誘発パケットが想定される期間内に確認応答されない場合や、サーバーがクライアントのアドレスを検証していない可能性がある場合に、1つまたは2つのプローブデータグラムの送信を引き起こします。PTOにより、コネクションは末尾のパケットや確認応答の損失から回復できます。</t>
+        <t indent="0" pn="section-6.2-2">損失検出と同様に、PTOはパケット番号空間ごとに存在します。つまり、PTOの値はパケット番号空間ごとに計算されます。</t>
+        <t indent="0" pn="section-6.2-3">PTOタイマーの期限切れイベントはパケット損失を示すものではなく、それ以前の確認応答されていないパケットを損失としてマークする原因になっては<bcp14>なりません（MUST NOT）</bcp14>。パケットを新たに確認応答する確認応答を受信したときは、パケットしきい値と時間しきい値のメカニズムに従って損失検出が進められます。<xref target="ack-loss-detection" format="default" sectionFormat="of" derivedContent="Section 6.1"/>を参照してください。</t>
+        <t indent="0" pn="section-6.2-4">QUICで使われるPTOアルゴリズムは、TCPのテールロスプローブ（Tail Loss Probe）<xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>、RTO <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、F-RTO <xref target="RFC5682" format="default" sectionFormat="of" derivedContent="RFC5682"/>の各アルゴリズムの信頼性機能を実現します。タイムアウトの計算は、TCPのRTO期間<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>に基づいています。</t>
+        <section anchor="computing-pto" numbered="true" toc="include" removeInRFC="false" pn="section-6.2.1">
+          <name slugifiedName="name-computing-pto">PTOの計算</name>
+          <t indent="0" pn="section-6.2.1-1">確認応答誘発パケットが送信されると、送信者は次のようにPTO期間のタイマーを設定します。</t>
+          <sourcecode type="pseudocode" markers="false" pn="section-6.2.1-2">
+PTO = smoothed_rtt + max(4*rttvar, kGranularity) + max_ack_delay
+</sourcecode>
+          <t indent="0" pn="section-6.2.1-3">PTO期間は、送信者が送信したパケットの確認応答を待つべき時間です。この期間には、推定されたネットワークのRTT（smoothed_rtt）、その推定値の変動（4*rttvar）、そして受信者が確認応答の送信を遅延させる可能性のある最大時間を考慮するためのmax_ack_delayが含まれます。</t>
+          <t indent="0" pn="section-6.2.1-4">InitialまたはHandshakeパケット番号空間に対してPTOを設定する場合、ピアはこれらのパケットを意図的に遅延させないと想定されるため、PTO期間の計算におけるmax_ack_delayは0に設定されます。<xref section="13.2.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2.1" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+          <t indent="0" pn="section-6.2.1-5">タイマーがすぐに期限切れになるのを避けるため、PTO期間は少なくともkGranularityで<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.1-6">複数のパケット番号空間で確認応答誘発パケットが送信中である場合、タイマーは、InitialとHandshakeのパケット番号空間の値のうち早いほうに設定し<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.1-7">エンドポイントは、ハンドシェイクの確認が行われるまで、Application Dataパケット番号空間のPTOタイマーを設定しては<bcp14>なりません（MUST NOT）</bcp14>。こうすることで、ピアがまだパケットを処理する鍵を持っていない場合や、エンドポイントがまだその確認応答を処理する鍵を持っていない場合に、エンドポイントがパケット内の情報を再送することを防げます。たとえば、これは、クライアントがサーバーに0-RTTパケットを送信するときに起こりえます。クライアントは、サーバーがそれらを復号できるかどうかを知らずに送信するからです。同様に、これは、クライアントがサーバーの証明書を検証し、したがってこれらの1-RTTパケットを読めることを確認する前に、サーバーが1-RTTパケットを送信するときにも起こりえます。</t>
+          <t indent="0" pn="section-6.2.1-8">送信者は、確認応答誘発パケットを送信するたび、または確認応答誘発パケットが確認応答されるたび、あるいはInitial鍵またはHandshake鍵が破棄されたとき（<xref section="4.9" sectionFormat="of" target="QUIC-TLS" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.9" derivedContent="QUIC-TLS"/>）に、PTOタイマーを再始動す<bcp14>べきです（SHOULD）</bcp14>。これにより、PTOが常に最新のRTT推定値に基づき、パケット番号空間をまたいで正しいパケットに対して設定されることが保証されます。</t>
+          <t indent="0" pn="section-6.2.1-9">PTOタイマーが期限切れになったときは、PTOバックオフを増加させ<bcp14>なければなりません（MUST）</bcp14>。その結果、PTO期間は現在の値の2倍に設定されます。PTOバックオフ係数は、確認応答を受信したときにリセットされますが、次の場合は例外です。サーバーは、ハンドシェイク中には、それ以外のときよりもパケットへの応答に時間がかかることがあります。そのようなサーバーをクライアントからの繰り返しのプローブから保護するため、サーバーがクライアントのアドレスの検証を完了したことをまだ確信できていないクライアントでは、PTOバックオフはリセットされません。つまり、クライアントは、Initialパケットで確認応答を受信してもPTOバックオフ係数をリセットしません。</t>
+          <t indent="0" pn="section-6.2.1-10">連続するPTOは、深刻な輻輳によるパケットや確認応答の損失によって引き起こされている可能性があるため、このような送信者のレートの指数関数的な低下は重要です。複数のパケット番号空間で確認応答誘発パケットが送信中である場合でも、ネットワークへの過剰な負荷を防ぐため、PTOの指数関数的な増加はすべての空間にまたがって発生します。たとえば、Initialパケット番号空間でのタイムアウトは、Handshakeパケット番号空間でのタイムアウトの長さを2倍にします。</t>
+          <t indent="0" pn="section-6.2.1-11">連続するPTOが期限切れになる合計時間は、アイドルタイムアウトによって制限されます。</t>
+          <t indent="0" pn="section-6.2.1-12">時間しきい値による損失検出のためのタイマーが設定されている場合は、PTOタイマーを設定しては<bcp14>なりません（MUST NOT）</bcp14>。<xref target="time-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.2"/>を参照してください。時間しきい値による損失検出のために設定されたタイマーは、ほとんどの場合PTOタイマーより早く期限切れになり、データを誤って再送する可能性も低くなります。</t>
+        </section>
+        <section anchor="pto-handshake" numbered="true" toc="include" removeInRFC="false" pn="section-6.2.2">
+          <name slugifiedName="name-handshakes-and-new-paths">ハンドシェイクと新しいパス</name>
+          <t indent="0" pn="section-6.2.2-1">同じネットワーク上で再開されたコネクションは、以前のコネクションの最終的な平滑化RTTの値を、再開したコネクションの初期RTTとして使っても<bcp14>よいです（MAY）</bcp14>。以前のRTTが利用できない場合、初期RTTは333ミリ秒に設定す<bcp14>べきです（SHOULD）</bcp14>。これにより、TCPの初期RTOについて推奨されているとおり、ハンドシェイクは1秒のPTOで開始されます。<xref section="2" sectionFormat="of" target="RFC6298" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6298#section-2" derivedContent="RFC6298"/>を参照してください。</t>
+          <t indent="0" pn="section-6.2.2-2">コネクションは、PATH_CHALLENGEを送信してからPATH_RESPONSEを受信するまでの遅延を使って、新しいパスの初期RTT（<xref target="constants-of-interest" format="default" sectionFormat="of" derivedContent="Appendix A.2"/>のkInitialRttを参照）を設定<bcp14>してもよいです（MAY）</bcp14>。ただし、その遅延をRTTサンプルとみなす<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.2-3">Initial鍵とHandshake鍵が破棄されると（<xref target="discarding-packets" format="default" sectionFormat="of" derivedContent="Section 6.4"/>を参照）、InitialパケットとHandshakeパケットはもはや確認応答できなくなるため、送信中のバイト数から除外されます。Initial鍵またはHandshake鍵が破棄されたときは、PTOタイマーと損失検出タイマーをリセットし<bcp14>なければなりません（MUST）</bcp14>。鍵の破棄は前進を示しており、損失検出タイマーが、今は破棄されたパケット番号空間に対して設定されていた可能性があるからです。</t>
+          <section anchor="before-address-validation" numbered="true" toc="exclude" removeInRFC="false" pn="section-6.2.2.1">
+            <name slugifiedName="name-before-address-validation">アドレス検証の前</name>
+            <t indent="0" pn="section-6.2.2.1-1"><xref section="8.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8.1" derivedContent="QUIC-TRANSPORT"/>で規定されているとおり、サーバーがそのパス上でクライアントのアドレスを検証するまで、サーバーが送信できるデータ量は受信したデータ量の3倍に制限されます。追加のデータを送信できない場合、PTOで送信されたパケットも増幅防止制限に算入されるため、クライアントからデータグラムを受信するまで、サーバーのPTOタイマーを設定しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+            <t indent="0" pn="section-6.2.2.1-2">サーバーがクライアントからデータグラムを受信すると、増幅制限が増加し、サーバーはPTOタイマーをリセットします。その結果PTOタイマーが過去の時刻に設定された場合は、ただちに実行されます。こうすることで、ハンドシェイクの完了に不可欠なパケットよりも前に新しい1-RTTパケットを送信することを避けられます。特に、これは、0-RTTが受け入れられたものの、サーバーがクライアントのアドレスの検証に失敗した場合に起こりえます。</t>
+            <t indent="0" pn="section-6.2.2.1-3">サーバーは、クライアントからさらにデータグラムを受信するまでブロックされる可能性があるため、サーバーがアドレス検証を完了したと確信できるまで、サーバーのブロックを解除するためにパケットを送信するのはクライアントの責任です（<xref section="8" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8" derivedContent="QUIC-TRANSPORT"/>を参照）。つまり、クライアントは、自身のHandshakeパケットのいずれに対しても確認応答を受信しておらず、かつハンドシェイクの確認が行われていない場合（<xref section="4.1.2" sectionFormat="of" target="QUIC-TLS" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.1.2" derivedContent="QUIC-TLS"/>を参照）、送信中のパケットがなくても、PTOタイマーを設定し<bcp14>なければなりません（MUST）</bcp14>。PTOが発火したとき、クライアントは、Handshake鍵を持っている場合はHandshakeパケットを送信し<bcp14>なければなりません（MUST）</bcp14>。そうでない場合は、ペイロードが少なくとも1200バイトのUDPデータグラムでInitialパケットを送信し<bcp14>なければなりません（MUST）</bcp14>。</t>
+          </section>
+        </section>
+        <section anchor="speeding-up-handshake-completion" numbered="true" toc="include" removeInRFC="false" pn="section-6.2.3">
+          <name slugifiedName="name-speeding-up-handshake-compl">ハンドシェイク完了の高速化</name>
+          <t indent="0" pn="section-6.2.3-1">サーバーは、重複したCRYPTOデータを含むInitialパケットを受信した場合、Initialパケットで送信したサーバーのCRYPTOデータのすべてをクライアントが受信しなかったか、クライアントの推定RTTが小さすぎると推測できます。クライアントは、Handshake鍵を得る前にHandshakeパケットまたは1-RTTパケットを受信した場合、サーバーのInitialパケットの一部またはすべてが失われたと推測してもかまいません。</t>
+          <t indent="0" pn="section-6.2.3-2">このような状況でハンドシェイクの完了を早めるため、エンドポイントは、<xref section="8.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8.1" derivedContent="QUIC-TRANSPORT"/>のアドレス検証の制限に従ったうえで、コネクションごとに限られた回数だけ、確認応答されていないCRYPTOデータを含むパケットをPTOの期限切れより早く送信<bcp14>してもよいです（MAY）</bcp14>。単一のパケット損失から迅速に回復するには、コネクションごとに多くとも1回そうすれば十分です。処理できないパケットの受信に応じて常にパケットを再送するエンドポイントは、パケットのやり取りが無限に続く状況を生み出すおそれがあります。</t>
+          <t indent="0" pn="section-6.2.3-3">エンドポイントは、各データグラムが少なくとも1つの確認応答を誘発するよう、結合されたパケット（<xref section="12.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-12.2" derivedContent="QUIC-TRANSPORT"/>を参照）を使うこともできます。たとえば、クライアントは、PINGフレームとPADDINGフレームを含むInitialパケットを0-RTTデータパケットと結合でき、サーバーは、PINGフレームを含むInitialパケットを最初のフライトの1つ以上のパケットと結合できます。</t>
+        </section>
+        <section anchor="sending-probe-packets" numbered="true" toc="include" removeInRFC="false" pn="section-6.2.4">
+          <name slugifiedName="name-sending-probe-packets">プローブパケットの送信</name>
+          <t indent="0" pn="section-6.2.4-1">PTOタイマーが期限切れになったとき、送信者は、そのパケット番号空間で少なくとも1つの確認応答誘発パケットをプローブとして送信し<bcp14>なければなりません（MUST）</bcp14>。エンドポイントは、1つのデータグラムの損失によってコストの高いPTOの期限切れが連続するのを避けるため、または複数のパケット番号空間のデータを送信するために、確認応答誘発パケットを含む最大サイズのデータグラムを2つまで送信<bcp14>してもよいです（MAY）</bcp14>。PTOで送信するプローブパケットはすべて確認応答誘発で<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.4-2">タイマーが期限切れになったパケット番号空間でデータを送信することに加えて、送信者は、送信中のデータがある他のパケット番号空間からも確認応答誘発パケットを送信す<bcp14>べきです（SHOULD）</bcp14>。可能であればパケットを結合します。これは、サーバーがInitialデータとHandshakeデータの両方を送信中である場合や、クライアントがHandshakeデータとApplication Dataの両方を送信中である場合に特に有用です。ピアが2つのパケット番号空間のうち一方の受信鍵しか持っていない可能性があるからです。</t>
+          <t indent="0" pn="section-6.2.4-3">送信者は、PTOでより速い確認応答を誘発したい場合、パケット番号を1つ飛ばして確認応答遅延をなくすことができます。</t>
+          <t indent="0" pn="section-6.2.4-4">エンドポイントは、PTOの期限切れ時に送信するパケットに新しいデータを含める<bcp14>べきです（SHOULD）</bcp14>。新しいデータを送信できない場合は、以前に送信したデータを送信<bcp14>してもよいです（MAY）</bcp14>。実装は、アプリケーションの優先度に基づいて新しいデータや再送データを送信するなど、プローブパケットの内容を決定するための別の戦略を使っても<bcp14>よいです（MAY）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.4-5">送信者に、送信すべき新しいデータも以前に送信したデータもないことがありえます。例として、次の一連のイベントを考えます。新しいアプリケーションデータがSTREAMフレームで送信され、損失とみなされ、新しいパケットで再送され、その後、元の送信が確認応答されます。送信するデータがない場合、送信者は、PINGまたは他の確認応答誘発フレームを1つのパケットで送信し、PTOタイマーを再設定す<bcp14>べきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-6.2.4-6">あるいは、送信者は、確認応答誘発パケットを送信する代わりに、まだ送信中のパケットを損失としてマーク<bcp14>してもよいです（MAY）</bcp14>。こうすることで追加のパケットの送信は避けられますが、損失を過度に積極的に宣言してしまい、輻輳コントローラーによる不要なレートの低下を招くリスクが高まります。</t>
+          <t indent="0" pn="section-6.2.4-7">連続するPTO期間は指数関数的に増加するため、ネットワーク内でパケットのドロップが続くと、コネクションの回復の遅延は指数関数的に増加します。PTOの期限切れ時に2つのパケットを送信すると、パケットのドロップに対する耐性が高まり、PTOイベントが連続する確率が下がります。</t>
+          <t indent="0" pn="section-6.2.4-8">PTOタイマーが複数回期限切れになり、新しいデータを送信できない場合、実装は、毎回同じペイロードを送信するか、異なるペイロードを送信するかを選ばなければなりません。同じペイロードを送信するほうが単純な場合があり、最も優先度の高いフレームが最初に到着することが保証されます。毎回異なるペイロードを送信すると、誤った再送の可能性が減ります。</t>
+        </section>
+      </section>
+      <section anchor="handling-retry-packets" numbered="true" toc="include" removeInRFC="false" pn="section-6.3">
+        <name slugifiedName="name-handling-retry-packets">Retryパケットの処理</name>
+        <t indent="0" pn="section-6.3-1">Retryパケットは、クライアントに別のInitialパケットを送信させ、実質的にコネクションの処理を最初からやり直させます。Retryパケットは、Initialパケットが受信されたものの処理されなかったことを示します。Retryパケットは、パケットが処理されたことを示すわけでもパケット番号を指定するわけでもないため、確認応答として扱うことはできません。</t>
+        <t indent="0" pn="section-6.3-2">Retryパケットを受信したクライアントは、保留中のタイマーのリセットを含め、輻輳制御と損失回復の状態をリセットします。それ以外のコネクションの状態、特に暗号ハンドシェイクのメッセージは保持されます。<xref section="17.2.5" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-17.2.5" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+        <t indent="0" pn="section-6.3-3">クライアントは、最初のInitialパケットを送信してからRetryパケットまたはVersion Negotiationパケットを受信するまでの期間として、サーバーまでのRTT推定値を計算<bcp14>してもよいです（MAY）</bcp14>。クライアントは、初期RTT推定値のデフォルト値の代わりにこの値を使っても<bcp14>よいです（MAY）</bcp14>。</t>
+      </section>
+      <section anchor="discarding-packets" numbered="true" toc="include" removeInRFC="false" pn="section-6.4">
+        <name slugifiedName="name-discarding-keys-and-packet-">鍵とパケットの状態の破棄</name>
+        <t indent="0" pn="section-6.4-1">InitialとHandshakeのパケット保護鍵が破棄されると（<xref section="4.9" sectionFormat="of" target="QUIC-TLS" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.9" derivedContent="QUIC-TLS"/>を参照）、それらの鍵で送信されたすべてのパケットは、その確認応答を処理できないため、もはや確認応答できなくなります。送信者は、それらのパケットに関連付けられたすべての回復状態を破棄し<bcp14>なければなりません（MUST）</bcp14>。また、それらを送信中のバイト数から除外し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-6.4-2">エンドポイントは、Handshakeパケットの交換を開始すると、Initialパケットの送受信を停止します。<xref section="17.2.2.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-17.2.2.1" derivedContent="QUIC-TRANSPORT"/>を参照してください。この時点で、送信中のすべてのInitialパケットの回復状態は破棄されます。</t>
+        <t indent="0" pn="section-6.4-3">0-RTTが拒否された場合、送信中のすべての0-RTTパケットの回復状態は破棄されます。</t>
+        <t indent="0" pn="section-6.4-4">サーバーが0-RTTを受け入れたものの、Initialパケットより前に到着した0-RTTパケットをバッファリングしない場合、早く届いた0-RTTパケットは損失が宣言されますが、そのようなことはまれであると想定されます。</t>
+        <t indent="0" pn="section-6.4-5">鍵は、その鍵で暗号化されたパケットが確認応答されるか損失が宣言された後のどこかの時点で破棄されると想定されています。ただし、InitialとHandshakeの秘密は、Handshake鍵と1-RTT鍵がクライアントとサーバーの両方で利用可能であることが確かめられた時点ですぐに破棄されます。<xref section="4.9.1" sectionFormat="of" target="QUIC-TLS" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9001#section-4.9.1" derivedContent="QUIC-TLS"/>を参照してください。</t>
+      </section>
+    </section>
+    <section anchor="congestion-control" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-congestion-control">輻輳制御</name>
+      <t indent="0" pn="section-7-1">この文書では、TCP NewReno <xref target="RFC6582" format="default" sectionFormat="of" derivedContent="RFC6582"/>に似た、QUICの送信者側の輻輳コントローラーを規定します。</t>
+      <t indent="0" pn="section-7-2">QUICが輻輳制御のために提供するシグナルは汎用的なものであり、送信者側のさまざまなアルゴリズムをサポートするように設計されています。送信者は、CUBIC <xref target="RFC8312" format="default" sectionFormat="of" derivedContent="RFC8312"/>など、使用する別のアルゴリズムを一方的に選択できます。</t>
+      <t indent="0" pn="section-7-3">送信者がこの文書で規定されているものとは異なるコントローラーを使う場合、選択したコントローラーは、<xref section="3.1" sectionFormat="of" target="RFC8085" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8085#section-3.1" derivedContent="RFC8085"/>で規定されている輻輳制御のガイドラインに準拠し<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-7-4">TCPと同様に、ACKフレームだけを含むパケットは、送信中のバイト数に算入されず、輻輳制御の対象になりません。TCPとは異なり、QUICはこれらのパケットの損失を検出でき、その情報を使って、輻輳コントローラーや、送信するACKのみのパケットのレートを調整<bcp14>してもよいです（MAY）</bcp14>。ただし、この文書ではそのためのメカニズムについては説明しません。</t>
+      <t indent="0" pn="section-7-5"><xref section="9.4" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-9.4" derivedContent="QUIC-TRANSPORT"/>で説明されているとおり、輻輳コントローラーはパスごとに存在するため、他のパスで送信されたパケットが現在のパスの輻輳コントローラーを変化させることはありません。</t>
+      <t indent="0" pn="section-7-6">この文書のアルゴリズムでは、コントローラーの輻輳ウィンドウをバイト単位で規定し、使用します。</t>
+      <t indent="0" pn="section-7-7">エンドポイントは、bytes_in_flight（<xref target="vars-of-interest" format="default" sectionFormat="of" derivedContent="Appendix B.2"/>を参照）が輻輳ウィンドウより大きくなってしまうパケットを送信しては<bcp14>なりません（MUST NOT）</bcp14>。ただし、PTOタイマーの期限切れ時（<xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>を参照）や回復に入るとき（<xref target="recovery-period" format="default" sectionFormat="of" derivedContent="Section 7.3.2"/>を参照）に送信するパケットは除きます。</t>
+      <section anchor="congestion-ecn" numbered="true" toc="include" removeInRFC="false" pn="section-7.1">
+        <name slugifiedName="name-explicit-congestion-notific">明示的輻輳通知</name>
+        <t indent="0" pn="section-7.1-1">パスが明示的輻輳通知（ECN）<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> <xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/>をサポートすることが検証されている場合、QUICは、IPヘッダー内のCongestion Experienced（CE）コードポイントを輻輳のシグナルとして扱います。この文書では、ピアが報告するECN-CEカウントが増加したときのエンドポイントの応答を規定します。<xref section="13.4.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.4.2" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+      </section>
+      <section anchor="initial-cwnd" numbered="true" toc="include" removeInRFC="false" pn="section-7.2">
+        <name slugifiedName="name-initial-and-minimum-congest">初期輻輳ウィンドウと最小輻輳ウィンドウ</name>
+        <t indent="0" pn="section-7.2-1">QUICは、すべてのコネクションを、輻輳ウィンドウを初期値に設定したスロースタートの状態で開始します。エンドポイントは、最大データグラムサイズ（max_datagram_size）の10倍の初期輻輳ウィンドウを使う<bcp14>べきです（SHOULD）</bcp14>。ただし、ウィンドウは14,720バイトと最大データグラムサイズの2倍のうち大きいほうに制限します。これは<xref target="RFC6928" format="default" sectionFormat="of" derivedContent="RFC6928"/>の分析と推奨事項に従ったものであり、TCPのオーバーヘッドの20バイトに比べてUDPのオーバーヘッドが8バイトと小さいことを考慮して、バイト数の制限を大きくしています。</t>
+        <t indent="0" pn="section-7.2-2">コネクション中に最大データグラムサイズが変化した場合は、新しいサイズで初期輻輳ウィンドウを再計算す<bcp14>べきです（SHOULD）</bcp14>。ハンドシェイクを完了するために最大データグラムサイズを小さくした場合は、輻輳ウィンドウを新しい初期輻輳ウィンドウに設定す<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-7.2-3">クライアントのアドレスを検証する前は、<xref section="8.1" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-8.1" derivedContent="QUIC-TRANSPORT"/>で規定されている増幅防止制限によって、サーバーはさらに制限されることがあります。増幅防止制限は、輻輳ウィンドウが十分に活用されるのを妨げ、したがって輻輳ウィンドウの増加を遅らせる可能性がありますが、輻輳ウィンドウに直接影響するわけではありません。</t>
+        <t indent="0" pn="section-7.2-4">最小輻輳ウィンドウは、損失、ピアが報告するECN-CEカウントの増加、または持続的な輻輳に応じて輻輳ウィンドウが取りうる最小の値です。値は2 * max_datagram_sizeが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      </section>
+      <section anchor="congestion-control-states" numbered="true" toc="include" removeInRFC="false" pn="section-7.3">
+        <name slugifiedName="name-congestion-control-states">輻輳制御の状態</name>
+        <t indent="0" pn="section-7.3-1">この文書で説明するNewReno輻輳コントローラーには、<xref target="fig-cc-fsm" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示すように、3つの異なる状態があります。</t>
+        <figure anchor="fig-cc-fsm" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-congestion-control-states-a">輻輳制御の状態と遷移</name>
+          <artwork name="" type="" align="left" alt="" pn="section-7.3-2.1">
+                 New path or      +------------+
+            persistent congestion |   Slow     |
+        (O)----------------------&gt;|   Start    |
+                                  +------------+
+                                        |
+                                Loss or |
+                        ECN-CE increase |
+                                        v
+ +------------+     Loss or       +------------+
+ | Congestion |  ECN-CE increase  |  Recovery  |
+ | Avoidance  |------------------&gt;|   Period   |
+ +------------+                   +------------+
+           ^                            |
+           |                            |
+           +----------------------------+
+              Acknowledgment of packet
+                sent during recovery
+</artwork>
+        </figure>
+        <t indent="0" pn="section-7.3-3">これらの状態とその間の遷移については、以降のセクションで説明します。</t>
+        <section anchor="slow-start" numbered="true" toc="include" removeInRFC="false" pn="section-7.3.1">
+          <name slugifiedName="name-slow-start">スロースタート</name>
+          <t indent="0" pn="section-7.3.1-1">NewRenoの送信者は、輻輳ウィンドウがスロースタートしきい値を下回っているときは常にスロースタートの状態にあります。スロースタートしきい値は無限大の値に初期化されるため、送信者はスロースタートの状態から開始します。</t>
+          <t indent="0" pn="section-7.3.1-2">送信者がスロースタートの状態にある間、輻輳ウィンドウは、各確認応答を処理するたびに、確認応答されたバイト数だけ増加します。その結果、輻輳ウィンドウは指数関数的に増加します。</t>
+          <t indent="0" pn="section-7.3.1-3">送信者は、パケットが失われたとき、またはピアが報告するECN-CEカウントが増加したときに、スロースタートを終了して回復期間に入ら<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-7.3.1-4">送信者は、輻輳ウィンドウがスロースタートしきい値未満になったときは常にスロースタートに再び入ります。これは、持続的な輻輳が宣言された後にのみ起こります。</t>
+        </section>
+        <section anchor="recovery-period" numbered="true" toc="include" removeInRFC="false" pn="section-7.3.2">
+          <name slugifiedName="name-recovery">回復</name>
+          <t indent="0" pn="section-7.3.2-1">NewRenoの送信者は、パケットの損失を検出したとき、またはピアが報告するECN-CEカウントが増加したときに、回復期間に入ります。すでに回復期間にある送信者は、その状態にとどまり、回復期間に再び入ることはありません。</t>
+          <t indent="0" pn="section-7.3.2-2">回復期間に入るとき、送信者は、スロースタートしきい値を、損失を検出した時点の輻輳ウィンドウの値の半分に設定し<bcp14>なければなりません（MUST）</bcp14>。回復期間を終了する前に、輻輳ウィンドウを、縮小したスロースタートしきい値の値に設定し<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-7.3.2-3">実装は、回復期間に入った時点でただちに輻輳ウィンドウを縮小するか、Proportional Rate Reduction <xref target="PRR" format="default" sectionFormat="of" derivedContent="PRR"/>のような他のメカニズムを使って輻輳ウィンドウをより緩やかに縮小<bcp14>してもよいです（MAY）</bcp14>。輻輳ウィンドウをただちに縮小する場合、縮小の前に1つのパケットを送信できます。これにより、失われたパケットのデータを再送する場合の損失回復が速くなります。これは<xref section="5" sectionFormat="of" target="RFC6675" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6675#section-5" derivedContent="RFC6675"/>で説明されているTCPの動作と同様です。</t>
+          <t indent="0" pn="section-7.3.2-4">回復期間は、輻輳ウィンドウの縮小を往復ごとに1回に制限することを目的としています。したがって、回復期間中は、新たな損失やECN-CEカウントの増加に応じて輻輳ウィンドウが変化することはありません。</t>
+          <t indent="0" pn="section-7.3.2-5">回復期間中に送信されたパケットが確認応答されると、回復期間は終了し、送信者は輻輳回避の状態に入ります。これは、回復を開始させた失われたセグメントが確認応答されたときに回復が終了するというTCPの回復の定義<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>とは少し異なります。</t>
+        </section>
+        <section anchor="congestion-avoidance" numbered="true" toc="include" removeInRFC="false" pn="section-7.3.3">
+          <name slugifiedName="name-congestion-avoidance">輻輳回避</name>
+          <t indent="0" pn="section-7.3.3-1">NewRenoの送信者は、輻輳ウィンドウがスロースタートしきい値以上であり、かつ回復期間にないときは常に輻輳回避の状態にあります。</t>
+          <t indent="0" pn="section-7.3.3-2">輻輳回避の状態にある送信者は、加算的増加・乗算的減少（AIMD）の手法を使います。この手法では、輻輳ウィンドウの増加を、確認応答された輻輳ウィンドウ1つにつき多くとも最大データグラムサイズ1つ分に制限し<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-7.3.3-3">送信者は、パケットが失われたとき、またはピアが報告するECN-CEカウントが増加したときに、輻輳回避を終了して回復期間に入ります。</t>
+        </section>
+      </section>
+      <section anchor="ignoring-loss-of-undecryptable-packets" numbered="true" toc="include" removeInRFC="false" pn="section-7.4">
+        <name slugifiedName="name-ignoring-loss-of-undecrypta">復号できないパケットの損失の無視</name>
+        <t indent="0" pn="section-7.4-1">ハンドシェイク中は、パケットが到着したときに一部のパケット保護鍵が利用できない場合があり、受信者はそのパケットをドロップすることを選択できます。特に、Handshakeパケットと0-RTTパケットはInitialパケットが到着するまで処理できず、1-RTTパケットはハンドシェイクが完了するまで処理できません。エンドポイントは、ピアがパケットを処理するためのパケット保護鍵を持つ前に到着した可能性のあるHandshakeパケット、0-RTTパケット、1-RTTパケットの損失を無視<bcp14>してもよいです（MAY）</bcp14>。エンドポイントは、あるパケット番号空間において最も早く確認応答されたパケットより後に送信されたパケットの損失を無視しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+      <section anchor="probe-timeout" numbered="true" toc="include" removeInRFC="false" pn="section-7.5">
+        <name slugifiedName="name-probe-timeout-2">プローブタイムアウト</name>
+        <t indent="0" pn="section-7.5-1">プローブパケットを輻輳コントローラーによってブロックしては<bcp14>なりません（MUST NOT）</bcp14>。ただし、これらのパケットはパケット損失を確定させることなくネットワークの負荷を増やすため、送信者はこれらのパケットを追加で送信中であるものとして数え<bcp14>なければなりません（MUST）</bcp14>。プローブパケットを送信すると、パケットの損失または配送を確定させる確認応答を受信するまで、送信者の送信中のバイト数が輻輳ウィンドウを超える可能性があることに注意してください。</t>
+      </section>
+      <section anchor="persistent-congestion" numbered="true" toc="include" removeInRFC="false" pn="section-7.6">
+        <name slugifiedName="name-persistent-congestion">持続的な輻輳</name>
+        <t indent="0" pn="section-7.6-1">十分に長い期間にわたって送信されたすべてのパケットの損失を送信者が確定させた場合、ネットワークは持続的な輻輳を経験しているとみなされます。</t>
+        <section anchor="pc-duration" numbered="true" toc="include" removeInRFC="false" pn="section-7.6.1">
+          <name slugifiedName="name-duration">期間</name>
+          <t indent="0" pn="section-7.6.1-1">持続的な輻輳の期間は次のように計算されます。</t>
+          <sourcecode type="pseudocode" markers="false" pn="section-7.6.1-2">
+(smoothed_rtt + max(4*rttvar, kGranularity) + max_ack_delay) *
+    kPersistentCongestionThreshold
+</sourcecode>
+          <t indent="0" pn="section-7.6.1-3"><xref target="pto" format="default" sectionFormat="of" derivedContent="Section 6.2"/>のPTOの計算とは異なり、この期間には、損失が確定したパケット番号空間にかかわらずmax_ack_delayが含まれます。</t>
+          <t indent="0" pn="section-7.6.1-4">この期間により、送信者は、持続的な輻輳を確定させる前に、PTOの期限切れに応じたものも含めて、TCPがテールロスプローブ<xref target="RFC8985" format="default" sectionFormat="of" derivedContent="RFC8985"/>とRTO <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>で送信するのと同じ数のパケットを送信できます。</t>
+          <t indent="0" pn="section-7.6.1-5">kPersistentCongestionThresholdの値を大きくすると、送信者はネットワーク内の持続的な輻輳に反応しにくくなり、その結果、輻輳したネットワークに積極的に送信してしまう可能性があります。値が小さすぎると、送信者が不必要に持続的な輻輳を宣言してしまい、送信者のスループットが低下する可能性があります。</t>
+          <t indent="0" pn="section-7.6.1-6">kPersistentCongestionThresholdの値は3が<bcp14>推奨されます（RECOMMENDED）</bcp14>。これは、TCPの送信者が2回のTLPの後にRTOを宣言するのとほぼ同等の振る舞いになります。</t>
+          <t indent="0" pn="section-7.6.1-7">アプリケーションのパターンがPTOの期限切れに影響するため、この設計では、持続的な輻輳を確定させるために連続するPTOイベントを使いません。たとえば、間に無通信の期間を挟みながら少量のデータを送信する送信者は、送信するたびにPTOタイマーを再始動するため、確認応答をまったく受信していない場合でも、PTOタイマーが長期間にわたって期限切れにならない可能性があります。期間を使うことで、送信者はPTOの期限切れに依存することなく持続的な輻輳を確定させることができます。</t>
+        </section>
+        <section anchor="establishing-persistent-congestion" numbered="true" toc="include" removeInRFC="false" pn="section-7.6.2">
+          <name slugifiedName="name-establishing-persistent-con">持続的な輻輳の確定</name>
+          <t indent="0" pn="section-7.6.2-1">送信者は、確認応答の受信後、確認応答誘発である2つのパケットの損失が宣言され、かつ次の条件を満たす場合に、持続的な輻輳を確定させます。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-7.6.2-2">
+            <li pn="section-7.6.2-2.1">すべてのパケット番号空間にわたって、これら2つのパケットの送信時刻の間に送信されたパケットがどれも確認応答されていないこと。</li>
+            <li pn="section-7.6.2-2.2">これら2つのパケットの送信時刻の間隔が、持続的な輻輳の期間（<xref target="pc-duration" format="default" sectionFormat="of" derivedContent="Section 7.6.1"/>）を超えていること。</li>
+            <li pn="section-7.6.2-2.3">これら2つのパケットが送信されたときに、以前のRTTサンプルが存在していたこと。</li>
+          </ul>
+          <t indent="0" pn="section-7.6.2-3">受信者は、最大確認応答遅延の範囲内で確認応答誘発パケットだけを確認応答することが要求されているため、これら2つのパケットは確認応答誘発で<bcp14>なければなりません（MUST）</bcp14>。<xref section="13.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.2" derivedContent="QUIC-TRANSPORT"/>を参照してください。</t>
+          <t indent="0" pn="section-7.6.2-4">持続的な輻輳の期間は、少なくとも1つのRTTサンプルが得られるまで開始す<bcp14>べきではありません（SHOULD NOT）</bcp14>。最初のRTTサンプルの前は、送信者は初期RTT（<xref target="pto-handshake" format="default" sectionFormat="of" derivedContent="Section 6.2.2"/>）に基づいてPTOタイマーを設定しますが、それは実際のRTTよりかなり大きい可能性があります。以前のRTTサンプルを要件とすることで、送信者が少なすぎる可能性のあるプローブで持続的な輻輳を確定させることを防ぎます。</t>
+          <t indent="0" pn="section-7.6.2-5">ネットワークの輻輳はパケット番号空間の影響を受けないため、持続的な輻輳では、パケット番号空間をまたいで送信されたパケットを考慮す<bcp14>べきです（SHOULD）</bcp14>。すべてのパケット番号空間の状態を持っていない送信者や、パケット番号空間をまたいで送信時刻を比較できない実装は、確認応答されたパケット番号空間だけの状態を使っても<bcp14>よいです（MAY）</bcp14>。これにより、持続的な輻輳を誤って宣言してしまう可能性はありますが、持続的な輻輳の検出に失敗することにはなりません。</t>
+          <t indent="0" pn="section-7.6.2-6">持続的な輻輳が宣言されたときは、RTOに対するTCPの送信者の応答<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>と同様に、送信者の輻輳ウィンドウを最小輻輳ウィンドウ（kMinimumWindow）に縮小し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        </section>
+        <section anchor="example" numbered="true" toc="include" removeInRFC="false" pn="section-7.6.3">
+          <name slugifiedName="name-example">例</name>
+          <t indent="0" pn="section-7.6.3-1">次の例は、送信者がどのように持続的な輻輳を確定させるかを示しています。次のように仮定します。</t>
+          <sourcecode type="pseudocode" markers="false" pn="section-7.6.3-2">
+smoothed_rtt + max(4*rttvar, kGranularity) + max_ack_delay = 2
+kPersistentCongestionThreshold = 3
+</sourcecode>
+          <t indent="0" pn="section-7.6.3-3">次の一連のイベントを考えます。</t>
+          <table align="center" pn="table-1">
+            <thead>
+              <tr>
+                <th align="left" colspan="1" rowspan="1">時刻</th>
+                <th align="left" colspan="1" rowspan="1">動作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=0</td>
+                <td align="left" colspan="1" rowspan="1">パケット#1を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=1</td>
+                <td align="left" colspan="1" rowspan="1">パケット#2を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=1.2</td>
+                <td align="left" colspan="1" rowspan="1">#1に対する確認応答を受信</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=2</td>
+                <td align="left" colspan="1" rowspan="1">パケット#3を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=3</td>
+                <td align="left" colspan="1" rowspan="1">パケット#4を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=4</td>
+                <td align="left" colspan="1" rowspan="1">パケット#5を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=5</td>
+                <td align="left" colspan="1" rowspan="1">パケット#6を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=6</td>
+                <td align="left" colspan="1" rowspan="1">パケット#7を送信（アプリケーションデータ）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=8</td>
+                <td align="left" colspan="1" rowspan="1">パケット#8を送信（PTO 1）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=12</td>
+                <td align="left" colspan="1" rowspan="1">パケット#9を送信（PTO 2）</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">t=12.2</td>
+                <td align="left" colspan="1" rowspan="1">#9に対する確認応答を受信</td>
+              </tr>
+            </tbody>
+          </table>
+          <t indent="0" pn="section-7.6.3-5"><tt>t = 12.2</tt>でパケット9に対する確認応答を受信したときに、パケット2から8の損失が宣言されます。</t>
+          <t indent="0" pn="section-7.6.3-6">輻輳期間は、最も古い失われたパケットと最も新しい失われたパケットの間の時間として、<tt>8 - 1 = 7</tt>と計算されます。持続的な輻輳の期間は<tt>2 * 3 = 6</tt>です。しきい値に達しており、かつ最も古い失われたパケットと最も新しい失われたパケットの間のパケットがどれも確認応答されていないため、ネットワークは持続的な輻輳を経験したとみなされます。</t>
+          <t indent="0" pn="section-7.6.3-7">この例ではPTOの期限切れを示していますが、持続的な輻輳を確定させるためにPTOの期限切れが必要なわけではありません。</t>
+        </section>
+      </section>
+      <section anchor="pacing" numbered="true" toc="include" removeInRFC="false" pn="section-7.7">
+        <name slugifiedName="name-pacing">ペーシング</name>
+        <t indent="0" pn="section-7.7-1">送信者は、輻輳コントローラーからの入力に基づいて、送信中のすべてのパケットの送信をペーシングす<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-7.7-2">複数のパケットを間隔を空けずにネットワークに送信すると、パケットのバーストが生じ、短期的な輻輳や損失を引き起こす可能性があります。送信者は、ペーシングを使うか、そのようなバーストを制限し<bcp14>なければなりません（MUST）</bcp14>。送信者は、バーストを初期輻輳ウィンドウに制限す<bcp14>べきです（SHOULD）</bcp14>。<xref target="initial-cwnd" format="default" sectionFormat="of" derivedContent="Section 7.2"/>を参照してください。受信者までのネットワークパスがより大きなバーストを吸収できることを知っている送信者は、より大きな制限を使っても<bcp14>よいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-7.7-3">実装は、輻輳コントローラーがペーサーとうまく連携するように設計することに注意すべきです。たとえば、ペーサーが輻輳コントローラーを包んで輻輳ウィンドウの利用可能性を制御する場合もあれば、ペーサーが輻輳コントローラーから渡されたパケットをペーシングして送り出す場合もあります。</t>
+        <t indent="0" pn="section-7.7-4">効率的な損失回復のためには、ACKフレームを適時に配送することが重要です。したがって、ピアへの配送が遅れないように、ACKフレームだけを含むパケットはペーシングしない<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-7.7-5">エンドポイントは、ペーシングを自由に実装できます。完全にペーシングされた送信者は、パケットを時間的に正確に均等に分散させます。この文書のもののようなウィンドウベースの輻輳コントローラーでは、そのレートは輻輳ウィンドウをRTTで平均することで計算できます。congestion_windowをバイト単位として、時間あたりのバイト数を単位とするレートで表すと次のようになります。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-7.7-6">
+rate = N * congestion_window / smoothed_rtt
+</sourcecode>
+        <t indent="0" pn="section-7.7-7">あるいは、時間を単位とするパケット間の間隔で表すと次のようになります。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-7.7-8">
+interval = ( smoothed_rtt * packet_size / congestion_window ) / N
+</sourcecode>
+        <t indent="0" pn="section-7.7-9"><tt>N</tt>に小さい値、ただし少なくとも1の値（たとえば1.25）を使うことで、RTTの変動によって輻輳ウィンドウが十分に活用されなくなることがないようにします。</t>
+        <t indent="0" pn="section-7.7-10">パケット化、スケジューリングの遅延、計算効率などの実用上の考慮事項により、送信者はRTTよりもはるかに短い期間ではこのレートから逸脱することがあります。</t>
+        <t indent="0" pn="section-7.7-11">ペーシングの実装戦略の1つとして、リーキーバケットアルゴリズムを使う方法があります。この方法では、「バケット」の容量を最大バーストサイズに制限し、「バケット」が満たされるレートを上記の関数によって決定します。</t>
+      </section>
+      <section anchor="underutilizing-the-congestion-window" numbered="true" toc="include" removeInRFC="false" pn="section-7.8">
+        <name slugifiedName="name-underutilizing-the-congesti">輻輳ウィンドウの活用不足</name>
+        <t indent="0" pn="section-7.8-1">送信中のバイト数が輻輳ウィンドウより小さく、送信がペーシングによって制限されていない場合、輻輳ウィンドウは十分に活用されていません。これは、アプリケーションデータの不足やフロー制御の制限によって起こりえます。このような場合、スロースタートと輻輳回避のどちらの状態でも、輻輳ウィンドウを増加させる<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+        <t indent="0" pn="section-7.8-2">パケットをペーシングする送信者（<xref target="pacing" format="default" sectionFormat="of" derivedContent="Section 7.7"/>を参照）は、パケットの送信を遅らせることがあり、この遅延のために輻輳ウィンドウを十分に活用できないことがあります。送信者は、ペーシングによる遅延がなければ輻輳ウィンドウを十分に活用していたはずである場合、自身がアプリケーション制限の状態にあるとみなす<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+        <t indent="0" pn="section-7.8-3">送信者は、<xref target="RFC7661" format="default" sectionFormat="of" derivedContent="RFC7661"/>でTCP向けに提案されているもののような、活用不足の期間の後に輻輳ウィンドウを更新する代替のメカニズムを実装<bcp14>してもよいです（MAY）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <section anchor="loss-and-congestion-signals" numbered="true" toc="include" removeInRFC="false" pn="section-8.1">
+        <name slugifiedName="name-loss-and-congestion-signals">損失と輻輳のシグナル</name>
+        <t indent="0" pn="section-8.1-1">損失検出と輻輳制御は、本質的に、遅延、損失、ECNマークなど、認証されていないエンティティーからのシグナルを消費することを伴います。攻撃者は、パケットをドロップする、パスの遅延を戦略的に変える、ECNコードポイントを変更するといった方法でこれらのシグナルを操作することで、エンドポイントに送信レートを低下させることができます。</t>
+      </section>
+      <section anchor="traffic-analysis" numbered="true" toc="include" removeInRFC="false" pn="section-8.2">
+        <name slugifiedName="name-traffic-analysis">トラフィック分析</name>
+        <t indent="0" pn="section-8.2-1">ACKフレームだけを運ぶパケットは、パケットサイズを観察することでヒューリスティックに識別できます。確認応答のパターンから、リンクの特性やアプリケーションの振る舞いに関する情報が露出する可能性があります。漏洩する情報を減らすため、エンドポイントは、確認応答を他のフレームとまとめたり、性能が低下する可能性と引き換えにPADDINGフレームを使ったりできます。</t>
+      </section>
+      <section anchor="misreporting-ecn-markings" numbered="true" toc="include" removeInRFC="false" pn="section-8.3">
+        <name slugifiedName="name-misreporting-ecn-markings">ECNマークの虚偽報告</name>
+        <t indent="0" pn="section-8.3-1">受信者は、送信者の輻輳への応答を変えるために、ECNマークを偽って報告することができます。ECN-CEマークの報告を抑制すると、送信者に送信レートを増加させる可能性があります。この増加は、輻輳と損失を引き起こす可能性があります。</t>
+        <t indent="0" pn="section-8.3-2">送信者は、送信するパケットにときどきECN-CEマークを付けることで、報告の抑制を検出できます。ECN-CEマークを付けて送信したパケットが、確認応答されたときにCEマーク付きとして報告されなかった場合、送信者は、そのパスで以降に送信するパケットにECN-Capable Transport（ECT）コードポイントを設定しないことで、そのパスのECNを無効にできます<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>。</t>
+        <t indent="0" pn="section-8.3-3">追加のECN-CEマークを報告すると、送信者は送信レートを低下させます。これは、コネクションのフロー制御の制限を小さく広告するのと同様の効果であり、そうしても何の利点も得られません。</t>
+        <t indent="0" pn="section-8.3-4">エンドポイントは、使用する輻輳コントローラーを選択します。輻輳コントローラーはECN-CEの報告に対してレートを低下させることで応答しますが、その応答はさまざまです。マークは損失と同等に扱うこともできますが<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>、<xref target="RFC8511" format="default" sectionFormat="of" derivedContent="RFC8511"/>や<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/>のように、別の応答を規定することもできます。</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="QUIC-TLS" target="https://www.rfc-editor.org/info/rfc9001" quoteTitle="true" derivedAnchor="QUIC-TLS">
+          <front>
+            <title>Using TLS to Secure QUIC</title>
+            <author initials="M." surname="Thomson" fullname="Martin Thomson" role="editor">
+              <organization showOnFrontPage="true">Mozilla</organization>
+            </author>
+            <author initials="S." surname="Turner" fullname="Sean Turner" role="editor">
+              <organization showOnFrontPage="true">sn3rd</organization>
+            </author>
+            <date year="2021" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="9001"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9001"/>
+        </reference>
+        <reference anchor="QUIC-TRANSPORT" target="https://www.rfc-editor.org/info/rfc9000" quoteTitle="true" derivedAnchor="QUIC-TRANSPORT">
+          <front>
+            <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+            <author initials="J." surname="Iyengar" fullname="Jana Iyengar" role="editor">
+              <organization showOnFrontPage="true">Fastly</organization>
+            </author>
+            <author initials="M." surname="Thomson" fullname="Martin Thomson" role="editor">
+              <organization showOnFrontPage="true">Mozilla</organization>
+            </author>
+            <date year="2021" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="9000"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9000"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="March" year="1997"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="S. Floyd" initials="S." surname="Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="D. Black" initials="D." surname="Black">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="September" year="2001"/>
+            <abstract>
+              <t indent="0">This memo specifies the incorporation of ECN (Explicit Congestion Notification) to TCP and IP, including ECN's use of two bits in the IP header.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC8085" target="https://www.rfc-editor.org/info/rfc8085" quoteTitle="true" derivedAnchor="RFC8085">
+          <front>
+            <title>UDP Usage Guidelines</title>
+            <author fullname="L. Eggert" initials="L." surname="Eggert">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="G. Shepherd" initials="G." surname="Shepherd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="March" year="2017"/>
+            <abstract>
+              <t indent="0">The User Datagram Protocol (UDP) provides a minimal message-passing transport that has no inherent congestion control mechanisms.  This document provides guidelines on the use of UDP for the designers of applications, tunnels, and other protocols that use UDP.  Congestion control guidelines are a primary focus, but the document also provides guidance on other topics, including message sizes, reliability, checksums, middlebox traversal, the use of Explicit Congestion Notification (ECN), Differentiated Services Code Points (DSCPs), and ports.</t>
+              <t indent="0">Because congestion control is critical to the stable operation of the Internet, applications and other protocols that choose to use UDP as an Internet transport must employ mechanisms to prevent congestion collapse and to establish some degree of fairness with concurrent traffic.  They may also need to implement additional mechanisms, depending on how they use UDP.</t>
+              <t indent="0">Some guidance is also applicable to the design of other protocols (e.g., protocols layered directly on IP or via IP-based tunnels), especially when these protocols do not themselves provide congestion control.</t>
+              <t indent="0">This document obsoletes RFC 5405 and adds guidelines for multicast UDP usage.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="145"/>
+          <seriesInfo name="RFC" value="8085"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8085"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2017"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="FACK" quoteTitle="true" target="https://doi.org/10.1145/248157.248181" derivedAnchor="FACK">
+          <front>
+            <title>Forward acknowledgement: Refining TCP Congestion Control</title>
+            <author initials="M." surname="Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="August"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/248157.248181"/>
+          <refcontent>ACM SIGCOMM Computer Communication Review</refcontent>
+        </reference>
+        <reference anchor="PRR" target="https://www.rfc-editor.org/info/rfc6937" quoteTitle="true" derivedAnchor="PRR">
+          <front>
+            <title>Proportional Rate Reduction for TCP</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="N. Dukkipati" initials="N." surname="Dukkipati">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="Y. Cheng" initials="Y." surname="Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2013"/>
+            <abstract>
+              <t indent="0">This document describes an experimental Proportional Rate Reduction (PRR) algorithm as an alternative to the widely deployed Fast Recovery and Rate-Halving algorithms.  These algorithms determine the amount of data sent by TCP during loss recovery.  PRR minimizes excess window adjustments, and the actual window size at the end of recovery will be as close as possible to the ssthresh, as determined by the congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6937"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6937"/>
+        </reference>
+        <reference anchor="RETRANSMISSION" quoteTitle="true" target="https://doi.org/10.1145/118544.118549" derivedAnchor="RETRANSMISSION">
+          <front>
+            <title>Improving Round-Trip Time Estimates in Reliable Transport Protocols</title>
+            <author initials="P." surname="Karn">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Partridge">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1991" month="November"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/118544.118549"/>
+          <refcontent>ACM Transactions on Computer Systems</refcontent>
+        </reference>
+        <reference anchor="RFC2018" target="https://www.rfc-editor.org/info/rfc2018" quoteTitle="true" derivedAnchor="RFC2018">
+          <front>
+            <title>TCP Selective Acknowledgment Options</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="J. Mahdavi" initials="J." surname="Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="S. Floyd" initials="S." surname="Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="A. Romanow" initials="A." surname="Romanow">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="October" year="1996"/>
+            <abstract>
+              <t indent="0">This memo proposes an implementation of SACK and discusses its performance and related issues.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2018"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2018"/>
+        </reference>
+        <reference anchor="RFC3465" target="https://www.rfc-editor.org/info/rfc3465" quoteTitle="true" derivedAnchor="RFC3465">
+          <front>
+            <title>TCP Congestion Control with Appropriate Byte Counting (ABC)</title>
+            <author fullname="M. Allman" initials="M." surname="Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="February" year="2003"/>
+            <abstract>
+              <t indent="0">This document proposes a small modification to the way TCP increases its congestion window.  Rather than the traditional method of increasing the congestion window by a constant amount for each arriving acknowledgment, the document suggests basing the increase on the number of previously unacknowledged bytes each ACK covers.  This change improves the performance of TCP, as well as closes a security hole TCP receivers can use to induce the sender into increasing the sending rate too rapidly. This memo defines an Experimental Protocol for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3465"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3465"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="V. Paxson" initials="V." surname="Paxson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="E. Blanton" initials="E." surname="Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="September" year="2009"/>
+            <abstract>
+              <t indent="0">This document defines TCP's four intertwined congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery.  In addition, the document specifies how TCP should begin transmission after a relatively long idle period, as well as discussing various acknowledgment generation methods.  This document obsoletes RFC 2581.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC5682" target="https://www.rfc-editor.org/info/rfc5682" quoteTitle="true" derivedAnchor="RFC5682">
+          <front>
+            <title>Forward RTO-Recovery (F-RTO): An Algorithm for Detecting Spurious Retransmission Timeouts with TCP</title>
+            <author fullname="P. Sarolahti" initials="P." surname="Sarolahti">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Kojo" initials="M." surname="Kojo">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="K. Yamamoto" initials="K." surname="Yamamoto">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Hata" initials="M." surname="Hata">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="September" year="2009"/>
+            <abstract>
+              <t indent="0">The purpose of this document is to move the F-RTO (Forward RTO-Recovery) functionality for TCP in RFC 4138 from Experimental to Standards Track status.  The F-RTO support for Stream Control Transmission Protocol (SCTP) in RFC 4138 remains with Experimental status.  See Appendix B for the differences between this document and RFC 4138.</t>
+              <t indent="0">Spurious retransmission timeouts cause suboptimal TCP performance because they often result in unnecessary retransmission of the last window of data.  This document describes the F-RTO detection algorithm for detecting spurious TCP retransmission timeouts.  F-RTO is a TCP sender-only algorithm that does not require any TCP options to operate.  After retransmitting the first unacknowledged segment triggered by a timeout, the F-RTO algorithm of the TCP sender monitors the incoming acknowledgments to determine whether the timeout was spurious.  It then decides whether to send new segments or retransmit unacknowledged segments.  The algorithm effectively helps to avoid additional unnecessary retransmissions and thereby improves TCP performance in the case of a spurious timeout.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5682"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5682"/>
+        </reference>
+        <reference anchor="RFC5827" target="https://www.rfc-editor.org/info/rfc5827" quoteTitle="true" derivedAnchor="RFC5827">
+          <front>
+            <title>Early Retransmit for TCP and Stream Control Transmission Protocol (SCTP)</title>
+            <author fullname="M. Allman" initials="M." surname="Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="K. Avrachenkov" initials="K." surname="Avrachenkov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="U. Ayesta" initials="U." surname="Ayesta">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="J. Blanton" initials="J." surname="Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="P. Hurtig" initials="P." surname="Hurtig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="May" year="2010"/>
+            <abstract>
+              <t indent="0">This document proposes a new mechanism for TCP and Stream Control Transmission Protocol (SCTP) that can be used to recover lost segments when a connection's congestion window is small.  The "Early Retransmit" mechanism allows the transport to reduce, in certain special circumstances, the number of duplicate acknowledgments required to trigger a fast retransmission.  This allows the transport to use fast retransmit to recover segment losses that would otherwise require a lengthy retransmission timeout.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5827"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5827"/>
+        </reference>
+        <reference anchor="RFC6298" target="https://www.rfc-editor.org/info/rfc6298" quoteTitle="true" derivedAnchor="RFC6298">
+          <front>
+            <title>Computing TCP's Retransmission Timer</title>
+            <author fullname="V. Paxson" initials="V." surname="Paxson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Allman" initials="M." surname="Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="J. Chu" initials="J." surname="Chu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Sargent" initials="M." surname="Sargent">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="June" year="2011"/>
+            <abstract>
+              <t indent="0">This document defines the standard algorithm that Transmission Control Protocol (TCP) senders are required to use to compute and manage their retransmission timer.  It expands on the discussion in Section 4.2.3.1 of RFC 1122 and upgrades the requirement of supporting the algorithm from a <bcp14>SHOULD</bcp14> to a <bcp14>MUST</bcp14>.  This document obsoletes RFC 2988.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6298"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6298"/>
+        </reference>
+        <reference anchor="RFC6582" target="https://www.rfc-editor.org/info/rfc6582" quoteTitle="true" derivedAnchor="RFC6582">
+          <front>
+            <title>The NewReno Modification to TCP's Fast Recovery Algorithm</title>
+            <author fullname="T. Henderson" initials="T." surname="Henderson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="S. Floyd" initials="S." surname="Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="A. Gurtov" initials="A." surname="Gurtov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="April" year="2012"/>
+            <abstract>
+              <t indent="0">RFC 5681 documents the following four intertwined TCP congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery.  RFC 5681 explicitly allows certain modifications of these algorithms, including modifications that use the TCP Selective Acknowledgment (SACK) option (RFC 2883), and modifications that respond to "partial acknowledgments" (ACKs that cover new data, but not all the data outstanding when loss was detected) in the absence of SACK.  This document describes a specific algorithm for responding to partial acknowledgments, referred to as "NewReno".  This response to partial acknowledgments was first proposed by Janey Hoe.  This document obsoletes RFC 3782.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6582"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6582"/>
+        </reference>
+        <reference anchor="RFC6675" target="https://www.rfc-editor.org/info/rfc6675" quoteTitle="true" derivedAnchor="RFC6675">
+          <front>
+            <title>A Conservative Loss Recovery Algorithm Based on Selective Acknowledgment (SACK) for TCP</title>
+            <author fullname="E. Blanton" initials="E." surname="Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Allman" initials="M." surname="Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="L. Wang" initials="L." surname="Wang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="I. Jarvinen" initials="I." surname="Jarvinen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Kojo" initials="M." surname="Kojo">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="August" year="2012"/>
+            <abstract>
+              <t indent="0">This document presents a conservative loss recovery algorithm for TCP that is based on the use of the selective acknowledgment (SACK) TCP option.  The algorithm presented in this document conforms to the spirit of the current congestion control specification (RFC 5681), but allows TCP senders to recover more effectively when multiple segments are lost from a single flight of data. This document obsoletes RFC 3517 and describes changes from it.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6675"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6675"/>
+        </reference>
+        <reference anchor="RFC6928" target="https://www.rfc-editor.org/info/rfc6928" quoteTitle="true" derivedAnchor="RFC6928">
+          <front>
+            <title>Increasing TCP's Initial Window</title>
+            <author fullname="J. Chu" initials="J." surname="Chu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="N. Dukkipati" initials="N." surname="Dukkipati">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="Y. Cheng" initials="Y." surname="Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Mathis" initials="M." surname="Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="April" year="2013"/>
+            <abstract>
+              <t indent="0">This document proposes an experiment to increase the permitted TCP initial window (IW) from between 2 and 4 segments, as specified in RFC 3390, to 10 segments with a fallback to the existing recommendation when performance issues are detected.  It discusses the motivation behind the increase, the advantages and disadvantages of the higher initial window, and presents results from several large-scale experiments showing that the higher initial window improves the overall performance of many web services without resulting in a congestion collapse.  The document closes with a discussion of usage and deployment for further experimental purposes recommended by the IETF TCP Maintenance and Minor Extensions (TCPM) working group.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6928"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6928"/>
+        </reference>
+        <reference anchor="RFC7661" target="https://www.rfc-editor.org/info/rfc7661" quoteTitle="true" derivedAnchor="RFC7661">
+          <front>
+            <title>Updating TCP to Support Rate-Limited Traffic</title>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="A. Sathiaseelan" initials="A." surname="Sathiaseelan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="R. Secchi" initials="R." surname="Secchi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="October" year="2015"/>
+            <abstract>
+              <t indent="0">This document provides a mechanism to address issues that arise when TCP is used for traffic that exhibits periods where the sending rate is limited by the application rather than the congestion window.  It provides an experimental update to TCP that allows a TCP sender to restart quickly following a rate-limited interval.  This method is expected to benefit applications that send rate-limited traffic using TCP while also providing an appropriate response if congestion is experienced.</t>
+              <t indent="0">This document also evaluates the Experimental specification of TCP Congestion Window Validation (CWV) defined in RFC 2861 and concludes that RFC 2861 sought to address important issues but failed to deliver a widely used solution.  This document therefore reclassifies the status of RFC 2861 from Experimental to Historic.  This document obsoletes RFC 2861.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7661"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7661"/>
+        </reference>
+        <reference anchor="RFC8311" target="https://www.rfc-editor.org/info/rfc8311" quoteTitle="true" derivedAnchor="RFC8311">
+          <front>
+            <title>Relaxing Restrictions on Explicit Congestion Notification (ECN) Experimentation</title>
+            <author fullname="D. Black" initials="D." surname="Black">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="January" year="2018"/>
+            <abstract>
+              <t indent="0">This memo updates RFC 3168, which specifies Explicit Congestion Notification (ECN) as an alternative to packet drops for indicating network congestion to endpoints.  It relaxes restrictions in RFC 3168 that hinder experimentation towards benefits beyond just removal of loss.  This memo summarizes the anticipated areas of experimentation and updates RFC 3168 to enable experimentation in these areas.  An Experimental RFC in the IETF document stream is required to take advantage of any of these enabling updates.  In addition, this memo makes related updates to the ECN specifications for RTP in RFC 6679 and for the Datagram Congestion Control Protocol (DCCP) in RFCs 4341, 4342, and 5622.  This memo also records the conclusion of the ECN nonce experiment in RFC 3540 and provides the rationale for reclassification of RFC 3540 from Experimental to Historic; this reclassification enables new experimental use of the ECT(1) codepoint.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8311"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8311"/>
+        </reference>
+        <reference anchor="RFC8312" target="https://www.rfc-editor.org/info/rfc8312" quoteTitle="true" derivedAnchor="RFC8312">
+          <front>
+            <title>CUBIC for Fast Long-Distance Networks</title>
+            <author fullname="I. Rhee" initials="I." surname="Rhee">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="L. Xu" initials="L." surname="Xu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="S. Ha" initials="S." surname="Ha">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="A. Zimmermann" initials="A." surname="Zimmermann">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="L. Eggert" initials="L." surname="Eggert">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="R. Scheffenegger" initials="R." surname="Scheffenegger">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="February" year="2018"/>
+            <abstract>
+              <t indent="0">CUBIC is an extension to the current TCP standards.  It differs from the current TCP standards only in the congestion control algorithm on the sender side.  In particular, it uses a cubic function instead of a linear window increase function of the current TCP standards to improve scalability and stability under fast and long-distance networks.  CUBIC and its predecessor algorithm have been adopted as defaults by Linux and have been used for many years.  This document provides a specification of CUBIC to enable third-party implementations and to solicit community feedback through experimentation on the performance of CUBIC.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8312"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8312"/>
+        </reference>
+        <reference anchor="RFC8511" target="https://www.rfc-editor.org/info/rfc8511" quoteTitle="true" derivedAnchor="RFC8511">
+          <front>
+            <title>TCP Alternative Backoff with ECN (ABE)</title>
+            <author fullname="N. Khademi" initials="N." surname="Khademi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="M. Welzl" initials="M." surname="Welzl">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="G. Armitage" initials="G." surname="Armitage">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="December" year="2018"/>
+            <abstract>
+              <t indent="0">Active Queue Management (AQM) mechanisms allow for burst tolerance while enforcing short queues to minimise the time that packets spend enqueued at a bottleneck.  This can cause noticeable performance degradation for TCP connections traversing such a bottleneck, especially if there are only a few flows or their bandwidth-delay product (BDP) is large.  The reception of a Congestion Experienced (CE) Explicit Congestion Notification (ECN) mark indicates that an AQM mechanism is used at the bottleneck, and the bottleneck network queue is therefore likely to be short.  Feedback of this signal allows the TCP sender-side ECN reaction in congestion avoidance to reduce the Congestion Window (cwnd) by a smaller amount than the congestion control algorithm's reaction to inferred packet loss. Therefore, this specification defines an experimental change to the TCP reaction specified in RFC 3168, as permitted by RFC 8311.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8511"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8511"/>
+        </reference>
+        <reference anchor="RFC8985" target="https://www.rfc-editor.org/info/rfc8985" quoteTitle="true" derivedAnchor="RFC8985">
+          <front>
+            <title>The RACK-TLP Loss Detection Algorithm for TCP</title>
+            <author fullname="Y. Cheng" initials="Y." surname="Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="N. Cardwell" initials="N." surname="Cardwell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="N. Dukkipati" initials="N." surname="Dukkipati">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author fullname="P. Jha" initials="P." surname="Jha">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="February" year="2021"/>
+            <abstract>
+              <t indent="0">This document presents the RACK-TLP loss detection algorithm for TCP. RACK-TLP uses per-segment transmit timestamps and selective acknowledgments (SACKs) and has two parts. Recent Acknowledgment (RACK) starts fast recovery quickly using time-based inferences derived from acknowledgment (ACK) feedback, and Tail Loss Probe (TLP) leverages RACK and sends a probe packet to trigger ACK feedback to avoid retransmission timeout (RTO) events. Compared to the widely used duplicate acknowledgment (DupAck) threshold approach, RACK-TLP detects losses more efficiently when there are application-limited flights of data, lost retransmissions, or data packet reordering events. It is intended to be an alternative to the DupAck threshold approach.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8985"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8985"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="loss-recovery-pseudocode" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-loss-recovery-pseudocode">損失回復の疑似コード</name>
+      <t indent="0" pn="section-appendix.a-1">ここでは、<xref target="loss-detection" format="default" sectionFormat="of" derivedContent="Section 6"/>で説明した損失検出メカニズムの実装例を説明します。</t>
+      <t indent="0" pn="section-appendix.a-2">このセクションの疑似コードの断片は、コードコンポーネントとしてライセンスされています。著作権表示を参照してください。</t>
+      <section anchor="tracking-sent-packets" numbered="true" toc="include" removeInRFC="false" pn="section-a.1">
+        <name slugifiedName="name-tracking-sent-packets">送信したパケットの追跡</name>
+        <t indent="0" pn="section-a.1-1">輻輳制御を正しく実装するため、QUICの送信者は、確認応答誘発パケットのそれぞれを、そのパケットが確認応答されるか失われるまで追跡します。実装は、パケット番号と暗号コンテキストによってこの情報にアクセスでき、損失回復と輻輳制御のためにパケットごとのフィールド（<xref target="sent-packets-fields" format="default" sectionFormat="of" derivedContent="Appendix A.1.1"/>）を保存できることが想定されています。</t>
+        <t indent="0" pn="section-a.1-2">パケットの損失が宣言された後も、エンドポイントは、パケットの順序入れ替わりに対応するため、一定時間そのパケットの状態を保持し続けることができます。<xref section="13.3" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-13.3" derivedContent="QUIC-TRANSPORT"/>を参照してください。これにより、送信者は誤った再送を検出できます。</t>
+        <t indent="0" pn="section-a.1-3">送信したパケットはパケット番号空間ごとに追跡され、ACKの処理は1つの空間にのみ適用されます。</t>
+        <section anchor="sent-packets-fields" numbered="true" toc="include" removeInRFC="false" pn="section-a.1.1">
+          <name slugifiedName="name-sent-packet-fields">送信したパケットのフィールド</name>
+          <dl indent="3" newline="false" spacing="normal" pn="section-a.1.1-1">
+            <dt pn="section-a.1.1-1.1">packet_number:</dt>
+            <dd pn="section-a.1.1-1.2">
+              <t indent="0" pn="section-a.1.1-1.2.1">送信したパケットのパケット番号。</t>
+            </dd>
+            <dt pn="section-a.1.1-1.3">ack_eliciting:</dt>
+            <dd pn="section-a.1.1-1.4">
+              <t indent="0" pn="section-a.1.1-1.4.1">パケットが確認応答誘発であるかどうかを示す真偽値。真の場合、確認応答が受信されることが想定されます。ただし、ピアは、その確認応答を含むACKフレームの送信を最大でmax_ack_delayだけ遅延させる可能性があります。</t>
+            </dd>
+            <dt pn="section-a.1.1-1.5">in_flight:</dt>
+            <dd pn="section-a.1.1-1.6">
+              <t indent="0" pn="section-a.1.1-1.6.1">パケットが送信中のバイト数に算入されるかどうかを示す真偽値。</t>
+            </dd>
+            <dt pn="section-a.1.1-1.7">sent_bytes:</dt>
+            <dd pn="section-a.1.1-1.8">
+              <t indent="0" pn="section-a.1.1-1.8.1">パケットで送信したバイト数。UDPやIPのオーバーヘッドは含みませんが、QUICのフレーミングのオーバーヘッドは含みます。</t>
+            </dd>
+            <dt pn="section-a.1.1-1.9">time_sent:</dt>
+            <dd pn="section-a.1.1-1.10">
+              <t indent="0" pn="section-a.1.1-1.10.1">パケットを送信した時刻。</t>
+            </dd>
+          </dl>
+        </section>
+      </section>
+      <section anchor="constants-of-interest" numbered="true" toc="include" removeInRFC="false" pn="section-a.2">
+        <name slugifiedName="name-constants-of-interest">関連する定数</name>
+        <t indent="0" pn="section-a.2-1">損失回復で使う定数は、RFC、論文、一般的な慣行を組み合わせたものに基づいています。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-a.2-2">
+          <dt pn="section-a.2-2.1">kPacketThreshold:</dt>
+          <dd pn="section-a.2-2.2">
+            <t indent="0" pn="section-a.2-2.2.1">パケットしきい値による損失検出がパケットを失われたとみなすまでの、パケット数での最大の順序入れ替わり。<xref target="packet-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.1"/>で推奨されている値は3です。</t>
+          </dd>
+          <dt pn="section-a.2-2.3">kTimeThreshold:</dt>
+          <dd pn="section-a.2-2.4">
+            <t indent="0" pn="section-a.2-2.4.1">時間しきい値による損失検出がパケットを失われたとみなすまでの、時間での最大の順序入れ替わり。RTTの倍数として指定します。<xref target="time-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.2"/>で推奨されている値は9/8です。</t>
+          </dd>
+          <dt pn="section-a.2-2.5">kGranularity:</dt>
+          <dd pn="section-a.2-2.6">
+            <t indent="0" pn="section-a.2-2.6.1">タイマー粒度。これはシステムに依存する値であり、<xref target="time-threshold" format="default" sectionFormat="of" derivedContent="Section 6.1.2"/>では1ミリ秒の値を推奨しています。</t>
+          </dd>
+          <dt pn="section-a.2-2.7">kInitialRtt:</dt>
+          <dd pn="section-a.2-2.8">
+            <t indent="0" pn="section-a.2-2.8.1">RTTサンプルが得られる前に使うRTT。<xref target="pto-handshake" format="default" sectionFormat="of" derivedContent="Section 6.2.2"/>で推奨されている値は333ミリ秒です。</t>
+          </dd>
+          <dt pn="section-a.2-2.9">kPacketNumberSpace:</dt>
+          <dd pn="section-a.2-2.10">
+            <t indent="0" pn="section-a.2-2.10.1">3つのパケット番号空間を列挙する列挙型。</t>
+          </dd>
+        </dl>
+        <artwork name="" type="" align="left" alt="" pn="section-a.2-3">
+enum kPacketNumberSpace {
+  Initial,
+  Handshake,
+  ApplicationData,
+}
+</artwork>
+      </section>
+      <section anchor="ld-vars-of-interest" numbered="true" toc="include" removeInRFC="false" pn="section-a.3">
+        <name slugifiedName="name-variables-of-interest">関連する変数</name>
+        <t indent="0" pn="section-a.3-1">このセクションでは、輻輳制御メカニズムを実装するために必要な変数について説明します。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-a.3-2">
+          <dt pn="section-a.3-2.1">latest_rtt:</dt>
+          <dd pn="section-a.3-2.2">
+            <t indent="0" pn="section-a.3-2.2.1">以前に確認応答されていなかったパケットに対する確認応答を受信したときに行われた、最新のRTTの測定値。</t>
+          </dd>
+          <dt pn="section-a.3-2.3">smoothed_rtt:</dt>
+          <dd pn="section-a.3-2.4">
+            <t indent="0" pn="section-a.3-2.4.1"><xref target="smoothed-rtt" format="default" sectionFormat="of" derivedContent="Section 5.3"/>で説明されているとおりに計算された、コネクションの平滑化RTT。</t>
+          </dd>
+          <dt pn="section-a.3-2.5">rttvar:</dt>
+          <dd pn="section-a.3-2.6">
+            <t indent="0" pn="section-a.3-2.6.1"><xref target="smoothed-rtt" format="default" sectionFormat="of" derivedContent="Section 5.3"/>で説明されているとおりに計算された、RTTの変動。</t>
+          </dd>
+          <dt pn="section-a.3-2.7">min_rtt:</dt>
+          <dd pn="section-a.3-2.8">
+            <t indent="0" pn="section-a.3-2.8.1"><xref target="min-rtt" format="default" sectionFormat="of" derivedContent="Section 5.2"/>で説明されているとおり、確認応答遅延を無視して、一定期間に観測された最小のRTT。</t>
+          </dd>
+          <dt pn="section-a.3-2.9">first_rtt_sample:</dt>
+          <dd pn="section-a.3-2.10">
+            <t indent="0" pn="section-a.3-2.10.1">最初のRTTサンプルが得られた時刻。</t>
+          </dd>
+          <dt pn="section-a.3-2.11">max_ack_delay:</dt>
+          <dd pn="section-a.3-2.12">
+            <t indent="0" pn="section-a.3-2.12.1">同名のトランスポートパラメーター（<xref section="18.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-18.2" derivedContent="QUIC-TRANSPORT"/>）で定義されている、受信者がApplication Dataパケット番号空間のパケットに対する確認応答を遅延させようとする最大の時間。受信したACKフレーム内の実際のack_delayは、タイマーの遅れ、順序入れ替わり、損失によって、これより大きくなる可能性があることに注意してください。</t>
+          </dd>
+          <dt pn="section-a.3-2.13">loss_detection_timer:</dt>
+          <dd pn="section-a.3-2.14">
+            <t indent="0" pn="section-a.3-2.14.1">損失検出に使われる、複数のモードを持つタイマー。</t>
+          </dd>
+          <dt pn="section-a.3-2.15">pto_count:</dt>
+          <dd pn="section-a.3-2.16">
+            <t indent="0" pn="section-a.3-2.16.1">確認応答を受信しないままPTOが送信された回数。</t>
+          </dd>
+          <dt pn="section-a.3-2.17">time_of_last_ack_eliciting_packet[kPacketNumberSpace]:</dt>
+          <dd pn="section-a.3-2.18">
+            <t indent="0" pn="section-a.3-2.18.1">最新の確認応答誘発パケットを送信した時刻。</t>
+          </dd>
+          <dt pn="section-a.3-2.19">largest_acked_packet[kPacketNumberSpace]:</dt>
+          <dd pn="section-a.3-2.20">
+            <t indent="0" pn="section-a.3-2.20.1">そのパケット番号空間でこれまでに確認応答された最大のパケット番号。</t>
+          </dd>
+          <dt pn="section-a.3-2.21">loss_time[kPacketNumberSpace]:</dt>
+          <dd pn="section-a.3-2.22">
+            <t indent="0" pn="section-a.3-2.22.1">そのパケット番号空間の次のパケットが、時間での順序入れ替わりのウィンドウを超えたことに基づいて失われたとみなされうる時刻。</t>
+          </dd>
+          <dt pn="section-a.3-2.23">sent_packets[kPacketNumberSpace]:</dt>
+          <dd pn="section-a.3-2.24">
+            <t indent="0" pn="section-a.3-2.24.1">パケット番号空間内のパケット番号と、そのパケットに関する情報との対応付け。詳細は上記の<xref target="tracking-sent-packets" format="default" sectionFormat="of" derivedContent="Appendix A.1"/>で説明しています。</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="initialization" numbered="true" toc="include" removeInRFC="false" pn="section-a.4">
+        <name slugifiedName="name-initialization">初期化</name>
+        <t indent="0" pn="section-a.4-1">コネクションの開始時に、損失検出の変数を次のように初期化します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.4-2">
+loss_detection_timer.reset()
+pto_count = 0
+latest_rtt = 0
+smoothed_rtt = kInitialRtt
+rttvar = kInitialRtt / 2
+min_rtt = 0
+first_rtt_sample = 0
+for pn_space in [ Initial, Handshake, ApplicationData ]:
+  largest_acked_packet[pn_space] = infinite
+  time_of_last_ack_eliciting_packet[pn_space] = 0
+  loss_time[pn_space] = 0
+</sourcecode>
+      </section>
+      <section anchor="on-sending-a-packet" numbered="true" toc="include" removeInRFC="false" pn="section-a.5">
+        <name slugifiedName="name-on-sending-a-packet">パケットの送信時</name>
+        <t indent="0" pn="section-a.5-1">パケットを送信した後、そのパケットに関する情報を保存します。OnPacketSentの引数については、上記の<xref target="sent-packets-fields" format="default" sectionFormat="of" derivedContent="Appendix A.1.1"/>で詳しく説明しています。</t>
+        <t indent="0" pn="section-a.5-2">OnPacketSentの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.5-3">
+OnPacketSent(packet_number, pn_space, ack_eliciting,
+             in_flight, sent_bytes):
+  sent_packets[pn_space][packet_number].packet_number =
+                                           packet_number
+  sent_packets[pn_space][packet_number].time_sent = now()
+  sent_packets[pn_space][packet_number].ack_eliciting =
+                                           ack_eliciting
+  sent_packets[pn_space][packet_number].in_flight = in_flight
+  sent_packets[pn_space][packet_number].sent_bytes = sent_bytes
+  if (in_flight):
+    if (ack_eliciting):
+      time_of_last_ack_eliciting_packet[pn_space] = now()
+    OnPacketSentCC(sent_bytes)
+    SetLossDetectionTimer()
+</sourcecode>
+      </section>
+      <section anchor="on-receiving-a-datagram" numbered="true" toc="include" removeInRFC="false" pn="section-a.6">
+        <name slugifiedName="name-on-receiving-a-datagram">データグラムの受信時</name>
+        <t indent="0" pn="section-a.6-1">サーバーが増幅防止制限によってブロックされている場合、データグラム内のパケットがどれも正常に処理されなかったとしても、データグラムを受信するとブロックが解除されます。そのような場合、PTOタイマーを再設定する必要があります。</t>
+        <t indent="0" pn="section-a.6-2">OnDatagramReceivedの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.6-3">
+OnDatagramReceived(datagram):
+  // このデータグラムによってサーバーのブロックが解除される場合は、
+  // デッドロックを避けるためにPTOタイマーを設定します。
+  if (server was at anti-amplification limit):
+    SetLossDetectionTimer()
+    if loss_detection_timer.timeout &lt; now():
+      // 増幅制限が適用されている間にPTOが期限切れになって
+      // いたはずであれば、PTOを実行します。
+      OnLossDetectionTimeout()
+</sourcecode>
+      </section>
+      <section anchor="on-receiving-an-acknowledgment" numbered="true" toc="include" removeInRFC="false" pn="section-a.7">
+        <name slugifiedName="name-on-receiving-an-acknowledgm">確認応答の受信時</name>
+        <t indent="0" pn="section-a.7-1">ACKフレームを受信したとき、そのACKフレームは任意の数のパケットを新たに確認応答している可能性があります。</t>
+        <t indent="0" pn="section-a.7-2">OnAckReceivedとUpdateRttの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.7-3">
+IncludesAckEliciting(packets):
+  for packet in packets:
+    if (packet.ack_eliciting):
+      return true
+  return false
+
+OnAckReceived(ack, pn_space):
+  if (largest_acked_packet[pn_space] == infinite):
+    largest_acked_packet[pn_space] = ack.largest_acked
+  else:
+    largest_acked_packet[pn_space] =
+        max(largest_acked_packet[pn_space], ack.largest_acked)
+
+  // DetectAndRemoveAckedPacketsは、新たに確認応答されたパケットを
+  // 見つけ、それらをsent_packetsから削除します。
+  newly_acked_packets =
+      DetectAndRemoveAckedPackets(ack, pn_space)
+  // 新たに確認応答されたパケットがなければ、何もしません。
+  if (newly_acked_packets.empty()):
+    return
+
+  // 確認応答された最大のパケットが新たに確認応答され、かつ少なくとも
+  // 1つの確認応答誘発パケットが新たに確認応答された場合、RTTを更新します。
+  if (newly_acked_packets.largest().packet_number ==
+          ack.largest_acked &amp;&amp;
+      IncludesAckEliciting(newly_acked_packets)):
+    latest_rtt =
+      now() - newly_acked_packets.largest().time_sent
+    UpdateRtt(ack.ack_delay)
+
+  // ECN情報があれば処理します。
+  if (ACK frame contains ECN information):
+      ProcessECN(ack, pn_space)
+
+  lost_packets = DetectAndRemoveLostPackets(pn_space)
+  if (!lost_packets.empty()):
+    OnPacketsLost(lost_packets)
+  OnPacketsAcked(newly_acked_packets)
+
+  // サーバーがクライアントのアドレスを検証したかどうかを
+  // クライアントが確信できない場合を除き、pto_countをリセットします。
+  if (PeerCompletedAddressValidation()):
+    pto_count = 0
+  SetLossDetectionTimer()
+
+
+UpdateRtt(ack_delay):
+  if (first_rtt_sample == 0):
+    min_rtt = latest_rtt
+    smoothed_rtt = latest_rtt
+    rttvar = latest_rtt / 2
+    first_rtt_sample = now()
+    return
+
+  // min_rttは確認応答遅延を無視します。
+  min_rtt = min(min_rtt, latest_rtt)
+  // ハンドシェイクの確認後は、ack_delayを
+  // max_ack_delayで制限します。
+  if (handshake confirmed):
+    ack_delay = min(ack_delay, max_ack_delay)
+
+  // 妥当であれば確認応答遅延を考慮して調整します。
+  adjusted_rtt = latest_rtt
+  if (latest_rtt &gt;= min_rtt + ack_delay):
+    adjusted_rtt = latest_rtt - ack_delay
+
+  rttvar = 3/4 * rttvar + 1/4 * abs(smoothed_rtt - adjusted_rtt)
+  smoothed_rtt = 7/8 * smoothed_rtt + 1/8 * adjusted_rtt
+</sourcecode>
+      </section>
+      <section anchor="setting-the-loss-detection-timer" numbered="true" toc="include" removeInRFC="false" pn="section-a.8">
+        <name slugifiedName="name-setting-the-loss-detection-">損失検出タイマーの設定</name>
+        <t indent="0" pn="section-a.8-1">QUICの損失検出は、タイムアウトによるすべての損失検出に単一のタイマーを使います。タイマーの期間はタイマーのモードに基づいており、モードは後述のパケットイベントとタイマーイベントで設定されます。以下で定義するSetLossDetectionTimer関数は、この単一のタイマーをどのように設定するかを示しています。</t>
+        <t indent="0" pn="section-a.8-2">このアルゴリズムでは、特にタイマーの起動が遅れた場合に、タイマーが過去の時刻に設定されることがあります。過去の時刻に設定されたタイマーはただちに発火します。</t>
+        <t indent="0" pn="section-a.8-3">SetLossDetectionTimerの疑似コードは次のとおりです（「^」演算子はべき乗を表します）。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.8-4">
+GetLossTimeAndSpace():
+  time = loss_time[Initial]
+  space = Initial
+  for pn_space in [ Handshake, ApplicationData ]:
+    if (time == 0 || loss_time[pn_space] &lt; time):
+      time = loss_time[pn_space];
+      space = pn_space
+  return time, space
+
+GetPtoTimeAndSpace():
+  duration = (smoothed_rtt + max(4 * rttvar, kGranularity))
+      * (2 ^ pto_count)
+  // デッドロック防止のPTOは現在時刻から開始します
+  if (no ack-eliciting packets in flight):
+    assert(!PeerCompletedAddressValidation())
+    if (has handshake keys):
+      return (now() + duration), Handshake
+    else:
+      return (now() + duration), Initial
+  pto_timeout = infinite
+  pto_space = Initial
+  for space in [ Initial, Handshake, ApplicationData ]:
+    if (no ack-eliciting packets in flight in space):
+        continue;
+    if (space == ApplicationData):
+      // ハンドシェイクの確認まではApplication Dataを飛ばします。
+      if (handshake is not confirmed):
+        return pto_timeout, pto_space
+      // Application Dataについてはmax_ack_delayとバックオフを含めます。
+      duration += max_ack_delay * (2 ^ pto_count)
+
+    t = time_of_last_ack_eliciting_packet[space] + duration
+    if (t &lt; pto_timeout):
+      pto_timeout = t
+      pto_space = space
+  return pto_timeout, pto_space
+
+PeerCompletedAddressValidation():
+  // クライアントはサーバーのアドレスを暗黙的に検証するとみなします。
+  if (endpoint is server):
+    return true
+  // サーバーは、保護されたパケットを受信したときに
+  // アドレス検証を完了します。
+  return has received Handshake ACK ||
+       handshake confirmed
+
+SetLossDetectionTimer():
+  earliest_loss_time, _ = GetLossTimeAndSpace()
+  if (earliest_loss_time != 0):
+    // 時間しきい値による損失検出。
+    loss_detection_timer.update(earliest_loss_time)
+    return
+
+  if (server is at anti-amplification limit):
+    // 何も送信できない場合、サーバーのタイマーは設定しません。
+    loss_detection_timer.cancel()
+    return
+
+  if (no ack-eliciting packets in flight &amp;&amp;
+      PeerCompletedAddressValidation()):
+    // 損失を検出する対象がないため、タイマーは設定しません。
+    // ただし、サーバーが増幅防止制限によってブロックされている
+    // 可能性がある場合、クライアントはタイマーを設定する必要があります。
+    loss_detection_timer.cancel()
+    return
+
+  timeout, _ = GetPtoTimeAndSpace()
+  loss_detection_timer.update(timeout)
+</sourcecode>
+      </section>
+      <section anchor="on-timeout" numbered="true" toc="include" removeInRFC="false" pn="section-a.9">
+        <name slugifiedName="name-on-timeout">タイムアウト時</name>
+        <t indent="0" pn="section-a.9-1">損失検出タイマーが期限切れになったとき、タイマーのモードによって実行する動作が決まります。</t>
+        <t indent="0" pn="section-a.9-2">OnLossDetectionTimeoutの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.9-3">
+OnLossDetectionTimeout():
+  earliest_loss_time, pn_space = GetLossTimeAndSpace()
+  if (earliest_loss_time != 0):
+    // 時間しきい値による損失検出
+    lost_packets = DetectAndRemoveLostPackets(pn_space)
+    assert(!lost_packets.empty())
+    OnPacketsLost(lost_packets)
+    SetLossDetectionTimer()
+    return
+
+  if (no ack-eliciting packets in flight):
+    assert(!PeerCompletedAddressValidation())
+    // クライアントはデッドロック防止のパケットを送信します。Initialは
+    // 増幅防止のクレジットをより多く得るためにパディングされ、
+    // Handshakeパケットはアドレスの所有を証明します。
+    if (has Handshake keys):
+      SendOneAckElicitingHandshakePacket()
+    else:
+      SendOneAckElicitingPaddedInitialPacket()
+  else:
+    // PTO。新しいデータがあれば送信し、なければ古いデータを再送します。
+    // どちらもなければ、PINGフレームを1つ送信します。
+    _, pn_space = GetPtoTimeAndSpace()
+    SendOneOrTwoAckElicitingPackets(pn_space)
+
+  pto_count++
+  SetLossDetectionTimer()
+</sourcecode>
+      </section>
+      <section anchor="detecting-lost-packets" numbered="true" toc="include" removeInRFC="false" pn="section-a.10">
+        <name slugifiedName="name-detecting-lost-packets">失われたパケットの検出</name>
+        <t indent="0" pn="section-a.10-1">DetectAndRemoveLostPacketsは、ACKを受信するたび、または時間しきい値による損失検出タイマーが期限切れになるたびに呼び出されます。この関数は、そのパケット番号空間のsent_packetsに対して動作し、新たに損失が検出されたパケットのリストを返します。</t>
+        <t indent="0" pn="section-a.10-2">DetectAndRemoveLostPacketsの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.10-3">
+DetectAndRemoveLostPackets(pn_space):
+  assert(largest_acked_packet[pn_space] != infinite)
+  loss_time[pn_space] = 0
+  lost_packets = []
+  loss_delay = kTimeThreshold * max(latest_rtt, smoothed_rtt)
+
+  // パケットを失われたとみなすまでの最小時間はkGranularityです。
+  loss_delay = max(loss_delay, kGranularity)
+
+  // この時刻より前に送信されたパケットは失われたとみなします。
+  lost_send_time = now() - loss_delay
+
+  foreach unacked in sent_packets[pn_space]:
+    if (unacked.packet_number &gt; largest_acked_packet[pn_space]):
+      continue
+
+    // パケットを損失としてマークするか、マークすべき時刻を設定します。
+    // 注：ここでのkPacketThresholdの使用は、パケット番号空間に
+    // 送信者が意図的に作った欠番がなかったことを前提としています。
+    if (unacked.time_sent &lt;= lost_send_time ||
+        largest_acked_packet[pn_space] &gt;=
+          unacked.packet_number + kPacketThreshold):
+      sent_packets[pn_space].remove(unacked.packet_number)
+      lost_packets.insert(unacked)
+    else:
+      if (loss_time[pn_space] == 0):
+        loss_time[pn_space] = unacked.time_sent + loss_delay
+      else:
+        loss_time[pn_space] = min(loss_time[pn_space],
+                                  unacked.time_sent + loss_delay)
+  return lost_packets
+</sourcecode>
+      </section>
+      <section anchor="upon-dropping-initial-or-handshake-keys" numbered="true" toc="include" removeInRFC="false" pn="section-a.11">
+        <name slugifiedName="name-upon-dropping-initial-or-ha">Initial鍵またはHandshake鍵の破棄時</name>
+        <t indent="0" pn="section-a.11-1">Initial鍵またはHandshake鍵が破棄されると、その空間のパケットが破棄され、損失検出の状態が更新されます。</t>
+        <t indent="0" pn="section-a.11-2">OnPacketNumberSpaceDiscardedの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-a.11-3">
+OnPacketNumberSpaceDiscarded(pn_space):
+  assert(pn_space != ApplicationData)
+  RemoveFromBytesInFlight(sent_packets[pn_space])
+  sent_packets[pn_space].clear()
+  // 損失検出タイマーとPTOタイマーをリセットします
+  time_of_last_ack_eliciting_packet[pn_space] = 0
+  loss_time[pn_space] = 0
+  pto_count = 0
+  SetLossDetectionTimer()
+</sourcecode>
+      </section>
+    </section>
+    <section anchor="congestion-control-pseudocode" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-congestion-control-pseudoco">輻輳制御の疑似コード</name>
+      <t indent="0" pn="section-appendix.b-1">ここでは、<xref target="congestion-control" format="default" sectionFormat="of" derivedContent="Section 7"/>で説明した輻輳コントローラーの実装例を説明します。</t>
+      <t indent="0" pn="section-appendix.b-2">このセクションの疑似コードの断片は、コードコンポーネントとしてライセンスされています。著作権表示を参照してください。</t>
+      <section anchor="cc-consts-of-interest" numbered="true" toc="include" removeInRFC="false" pn="section-b.1">
+        <name slugifiedName="name-constants-of-interest-2">関連する定数</name>
+        <t indent="0" pn="section-b.1-1">輻輳制御で使う定数は、RFC、論文、一般的な慣行を組み合わせたものに基づいています。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-b.1-2">
+          <dt pn="section-b.1-2.1">kInitialWindow:</dt>
+          <dd pn="section-b.1-2.2">
+            <t indent="0" pn="section-b.1-2.2.1"><xref target="initial-cwnd" format="default" sectionFormat="of" derivedContent="Section 7.2"/>で説明されている、初期の送信中のバイト数に対するデフォルトの制限。</t>
+          </dd>
+          <dt pn="section-b.1-2.3">kMinimumWindow:</dt>
+          <dd pn="section-b.1-2.4">
+            <t indent="0" pn="section-b.1-2.4.1"><xref target="initial-cwnd" format="default" sectionFormat="of" derivedContent="Section 7.2"/>で説明されている、バイト単位の最小輻輳ウィンドウ。</t>
+          </dd>
+          <dt pn="section-b.1-2.5">kLossReductionFactor:</dt>
+          <dd pn="section-b.1-2.6">
+            <t indent="0" pn="section-b.1-2.6.1">新しい損失イベントが検出されたときに輻輳ウィンドウを縮小するために適用する倍率。<xref target="congestion-control" format="default" sectionFormat="of" derivedContent="Section 7"/>では0.5の値を推奨しています。</t>
+          </dd>
+          <dt pn="section-b.1-2.7">kPersistentCongestionThreshold:</dt>
+          <dd pn="section-b.1-2.8">
+            <t indent="0" pn="section-b.1-2.8.1">持続的な輻輳を確定させるための期間。PTOの倍数として指定します。<xref target="persistent-congestion" format="default" sectionFormat="of" derivedContent="Section 7.6"/>では3の値を推奨しています。</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="vars-of-interest" numbered="true" toc="include" removeInRFC="false" pn="section-b.2">
+        <name slugifiedName="name-variables-of-interest-2">関連する変数</name>
+        <t indent="0" pn="section-b.2-1">このセクションでは、輻輳制御メカニズムを実装するために必要な変数について説明します。</t>
+        <dl indent="3" newline="false" spacing="normal" pn="section-b.2-2">
+          <dt pn="section-b.2-2.1">max_datagram_size:</dt>
+          <dd pn="section-b.2-2.2">
+            <t indent="0" pn="section-b.2-2.2.1">送信者の現在の最大ペイロードサイズ。UDPやIPのオーバーヘッドは含みません。最大データグラムサイズは輻輳ウィンドウの計算に使われます。エンドポイントは、この変数の値をパスMTU（PMTU。<xref section="14.2" sectionFormat="of" target="QUIC-TRANSPORT" format="default" derivedLink="https://rfc-editor.org/rfc/rfc9000#section-14.2" derivedContent="QUIC-TRANSPORT"/>を参照）に基づいて設定します。最小値は1200バイトです。</t>
+          </dd>
+          <dt pn="section-b.2-2.3">ecn_ce_counters[kPacketNumberSpace]:</dt>
+          <dd pn="section-b.2-2.4">
+            <t indent="0" pn="section-b.2-2.4.1">そのパケット番号空間について、ピアがACKフレームで報告したECN-CEカウンターの最大の値。この値は、報告されたECN-CEカウンターの増加を検出するために使われます。</t>
+          </dd>
+          <dt pn="section-b.2-2.5">bytes_in_flight:</dt>
+          <dd pn="section-b.2-2.6">
+            <t indent="0" pn="section-b.2-2.6.1">少なくとも1つの確認応答誘発フレームまたはPADDINGフレームを含み、確認応答も損失の宣言もされていない、送信したすべてのパケットのバイト単位のサイズの合計。このサイズにはIPやUDPのオーバーヘッドは含みませんが、QUICヘッダーと認証付き暗号（AEAD）のオーバーヘッドは含みます。輻輳制御が輻輳のフィードバックを妨げないようにするため、ACKフレームだけを含むパケットはbytes_in_flightに算入されません。</t>
+          </dd>
+          <dt pn="section-b.2-2.7">congestion_window:</dt>
+          <dd pn="section-b.2-2.8">
+            <t indent="0" pn="section-b.2-2.8.1">送信中にしてよい最大のバイト数。</t>
+          </dd>
+          <dt pn="section-b.2-2.9">congestion_recovery_start_time:</dt>
+          <dd pn="section-b.2-2.10">
+            <t indent="0" pn="section-b.2-2.10.1">損失またはECNの検出によって現在の回復期間が開始された時刻。この時刻より後に送信されたパケットが確認応答されると、QUICは輻輳からの回復を終了します。</t>
+          </dd>
+          <dt pn="section-b.2-2.11">ssthresh:</dt>
+          <dd pn="section-b.2-2.12">
+            <t indent="0" pn="section-b.2-2.12.1">バイト単位のスロースタートしきい値。輻輳ウィンドウがssthreshを下回っているとき、モードはスロースタートであり、ウィンドウは確認応答されたバイト数だけ増加します。</t>
+          </dd>
+        </dl>
+        <t indent="0" pn="section-b.2-3">輻輳制御の疑似コードは、損失回復の疑似コードの変数の一部にもアクセスします。</t>
+      </section>
+      <section anchor="initialization-1" numbered="true" toc="include" removeInRFC="false" pn="section-b.3">
+        <name slugifiedName="name-initialization-2">初期化</name>
+        <t indent="0" pn="section-b.3-1">コネクションの開始時に、輻輳制御の変数を次のように初期化します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.3-2">
+congestion_window = kInitialWindow
+bytes_in_flight = 0
+congestion_recovery_start_time = 0
+ssthresh = infinite
+for pn_space in [ Initial, Handshake, ApplicationData ]:
+  ecn_ce_counters[pn_space] = 0
+</sourcecode>
+      </section>
+      <section anchor="on-packet-sent" numbered="true" toc="include" removeInRFC="false" pn="section-b.4">
+        <name slugifiedName="name-on-packet-sent">パケットの送信時</name>
+        <t indent="0" pn="section-b.4-1">パケットが送信され、そのパケットがACK以外のフレームを含む場合は常に、そのパケットによってbytes_in_flightが増加します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.4-2">
+OnPacketSentCC(sent_bytes):
+  bytes_in_flight += sent_bytes
+</sourcecode>
+      </section>
+      <section anchor="on-packet-acknowledgment" numbered="true" toc="include" removeInRFC="false" pn="section-b.5">
+        <name slugifiedName="name-on-packet-acknowledgment">パケットの確認応答時</name>
+        <t indent="0" pn="section-b.5-1">これは損失検出のOnAckReceivedから呼び出され、sent_packetsから新たに確認応答されたacked_packetsが渡されます。</t>
+        <t indent="0" pn="section-b.5-2">輻輳回避において、congestion_windowに整数表現を使う実装者は、除算に注意する必要があり、<xref section="2.1" sectionFormat="of" target="RFC3465" format="default" derivedLink="https://rfc-editor.org/rfc/rfc3465#section-2.1" derivedContent="RFC3465"/>で提案されている代替の手法を使うことができます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.5-3">
+InCongestionRecovery(sent_time):
+  return sent_time &lt;= congestion_recovery_start_time
+
+OnPacketsAcked(acked_packets):
+  for acked_packet in acked_packets:
+    OnPacketAcked(acked_packet)
+
+OnPacketAcked(acked_packet):
+  if (!acked_packet.in_flight):
+    return;
+  // bytes_in_flightから除外します。
+  bytes_in_flight -= acked_packet.sent_bytes
+  // アプリケーション制限またはフロー制御による制限の状態であれば、
+  // congestion_windowを増加させません。
+  if (IsAppOrFlowControlLimited())
+    return
+  // 回復期間中は輻輳ウィンドウを増加させません。
+  if (InCongestionRecovery(acked_packet.time_sent)):
+    return
+  if (congestion_window &lt; ssthresh):
+    // スロースタート。
+    congestion_window += acked_packet.sent_bytes
+  else:
+    // 輻輳回避。
+    congestion_window +=
+      max_datagram_size * acked_packet.sent_bytes
+      / congestion_window
+</sourcecode>
+      </section>
+      <section anchor="on-new-congestion-event" numbered="true" toc="include" removeInRFC="false" pn="section-b.6">
+        <name slugifiedName="name-on-new-congestion-event">新しい輻輳イベントの発生時</name>
+        <t indent="0" pn="section-b.6-1">これは、新しい輻輳イベントが検出されたときに、ProcessECNとOnPacketsLostから呼び出されます。まだ回復中でなければ、回復期間を開始し、スロースタートしきい値と輻輳ウィンドウをただちに縮小します。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.6-2">
+OnCongestionEvent(sent_time):
+  // すでに回復期間中であれば何もしません。
+  if (InCongestionRecovery(sent_time)):
+    return
+
+  // 回復期間に入ります。
+  congestion_recovery_start_time = now()
+  ssthresh = congestion_window * kLossReductionFactor
+  congestion_window = max(ssthresh, kMinimumWindow)
+  // 損失回復を早めるために1つのパケットを送信できます。
+  MaybeSendOnePacket()
+</sourcecode>
+      </section>
+      <section anchor="process-ecn-information" numbered="true" toc="include" removeInRFC="false" pn="section-b.7">
+        <name slugifiedName="name-process-ecn-information">ECN情報の処理</name>
+        <t indent="0" pn="section-b.7-1">これは、ECNセクションを含むACKフレームをピアから受信したときに呼び出されます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.7-2">
+ProcessECN(ack, pn_space):
+  // ピアが報告したECN-CEカウンターが増加していれば、
+  // 新しい輻輳イベントである可能性があります。
+  if (ack.ce_counter &gt; ecn_ce_counters[pn_space]):
+    ecn_ce_counters[pn_space] = ack.ce_counter
+    sent_time = sent_packets[ack.largest_acked].time_sent
+    OnCongestionEvent(sent_time)
+</sourcecode>
+      </section>
+      <section anchor="on-packets-lost" numbered="true" toc="include" removeInRFC="false" pn="section-b.8">
+        <name slugifiedName="name-on-packets-lost">パケットの損失時</name>
+        <t indent="0" pn="section-b.8-1">これは、DetectAndRemoveLostPacketsがパケットを失われたとみなしたときに呼び出されます。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.8-2">
+OnPacketsLost(lost_packets):
+  sent_time_of_last_loss = 0
+  // 失われたパケットをbytes_in_flightから除外します。
+  for lost_packet in lost_packets:
+    if lost_packet.in_flight:
+      bytes_in_flight -= lost_packet.sent_bytes
+      sent_time_of_last_loss =
+        max(sent_time_of_last_loss, lost_packet.time_sent)
+  // 送信中のパケットが失われた場合は輻輳イベント
+  if (sent_time_of_last_loss != 0):
+    OnCongestionEvent(sent_time_of_last_loss)
+
+  // これらのパケットの損失が持続的な輻輳を示している場合は、
+  // 輻輳ウィンドウをリセットします。
+  // RTTサンプルを得た後に送信されたパケットだけを考慮します。
+  if (first_rtt_sample == 0):
+    return
+  pc_lost = []
+  for lost in lost_packets:
+    if lost.time_sent &gt; first_rtt_sample:
+      pc_lost.insert(lost)
+  if (InPersistentCongestion(pc_lost)):
+    congestion_window = kMinimumWindow
+    congestion_recovery_start_time = 0
+</sourcecode>
+      </section>
+      <section anchor="removing-discarded-packets-from-bytes-in-flight" numbered="true" toc="include" removeInRFC="false" pn="section-b.9">
+        <name slugifiedName="name-removing-discarded-packets-">破棄したパケットの送信中のバイト数からの除外</name>
+        <t indent="0" pn="section-b.9-1">Initial鍵またはHandshake鍵が破棄されると、その空間で送信されたパケットは、もはや送信中のバイト数に算入されません。</t>
+        <t indent="0" pn="section-b.9-2">RemoveFromBytesInFlightの疑似コードは次のとおりです。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-b.9-3">
+RemoveFromBytesInFlight(discarded_packets):
+  // 確認応答されていないパケットを送信中から除外します。
+  foreach packet in discarded_packets:
+    if packet.in_flight
+      bytes_in_flight -= size
+</sourcecode>
+      </section>
+    </section>
+    <section numbered="false" anchor="contributors" toc="include" removeInRFC="false" pn="section-appendix.c">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <t indent="0" pn="section-appendix.c-1">IETF QUICワーキンググループは、多くの人々から膨大な支援を受けました。次の人々は、この文書に実質的な貢献をしました。</t>
+      <ul spacing="compact" bare="false" empty="false" indent="3" pn="section-appendix.c-2">
+        <li pn="section-appendix.c-2.1">
+          <t indent="0" pn="section-appendix.c-2.1.1"><contact fullname="Alessandro Ghedini"/></t>
+        </li>
+        <li pn="section-appendix.c-2.2">
+          <t indent="0" pn="section-appendix.c-2.2.1"><contact fullname="Benjamin Saunders"/></t>
+        </li>
+        <li pn="section-appendix.c-2.3">
+          <t indent="0" pn="section-appendix.c-2.3.1"><contact fullname="Gorry Fairhurst"/></t>
+        </li>
+        <li pn="section-appendix.c-2.4">
+          <t indent="0" pn="section-appendix.c-2.4.1"><contact asciiFullname="Kazu Yamamoto" fullname="山本和彦"/></t>
+        </li>
+        <li pn="section-appendix.c-2.5">
+          <t indent="0" pn="section-appendix.c-2.5.1"><contact asciiFullname="Kazuho Oku" fullname="奥 一穂"/></t>
+        </li>
+        <li pn="section-appendix.c-2.6">
+          <t indent="0" pn="section-appendix.c-2.6.1"><contact fullname="Lars Eggert"/></t>
+        </li>
+        <li pn="section-appendix.c-2.7">
+          <t indent="0" pn="section-appendix.c-2.7.1"><contact fullname="Magnus Westerlund"/></t>
+        </li>
+        <li pn="section-appendix.c-2.8">
+          <t indent="0" pn="section-appendix.c-2.8.1"><contact fullname="Marten Seemann"/></t>
+        </li>
+        <li pn="section-appendix.c-2.9">
+          <t indent="0" pn="section-appendix.c-2.9.1"><contact fullname="Martin Duke"/></t>
+        </li>
+        <li pn="section-appendix.c-2.10">
+          <t indent="0" pn="section-appendix.c-2.10.1"><contact fullname="Martin Thomson"/></t>
+        </li>
+        <li pn="section-appendix.c-2.11">
+          <t indent="0" pn="section-appendix.c-2.11.1"><contact fullname="Mirja Kühlewind"/></t>
+        </li>
+        <li pn="section-appendix.c-2.12">
+          <t indent="0" pn="section-appendix.c-2.12.1"><contact fullname="Nick Banks"/></t>
+        </li>
+        <li pn="section-appendix.c-2.13">
+          <t indent="0" pn="section-appendix.c-2.13.1"><contact fullname="Praveen Balasubramanian"/></t>
+        </li>
+      </ul>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.d">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="J." surname="Iyengar" fullname="Jana Iyengar" role="editor">
+        <organization showOnFrontPage="true">Fastly</organization>
+        <address>
+          <email>jri.ietf@gmail.com</email>
+        </address>
+      </author>
+      <author initials="I." surname="Swett" fullname="Ian Swett" role="editor">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <email>ianswett@google.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

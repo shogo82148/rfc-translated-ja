@@ -72,6 +72,10 @@ export function parse(xml, options) {
   const children = [];
   walk(ast, function (node) {
     if (node.type === "element") {
+      if (node.tagName === "reference") {
+        // 参考文献の中身（タイトルやアブストラクト）は英語のまま残すので検査しない
+        return false;
+      }
       if (node.tagName === "t") {
         const { loc, range } = location(src, node);
         const paragraph = {

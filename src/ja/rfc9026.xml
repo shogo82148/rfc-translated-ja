@@ -1,0 +1,1467 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-bess-mvpn-fast-failover-15" indexInclude="true" ipr="trust200902" number="9026" prepTime="2021-04-17T12:41:55" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-bess-mvpn-fast-failover-15" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc9026" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="MVPN Fast Upstream Failover">マルチキャストVPNの上流における高速フェイルオーバー</title>
+    <seriesInfo name="RFC" value="9026" stream="IETF"/>
+    <author fullname="Thomas Morin" initials="T." role="editor" surname="Morin">
+      <organization showOnFrontPage="true">Orange</organization>
+      <address>
+        <postal>
+          <street>2, avenue Pierre Marzin</street>
+          <city>Lannion</city>
+          <code>22307</code>
+          <country>France</country>
+        </postal>
+        <email>thomas.morin@orange.com</email>
+      </address>
+    </author>
+    <author fullname="Robert Kebler" initials="R." role="editor" surname="Kebler">
+      <organization showOnFrontPage="true">Juniper Networks</organization>
+      <address>
+        <postal>
+          <street>1194 North Mathilda Avenue</street>
+          <city>Sunnyvale</city>
+          <region>CA</region>
+          <code>94089</code>
+          <country>United States of America</country>
+        </postal>
+        <email>rkebler@juniper.net</email>
+      </address>
+    </author>
+    <author initials="G." surname="Mirsky" fullname="Greg Mirsky" role="editor">
+      <organization showOnFrontPage="true">ZTE Corp.</organization>
+      <address>
+        <email>gregimirsky@gmail.com</email>
+      </address>
+    </author>
+    <date month="04" year="2021"/>
+    <keyword>BFD</keyword>
+    <keyword>P2MP</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、マルチキャスト仮想プライベートネットワーク（VPN）の拡張と手順を定義します。
+      これにより、下流のプロバイダーエッジ（PE）は、VPNマルチキャストフローの上流PEを選択する際にプロバイダートンネル（P-tunnel）の状態を考慮できるようになり、上流の障害に対する高速フェイルオーバーが可能になります。
+      高速フェイルオーバーは、「Bidirectional Forwarding Detection (BFD) for Multipoint Networks」（RFC 8562）と、新しいBGP属性であるBFD Discriminatorを使用することで実現されます。
+      また、この文書は新しいBGPコミュニティーであるStandby PEを導入し、BGPマルチキャストVPN（MVPN）ルーティングを拡張して、C-multicastルートをスタンバイ上流PEに向けて広告できるようにします。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc9026" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-used-in-this-do">この文書で使用する規則</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.3">
+                <t indent="0" pn="section-toc.1-1.2.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-abbreviations">略語</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-umh-selection-based-on-tunn">トンネルの状態に基づくUMHの選択</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-determining-the-status-of-a">トンネルの状態の判断</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.1.2">
+                  <li pn="section-toc.1-1.3.2.1.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.1.1"><xref derivedContent="3.1.1" format="counter" sectionFormat="of" target="section-3.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mvpn-tunnel-root-tracking">MVPNトンネルのルート追跡</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.2">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.2.1"><xref derivedContent="3.1.2" format="counter" sectionFormat="of" target="section-3.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-pe-p-upstream-link-status">PE-P上流リンクの状態</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.3">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.3.1"><xref derivedContent="3.1.3" format="counter" sectionFormat="of" target="section-3.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-p2mp-rsvp-te-tunnels">P2MP RSVP-TEトンネル</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.4">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.4.1"><xref derivedContent="3.1.4" format="counter" sectionFormat="of" target="section-3.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-leaf-initiated-p-tunnels">リーフ起動型のP-tunnel</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.5">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.5.1"><xref derivedContent="3.1.5" format="counter" sectionFormat="of" target="section-3.1.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-c-sc-g-counter-information">(C-S,C-G)カウンター情報</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.6">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.6.1"><xref derivedContent="3.1.6" format="counter" sectionFormat="of" target="section-3.1.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfd-discriminator-attribute">BFD Discriminator属性</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.7">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.7.1"><xref derivedContent="3.1.7" format="counter" sectionFormat="of" target="section-3.1.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfd-discriminator-per-pe-ce">PE-CEリンクごとのBFD Discriminator</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.1.2.8">
+                    <t indent="0" pn="section-toc.1-1.3.2.1.2.8.1"><xref derivedContent="3.1.8" format="counter" sectionFormat="of" target="section-3.1.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations-">P-tunnelの状態の監視に関する運用上の考慮事項</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-standby-c-multicast-route">スタンバイC-multicastルート</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-downstream-pe-behavior">下流PEの動作</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-upstream-pe-behavior">上流PEの動作</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reachability-determination">到達可能性の判断</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-inter-as">AS間</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.4.2">
+                  <li pn="section-toc.1-1.4.2.4.2.1">
+                    <t indent="0" pn="section-toc.1-1.4.2.4.2.1.1"><xref derivedContent="4.4.1" format="counter" sectionFormat="of" target="section-4.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-inter-as-procedures-for-dow">下流PEに対するAS間の手順、ASBRの高速フェイルオーバー</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.4.2.4.2.2">
+                    <t indent="0" pn="section-toc.1-1.4.2.4.2.2.1"><xref derivedContent="4.4.2" format="counter" sectionFormat="of" target="section-4.4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-inter-as-procedures-for-asb">ASBRに対するAS間の手順</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-hot-root-standby">ホットルートスタンバイ</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-duplicate-packets">重複パケット</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-standby-pe-community">Standby PEコミュニティー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfd-discriminator">BFD Discriminator</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfd-discriminator-optional-">BFD Discriminator Optional TLV Type</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">読者は、<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>と<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"/>で説明されているマルチキャストMPLS/BGP IP VPNの仕組みに精通していることを前提とします。</t>
+      <t indent="0" pn="section-1-2">BGP/MPLS VPNにおけるマルチキャスト<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>の文脈では、さまざまな種類の障害に対して接続性を高速に回復できるメカニズムを提供することが望まれます。
+      この文書は、受信者を含むVPNサイトに接続されたPEよりも上流にある、プロバイダーネットワーク内の要素の障害を扱います。</t>
+      <t indent="0" pn="section-1-3">
+          <xref target="tunnel-status" format="default" sectionFormat="of" derivedContent="Section 3"/>では、出口PE（受信者サイトに接続されたPE）が、P-tunnelの状態を考慮して、ある(C-S,C-G)に対する上流マルチキャストホップ（Upstream Multicast Hop、UMH）を決定できるようにするローカルな手順を説明します。
+          オプションの方法の1つは、<xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>と新しいBGP属性であるBFD Discriminatorを使用します。
+          これらの方法はいずれも、単独で使用した場合には「高速フェイルオーバー」のソリューションを提供しませんが、<xref target="standby-join" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明するメカニズムと組み合わせて使用することで「高速フェイルオーバー」のソリューションとなります。
+      </t>
+      <t indent="0" pn="section-1-4">
+          <xref target="standby-join" format="default" sectionFormat="of" derivedContent="Section 4"/>では、オプションのBGP拡張である新しいStandby PEコミュニティーについて説明します。
+          これは、回復時にマルチキャストVPN（MVPN）ルーティングメッセージの交換を一切必要としないようにすることで、フェイルオーバーを高速化できます。
+      </t>
+      <t indent="0" pn="section-1-5">
+      <xref target="hot-standby" format="default" sectionFormat="of" derivedContent="Section 5"/>では、MVPNにおけるフェイルオーバー時間の改善に使用できる「ホットルートスタンバイ」メカニズムについて説明します。
+      この方式は、セクション<xref target="tunnel-status" format="counter" sectionFormat="of" derivedContent="3"/>と<xref target="standby-join" format="counter" sectionFormat="of" derivedContent="4"/>で定義されたメカニズムを組み合わせたものであり、特定のトポロジーとメトリックの制約の下でネットワーク内でPIMルーティングを使用する場合にフェイルオーバー時間を改善するための、<xref target="RFC7431" format="default" sectionFormat="of" derivedContent="RFC7431"/>で説明されているソリューションと類似点があります。
+      </t>
+      <t indent="0" pn="section-1-6">
+      この文書で説明する手順はオプションであり、オペレーターがBGP/MPLS IP VPNにおけるマルチキャストサービスに保護を提供できるようにするものです。
+      オペレーターは、<xref target="tunnel-status" format="default" sectionFormat="of" derivedContent="Section 3"/>で説明する方法と、マルチキャストフローの送信元に接続されたスタンバイPEによって提供される冗長性とを組み合わせて、これらのメカニズムを有効にすることになるでしょう。
+      これらのメカニズムをサポートするPEは、より速く収束し、その結果、より安定したマルチキャストサービスを提供できます。
+      BGP実装がこの文書で定義された拡張を認識しない場合、またはサポートしないように設定されている場合でも、その実装は<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>で説明されているとおりにマルチキャストサービスを提供し続けます。
+      </t>
+    </section>
+    <section numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-used-in-this-do">この文書で使用する規則</name>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-2.1-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-terminology">用語</name>
+        <t indent="0" pn="section-2.2-1">この文書で使用する用語は、<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>と<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"> </xref>で定義されている用語です。</t>
+        <t indent="0" pn="section-2.2-2">この文書全体を通じて、用語「upstream」（小文字、上流）は、マルチキャストフローの受信者を含むVPNサイトに接続されたPEよりも上流にあるリンクとノードを指します。</t>
+        <t indent="0" pn="section-2.2-3">この文書全体を通じて、用語「Upstream」（大文字で始まる、上流）は、VPNバックボーンを通過する際に、(S,G)または(*,G)のデータパケットがVPNバックボーンまたはローカルASに入るPEまたは自律システム境界ルーター（Autonomous System Border Router、ASBR）を指します。</t>
+      </section>
+      <section numbered="true" removeInRFC="false" toc="include" pn="section-2.3">
+        <name slugifiedName="name-abbreviations">略語</name>
+        <dl indent="12" newline="false" spacing="normal" pn="section-2.3-1">
+          <dt pn="section-2.3-1.1">PMSI:
+</dt>
+          <dd pn="section-2.3-1.2">P-Multicast Service Interface（Pマルチキャストサービスインターフェイス）
+</dd>
+          <dt pn="section-2.3-1.3">I-PMSI:
+</dt>
+          <dd pn="section-2.3-1.4">Inclusive PMSI（包含的PMSI）
+</dd>
+          <dt pn="section-2.3-1.5">S-PMSI:
+</dt>
+          <dd pn="section-2.3-1.6">Selective PMSI（選択的PMSI）
+</dd>
+          <dt pn="section-2.3-1.7">x-PMSI:
+</dt>
+          <dd pn="section-2.3-1.8">I-PMSIまたはS-PMSIのいずれか
+</dd>
+          <dt pn="section-2.3-1.9">P-tunnel:
+</dt>
+          <dd pn="section-2.3-1.10">Provider-Tunnel（プロバイダートンネル）
+</dd>
+          <dt pn="section-2.3-1.11">UMH:
+</dt>
+          <dd pn="section-2.3-1.12">Upstream Multicast Hop（上流マルチキャストホップ）
+</dd>
+          <dt pn="section-2.3-1.13">VPN:
+</dt>
+          <dd pn="section-2.3-1.14">Virtual Private Network（仮想プライベートネットワーク）
+</dd>
+          <dt pn="section-2.3-1.15">MVPN:
+</dt>
+          <dd pn="section-2.3-1.16">Multicast VPN（マルチキャストVPN）
+</dd>
+          <dt pn="section-2.3-1.17">RD:
+</dt>
+          <dd pn="section-2.3-1.18">Route Distinguisher（ルート識別子）
+</dd>
+          <dt pn="section-2.3-1.19">RP:
+</dt>
+          <dd pn="section-2.3-1.20">Rendezvous Point（ランデブーポイント）
+</dd>
+          <dt pn="section-2.3-1.21">NLRI:
+</dt>
+          <dd pn="section-2.3-1.22">Network Layer Reachability Information（ネットワーク層到達可能性情報）
+</dd>
+          <dt pn="section-2.3-1.23">VRF:
+</dt>
+          <dd pn="section-2.3-1.24">VPN Routing and Forwarding Table（VPNルーティング・転送テーブル）
+</dd>
+          <dt pn="section-2.3-1.25">MED:
+</dt>
+          <dd pn="section-2.3-1.26">Multi-Exit Discriminator
+</dd>
+          <dt pn="section-2.3-1.27">P2MP:
+</dt>
+          <dd pn="section-2.3-1.28">Point-to-Multipoint（ポイントツーマルチポイント）
+</dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="tunnel-status" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-umh-selection-based-on-tunn">トンネルの状態に基づくUMHの選択</name>
+      <t indent="0" pn="section-3-1">
+      <xref target="RFC6513" sectionFormat="of" section="5.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-5.1" derivedContent="RFC6513"/>では、MVPNの下流PEが、ある(C-S,C-G)に対する上流マルチキャストホップ（UMH）を決定するために使用する手順を説明しています。
+      </t>
+      <t indent="0" pn="section-3-2">
+   ある下流PEとあるVRFについて、ある(C-S,C-G)状態に対するある上流PEに対応するP-tunnelは、その上流PEがその(C-S,C-G)に対して広告し、そのVRFにインポートされたS-PMSIトンネルです。
+   そのようなS-PMSIが存在しない場合は、そのPEが広告し、そのVRFにインポートされたI-PMSIトンネルです。
+      </t>
+      <t indent="0" pn="section-3-3">
+ここで説明する手順はオプションの手順であり、下流PEが、ある(C-S,C-G)状態に対するUMH候補のリストに各PEを含めるか否かを決める際に、上流PEの候補それぞれをルートとするP-tunnelの状態を考慮することに基づいています。
+P-tunnelの現在の状態がUpであるかどうかを判断できない場合、その状態は「Downであるとは判明していない」とみなされることになり、そのトンネルの使用を試みることが許容されるようにUpであるかのように扱ってもかまいません。
+その結果、P-tunnelがDownである場合（<xref target="tunnel-status-determination" format="default" sectionFormat="of" derivedContent="Section 3.1"/>を参照）、そのP-tunnelのルートであるPEはUMHの選択において考慮されなくなります。
+これにより、下流PEは候補リスト内の次の上流PEを使用するようにフェイルオーバーします。
+
+障害が一部のブランチにしか影響しないため、トンネルの状態について異なる結論に達する下流PEが存在する可能性があります。
+そのため、I-PMSIのP-tunnelを使用する場合には<xref target="RFC6513" sectionFormat="of" section="9.1.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-9.1.1" derivedContent="RFC6513"/>の手順が適用されます。
+その文書はこの文書の基礎であり、その処理はすべてここにも適用されます。
+
+      </t>
+      <t indent="0" pn="section-3-4">
+   下流PEが上流PEを選択するために、<xref target="RFC6513" sectionFormat="of" section="5.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-5.1" derivedContent="RFC6513"/>には3つのオプションが規定されています。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3-5">
+        <li pn="section-3-5.1">
+          <t indent="0" pn="section-3-5.1.1">
+          最初の2つのオプションは、IPアドレスまたはハッシュアルゴリズムのいずれかに基づいて、候補PEの集合から上流PEを選択します。
+      この文書のようにP-tunnelの状態を考慮するオプションの手順と組み合わせて使用する場合、上流PEの候補は、次のいずれかに該当する場合に集合に含まれます。
+          </t>
+          <ol spacing="normal" type="a" indent="adaptive" start="1" pn="section-3-5.1.2"><li pn="section-3-5.1.2.1" derivedCounter="a.">
+          トンネルに結び付けられたx-PMSIを広告しており、指定されたトンネルの状態がDownであると判明していない場合。または、
+        </li>
+            <li pn="section-3-5.1.2.2" derivedCounter="b.">
+          その(C-S,C-G)に適用可能なx-PMSIを一切広告していないが、SへのユニキャストVPNルートにVRF Route Import BGP拡張コミュニティーを関連付けている場合。
+          これは、あるVRFに対してI-PMSIを広告せず、S-PMSIのみを使用するポリシーを用いるUMH PEを誤って無効にしないために必要です。
+          S-PMSIは、広告されたS-PMSIで運ばれる(C-S,C-G) / (C-*,C-G)に対するC-multicastルートを上流PEが受信した後でのみ広告できます。
+            </li>
+          </ol>
+          <t indent="0" pn="section-3-5.1.3">
+      結果として得られる候補の集合が空である場合は、P-tunnelの状態を考慮せずに手順を繰り返します。
+          </t>
+        </li>
+        <li pn="section-3-5.2">
+      3つ目のオプションは、インストールされたUMHルート（つまり、C-rootへの「最良」ルート）を選択されたUMHルート（Selected UMH Route）として使用し、その発信元PEが選択された上流PEとなります。
+      この文書のようにP-tunnelの状態を考慮するオプションの手順を用いる場合、選択されたUMHルートは、発信元PEのP-tunnelが「down」でないルートの中で最良のものです。
+      そのようなルートが存在しない場合は、P-tunnelの状態に関係なく、インストールされたUMHルートが選択されます。
+        </li>
+      </ul>
+      <section anchor="tunnel-status-determination" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-determining-the-status-of-a">トンネルの状態の判断</name>
+        <t indent="0" pn="section-3.1-1">
+        P-tunnelの「状態」を判断するためにさまざまな要素を考慮でき、それらについては以降のサブセクションで説明します。
+        このセクションで説明するオプションの手順は、P-tunnelの状態を定義するために下流PEがすべて同じ規則を適用するわけではない場合（<xref target="dups" format="default" sectionFormat="of" derivedContent="Section 6"> </xref>を参照してください）も扱います。
+        また、その中には、下流PEごとに異なる結果を生じうるものもあります。
+        したがって、このセクションにおけるP-tunnelの「状態」は、トンネルそのものの特性ではなく、特定の下流PEから見たトンネルの状態です。
+        さらに、以降の方法の中には、P-tunnelそのものの状態を具体的に判断するのではなく、下流PEがP-tunnel上でトラフィックを受信できるかどうかを判断するものもあります。
+        これは「P-tunnelの受信状態」と呼ぶこともできますが、簡単のため、これらの方法すべてについてP-tunnelの「状態」という用語を使用します。
+        </t>
+        <t indent="0" pn="section-3.1-2">P-tunnelの状態を判断するために使用する基準によっては、P-tunnelそのものに使用される別の回復性メカニズムとの相互作用が生じる場合があり、UMHの更新が即座に行われることもあれば、遅延させる必要があることもあります。
+        それぞれの場合については、以下の個別のサブセクションで扱います。</t>
+        <t indent="0" pn="section-3.1-3">実装は、このセクションで説明する方法を任意に組み合わせてサポートし、特定の展開においてどの方法を使用するかをネットワークオペレーターが選択できるように制御手段を提供してもかまいません。</t>
+        <section anchor="root-track-sec" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.1">
+          <name slugifiedName="name-mvpn-tunnel-root-tracking">MVPNトンネルのルート追跡</name>
+          <t indent="0" pn="section-3.1.1-1">P-tunnelの状態がUpであるかどうかを判断する際に考慮すべき条件の1つは、x-PMSI Tunnel属性で指定されたトンネルのルートが、ユニキャストルーティングテーブルを通じて到達可能かどうかです。
+          この場合、下流PEは、到達可能性の条件が変化したときに即座にUMHを更新できます。</t>
+          <t indent="0" pn="section-3.1.1-2">これはVPNルートに対するBGPネクストホップ追跡に似ていますが、考慮するアドレスがBGPネクストホップアドレスではなく、x-PMSI Tunnel属性内のルートアドレスである点が異なります。
+          BGPネクストホップ追跡は、ルーティングテーブル内のBGPネクストホップアドレスの変化を監視します。
+          一般に、変化が検出されると、BGPテーブル内のネクストホップのいずれかが影響を受けるかどうかを調べるためにネクストホップのスキャンを実行し、それに応じて更新します。</t>
+          <t indent="0" pn="section-3.1.1-3">VPNルートに対してBGPネクストホップ追跡が行われており、あるトンネルのルートアドレスが、そのトンネルを広告するBGP A-Dルートのネクストホップアドレスとたまたま同じである場合、トンネルのルートが到達可能かどうかをユニキャストルーティングテーブルで確認することは不要な重複となり、特に利点をもたらしません。</t>
+        </section>
+        <section anchor="pe-p-link-status-sec" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.2">
+          <name slugifiedName="name-pe-p-upstream-link-status">PE-P上流リンクの状態</name>
+          <t indent="0" pn="section-3.1.2-1">
+          P-tunnelの状態がUpであるかどうかを判断する際に考慮すべき条件の1つは、P-tunnelのラストホップリンクがUpであるかどうかです。
+          逆に、P-tunnelのラストホップリンクがDownである場合、これをP-tunnelがDownであることの兆候とみなすことができます。
+          </t>
+          <t indent="0" pn="section-3.1.2-2">
+          リンクに対して高速な復旧メカニズム（MPLS高速リルート（Fast Reroute、FRR）<xref target="RFC4090" format="default" sectionFormat="of" derivedContent="RFC4090"/>など）が導入されている場合にこの方法を使用するには、リンクとトンネルの障害検出間隔について慎重な検討と調整が必要です。
+          多層保護を使用する場合は、異なるネットワーク層における障害検出の相互作用に特に注意を払わなければなりません。
+          上位の層ではより長い検出間隔を使用することが推奨されます。
+          推奨事項の中には、3以上の乗数を使用すること、たとえばリンク障害の検出に10ミリ秒、トンネル障害の検出に少なくとも100ミリ秒を使用することを提案しているものもあります。
+          多くの場合、相関のないタイマーが不要な切り替えを引き起こしてネットワークを不安定にする可能性があるため、両方の保護方法を同時に使用することは実用的ではありません。
+          </t>
+        </section>
+        <section anchor="rsvp-te-tunnel" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.3">
+          <name slugifiedName="name-p2mp-rsvp-te-tunnels">P2MP RSVP-TEトンネル</name>
+          <t indent="0" pn="section-3.1.3-1">
+          タイプがP2MP MPLS-TEであるP-tunnelの場合、この下流PEへのサブLSPがUp状態であれば、P-tunnelの状態はUpとみなされます。
+          P2MP RSVP-TEラベルスイッチパス（LSP）がUp状態であるかどうかの判断には、そのLSPに対するPath状態とResv状態が必要であり、<xref target="RFC4875" format="default" sectionFormat="of" derivedContent="RFC4875"/>で規定された手順に基づきます。
+          その結果、下流PEは、到達可能性の条件が変化したときに即座にUMHを更新できます。
+          </t>
+          <t indent="0" pn="section-3.1.3-2">
+          この方法を使用する場合で、P2MP TE LSPのシグナリング状態が削除されたとき（たとえば、P2MP TE LSPの入口がPathTearメッセージを送信した場合）、または<xref target="RFC4875" format="default" sectionFormat="of" derivedContent="RFC4875"/>の手順によって判断されるとおりにP2MP TE LSPの状態がUpからDownに変化したときは、対応するP-tunnelの状態を再評価<bcp14>しなければなりません（MUST）</bcp14>。
+          P-tunnelがUpからDown状態に遷移した場合、そのP-tunnelの入口である上流PEを有効なUMH候補とみなしては<bcp14>なりません（MUST NOT）</bcp14>。
+          </t>
+        </section>
+        <section anchor="leaf-init-tunnel" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.4">
+          <name slugifiedName="name-leaf-initiated-p-tunnels">リーフ起動型のP-tunnel</name>
+          <t indent="0" pn="section-3.1.4-1">この(S,G)に対するP-tunnel（I-PMSIまたはS-PMSI）がリーフトリガー型（PIM、mLDP）であるにもかかわらず、プロトコル内部の何らかの理由により、PからPEへのトンネルの上流1ホップブランチを構築できない場合、上流PEをある(C-S,C-G)に対するUMH候補リストから削除<bcp14>しなければなりません（MUST）</bcp14>。
+          その結果、下流PEは、到達可能性の条件が変化したときに即座にUMHを更新できます。</t>
+        </section>
+        <section anchor="counter-info-tunnel" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.5">
+          <name slugifiedName="name-c-sc-g-counter-information">(C-S,C-G)カウンター情報</name>
+          <t indent="0" pn="section-3.1.5-1">P-tunnelにマッピングされたすべてのマルチキャストフローについて最大パケット間隔が判明するように下流ノードを設定できる場合、このP-tunnel上で受信したトラフィックに関する(C-S,C-G)ごとのローカルなトラフィックカウンター情報を、P-tunnelの状態の判断に使用できます。</t>
+          <t indent="0" pn="section-3.1.5-2">このような手順を使用する場合で、P-tunnelに対して高速な復旧メカニズムが使用されている状況では、P-tunnelの復旧メカニズムがその動作を実行できるように、UMHを更新する前に待機するための設定可能なタイマーを下流PEに設定<bcp14>しなければなりません（MUST）</bcp14>。
+          パケットが期待どおりに到着しない状態が十分に続くのを待つことでトンネルがおそらくダウンしていると判断することは、ヒューリスティックかつ運用上の事項であり、最大パケット間隔に依存します。
+          トンネルがダウンしていることを確認するための待機期間のデフォルトとしては、一般に3秒のタイムアウトが適していますが、典型的でない状況では別の値が必要になるでしょう。</t>
+          <t indent="0" pn="section-3.1.5-3">このメカニズムを<xref target="hot-standby" format="default" sectionFormat="of" derivedContent="Section 5"/>で説明する方法と組み合わせて使用する場合、マルチキャストストリームのレートや最大パケット間隔についての事前の知識は必要ありません。
+          下流PEは、2つのP-tunnel上の実際のパケット受信統計を定期的に比較して、一方がダウンしたことを判断できます。
+          このメカニズムの詳細な仕様は、この文書の範囲外です。</t>
+        </section>
+        <section anchor="bfd-tunnel" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.6">
+          <name slugifiedName="name-bfd-discriminator-attribute">BFD Discriminator属性</name>
+          <t indent="0" pn="section-3.1.6-1">
+          P-tunnelの状態は、x-PMSI A-Dルートとともにディスクリミネーターが広告されるマルチポイントBFDセッション<xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>の状態から導き出してもかまいません。
+          P2MP BFDセッションは、BFD Discriminator属性以外のメカニズム、たとえばMPLS LSP Ping（<xref target="MPLS-P2MP-BFD" format="default" sectionFormat="of" derivedContent="MPLS-P2MP-BFD"/>）を使用してインスタンス化することもできます。
+          それらの方法の説明は、この文書の範囲外です。
+          </t>
+          <t indent="0" pn="section-3.1.6-2">
+          この文書は、「BFD Discriminator」（38）と呼ばれる新しいBGP属性の形式と使用方法を定義します。
+          これはオプションの推移的（optional transitive）BGP属性です。
+          したがって、この属性を認識しない実装、またはサポートしないように設定されている実装は、その属性が認識されなかった場合と同様に、<xref target="RFC4271" sectionFormat="of" section="5" format="default" derivedLink="https://rfc-editor.org/rfc/rfc4271#section-5" derivedContent="RFC4271"/>でオプションの推移的パス属性に対して定義された手順に従うことが期待されます。
+          詳細については<xref target="iana-bfd-discr" format="default" sectionFormat="of" derivedContent="Section 7.2"/>を参照してください。
+          この属性の形式を<xref target="bfd-attr-fig" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示します。
+          </t>
+          <figure anchor="bfd-attr-fig" align="left" suppress-title="false" pn="figure-1">
+            <name slugifiedName="name-format-of-the-bfd-discrimin">BFD Discriminator属性の形式</name>
+            <artwork align="left" pn="section-3.1.6-3.1">         
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+
+   |    BFD Mode   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       BFD Discriminator                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   ~                         Optional TLVs                         ~
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+          </artwork>
+          </figure>
+          <t indent="0" pn="section-3.1.6-4">
+          各フィールドは次のとおりです。
+          </t>
+          <dl newline="false" spacing="normal" indent="3" pn="section-3.1.6-5">
+            <dt pn="section-3.1.6-5.1"/>
+            <dd pn="section-3.1.6-5.2">BFD Modeフィールドは1オクテット長です。
+            この仕様では、値1としてP2MP BFDセッションを定義します（<xref target="iana-bfd-discr" format="default" sectionFormat="of" derivedContent="Section 7.2"/>）。</dd>
+            <dt pn="section-3.1.6-5.3"/>
+            <dd pn="section-3.1.6-5.4">BFD Discriminatorフィールドは4オクテット長です。</dd>
+            <dt pn="section-3.1.6-5.5"/>
+            <dd pn="section-3.1.6-5.6">
+              <t indent="0" pn="section-3.1.6-5.6.1">Optional TLVsは、将来の拡張のためにBFD Discriminator属性で使用<bcp14>してもよいです（MAY）</bcp14>オプションの可変長フィールドです。
+          TLVは、順番に並べて含めても、入れ子にして含めても<bcp14>よいです（MAY）</bcp14>。
+          TLVの入れ子を可能にするため、新しいTLVは可変長のオブジェクトとして定義することが勧められます。
+          <xref target="opt-tlv-fig" format="default" sectionFormat="of" derivedContent="Figure 2"/>に示すOptional TLV形式のTLVは、次のもので構成されます。
+              </t>
+              <dl spacing="normal" indent="3" newline="false" pn="section-3.1.6-5.6.2">
+                <dt pn="section-3.1.6-5.6.2.1">Type:</dt>
+                <dd pn="section-3.1.6-5.6.2.2">Valueフィールドの解釈を特徴付ける1オクテット長のフィールド（<xref target="iana-bfd-attr-ext" format="default" sectionFormat="of" derivedContent="Section 7.3"/>）</dd>
+                <dt pn="section-3.1.6-5.6.2.3">Length:</dt>
+                <dd pn="section-3.1.6-5.6.2.4">Valueフィールドの長さをオクテット単位で示す1オクテット長のフィールド</dd>
+                <dt pn="section-3.1.6-5.6.2.5">Value:</dt>
+                <dd pn="section-3.1.6-5.6.2.6">可変長のフィールド</dd>
+              </dl>
+              <t indent="0" pn="section-3.1.6-5.6.3">
+             この仕様で定義するTLV内のマルチバイトのフィールドはすべて、ネットワークバイトオーダーです。
+              </t>
+            </dd>
+          </dl>
+          <figure anchor="opt-tlv-fig" align="left" suppress-title="false" pn="figure-2">
+            <name slugifiedName="name-format-of-the-optional-tlv">Optional TLVの形式</name>
+            <artwork align="left" pn="section-3.1.6-6.1">          
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Type     |     Length    |           Value             ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+          </artwork>
+          </figure>
+          <t indent="0" pn="section-3.1.6-7">
+この文書では、オプションのSource IP Address TLVを定義します。
+BFD Modeフィールドの値がP2MP BFDセッションである場合は、Source IP Address TLVを使用<bcp14>しなければなりません（MUST）</bcp14>。
+Source IP Address TLVを含まないBFD Discriminator属性は、<xref target="RFC7606" format="default" sectionFormat="of" derivedContent="RFC7606"/>で定義されている「属性破棄（attribute discard）」の方式に従って処理<bcp14>しなければなりません（MUST）</bcp14>。
+Source IP Address TLVでは、フィールドを次のように設定します。
+          </t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1.6-8">
+            <li pn="section-3.1.6-8.1">
+Typeフィールドは1に設定します（<xref target="iana-bfd-attr-ext" format="default" sectionFormat="of" derivedContent="Section 7.3"/>）。
+	    </li>
+            <li pn="section-3.1.6-8.2">
+Lengthフィールドは、IPv4アドレスファミリーの場合は4、IPv6アドレスファミリーの場合は16です。
+このフィールドがそれ以外の値に設定されている場合、そのTLVは不正な形式とみなされます。
+	    </li>
+            <li pn="section-3.1.6-8.3">
+Valueフィールドには、P2MP BFDセッションのMultipointHeadに関連付けられたアドレスが含まれます。
+	    </li>
+          </ul>
+          <t indent="0" pn="section-3.1.6-9">
+          BFD Discriminator属性は、その長さが11オクテットより小さい場合、またはOptional TLVが存在するが正しい形式でない場合、不正な形式とみなさ<bcp14>なければなりません（MUST）</bcp14>。
+           属性が不正な形式であると判断された場合、UPDATEメッセージは<xref target="RFC7606" format="default" sectionFormat="of" derivedContent="RFC7606"/>に従って属性破棄（Attribute Discard）の方式を使用して処理<bcp14>することになります（SHALL）</bcp14>。
+          </t>
+          <section numbered="true" removeInRFC="false" toc="exclude" pn="section-3.1.6.1">
+            <name slugifiedName="name-upstream-pe-procedures">上流PEの手順</name>
+            <t indent="0" pn="section-3.1.6.1-1">
+          下流PEがポイントツーマルチポイント（P2MP）BFDセッションを使用してP-tunnelの状態を追跡できるようにするため、上流PEは次のようにします。
+
+            </t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1.6.1-2">
+              <li pn="section-3.1.6.1-2.1">
+                <xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>で説明されているとおりにBFDセッションを開始し、bfd.SessionType = MultipointHeadを設定<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.1-2.2">
+          BFD制御パケットを送信する際、IPv4の場合は内側のIPヘッダーのIP宛先アドレスを内部ループバックアドレス127.0.0.1/32 <xref target="RFC1122" format="default" sectionFormat="of" derivedContent="RFC1122"/>に設定<bcp14>しなければなりません（MUST）</bcp14>。
+          IPv6の場合は、ループバックアドレス::1/128 <xref target="RFC4291" format="default" sectionFormat="of" derivedContent="RFC4291"/>を使用<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.1-2.3">
+                BFD制御パケットを送信する際は、BFD Discriminator属性のSource IP Address TLVに含まれるIPアドレスを送信元IPアドレスとして使用<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.1-2.4">
+                値をMy Discriminatorの値に設定したBFD Discriminator属性を、x-PMSI A-Dルートに含め<bcp14>なければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.1-2.5">
+                P-tunnelが確立されたとみなされた後、x-PMSI P-tunnel上でBFD制御パケットを定期的に送信<bcp14>しなければなりません（MUST）</bcp14>。
+          P-tunnelが確立されたことを宣言する方法は、この仕様の範囲外であることに注意してください。
+
+	      </li>
+            </ul>
+            <t indent="0" pn="section-3.1.6.1-3">
+   x-PMSI A-Dルートがすでに広告された後で、P2MP BFDセッションを使用したP-tunnelの追跡が有効にされた場合、x-PMSI A-Dルートを再送<bcp14>しなければなりません（MUST）</bcp14>。
+   その際、以前の広告と新しい広告の間の変更は、BFD Discriminator属性を含めることだけにします。
+            </t>
+            <t indent="0" pn="section-3.1.6.1-4">
+   P2MP BFDセッションを使用してP-tunnelの状態を追跡するようにx-PMSI A-Dルートが広告されており、BFDを使用したP-tunnelの状態の追跡を停止したい場合は、次のようにします。
+
+            </t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1.6.1-5">
+              <li pn="section-3.1.6.1-5.1">
+          x-PMSI A-Dルートを再送<bcp14>しなければなりません（MUST）</bcp14>。
+          その際、以前の広告と新しい広告の間の変更は、BFD Discriminator属性を除外することだけにします。
+              </li>
+              <li pn="section-3.1.6.1-5.2">
+          P2MP BFDセッションを削除<bcp14>しなければなりません（MUST）</bcp14>。
+          セッションは、設定可能な遅延の後に削除<bcp14>してもよいです（MAY）</bcp14>。
+          この遅延には妥当なデフォルト値があるべきです。
+              </li>
+            </ul>
+          </section>
+          <section numbered="true" removeInRFC="false" toc="exclude" pn="section-3.1.6.2">
+            <name slugifiedName="name-downstream-pe-procedures">下流PEの手順</name>
+            <t indent="0" pn="section-3.1.6.2-1">
+          x-PMSI A-DルートでBFD Discriminator属性を受信すると、下流PEは次のようにします。
+            </t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1.6.2-2">
+              <li pn="section-3.1.6.2-2.1">
+                受信したBFD Discriminatorの値を、上流PEから発信されるP-tunnelおよび上流PEのIPアドレスと関連付け<bcp14>なければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.2-2.2">
+                <xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>で説明されているとおりにP2MP BFDセッションを作成し、bfd.SessionType = MultipointTailを設定<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.2-2.3">
+                <t indent="0" pn="section-3.1.6.2-2.3.1">
+          BFDセッションを正しく多重分離するために、次のものを使用<bcp14>しなければなりません（MUST）</bcp14>。
+                </t>
+                <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.1.6.2-2.3.2">
+                  <li pn="section-3.1.6.2-2.3.2.1">x-PMSI A-Dルート内のBFD Discriminator属性に含まれるSource IP Address TLV内のIPアドレス
+</li>
+                  <li pn="section-3.1.6.2-2.3.2.2">BFD Discriminator属性内のBFD Discriminatorフィールドの値
+</li>
+                  <li pn="section-3.1.6.2-2.3.2.3">BFD制御パケットを受信したx-PMSIのトンネル識別子（Tunnel Identifier）<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"/>
+</li>
+                </ul>
+              </li>
+            </ul>
+            <t indent="0" pn="section-3.1.6.2-3">
+          P2MP BFDセッションの状態がupになった後、すなわちbfd.SessionState == Upになった後は、そのセッションの状態がP-tunnelの健全性の追跡に使用されます。
+            </t>
+            <t indent="0" pn="section-3.1.6.2-4">
+          <xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>によれば、下流PEがBFD制御パケットのStateフィールドでDownまたはAdminDownを受信した場合、またはBFDセッションに関連付けられた検出タイマー（Detection Timer）が満了した場合、BFDセッションはdown、すなわちbfd.SessionState == Downになります。
+          BFDセッションの状態がDownである場合、そのBFDセッションに関連付けられたP-tunnelはdownとみなさ<bcp14>なければなりません（MUST）</bcp14>。
+          C-Sを含むサイトが2つ以上のPEに接続されている場合、下流PEはそのうちの1つをプライマリー上流PEとして選択し、その他はスタンバイ上流PEとみなされます。
+          このようなシナリオでは、P-tunnelがdownとみなされたとき、下流PEは、スタンバイ上流PEがUp状態であると判断される場合に限り、プライマリー上流PEからスタンバイ上流PEへのトラフィックの切り替えを開始<bcp14>してもよいです（MAY）</bcp14>。
+          これは、スタンバイ上流PEをMultipointHeadとするP2MP BFDセッションの状態から判断<bcp14>してもよいです（MAY）</bcp14>。
+            </t>
+            <t indent="0" pn="section-3.1.6.2-5">
+
+          下流PEがBFD Discriminator属性を含む新しいx-PMSI A-Dルートを受信した時点で下流PEのP-tunnelがすでに確立されている場合、x-PMSI A-Dルートが<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"/>に従って適切に処理され、かつBFD Discriminator属性が検証された場合に限り、下流PEはBFD Discriminatorフィールドの値をP-tunnelに関連付け、このセクションで前述した手順に従わ<bcp14>なければなりません（MUST）</bcp14>。
+            </t>
+            <t indent="0" pn="section-3.1.6.2-6">
+          下流PEのP-tunnelがすでに確立されており、その状態がBFD Discriminator属性を使用して設定されたP2MP BFDセッションによって監視されていて、下流PEがBFD Discriminator属性を含まない新しいx-PMSI A-Dルートを受信し、かつそのx-PMSI A-Dルートが関連する仕様に従ってエラーなく処理された場合は、次のようにします。
+            </t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.1.6.2-7">
+              <li pn="section-3.1.6.2-7.1">
+          下流PEは、このP2MP BFDセッションに対するBFD制御パケットの処理を停止<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.1.6.2-7.2">
+          P-tunnelに関連付けられたP2MP BFDセッションを削除<bcp14>しなければなりません（MUST）</bcp14>。
+          セッションは、設定可能な遅延の後に削除<bcp14>してもよいです（MAY）</bcp14>。
+          この遅延には妥当なデフォルト値があるべきです。
+              </li>
+              <li pn="section-3.1.6.2-7.3">
+          下流PEは、トラフィックをスタンバイ上流PEに切り替えては<bcp14>なりません（MUST NOT）</bcp14>。
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section numbered="true" removeInRFC="false" toc="include" pn="section-3.1.7">
+          <name slugifiedName="name-bfd-discriminator-per-pe-ce">PE-CEリンクごとのBFD Discriminator</name>
+          <t indent="0" pn="section-3.1.7-1">
+   次の方式は、上流PEがPE-CEリンクの障害を検出したことに対応するために定義されています。
+   プロバイダートンネルがまだupであっても、下流PEはバックアップの上流PEに切り替えることが望まれます。
+   そのために、上流PEは、自身のPE-CEリンクの障害を検出した場合、P2MP BFDセッションのbfd.DesiredMinTxIntervalの時間内に新しいPE-CEリンクに切り替えるのでない限り（その場合、上流PEは新しいPE-CEリンクの状態の追跡を開始します）、P2MP BFDセッションのbfd.LocalDiagを（<xref target="RFC5880" sectionFormat="of" section="6.8.17" format="default" derivedLink="https://rfc-editor.org/rfc/rfc5880#section-6.8.17" derivedContent="RFC5880"/>に従って）Concatenated Path DownまたはReverse Concatenated Path Downに設定<bcp14>しなければなりません（MUST）</bcp14>。
+   下流PEは、そのbfd.LocalDiagコードを受信すると、トンネルそのものに障害が発生したかのように扱い、バックアップPEへの切り替えを試みます。
+          </t>
+        </section>
+        <section anchor="operational-sec" numbered="true" removeInRFC="false" toc="include" pn="section-3.1.8">
+          <name slugifiedName="name-operational-considerations-">P-tunnelの状態の監視に関する運用上の考慮事項</name>
+          <t indent="0" pn="section-3.1.8-1">
+<xref target="tunnel-status-determination" format="default" sectionFormat="of" derivedContent="Section 3.1"/>では、P-tunnelの状態を監視するためのいくつかの方法を説明しています。
+
+          </t>
+          <t indent="0" pn="section-3.1.8-2">
+MVPNのルートの追跡（<xref target="root-track-sec" format="default" sectionFormat="of" derivedContent="Section 3.1.1"/>）は、コントロールプレーンの情報に基づいてP-tunnelの状態を明らかにします。
+一般に、MPLSデータプレーンはコントロールプレーンと運命を共有しないため、この方法は誤検知や検知漏れの警報を生じる可能性があります。
+たとえば、Upとみなされているもののルートに到達できないトンネルや、早まってdownと宣言されるトンネルが生じることがあります。
+一方で、BGPネクストホップ追跡は広くサポートされ展開されているため、この方法が最も展開しやすいかもしれません。
+          </t>
+          <t indent="0" pn="section-3.1.8-3">
+<xref target="pe-p-link-status-sec" format="default" sectionFormat="of" derivedContent="Section 3.1.2"/>で説明する方法は、データプレーンの状態を監視しますが、P-tunnelの出口P-PEリンクについてのみです。
+その結果、上流リンクに影響するネットワーク障害はこの方法では検出されない可能性があり、MVPNの収束はBGPコントロールプレーンの収束によって決まることになります。
+          </t>
+          <t indent="0" pn="section-3.1.8-4">
+P2MP RSVP-TE LSPの状態変化をP-tunnelの状態を再評価するトリガーとして使用すること（<xref target="rsvp-te-tunnel" format="default" sectionFormat="of" derivedContent="Section 3.1.3"/>）は、P2MP LSPの状態を監視するために使用されるメカニズムに依存します。
+          </t>
+          <t indent="0" pn="section-3.1.8-5">
+<xref target="leaf-init-tunnel" format="default" sectionFormat="of" derivedContent="Section 3.1.4"/>で説明する方法は単純であり、誤った警報を引き起こすことがありません。
+誤った警報とは、たとえば、データパスに障害があるにもかかわらずトンネルが運用上Upであるとみなすことや、逆に影響を受けていないトンネルに障害が発生したと宣言することです。
+ ただし、この方法が適用されるのはMVPNの一部、すなわちリーフトリガー型のx-PMSIトンネルを使用するものに限られます。
+          </t>
+          <t indent="0" pn="section-3.1.8-6">
+予測可能なパケット間隔でマルチキャストサービスを提供するために使用されるMVPNもあるかもしれませんが（<xref target="counter-info-tunnel" format="default" sectionFormat="of" derivedContent="Section 3.1.5"/>）、そのような事例の数は限られているようです。
+          </t>
+          <t indent="0" pn="section-3.1.8-7">
+
+
+P2MP BFDセッションを使用してP-tunnelの状態を監視すること（<xref target="bfd-tunnel" format="default" sectionFormat="of" derivedContent="Section 3.1.6"/>）は、ここで議論したすべての監視方法の中で、最も正確かつ迅速な障害通知をもたらす可能性があります。
+一方で、BFDセッションがネットワークとPEノードに与える追加の負荷について慎重に検討する必要があります。
+オペレーターは、ルートPEが送信するBFD制御パケットのレートと、ネットワーク内のそのようなPEの数とを合わせて考慮すべきです。
+さらに、PEあたりのP2MP BFDセッションの数によって、PEが保持する状態情報の量が決まります。
+</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="standby-join" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-standby-c-multicast-route">スタンバイC-multicastルート</name>
+      <t indent="0" pn="section-4-1">
+      以下で説明する手順は、C-Sを含むサイトが2つ以上のPEに接続されている場合に限定されますが、説明を簡単にするため、デュアルホーミングの場合について説明します。
+      C-Sのサイトに3つ以上のPEが接続されている場合、スタンバイPEの選択は、UMHを選択する方法のいずれかを使用して行えます。
+      選択の詳細は、この文書の範囲外です。
+      これらの手順では、PEがIPアドレス、<xref target="RFC6513" sectionFormat="of" section="5.1.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-5.1.3" derivedContent="RFC6513"/>で説明されているハッシュアルゴリズム、インストールされたUMHルート（Installed UMH Route）のいずれに基づいて選択するかにかかわらず、そのMVPNのすべてのPEが<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>で規定された同じUMH選択手順に従う必要があります。
+      すべてのPE間で使用されるUMH選択方法の一貫性は、管理プレーンによって提供されることが期待されます。
+      これらの手順では、あるMVPNのC-Sを含むサイトが2つのPEにデュアルホーミングされている場合、そのMVPNのその他のすべてのサイトは、それぞれ独自のRDを持つ、C-Sへの2つのユニキャストVPNルート（VPN-IPv4またはVPN-IPv6）を持つことを前提とします。
+      </t>
+      <t indent="0" pn="section-4-2">C-Sが両方のPEを経由して到達可能である限り、ある下流PEは、C-Sに接続されたPEのうちの1つをC-Sに対する上流PEとして選択します。
+      C-Sに接続されたもう一方のPEを「スタンバイ上流PE」と呼びます。
+      プライマリー上流PEを経由したC-Sへの接続性が利用できなくなった場合、PEはスタンバイ上流PEをC-Sに対する上流PEとして選択することに注意してください。
+      その後プライマリーPEが利用可能になると、PEは再びプライマリー上流PEを上流PEとして選択します。
+      このような動作は「切り戻し（revertive）」動作と呼ばれ、サポート<bcp14>しなければなりません（MUST）</bcp14>。
+      切り戻しなし（non-revertive）の動作とは、プライマリーが起動した後もバックアップPEをUMHとして選択し続ける動作を指します。
+      この切り戻しなしの動作も実装がサポート<bcp14>してもよいです（MAY）</bcp14>。
+      その場合は何らかの設定によって有効にすることになるでしょう。
+      切り戻しと切り戻しなしのどちらの動作を選択するかは運用上の問題ですが、そのMVPN内のすべてのPEで一貫してい<bcp14>なければなりません（MUST）</bcp14>。
+      切り戻しがデフォルトの動作とみなされますが、スタンバイトンネルへの切り替えが他のサービスに影響を与えず、必要なサービス品質を提供する場合もあるかもしれません。
+      その場合、オペレーターは不要な切り替えを避け、マルチキャストサービスの中断を最小限に抑えるために、切り戻しなしの動作を使用することもできます。</t>
+      <t indent="0" pn="section-4-3">読みやすさのため、以降のサブセクションではBGP C-multicast Source Tree Joinルートに対する手順を説明しますが、これらの手順は、顧客のRPがデュアルホーミングされている場合のBGP C-multicast Shared Tree Joinルートにも同様に適用されます（「C-S」を「C-RP」に置き換えてください）。</t>
+      <section anchor="ds-behavior" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-downstream-pe-behavior">下流PEの動作</name>
+        <t indent="0" pn="section-4.1-1">MVPNのあるサイトに接続された（下流）PEがC-multicastルート(C-S,C-G)を送信する必要がある場合、そのPEは<xref target="RFC6514" sectionFormat="of" section="11.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6514#section-11.1" derivedContent="RFC6514"/>で規定された手順に従い、ルートを発信するPEが選択した上流PEを識別するRTを付けてC-multicastルートを送信します。
+        C-Sがプライマリー上流PEを経由して到達可能である限り、上流PEはプライマリー上流PEです。
+        C-Sがスタンバイ上流PEを経由してのみ到達可能である場合、上流PEはスタンバイ上流PEです。</t>
+        <t indent="0" pn="section-4.1-2">C-Sがプライマリー上流PEとスタンバイ上流PEの両方を経由して到達可能である場合、下流PEは、プライマリー上流PEを識別するRTを付けたC-multicastルートを送信することに加えて、スタンバイ上流PEを識別するRTを付けたC-multicastルートも発信して送信します。
+        「スタンバイ」C-multicastルートとしての意味を持つこのルートを、以降「スタンバイBGP C-multicastルート」と呼びます。
+        このルートは次のように構築されます。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.1-3">
+          <li pn="section-4.1-3.1">NLRIは、プライマリー上流PEを識別するRTを付けたC-multicastルートと同様に構築されます。
+          ただし、RDは、スタンバイ上流PEをUMHとして使用してC-multicastルートを構築した場合と同じものです（このルートは、スタンバイ上流PEがSについて広告したユニキャストVPNルートに関連付けられたRDと、スタンバイ上流PEのUMHルートのVRF RT Import ECから導出されたルートターゲットを運びます）。</li>
+          <li pn="section-4.1-3.2">このルートは「Standby PE」BGPコミュニティー（0xFFFF0009）を運ば<bcp14>なければなりません（MUST）</bcp14>。
+          <xref target="pe-standby-com-iana" format="default" sectionFormat="of" derivedContent="Section 7.1"/>を参照してください。</li>
+        </ul>
+        <t indent="0" pn="section-4.1-4">
+        通常のC-multicastルートとスタンバイC-multicastルートの両方のLocal Preference属性は、次のように調整する必要があります。
+        BGPピアが同じNLRIを持つ2つのC-multicastルートを受信し、一方が「Standby PE」コミュニティーを運び、もう一方が「Standby PE」コミュニティーを運ばない場合、「Standby PE」コミュニティーを運ばないほうが優先されます。
+        このような状況は、たとえば、ユニキャストルーティングの一時的な不整合やStandby PEコミュニティーのサポートの欠如により、2つの異なる下流PEが異なる上流PEをプライマリーとみなす場合に発生する可能性があります。
+        その場合、何の予防策も講じなければ、両方の上流PEがスタンバイC-multicastルートを処理し、同時に転送を停止してしまう可能性があります。
+        このため、Standby PE BGPコミュニティーを運ぶルートでは、LOCAL_PREF属性を、Standby PE BGPコミュニティーを運ばないルートのLOCAL_PREF属性として指定された値より小さい値に設定する必要があります。
+        値0が<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+        </t>
+        <t indent="0" pn="section-4.1-5">PEがある(C-S,C-G)に対してこのようなスタンバイC-multicast joinを広告する場合、そのPEは対応するP-tunnelに参加<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.1-6">その後のある時点で、PEが、C-Sはもはやプライマリー上流PEを経由して到達可能ではないと判断した場合、スタンバイ上流PEが上流PEとなり、PEはスタンバイ上流PEを識別するRTを付けたC-multicastルートを再送します。
+        ただし、今度はそのルートはStandby PE BGPコミュニティーを運びません（その結果、古いルートが新しいルートに置き換えられ、これらのルートの唯一の違いはStandby PE BGPコミュニティーがないことになります）。
+        新しい上流PEは、そのC-multicastルートのLOCAL_PREF属性を、Standby PE BGPコミュニティーが広告に含まれていたときと同じ値に設定する必要があります。</t>
+      </section>
+      <section anchor="us-behavior" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-upstream-pe-behavior">上流PEの動作</name>
+        <t indent="0" pn="section-4.2-1">
+この仕様をサポートするPEが、特定の(C-S,C-G)に対するC-multicastルートを受信し、次のすべてが真である場合、
+        </t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.2-2">
+          <li pn="section-4.2-2.1">ルートが運ぶRTにより、そのルートがPE上の特定のVRFにインポートされる。</li>
+          <li pn="section-4.2-2.2">ルートがStandby PE BGPコミュニティーを運んでいる。</li>
+          <li pn="section-4.2-2.3">
+PEが（この文書の範囲外である障害検出の方法によって）C-Sは他のPEを経由して到達可能ではないと判断する（詳細は<xref target="reach-sec" format="default" sectionFormat="of" derivedContent="Section 4.3"/>を参照）。
+	  </li>
+        </ul>
+        <t indent="0" pn="section-4.2-3">
+そのPEは、このスタンバイBGP C-multicastルートに対応するVRFのPIM状態をインストール<bcp14>してもよいです（MAY）</bcp14>（その結果、C-Sに向けてCEにPIM Joinメッセージが送信され、PEは(C-S,C-G)トラフィックを受信することになります）。
+また、PEは、自身が受信した(C-S,C-G)トラフィックを、自身をルートとするP-tunnelを通じて他のPEに転送<bcp14>してもよいです（MAY）</bcp14>。
+        </t>
+        <t indent="0" pn="section-4.2-4">さらに、そのルートで運ばれるC-Sが他のPEを経由して到達可能かどうかにかかわらず、次のようにできます。</t>
+        <ol type="a" indent="adaptive" spacing="normal" start="1" pn="section-4.2-5">
+
+<li pn="section-4.2-5.1" derivedCounter="a.">ローカルポリシーに基づき、PEは、このスタンバイBGP C-multicastルートを受信するとすぐに、このBGP Source Tree Joinルートに対応するVRFのPIM状態をインストール<bcp14>してもよいです（MAY）</bcp14>（その結果、C-Sに向けてCEにJoinメッセージが送信され、PEは(C-S,C-G)トラフィックを受信することになります）。
+</li>
+          <li pn="section-4.2-5.2" derivedCounter="b.">ローカルポリシーに基づき、PEは、このスタンバイBGP C-multicastルートを受信するとすぐに、他のPEを経由したC-Sの到達可能性とは無関係に、P-tunnelを通じて(C-S,C-G)トラフィックを他のPEに転送<bcp14>してもよいです（MAY）</bcp14>（これはステップaも実行することを意味することに注意してください）。
+</li>
+        </ol>
+        <t indent="0" pn="section-4.2-6">ある(C-S,C-G)に対してステップaもステップbも実行しないことを「コールドルートスタンバイ（cold root standby）」と呼びます。</t>
+        <t indent="0" pn="section-4.2-7">ある(C-S,C-G)に対してステップaを実行し、ステップbを実行しないことを「ウォームルートスタンバイ（warm root standby）」と呼びます。</t>
+        <t indent="0" pn="section-4.2-8">ある(C-S,C-G)に対してステップb（ステップaも実行することを意味します）を実行することを「ホットルートスタンバイ（hot root standby）」と呼びます。</t>
+        <t indent="0" pn="section-4.2-9">上流PEがS-PMSIのみのポリシーを使用する場合、(C-S,C-G)に対するC-multicastルートを、通常のものかスタンバイのものかにかかわらず受信するとすぐに、その(C-S,C-G)に対するS-PMSIを広告することになることに注意してください。
+        つまり、対応するS-PMSIを広告する前に、スタンバイでないC-multicastルートの受信を待つことはしません。</t>
+        <t indent="0" pn="section-4.2-10"><xref target="RFC6513" sectionFormat="of" section="9.3.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-9.3.2" derivedContent="RFC6513"/>では、C-multicastルートの受信の結果としてSource-Active A-Dルートを送信する手順を説明しています。
+        これらの手順には、通常のC-multicastルートとスタンバイC-multicastルートの両方について従わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="reach-sec" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-reachability-determination">到達可能性の判断</name>
+        <t indent="0" pn="section-4.3-1">
+        スタンバイ上流PEは、プライマリー上流PEを経由してC-Sに到達できるかどうかを判断するために、次の情報を使用できます。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.3-2">
+          <li pn="section-4.3-2.1">C-SへのユニキャストVPNルートの有無</li>
+          <li pn="section-4.3-2.2">スタンバイ上流PEがプライマリー上流PEをルートとするトンネルの出口であると仮定すると、スタンバイ上流PEは、このトンネルの状態に基づいて、プライマリー上流PEを経由したC-Sの到達可能性を判断できます。
+            トンネルの状態は、<xref target="tunnel-status-determination" format="default" sectionFormat="of" derivedContent="Section 3.1"/>で説明したものと同じ基準によって（<xref target="tunnel-status" format="default" sectionFormat="of" derivedContent="Section 3"/>のUMH選択手順を使用せずに）判断します。</li>
+          <li pn="section-4.3-2.3">その他のメカニズム</li>
+        </ul>
+      </section>
+      <section anchor="interas" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-inter-as">AS間</name>
+        <t indent="0" pn="section-4.4-1">セグメント化されていないAS間の方式を使用する場合は、<xref target="ds-behavior" format="default" sectionFormat="of" derivedContent="Section 4.1"/>から<xref target="reach-sec" format="default" sectionFormat="of" derivedContent="Section 4.3"/>で説明した手順を適用できます。</t>
+        <t indent="0" pn="section-4.4-2"><xref target="RFC6514" sectionFormat="of" section="9.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6514#section-9.2" derivedContent="RFC6514"/>で説明されているセグメント化されたAS間の方式でMVPNをAS間の文脈で使用する場合は、このセクションの手順を適用できます。</t>
+        <t indent="0" pn="section-4.4-3">あるMVPNの送信元に対して以下で説明する手順を適用するための前提条件は、次のとおりです。</t>
+        <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.4-4">
+          <li pn="section-4.4-4.1">このMVPNのいずれのPEも、送信元のASが広告した2つ以上のInter-AS I-PMSI A-Dルートを受信すること</li>
+          <li pn="section-4.4-4.2">これらのInter-AS I-PMSI A-Dルートが（<xref target="RFC6514" section="9.2" sectionFormat="of" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6514#section-9.2" derivedContent="RFC6514"/>の項目「(2)」で説明されているとおり）異なるルート識別子を持つこと</li>
+        </ul>
+        <t indent="0" pn="section-4.4-5">
+          たとえば、自動設定されたRDを使用する2つのASBRを通じて受信者のASに接続するASに送信元がデュアルホーミングされている場合、これらの条件は満たされます。</t>
+        <section numbered="true" removeInRFC="false" toc="include" pn="section-4.4.1">
+          <name slugifiedName="name-inter-as-procedures-for-dow">下流PEに対するAS間の手順、ASBRの高速フェイルオーバー</name>
+          <t indent="0" pn="section-4.4.1-1">次の手順は、リモートASにある送信元Sについて、あるASの下流PEが適用します。</t>
+          <t indent="0" pn="section-4.4.1-2"><xref target="RFC6514" sectionFormat="of" section="11.1.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6514#section-11.1.3" derivedContent="RFC6514"/>で説明されているように、C-multicastルートを構築するために送信元のASから広告されたInter-AS I-PMSI A-Dルートを選択することに加えて、下流PEは、送信元のASから広告された2つ目のInter-AS I-PMSI A-Dルートを選択し、<xref target="ds-behavior" format="default" sectionFormat="of" derivedContent="Section 4.1"> </xref>で説明されているとおりに、このルートを使用してスタンバイC-multicastルート（Standby拡張コミュニティーを運ぶC-multicastルート）を構築して広告します。</t>
+        </section>
+        <section numbered="true" removeInRFC="false" toc="include" pn="section-4.4.2">
+          <name slugifiedName="name-inter-as-procedures-for-asb">ASBRに対するAS間の手順</name>
+          <t indent="0" pn="section-4.4.2-1">上流ASBRがC-multicastルートを受信し、そのルートのRTの少なくとも1つがASBRのImport RTのいずれかと一致する場合、この仕様をサポートするASBRは、RDとSource ASがそれぞれC-multicastルートで運ばれるRDとSource ASに一致するInter-AS I-PMSI A-Dルートを探す必要があります。
+          一致するものが見つかり、かつC-multicastルートがStandby PE BGPコミュニティーを運んでいる場合、この仕様をサポートするASBRの実装は、次のように動作するように設定可能で<bcp14>なければなりません（MUST）</bcp14>。
+          </t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-4.4.2-2">
+            <li pn="section-4.4.2-2.1">ルートがiBGPで受信され、そのLOCAL_PREF属性が0に設定されている場合、そのルートは、MED属性（MULTI_EXIT_DISC）を可能な最大値（0xffff）に設定してeBGPで再広告<bcp14>しなければなりません（MUST）</bcp14>。</li>
+            <li pn="section-4.4.2-2.2">ルートがeBGPで受信され、そのMED属性が0xffffに設定されている場合、そのルートは、LOCAL_PREF属性を0に設定してiBGPで再広告<bcp14>しなければなりません（MUST）</bcp14>。</li>
+          </ul>
+          <t indent="0" pn="section-4.4.2-3">
+            その他のASBRの手順は変更なしに適用され、適用された場合、上に挙げた動作を変更<bcp14>してもよいです（MAY）</bcp14>。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="hot-standby" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-hot-root-standby">ホットルートスタンバイ</name>
+      <t indent="0" pn="section-5-1">セクション<xref format="counter" target="tunnel-status" sectionFormat="of" derivedContent="3"/>と<xref format="counter" target="standby-join" sectionFormat="of" derivedContent="4"/>で定義されたメカニズムは、次のように組み合わせて使用できます。</t>
+      <t indent="0" pn="section-5-2">原則は、あるVRFについて（あるいは場合によってはある(C-S,C-G)についてのみ）、次のようにすることです。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-5-3">
+        <li pn="section-5-3.1">下流PEは、（<xref target="standby-join" format="default" sectionFormat="of" derivedContent="Section 4"/>に基づいて）スタンバイBGP C-multicastルートを広告します。</li>
+        <li pn="section-5-3.2">上流PEは「ホットスタンバイ」のオプションの動作を使用します。
+        したがって、ある状態に対する（プライマリーの）BGP C-multicastルートまたはスタンバイBGP C-multicastルート（あるいはその両方）を得た後に、そのマルチキャスト状態に対するトラフィックの転送を開始します。</li>
+        <li pn="section-5-3.3">下流PEがどのトンネルからトラフィックを受け入れるかは、ポリシーによって制御します。
+        たとえば、ポリシーは、トンネルの状態またはトンネルの監視方法（<xref target="counter-info-tunnel" format="default" sectionFormat="of" derivedContent="Section 3.1.5"/>）に基づくことができます。</li>
+      </ul>
+      <t indent="0" pn="section-5-4">セクション<xref format="counter" target="tunnel-status" sectionFormat="of" derivedContent="3"/>と<xref format="counter" target="standby-join" sectionFormat="of" derivedContent="4"/>で提案したメカニズムのその他の組み合わせは、今後の検討課題です。</t>
+      <t indent="0" pn="section-5-5">同じレベルの保護は、プライマリーとセカンダリーの両方の上流PEに広告される（ルートターゲット拡張コミュニティーとして、各上流PEからの各VPNルートのVRF Route Import拡張コミュニティーの値を運ぶ）単純なC-multicast Source Tree Joinルートでも実現できることに注意してください。
+      Standbyの意味を使用する利点は、下流PEが常にセカンダリー上流PEに対してスタンバイC-multicastルートを広告すると仮定すれば、すべての下流PEを再設定することなく、セカンダリー上流PEの設定変更によって保護レベルを選択できることです。</t>
+    </section>
+    <section anchor="dups" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-duplicate-packets">重複パケット</name>
+      <t indent="0" pn="section-6-1"><xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513">マルチキャストVPNの仕様</xref>は、PEが、期待される上流PEから来たパケットのみをCEに転送することを課しています（<xref target="RFC6513" sectionFormat="of" section="9.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6513#section-9.1" derivedContent="RFC6513"/>）。</t>
+      <t indent="0" pn="section-6-2">MVPN仕様のこの部分を順守することは、定常状態において2つの異なる上流PEが同じトラフィックを同時にP-tunnel上で転送する可能性がある場合に特に重要であるという事実に、読者の注意を喚起します。
+      これは、「ホットルートスタンバイ」モードを使用する場合（<xref target="hot-standby" format="default" sectionFormat="of" derivedContent="Section 5"/>）に該当し、<xref target="tunnel-status" format="default" sectionFormat="of" derivedContent="Section 3"/>の手順を使用する場合にも該当する可能性があります。
+      同様に、a) ツリーの状態を判断する規則が2つの異なる下流PEで同じでない場合や、b) ツリーの状態を判断する規則がPEにローカルな条件（たとえば、PE-P上流リンクがUpであること）に依存する場合にも該当する可能性があります。</t>
+    </section>
+    <section anchor="IANA" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="pe-standby-com-iana" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-standby-pe-community">Standby PEコミュニティー</name>
+        <t indent="0" pn="section-7.1-1">IANAは、先着順（First Come First Served）の登録ポリシーを使用して、「Border Gateway Protocol (BGP) Well-known Communities」レジストリーからBGPの「Standby PE」コミュニティーの値0xFFFF0009を割り当てました。</t>
+      </section>
+      <section anchor="iana-bfd-discr" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-bfd-discriminator">BFD Discriminator</name>
+        <t indent="0" pn="section-7.2-1">この文書は、「BFD Discriminator」と呼ばれる新しいBGPのオプションの推移的属性を定義します。
+   IANAは、「BGP Path Attributes」レジストリーのコードポイント38をBFD Discriminator属性に割り当てました。</t>
+        <t indent="0" pn="section-7.2-2">
+   IANAは、「Border Gateway Protocol (BGP) Parameters」レジストリーに新しい「BFD Mode」サブレジストリーを作成しました。
+      このサブレジストリーの登録ポリシーは、<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>に従い、<xref target="iana-bfd-mode-reg" format="default" sectionFormat="of" derivedContent="Table 1"/>のとおりとします。
+        </t>
+        <table anchor="iana-bfd-mode-reg" align="center" pn="table-1">
+          <name slugifiedName="name-bfd-mode-subregistry-regist">「BFD Mode」サブレジストリーの登録ポリシー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">値</th>
+              <th align="center" colspan="1" rowspan="1">ポリシー</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0- 175</td>
+              <td align="center" colspan="1" rowspan="1">IETF Review</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">176 - 249</td>
+              <td align="center" colspan="1" rowspan="1">First Come First Served</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">250 - 254</td>
+              <td align="center" colspan="1" rowspan="1">Experimental Use</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">255</td>
+              <td align="center" colspan="1" rowspan="1">IETF Review</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-7.2-4">
+   IANAは、<xref target="iana-bfd-mode-alloc-tbl" format="default" sectionFormat="of" derivedContent="Table 2"/>に従って初期割り当てを行いました。
+        </t>
+        <table anchor="iana-bfd-mode-alloc-tbl" align="center" pn="table-2">
+          <name slugifiedName="name-bfd-mode-subregistry">「BFD Mode」サブレジストリー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">値</th>
+              <th align="center" colspan="1" rowspan="1">説明</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0</td>
+              <td align="center" colspan="1" rowspan="1">予約済み</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">1</td>
+              <td align="center" colspan="1" rowspan="1">P2MP BFD Session</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">2- 175</td>
+              <td align="center" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">176 - 249</td>
+              <td align="center" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">250 - 254</td>
+              <td align="center" colspan="1" rowspan="1">Experimental Use</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">255</td>
+              <td align="center" colspan="1" rowspan="1">予約済み</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="iana-bfd-attr-ext" numbered="true" removeInRFC="false" toc="include" pn="section-7.3">
+        <name slugifiedName="name-bfd-discriminator-optional-">BFD Discriminator Optional TLV Type</name>
+        <t indent="0" pn="section-7.3-1">
+   IANAは、「Border Gateway Protocol (BGP) Parameters」レジストリーに新しい「BFD Discriminator Optional TLV Type」サブレジストリーを作成しました。
+   このサブレジストリーの登録ポリシーは、<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>に従い、<xref target="iana-bfd-discr-ext-reg" format="default" sectionFormat="of" derivedContent="Table 3"/>のとおりとします。
+        </t>
+        <table anchor="iana-bfd-discr-ext-reg" align="center" pn="table-3">
+          <name slugifiedName="name-bfd-discriminator-optional-t">「BFD Discriminator Optional TLV Type」サブレジストリーの登録ポリシー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">値</th>
+              <th align="center" colspan="1" rowspan="1">ポリシー</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0- 175</td>
+              <td align="center" colspan="1" rowspan="1">IETF Review</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">176 - 249</td>
+              <td align="center" colspan="1" rowspan="1">First Come First Served</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">250 - 254</td>
+              <td align="center" colspan="1" rowspan="1">Experimental Use</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">255</td>
+              <td align="center" colspan="1" rowspan="1">IETF Review</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-7.3-3">
+IANAは、<xref target="iana-bfd-discr-ext-tbl" format="default" sectionFormat="of" derivedContent="Table 4"/>に従って初期割り当てを行いました。
+        </t>
+        <table anchor="iana-bfd-discr-ext-tbl" align="center" pn="table-4">
+          <name slugifiedName="name-bfd-discriminator-optional-tl">「BFD Discriminator Optional TLV Type」サブレジストリー</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">値</th>
+              <th align="center" colspan="1" rowspan="1">説明</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0</td>
+              <td align="center" colspan="1" rowspan="1">予約済み</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">1</td>
+              <td align="center" colspan="1" rowspan="1">Source IP Address</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">2- 175</td>
+              <td align="center" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">176 - 249</td>
+              <td align="center" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">250 - 254</td>
+              <td align="center" colspan="1" rowspan="1">Experimental Use</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">255</td>
+              <td align="center" colspan="1" rowspan="1">予約済み</td>
+              <td align="left" colspan="1" rowspan="1">この文書</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+    <section anchor="Security" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">
+    この文書は、<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>と<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"/>に基づく手順を説明しています。
+    したがって、それらの仕様でそれぞれ示されているセキュリティーに関する考慮事項を共有します。
+      </t>
+      <t indent="0" pn="section-8-2">
+この文書は、<xref target="RFC8562" format="default" sectionFormat="of" derivedContent="RFC8562"/>で定義されているP2MP BFDを使用しており、それはさらに<xref target="RFC5880" format="default" sectionFormat="of" derivedContent="RFC5880"/>に基づいています。
+各プロトコルに関連するセキュリティーに関する考慮事項は、それぞれのプロトコル仕様で議論されています。
+この仕様をサポートする実装は、（アクティブなP2MP BFDセッションの数と処理するBFD制御パケットのレートの組み合わせとして）BFDトラフィックが使用する容量の総量を制限するメカニズムを提供<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t indent="0" pn="section-8-3">
+        <xref target="tunnel-status-determination" format="default" sectionFormat="of" derivedContent="Section 3.1"/>で説明した方法は、検知漏れによる状態変化を生じる可能性があり、それがコントロールプレーンにおける不要な収束のトリガーとなって、最終的にVPNが提供するマルチキャストサービスに悪影響を及ぼすことがあります。
+        オペレーターは、ネットワーク環境を考慮し、P-tunnelの状態を判断するために使用するメカニズムで利用可能な制御手段を使用することが期待されます。
+      </t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4271" target="https://www.rfc-editor.org/info/rfc4271" quoteTitle="true" derivedAnchor="RFC4271">
+          <front>
+            <title>A Border Gateway Protocol 4 (BGP-4)</title>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Li" fullname="T. Li" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Hares" fullname="S. Hares" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="January"/>
+            <abstract>
+              <t indent="0">This document discusses the Border Gateway Protocol (BGP), which is an inter-Autonomous System routing protocol.</t>
+              <t indent="0">The primary function of a BGP speaking system is to exchange network reachability information with other BGP systems.  This network reachability information includes information on the list of Autonomous Systems (ASes) that reachability information traverses. This information is sufficient for constructing a graph of AS connectivity for this reachability from which routing loops may be pruned, and, at the AS level, some policy decisions may be enforced.</t>
+              <t indent="0">BGP-4 provides a set of mechanisms for supporting Classless Inter-Domain Routing (CIDR).  These mechanisms include support for advertising a set of destinations as an IP prefix, and eliminating the concept of network "class" within BGP.  BGP-4 also introduces mechanisms that allow aggregation of routes, including aggregation of AS paths.</t>
+              <t indent="0">This document obsoletes RFC 1771.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4271"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4271"/>
+        </reference>
+        <reference anchor="RFC4875" target="https://www.rfc-editor.org/info/rfc4875" quoteTitle="true" derivedAnchor="RFC4875">
+          <front>
+            <title>Extensions to Resource Reservation Protocol - Traffic Engineering (RSVP-TE) for Point-to-Multipoint TE Label Switched Paths (LSPs)</title>
+            <author initials="R." surname="Aggarwal" fullname="R. Aggarwal" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Papadimitriou" fullname="D. Papadimitriou" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Yasukawa" fullname="S. Yasukawa" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2007" month="May"/>
+            <abstract>
+              <t indent="0">This document describes extensions to Resource Reservation Protocol - Traffic Engineering (RSVP-TE) for the set up of Traffic Engineered (TE) point-to-multipoint (P2MP) Label Switched Paths (LSPs) in Multi- Protocol Label Switching (MPLS) and Generalized MPLS (GMPLS) networks.  The solution relies on RSVP-TE without requiring a multicast routing protocol in the Service Provider core.  Protocol elements and procedures for this solution are described.</t>
+              <t indent="0">There can be various applications for P2MP TE LSPs such as IP multicast.  Specification of how such applications will use a P2MP TE LSP is outside the scope of this document.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4875"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4875"/>
+        </reference>
+        <reference anchor="RFC5880" target="https://www.rfc-editor.org/info/rfc5880" quoteTitle="true" derivedAnchor="RFC5880">
+          <front>
+            <title>Bidirectional Forwarding Detection (BFD)</title>
+            <author initials="D." surname="Katz" fullname="D. Katz">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Ward" fullname="D. Ward">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="June"/>
+            <abstract>
+              <t indent="0">This document describes a protocol intended to detect faults in the bidirectional path between two forwarding engines, including interfaces, data link(s), and to the extent possible the forwarding engines themselves, with potentially very low latency.  It operates independently of media, data protocols, and routing protocols. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5880"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5880"/>
+        </reference>
+        <reference anchor="RFC6513" target="https://www.rfc-editor.org/info/rfc6513" quoteTitle="true" derivedAnchor="RFC6513">
+          <front>
+            <title>Multicast in MPLS/BGP IP VPNs</title>
+            <author initials="E." surname="Rosen" fullname="E. Rosen" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Aggarwal" fullname="R. Aggarwal" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="February"/>
+            <abstract>
+              <t indent="0">In order for IP multicast traffic within a BGP/MPLS IP VPN (Virtual Private Network) to travel from one VPN site to another, special protocols and procedures must be implemented by the VPN Service Provider.  These protocols and procedures are specified in this document.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6513"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6513"/>
+        </reference>
+        <reference anchor="RFC6514" target="https://www.rfc-editor.org/info/rfc6514" quoteTitle="true" derivedAnchor="RFC6514">
+          <front>
+            <title>BGP Encodings and Procedures for Multicast in MPLS/BGP IP VPNs</title>
+            <author initials="R." surname="Aggarwal" fullname="R. Aggarwal">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Rosen" fullname="E. Rosen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Morin" fullname="T. Morin">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Rekhter" fullname="Y. Rekhter">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="February"/>
+            <abstract>
+              <t indent="0">This document describes the BGP encodings and procedures for exchanging the information elements required by Multicast in MPLS/BGP IP VPNs, as specified in RFC 6513.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6514"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6514"/>
+        </reference>
+        <reference anchor="RFC7606" target="https://www.rfc-editor.org/info/rfc7606" quoteTitle="true" derivedAnchor="RFC7606">
+          <front>
+            <title>Revised Error Handling for BGP UPDATE Messages</title>
+            <author initials="E." surname="Chen" fullname="E. Chen" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Scudder" fullname="J. Scudder" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Mohapatra" fullname="P. Mohapatra">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Patel" fullname="K. Patel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="August"/>
+            <abstract>
+              <t indent="0">According to the base BGP specification, a BGP speaker that receives an UPDATE message containing a malformed attribute is required to reset the session over which the offending attribute was received. This behavior is undesirable because a session reset would impact not only routes with the offending attribute but also other valid routes exchanged over the session.  This document partially revises the error handling for UPDATE messages and provides guidelines for the authors of documents defining new attributes.  Finally, it revises the error handling procedures for a number of existing attributes.</t>
+              <t indent="0">This document updates error handling for RFCs 1997, 4271, 4360, 4456, 4760, 5543, 5701, and 6368.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7606"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7606"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Narten" fullname="T. Narten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="June"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters.  To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper.  For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed.  This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8562" target="https://www.rfc-editor.org/info/rfc8562" quoteTitle="true" derivedAnchor="RFC8562">
+          <front>
+            <title>Bidirectional Forwarding Detection (BFD) for Multipoint Networks</title>
+            <author initials="D." surname="Katz" fullname="D. Katz">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Ward" fullname="D. Ward">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Pallagatti" fullname="S. Pallagatti" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Mirsky" fullname="G. Mirsky" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2019" month="April"/>
+            <abstract>
+              <t indent="0">This document describes extensions to the Bidirectional Forwarding Detection (BFD) protocol for its use in multipoint and multicast networks.</t>
+              <t indent="0">This document updates RFC 5880.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8562"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8562"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="MPLS-P2MP-BFD" quoteTitle="true" target="https://tools.ietf.org/html/draft-mirsky-mpls-p2mp-bfd-14" derivedAnchor="MPLS-P2MP-BFD">
+          <front>
+            <title>BFD for Multipoint Networks over Point-to-Multi-Point MPLS LSP</title>
+            <author initials="G" surname="Mirsky" fullname="Greg Mirsky">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G" surname="Mishra" fullname="Gyan Mishra">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D" surname="Eastlake 3rd" fullname="Donald Eastlake 3rd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="March" year="2021"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mirsky-mpls-p2mp-bfd-14"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC1122" target="https://www.rfc-editor.org/info/rfc1122" quoteTitle="true" derivedAnchor="RFC1122">
+          <front>
+            <title>Requirements for Internet Hosts - Communication Layers</title>
+            <author initials="R." surname="Braden" fullname="R. Braden" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1989" month="October"/>
+            <abstract>
+              <t indent="0">This RFC is an official specification for the Internet community.  It incorporates by reference, amends, corrects, and supplements the primary protocol standards documents relating to hosts.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="3"/>
+          <seriesInfo name="RFC" value="1122"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1122"/>
+        </reference>
+        <reference anchor="RFC4090" target="https://www.rfc-editor.org/info/rfc4090" quoteTitle="true" derivedAnchor="RFC4090">
+          <front>
+            <title>Fast Reroute Extensions to RSVP-TE for LSP Tunnels</title>
+            <author initials="P." surname="Pan" fullname="P. Pan" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Swallow" fullname="G. Swallow" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Atlas" fullname="A. Atlas" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2005" month="May"/>
+            <abstract>
+              <t indent="0">This document defines RSVP-TE extensions to establish backup label-switched path (LSP) tunnels for local repair of LSP tunnels.  These mechanisms enable the re-direction of traffic onto backup LSP tunnels in 10s of milliseconds, in the event of a failure.</t>
+              <t indent="0">Two methods are defined here.  The one-to-one backup method creates detour LSPs for each protected LSP at each potential point of local repair.  The facility backup method creates a bypass tunnel to protect a potential failure point; by taking advantage of MPLS label stacking, this bypass tunnel can protect a set of LSPs that have similar backup constraints.  Both methods can be used to protect links and nodes during network failure.  The described behavior and extensions to RSVP allow nodes to implement either method or both and to interoperate in a mixed network.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4090"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4090"/>
+        </reference>
+        <reference anchor="RFC4291" target="https://www.rfc-editor.org/info/rfc4291" quoteTitle="true" derivedAnchor="RFC4291">
+          <front>
+            <title>IP Version 6 Addressing Architecture</title>
+            <author initials="R." surname="Hinden" fullname="R. Hinden">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Deering" fullname="S. Deering">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="February"/>
+            <abstract>
+              <t indent="0">This specification defines the addressing architecture of the IP Version 6 (IPv6) protocol.  The document includes the IPv6 addressing model, text representations of IPv6 addresses, definition of IPv6 unicast addresses, anycast addresses, and multicast addresses, and an IPv6 node's required addresses.</t>
+              <t indent="0">This document obsoletes RFC 3513, "IP Version 6 Addressing Architecture".   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4291"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4291"/>
+        </reference>
+        <reference anchor="RFC7431" target="https://www.rfc-editor.org/info/rfc7431" quoteTitle="true" derivedAnchor="RFC7431">
+          <front>
+            <title>Multicast-Only Fast Reroute</title>
+            <author initials="A." surname="Karan" fullname="A. Karan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Filsfils" fullname="C. Filsfils">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="IJ." surname="Wijnands" fullname="IJ. Wijnands" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Decraene" fullname="B. Decraene">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="August"/>
+            <abstract>
+              <t indent="0">As IPTV deployments grow in number and size, service providers are looking for solutions that minimize the service disruption due to faults in the IP network carrying the packets for these services.  This document describes a mechanism for minimizing packet loss in a network when node or link failures occur. Multicast-only Fast Reroute (MoFRR) works by making simple enhancements to multicast routing protocols such as Protocol Independent Multicast (PIM) and Multipoint LDP (mLDP).</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7431"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7431"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="Acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、レビュー、有益なコメント、役に立つ提案をいただいた<contact fullname="Greg Reaume"/>、<contact fullname="Eric Rosen"/>、<contact fullname="Jeffrey Zhang"/>、<contact fullname="Martin Vigoureux"/>、<contact fullname="Adrian Farrel"/>、<contact fullname="Zheng (Sandy) Zhang"/>に感謝します。</t>
+    </section>
+    <section anchor="Contributors" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <t indent="0" pn="section-appendix.b-1">以下は、その他の貢献した著者のアルファベット順の一覧です。
+      </t>
+      <author fullname="Rahul Aggarwal" initials="R" surname="Aggarwal">
+        <organization showOnFrontPage="true">Arktan</organization>
+        <address>
+          <postal>
+            <street/>
+            <city/>
+            <code/>
+            <country/>
+          </postal>
+          <email>raggarwa_1@yahoo.com</email>
+        </address>
+      </author>
+      <author fullname="Nehal Bhau" initials="N" surname="Bhau">
+        <organization showOnFrontPage="true">Cisco</organization>
+        <address>
+          <postal>
+            <street/>
+            <city/>
+            <code/>
+            <country/>
+          </postal>
+          <email>NBhau@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Clayton Hassen" initials="C" surname="Hassen">
+        <organization showOnFrontPage="true">Bell Canada</organization>
+        <address>
+          <postal>
+            <street>2955 Virtual Way</street>
+            <city>Vancouver</city>
+            <code/>
+            <country>Canada</country>
+          </postal>
+          <email>Clayton.Hassen@bell.ca</email>
+        </address>
+      </author>
+      <author fullname="Wim Henderickx" initials="W" surname="Henderickx">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>Copernicuslaan 50</street>
+            <city>Antwerp</city>
+            <code>2018</code>
+            <country>Belgium</country>
+          </postal>
+          <email>wim.henderickx@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Pradeep Jain" initials="P" surname="Jain">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>701 E Middlefield Rd</street>
+            <city>Mountain View</city>
+            <code>CA 94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>pradeep.jain@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Jayant Kotalwar" initials="J" surname="Kotalwar">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>701 E Middlefield Rd</street>
+            <city>Mountain View</city>
+            <code>CA 94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>Jayant.Kotalwar@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Praveen Muley" initials="P" surname="Muley">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>701 East Middlefield Rd</street>
+            <city>Mountain View</city>
+            <code>CA 94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>praveen.muley@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Ray (Lei) Qiu" initials="R" surname="Qiu">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <postal>
+            <street>1194 North Mathilda Ave.</street>
+            <city>Sunnyvale</city>
+            <code>CA 94089</code>
+            <country>United States of America</country>
+          </postal>
+          <email>rqiu@juniper.net</email>
+        </address>
+      </author>
+      <author fullname="Yakov Rekhter" initials="Y" surname="Rekhter">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <postal>
+            <street>1194 North Mathilda Ave.</street>
+            <city>Sunnyvale</city>
+            <code>CA 94089</code>
+            <country>United States of America</country>
+          </postal>
+          <email>yakov@juniper.net</email>
+        </address>
+      </author>
+      <author fullname="Kanwar Singh" initials="K" surname="Singh">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>701 E Middlefield Rd</street>
+            <city>Mountain View</city>
+            <code>CA 94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>kanwar.singh@nokia.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Thomas Morin" initials="T." role="editor" surname="Morin">
+        <organization showOnFrontPage="true">Orange</organization>
+        <address>
+          <postal>
+            <street>2, avenue Pierre Marzin</street>
+            <city>Lannion</city>
+            <code>22307</code>
+            <country>France</country>
+          </postal>
+          <email>thomas.morin@orange.com</email>
+        </address>
+      </author>
+      <author fullname="Robert Kebler" initials="R." role="editor" surname="Kebler">
+        <organization showOnFrontPage="true">Juniper Networks</organization>
+        <address>
+          <postal>
+            <street>1194 North Mathilda Avenue</street>
+            <city>Sunnyvale</city>
+            <region>CA</region>
+            <code>94089</code>
+            <country>United States of America</country>
+          </postal>
+          <email>rkebler@juniper.net</email>
+        </address>
+      </author>
+      <author initials="G." surname="Mirsky" fullname="Greg Mirsky" role="editor">
+        <organization showOnFrontPage="true">ZTE Corp.</organization>
+        <address>
+          <email>gregimirsky@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

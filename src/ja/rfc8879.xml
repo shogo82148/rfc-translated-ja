@@ -1,0 +1,475 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-tls-certificate-compression-10" indexInclude="true" ipr="trust200902" number="8879" prepTime="2020-12-01T23:20:59" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tls-certificate-compression-10" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8879" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="TLS Certificate Compression">TLS証明書圧縮</title>
+    <seriesInfo name="RFC" value="8879" stream="IETF"/>
+    <author initials="A." surname="Ghedini" fullname="Alessandro Ghedini">
+      <organization showOnFrontPage="true">Cloudflare, Inc.</organization>
+      <address>
+        <email>alessandro@cloudflare.com</email>
+      </address>
+    </author>
+    <author initials="V." surname="Vasiliev" fullname="Victor Vasiliev">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <email>vasilvv@google.com</email>
+      </address>
+    </author>
+    <date month="12" year="2020"/>
+    <area>Security</area>
+    <workgroup>TLS</workgroup>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">TLSハンドシェイクでは、送信されるバイトの大部分を証明書チェーンが占めることがよくあります。</t>
+      <t indent="0" pn="section-abstract-2">この文書では、証明書チェーンを圧縮して、送信されるデータ量を削減し、いくつかのラウンドトリップを回避する方法について説明します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8879" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2020 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-notational-conventions">表記上の規則</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-negotiating-certificate-com">証明書圧縮のネゴシエーション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compressed-certificate-mess">圧縮された証明書メッセージ</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-middlebox-compatibility">ミドルボックスとの互換性</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tls-extensiontype-values">TLS ExtensionTypeの値</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tls-handshaketype">TLS HandshakeType</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compression-algorithms">圧縮アルゴリズム</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">レイテンシーを削減し、パフォーマンスを向上させるために、TLSハンドシェイク中に交換されるデータ量を削減することが有用な場合があります。</t>
+      <t indent="0" pn="section-1-2"><xref target="RFC7924" format="default" sectionFormat="of" derivedContent="RFC7924"/>は、以前のハンドシェイクですでに共有された証明書の送信をクライアントとサーバーが省略できるようにする仕組みを説明していますが、クライアントがサーバーに初めて接続し、サーバーの証明書チェーンについてまだ知らない場合には役に立ちません。</t>
+      <t indent="0" pn="section-1-3">この文書では、すべてのハンドシェイクで証明書を圧縮できるようにする仕組みについて説明します。</t>
+    </section>
+    <section anchor="notational-conventions" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-notational-conventions">表記上の規則</name>
+      <t indent="0" pn="section-2-1">
+    この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、ここに示すようにすべて大文字で表示される場合に限り、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>で説明されているように解釈されます。
+      </t>
+    </section>
+    <section anchor="negotiating-certificate-compression" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-negotiating-certificate-com">証明書圧縮のネゴシエーション</name>
+      <t indent="0" pn="section-3-1">この拡張は、TLS 1.3 <xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>以降でのみサポートされます。TLS 1.2 <xref target="RFC5246" format="default" sectionFormat="of" derivedContent="RFC5246"/>以前がネゴシエートされた場合、ピアはこの拡張を無視<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-2">この文書では、新しい拡張の種類（compress_certificate(27)）を定義します。これは、Certificateメッセージについてサポートしている圧縮形式をピアに通知するために使用できます。クライアントがClientHelloメッセージの拡張（<xref target="RFC8446" sectionFormat="comma" section="4.1.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-4.1.2" derivedContent="RFC8446"/>）としてこれを送信した場合、圧縮されたサーバー証明書をサポートしていることを示します。サーバーがCertificateRequestの拡張（<xref target="RFC8446" sectionFormat="comma" section="4.3.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-4.3.2" derivedContent="RFC8446"/>）としてこれを送信した場合、圧縮されたクライアント証明書をサポートしていることを示します。</t>
+      <t indent="0" pn="section-3-3">compress_certificate拡張を送信することで、送信者は、展開のために使用する意思のある証明書圧縮アルゴリズムをピアに示します。この拡張の「extension_data」フィールドには、次のCertificateCompressionAlgorithmsの値を格納<bcp14>することになります（SHALL）</bcp14>。</t>
+      <sourcecode type="tls-presentation" markers="false" pn="section-3-4">
+    enum {
+        zlib(1),
+        brotli(2),
+        zstd(3),
+        (65535)
+    } CertificateCompressionAlgorithm;
+
+    struct {
+        CertificateCompressionAlgorithm algorithms&lt;2..2^8-2&gt;;
+    } CertificateCompressionAlgorithms;
+</sourcecode>
+      <t indent="0" pn="section-3-5">compress_certificate拡張は一方向の通知です。対応する応答の拡張は必要ありません。</t>
+    </section>
+    <section anchor="compressed-certificate-message" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-compressed-certificate-mess">圧縮された証明書メッセージ</name>
+      <t indent="0" pn="section-4-1">ピアが圧縮をサポートしていることを示した場合、サーバーとクライアントは、それぞれのCertificateメッセージ（<xref target="RFC8446" sectionFormat="of" section="4.4.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-4.4.2" derivedContent="RFC8446"/>）を圧縮し、（Certificateメッセージの代わりに）CompressedCertificateメッセージの形式で送信<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-4-2">CompressedCertificateメッセージは次のように構成されます。</t>
+      <sourcecode markers="false" pn="section-4-3">
+    struct {
+         CertificateCompressionAlgorithm algorithm;
+         uint24 uncompressed_length;
+         opaque compressed_certificate_message&lt;1..2^24-1&gt;;
+    } CompressedCertificate;
+</sourcecode>
+      <dl newline="false" spacing="normal" indent="3" pn="section-4-4">
+        <dt pn="section-4-4.1">algorithm:</dt>
+        <dd pn="section-4-4.2">証明書の圧縮に使用されたアルゴリズムです。このアルゴリズムは、ピアのcompress_certificate拡張に列挙されたアルゴリズムのいずれかで<bcp14>なければなりません（MUST）</bcp14>。</dd>
+        <dt pn="section-4-4.3">uncompressed_length:</dt>
+        <dd pn="section-4-4.4">
+  展開した後のCertificateメッセージの長さです。展開後に、指定された長さが実際の長さと一致しない場合、不正なメッセージを受信した側は「bad_certificate」アラートでコネクションを中止<bcp14>しなければなりません（MUST）</bcp14>。このフィールドがあることで、受信者は、展開を行う前に、展開後のCertificateメッセージのためのバッファーを事前に割り当て、メッセージサイズの制限を適用できます。</dd>
+        <dt pn="section-4-4.5">compressed_certificate_message:</dt>
+        <dd pn="section-4-4.6">
+  証明書圧縮が使用されていなければ送信されていたであろう、エンコードされたCertificateメッセージに、指定された圧縮アルゴリズムを適用した結果です。compressed_certificate_messageフィールドのバイト列をCertificateメッセージに変換する方法は、圧縮アルゴリズムが定義します。</dd>
+      </dl>
+      <t indent="0" pn="section-4-5">指定された圧縮アルゴリズムがzlibの場合、Certificateメッセージは<xref target="RFC1950" format="default" sectionFormat="of" derivedContent="RFC1950"/>で定義されたZLIB圧縮アルゴリズムで圧縮<bcp14>しなければなりません（MUST）</bcp14>。指定された圧縮アルゴリズムがbrotliの場合、Certificateメッセージは<xref target="RFC7932" format="default" sectionFormat="of" derivedContent="RFC7932"/>で定義されたBrotli圧縮アルゴリズムで圧縮<bcp14>しなければなりません（MUST）</bcp14>。指定された圧縮アルゴリズムがzstdの場合、Certificateメッセージは<xref target="RFC8478" format="default" sectionFormat="of" derivedContent="RFC8478"/>で定義されたZstandard圧縮アルゴリズムで圧縮<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-4-6">より高い圧縮率を達成するために、事前共有された辞書を使用する証明書圧縮アルゴリズムを定義することも可能です。この文書ではそのようなアルゴリズムを定義しませんが、<xref target="registry" format="default" sectionFormat="of" derivedContent="Section 7.3"/>のポリシーに従って、そのような用途のために追加のコードポイントが割り当てられる可能性があります。</t>
+      <t indent="0" pn="section-4-7">受信したCompressedCertificateメッセージを展開できない場合、「bad_certificate」アラートでコネクションを終了<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-4-8">server_certificate_type拡張またはclient_certificate_type拡張<xref target="RFC7250" format="default" sectionFormat="of" derivedContent="RFC7250"/>を使用してCertificateメッセージの形式が変更される場合は、代わりに変更後のメッセージが圧縮されます。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">展開後のCertificateメッセージは、圧縮されずにエンコードされたものとして処理<bcp14>しなければなりません（MUST）</bcp14>。こうすることで、パースと検証は、通常のTLSの場合と同じセキュリティー特性を持ちます。</t>
+      <t indent="0" pn="section-5-2">証明書圧縮が正しく機能するためには、基盤となる圧縮アルゴリズムは、ピアによって入力として与えられたものと同じデータを出力<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-5-3">証明書チェーンは通常、サーバー名ごと、またはユーザーごとに提示されるため、悪意のあるアプリケーションはCertificateメッセージ内の個々の断片を制御できません。つまり、平文を改変することによって証明書に関する情報を漏えいさせることはできません。</t>
+      <t indent="0" pn="section-5-4">実装は、CompressedCertificateメッセージを展開する際のメモリー使用量に上限を設ける<bcp14>べきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-5-5">実装は、展開の結果得られるチェーンのサイズを、指定された展開後の長さに制限<bcp14>しなければなりません（MUST）</bcp14>。また、展開関数の出力サイズがその制限を超えた場合には、コネクションを中止<bcp14>しなければなりません（MUST）</bcp14>。TLSのフレーミングでは証明書メッセージのサイズに16777216バイトの制限が課されており、実装はそれよりも低い制限を課<bcp14>してもよいです（MAY）</bcp14>。いずれの場合も、実装は圧縮が使用されていない場合と同じ制限を適用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-5-6">TLS 1.3ではCertificateメッセージは暗号化されますが、第三者はワイヤー上で観測されるメッセージ長から推測を行うことができます。TLS 1.3は、そのような分析に対抗するためのパディングの仕組みを提供しています（<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>のセクション<xref target="RFC8446" sectionFormat="bare" section="5.4" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-5.4" derivedContent="RFC8446"/>と<xref target="RFC8446" sectionFormat="bare" section="E.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#appendix-E.3" derivedContent="RFC8446"/>で論じられています）。証明書圧縮はCertificateメッセージの長さを変化させ、その長さの変化は証明書の実際の内容に依存します。Certificateメッセージを対象とするパディング方式は、その設計の中で圧縮に対処するか、圧縮を完全に無効にする必要があります。</t>
+    </section>
+    <section anchor="middlebox-compatibility" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-middlebox-compatibility">ミドルボックスとの互換性</name>
+      <t indent="0" pn="section-6-1">かなりの数のミドルボックスが、TLSハンドシェイク中に交換されるCertificateメッセージを傍受し、検証しようとすることが観測されています。これは、CompressedCertificateメッセージを理解しないミドルボックスが誤動作し、証明書圧縮を採用したコネクションを切断する可能性があることを意味します。そのため、この拡張は、ミドルボックスによる傍受を防ぐ方法で証明書メッセージが暗号化されるバージョンのTLS、つまりTLSバージョン1.3 <xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>以降でのみサポートされます。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="update-of-the-tls-extensiontype-registry" numbered="true" toc="include" removeInRFC="false" pn="section-7.1">
+        <name slugifiedName="name-tls-extensiontype-values">TLS ExtensionTypeの値</name>
+        <t indent="0" pn="section-7.1-1">IANAは、（<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>で定義された）「TLS ExtensionType Values」レジストリーに、compress_certificate(27)のエントリーを作成し、「TLS 1.3」列の値を「CH, CR」に、「Recommended」列のエントリーを「Yes」に設定しました。</t>
+      </section>
+      <section anchor="update-of-the-tls-handshaketype-registry" numbered="true" toc="include" removeInRFC="false" pn="section-7.2">
+        <name slugifiedName="name-tls-handshaketype">TLS HandshakeType</name>
+        <t indent="0" pn="section-7.2-1">IANAは、（<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>で定義された）「TLS Handshake Type」レジストリーに、compressed_certificate(25)のエントリーを作成し、「DTLS-OK」列の値を「Yes」に設定しました。</t>
+      </section>
+      <section anchor="registry" numbered="true" toc="include" removeInRFC="false" pn="section-7.3">
+        <name slugifiedName="name-compression-algorithms">圧縮アルゴリズム</name>
+        <t indent="0" pn="section-7.3-1">この文書では、Certificateメッセージの圧縮についてサポートされる圧縮アルゴリズムのレジストリーを、既存の「Transport Layer Security (TLS) Extensions」レジストリーの下に「TLS Certificate Compression Algorithm IDs」という名前で設立します。</t>
+        <t indent="0" pn="section-7.3-2">このレジストリーのエントリーは次のとおりです。</t>
+        <table align="center" pn="table-1">
+          <name slugifiedName="name-tls-certificate-compression">TLS Certificate Compression Algorithm IDs</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">アルゴリズム番号</th>
+              <th align="left" colspan="1" rowspan="1">説明</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0</td>
+              <td align="left" colspan="1" rowspan="1">予約済み</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8879</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">1</td>
+              <td align="left" colspan="1" rowspan="1">zlib</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8879</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">2</td>
+              <td align="left" colspan="1" rowspan="1">brotli</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8879</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">3</td>
+              <td align="left" colspan="1" rowspan="1">zstd</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8879</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">16384-65535</td>
+              <td align="left" colspan="1" rowspan="1">Experimental Use用に予約済み</td>
+              <td align="left" colspan="1" rowspan="1"> </td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-7.3-4">このレジストリーの値は、256未満の値については「IETF Review」ポリシーに基づいて、256-16383の値については「Specification Required」ポリシーに基づいて、それ以外については「Experimental Use」に基づいて割り当てられるものとします（関連するポリシーの定義については<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>を参照してください）。Experimental Useの拡張は、プライベートネットワークとオープンなインターネットの両方で使用できます。</t>
+        <t indent="0" pn="section-7.3-5">Specification Requiredの空間の値を要求する手順は、<xref target="RFC8447" sectionFormat="of" section="17" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8447#section-17" derivedContent="RFC8447"/>で規定されています。</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1950" target="https://www.rfc-editor.org/info/rfc1950" quoteTitle="true" derivedAnchor="RFC1950">
+          <front>
+            <title>ZLIB Compressed Data Format Specification version 3.3</title>
+            <author initials="P." surname="Deutsch" fullname="P. Deutsch">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J-L." surname="Gailly" fullname="J-L. Gailly">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="May"/>
+            <abstract>
+              <t indent="0">This specification defines a lossless compressed data format.  This memo provides information for the Internet community.  This memo does not specify an Internet standard of any kind.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="1950"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1950"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7250" target="https://www.rfc-editor.org/info/rfc7250" quoteTitle="true" derivedAnchor="RFC7250">
+          <front>
+            <title>Using Raw Public Keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)</title>
+            <author initials="P." surname="Wouters" fullname="P. Wouters" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Gilmore" fullname="J. Gilmore">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Weiler" fullname="S. Weiler">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Kivinen" fullname="T. Kivinen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="June"/>
+            <abstract>
+              <t indent="0">This document specifies a new certificate type and two TLS extensions for exchanging raw public keys in Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS).  The new certificate type allows raw public keys to be used for authentication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7250"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7250"/>
+        </reference>
+        <reference anchor="RFC7924" target="https://www.rfc-editor.org/info/rfc7924" quoteTitle="true" derivedAnchor="RFC7924">
+          <front>
+            <title>Transport Layer Security (TLS) Cached Information Extension</title>
+            <author initials="S." surname="Santesson" fullname="S. Santesson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="July"/>
+            <abstract>
+              <t indent="0">Transport Layer Security (TLS) handshakes often include fairly static information, such as the server certificate and a list of trusted certification authorities (CAs).  This information can be of considerable size, particularly if the server certificate is bundled with a complete certificate chain (i.e., the certificates of intermediate CAs up to the root CA).</t>
+              <t indent="0">This document defines an extension that allows a TLS client to inform a server of cached information, thereby enabling the server to omit already available information.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7924"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7924"/>
+        </reference>
+        <reference anchor="RFC7932" target="https://www.rfc-editor.org/info/rfc7932" quoteTitle="true" derivedAnchor="RFC7932">
+          <front>
+            <title>Brotli Compressed Data Format</title>
+            <author initials="J." surname="Alakuijala" fullname="J. Alakuijala">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Z." surname="Szabadka" fullname="Z. Szabadka">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="July"/>
+            <abstract>
+              <t indent="0">This specification defines a lossless compressed data format that compresses data using a combination of the LZ77 algorithm and Huffman coding, with efficiency comparable to the best currently available general-purpose compression methods.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7932"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7932"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Narten" fullname="T. Narten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="June"/>
+            <abstract>
+              <t indent="0">Many protocols make use of points of extensibility that use constants to identify various protocol parameters.  To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper.  For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t indent="0">To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed.  This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t indent="0">This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8446" target="https://www.rfc-editor.org/info/rfc8446" quoteTitle="true" derivedAnchor="RFC8446">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t>
+              <t indent="0">This document updates RFCs 5705 and 6066, and obsoletes RFCs 5077, 5246, and 6961.  This document also specifies new requirements for TLS 1.2 implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8446"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+        <reference anchor="RFC8447" target="https://www.rfc-editor.org/info/rfc8447" quoteTitle="true" derivedAnchor="RFC8447">
+          <front>
+            <title>IANA Registry Updates for TLS and DTLS</title>
+            <author initials="J." surname="Salowey" fullname="J. Salowey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Turner" fullname="S. Turner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t indent="0">This document describes a number of changes to TLS and DTLS IANA registries that range from adding notes to the registry all the way to changing the registration policy.  These changes were mostly motivated by WG review of the TLS- and DTLS-related registries undertaken as part of the TLS 1.3 development process.</t>
+              <t indent="0">This document updates the following RFCs: 3749, 5077, 4680, 5246, 5705, 5878, 6520, and 7301.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8447"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8447"/>
+        </reference>
+        <reference anchor="RFC8478" target="https://www.rfc-editor.org/info/rfc8478" quoteTitle="true" derivedAnchor="RFC8478">
+          <front>
+            <title>Zstandard Compression and the application/zstd Media Type</title>
+            <author initials="Y." surname="Collet" fullname="Y. Collet">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Kucherawy" fullname="M. Kucherawy" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="October"/>
+            <abstract>
+              <t indent="0">Zstandard, or "zstd" (pronounced "zee standard"), is a data compression mechanism.  This document describes the mechanism and registers a media type and content encoding to be used when transporting zstd-compressed content via Multipurpose Internet Mail Extensions (MIME).</t>
+              <t indent="0">Despite use of the word "standard" as part of its name, readers are advised that this document is not an Internet Standards Track specification; it is being published for informational purposes only.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8478"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8478"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC5246" target="https://www.rfc-editor.org/info/rfc5246" quoteTitle="true" derivedAnchor="RFC5246">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+            <author initials="T." surname="Dierks" fullname="T. Dierks">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies Version 1.2 of the Transport Layer Security (TLS) protocol.  The TLS protocol provides communications security over the Internet.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5246"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5246"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">証明書圧縮は、もともと<contact fullname="Adam Langley"/>と<contact fullname="Wan-Teh Chang"/>が設計したQUIC Cryptoプロトコルで導入されました。</t>
+      <t indent="0" pn="section-appendix.a-2">この文書は、<contact fullname="David Benjamin"/>、<contact fullname="Ryan Hamilton"/>、<contact fullname="Christian Huitema"/>、<contact fullname="Benjamin Kaduk"/>、<contact fullname="Ilari Liusvaara"/>、<contact fullname="Piotr Sikora"/>、<contact fullname="Ian Swett"/>、<contact fullname="Martin Thomson"/>、<contact fullname="Sean Turner"/>、その他多くの方々からの貢献と提案の恩恵を受けています。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="A." surname="Ghedini" fullname="Alessandro Ghedini">
+        <organization showOnFrontPage="true">Cloudflare, Inc.</organization>
+        <address>
+          <email>alessandro@cloudflare.com</email>
+        </address>
+      </author>
+      <author initials="V." surname="Vasiliev" fullname="Victor Vasiliev">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <email>vasilvv@google.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

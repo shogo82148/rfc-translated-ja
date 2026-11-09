@@ -1,0 +1,1294 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-tcpm-rack-15" indexInclude="true" ipr="trust200902" number="8985" prepTime="2021-02-20T18:13:53" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-rack-15" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8985" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="RACK">TCPのためのRACK-TLP損失検出アルゴリズム</title>
+    <seriesInfo name="RFC" value="8985" stream="IETF"/>
+    <author fullname="Yuchung Cheng" initials="Y." surname="Cheng">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>ycheng@google.com</email>
+      </address>
+    </author>
+    <author fullname="Neal Cardwell" initials="N." surname="Cardwell">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>ncardwell@google.com</email>
+      </address>
+    </author>
+    <author fullname="Nandita Dukkipati" initials="N." surname="Dukkipati">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>nanditad@google.com</email>
+      </address>
+    </author>
+    <author fullname="Priyaranjan Jha" initials="P." surname="Jha">
+      <organization showOnFrontPage="true">Google, Inc.</organization>
+      <address>
+        <email>priyarjha@google.com</email>
+      </address>
+    </author>
+    <date month="02" year="2021"/>
+    <area>Transport</area>
+    <workgroup>TCP Maintenance Working Group</workgroup>
+    <keyword>TCP</keyword>
+    <keyword>Loss Recovery</keyword>
+    <keyword>Reordering</keyword>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">
+この文書は、TCPのためのRACK-TLP損失検出アルゴリズムを提示します。RACK-TLPは、セグメントごとの送信タイムスタンプと選択的確認応答（SACK）を使用し、2つの部分から構成されます。Recent Acknowledgment（RACK）は、確認応答（ACK）のフィードバックから導かれる時間ベースの推論を用いて高速リカバリーを素早く開始します。Tail Loss Probe（TLP）は、RACKを活用し、プローブパケットを送信してACKフィードバックを誘発することで、再送タイムアウト（RTO）イベントを回避します。広く使われている重複確認応答（DupAck）しきい値方式と比べて、RACK-TLPは、アプリケーションによって制限されたデータのフライト、再送の損失、データパケットの順序入れ替わりイベントがある場合に、より効率的に損失を検出します。RACK-TLPは、DupAckしきい値方式の代替となることを意図しています。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t indent="0" pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8985" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">
+            Copyright (c) 2021 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t indent="0" pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-background">背景</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-motivation">動機</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rack-tlp-high-level-design">RACK-TLPの高レベル設計</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rack-time-based-loss-infere">RACK：ACKからの時間ベースの損失推論</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tlp-sending-one-segment-to-">TLP：RACKで損失を素早くプローブするために1つのセグメントを送信する</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rack-tlp-reordering-resilie">RACK-TLP：時間しきい値による並べ替えへの耐性</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.3.2">
+                  <li pn="section-toc.1-1.3.2.3.2.1">
+                    <t indent="0" pn="section-toc.1-1.3.2.3.2.1.1"><xref derivedContent="3.3.1" format="counter" sectionFormat="of" target="section-3.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reordering-design-rationale">並べ替えに関する設計の根拠</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.3.2.2">
+                    <t indent="0" pn="section-toc.1-1.3.2.3.2.2.1"><xref derivedContent="3.3.2" format="counter" sectionFormat="of" target="section-3.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reordering-window-adaptatio">並べ替えウィンドウの適応</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-example-of-rack-tlp-in-a">RACK-TLPの動作例：高速回復</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.5">
+                <t indent="0" pn="section-toc.1-1.3.2.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-example-of-rack-tlp-in-ac">RACK-TLPの動作例：RTO</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.6">
+                <t indent="0" pn="section-toc.1-1.3.2.6.1"><xref derivedContent="3.6" format="counter" sectionFormat="of" target="section-3.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-summary">設計のまとめ</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements">要件</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-definitions">定義</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terms">用語</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-segment-variables">セグメントごとの変数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-connection-variables">コネクションごとの変数</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-connection-timers">コネクションごとのタイマー</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rack-algorithm-details">RACKアルゴリズムの詳細</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-upon-transmitting-a-data-se">データセグメントの送信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-upon-receiving-an-ack">ACKの受信時</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.3">
+                <t indent="0" pn="section-toc.1-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-upon-rto-expiration">RTOの満了時</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tlp-algorithm-details">TLPアルゴリズムの詳細</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-initializing-state">状態の初期化</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-scheduling-a-loss-probe">損失プローブのスケジューリング</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.3">
+                <t indent="0" pn="section-toc.1-1.7.2.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sending-a-loss-probe-upon-p">PTOの満了時の損失プローブの送信</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.4">
+                <t indent="0" pn="section-toc.1-1.7.2.4.1"><xref derivedContent="7.4" format="counter" sectionFormat="of" target="section-7.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-detecting-losses-using-the-">損失プローブのACKを使用した損失の検出</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2.4.2">
+                  <li pn="section-toc.1-1.7.2.4.2.1">
+                    <t indent="0" pn="section-toc.1-1.7.2.4.2.1.1"><xref derivedContent="7.4.1" format="counter" sectionFormat="of" target="section-7.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-general-case-detecting-pack">一般的なケース：RACKを使用したパケット損失の検出</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.7.2.4.2.2">
+                    <t indent="0" pn="section-toc.1-1.7.2.4.2.2.1"><xref derivedContent="7.4.2" format="counter" sectionFormat="of" target="section-7.4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-special-case-detecting-a-si">特殊なケース：損失プローブによって修復された単一の損失の検出</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-managing-rack-tlp-timers">RACK-TLPのタイマーの管理</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discussion">議論</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-advantages-and-disadvantage">利点と欠点</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-relationships-with-other-lo">他の損失回復アルゴリズムとの関係</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.3">
+                <t indent="0" pn="section-toc.1-1.9.2.3.1"><xref derivedContent="9.3" format="counter" sectionFormat="of" target="section-9.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-interaction-with-congestion">輻輳制御との相互作用</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.4">
+                <t indent="0" pn="section-toc.1-1.9.2.4.1"><xref derivedContent="9.4" format="counter" sectionFormat="of" target="section-9.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tlp-recovery-detection-with">遅延ACKがある場合のTLP回復検出</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.5">
+                <t indent="0" pn="section-toc.1-1.9.2.5.1"><xref derivedContent="9.5" format="counter" sectionFormat="of" target="section-9.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rack-tlp-for-other-transpor">他のトランスポートプロトコルのためのRACK-TLP</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.12.2">
+              <li pn="section-toc.1-1.12.2.1">
+                <t indent="0" pn="section-toc.1-1.12.2.1.1"><xref derivedContent="12.1" format="counter" sectionFormat="of" target="section-12.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.12.2.2">
+                <t indent="0" pn="section-toc.1-1.12.2.2.1"><xref derivedContent="12.2" format="counter" sectionFormat="of" target="section-12.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">この文書は、TCPの損失検出アルゴリズムであるRACK-TLPを提示します。RACK-TLPは、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>と<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>で説明され、広く実装されている重複確認応答（DupAck）カウント方式を改良したものであり、その従来の方式の代替として<bcp14>推奨されます（RECOMMENDED）</bcp14>。RACK-TLPは2つの部分から構成されます。Recent Acknowledgment（RACK）は、ACKフィードバックから導かれる時間ベースの推論を用いて、損失を素早く検出します。Tail Loss Probe（TLP）は、プローブセグメントを素早く送信してACKフィードバックを誘発することで、再送タイムアウト（RTO）イベントを回避します。</t>
+      <section anchor="background" numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-background">背景</name>
+        <t indent="0" pn="section-1.1-1">従来のTCPの損失回復アルゴリズム<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>では、受信したDupAckの数がしきい値（DupThresh、デフォルトは3）に達すると、送信者は高速回復を開始します（この文書の以降の部分では、この方式を「DupAckカウント」と呼びます）。送信者は、回復中に輻輳ウィンドウを半分にもします。ウィンドウを部分的に縮小する根拠は、ACKクロッキングがまだ維持されているので、輻輳は深刻ではないと考えられることです。たとえば、送信者がSACKベースの回復<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>を使用し、失われたセグメントの数が少ない場合、高速回復にかかる時間はわずか1往復で済むことがあります。</t>
+        <t indent="0" pn="section-1.1-2">高速回復が開始されない場合や、開始されてもすべての損失を修復できなかった場合、送信者はRTO回復に頼ります。RTOタイマーの間隔は、保守的に、平滑化RTT（SRTT）にRTT変動の4倍を加えたものであり、下限は1秒です<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>。RTOタイマーが満了すると、送信者は最初の未確認応答のセグメントを再送し、輻輳ウィンドウを損失ウィンドウの値（デフォルトでは、フルサイズのセグメント1つ<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>）にリセットします。輻輳ウィンドウをリセットする根拠は、データのフライト全体とACKクロックが失われたので、慎重な対応に値するということです。その後、送信者はスロースタートアルゴリズム<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>に従って残りのデータを再送します。RTO回復にかかる時間は、1回のRTO間隔に、すべての損失を修復するのに必要な往復の回数を加えたものになります。</t>
+      </section>
+      <section anchor="motivation" numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-motivation">動機</name>
+        <t indent="0" pn="section-1.2-1">高速回復は、輻輳ウィンドウをわずかに縮小するだけで、1往復の時間スケールですべての損失を回復できる可能性があるため、望ましい損失回復の形態です。RTO回復と輻輳ウィンドウのリセットは、理想的には最後の手段であるべきであり、理想的にはフライト全体が失われた場合にのみ使用されるべきです。しかし、従来のTCPの損失回復アルゴリズム<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>では、データのフライト全体が失われた場合に加えて、次の状況でも不必要にRTO回復に頼ることがあります。
+        </t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-1.2-2"><li pn="section-1.2-2.1" derivedCounter="1.">短いフローや、アプリケーションデータのフライトの末尾でのパケット破棄。送信者がアプリケーションによって制限されている場合（たとえば、構造化されたリクエスト／レスポンスのトラフィック）、アプリケーションデータ転送の末尾で失われたセグメントは、多くの場合RTOによってしか回復できません。100セグメントのフライトのうち最後のセグメントだけが失われた例を考えてみてください。DupAckがまったくないため、送信者のRTOが満了し、輻輳ウィンドウを1に縮小し、損失の修復が確認応答された後に輻輳ウィンドウを2に増やすだけです。対照的に、1番目から97番目のセグメントの間で単一のセグメント損失が発生した場合は、高速回復となり、ウィンドウは半分に削減されるだけです。
+ </li>
+          <li pn="section-1.2-2.2" derivedCounter="2.">再送の損失。激しい輻輳やトラフィックポリサーにより、再送が失われることがあります。DupAckカウントは再送の損失を検出しないため、再送が失われるとRTO回復に頼ることになります。そして、RTO回復後のスロースタートにより再びバースト損失が発生し、性能が大幅に低下する可能性があります<xref target="POLICER16" format="default" sectionFormat="of" derivedContent="POLICER16"/>。
+ </li>
+          <li pn="section-1.2-2.3" derivedCounter="3.">パケットの並べ替え。この文書では、「並べ替え（reordering）」とは、セグメントが送信された時間順とは異なる時間順でTCP受信者に配送される事象を指します。リンク層プロトコル（たとえば、802.11ブロックACK）、リンクボンディング、ルーター内部の負荷分散（たとえば、ECMP）は、TCPセグメントを順不同で配送することがあります。このような並べ替えの程度は、通常、経路の往復時間のオーダー以内です。
+
+ 並べ替えの程度がDupThreshを超えると、DupAckカウントは偽の高速回復と不要な輻輳ウィンドウの縮小を引き起こす可能性があります。この問題を緩和するため、TCPのNon-Congestion Robustness（NCR）<xref target="RFC4653" format="default" sectionFormat="of" derivedContent="RFC4653"/>は、DupThreshを現在の固定値である3つの重複ACK<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>から、ネットワークを離れたデータがおよそ輻輳ウィンドウ分になるまで増やします。</li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="terminology" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">
+キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+    </section>
+    <section anchor="rack-tlp-high-level-design" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-rack-tlp-high-level-design">RACK-TLPの高レベル設計</name>
+      <t indent="0" pn="section-3-1">RACK-TLPにより、送信者は<xref target="motivation" format="none" sectionFormat="of" derivedContent="">前の</xref>セクションで説明した3つのシナリオすべてにおいて、より効果的に損失を回復できます。RACK-TLPの背後には2つの設計原則があります。1つ目の原則は、往復の時間スケールで損失を修復するために、可能な限りACKイベントを通じて損失を検出することです。2つ目の原則は、RTOの満了とそれに続く輻輳ウィンドウのリセットを回避するために、ネットワークを穏やかにプローブして追加のACKフィードバックを求めることです。高レベルでは、この2つの原則はそれぞれRACKとTLPで実装されます。</t>
+      <section anchor="rack-time-based-loss-inferences-from-acks" numbered="true" toc="include" removeInRFC="false" pn="section-3.1">
+        <name slugifiedName="name-rack-time-based-loss-infere">RACK：ACKからの時間ベースの損失推論</name>
+        <t indent="0" pn="section-3.1-1">
+ RACKの根拠は、あるセグメントが順不同で配送された場合、それより時間的に前に送信されたセグメントは、失われたか並べ替えられたかのどちらかであるということです。この概念は、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>、<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>で説明されているものと根本的には違いません。RACKの重要な革新は、ACKやSACKされたシーケンスを数えて損失を推論する代わりに、セグメントごとの送信タイムスタンプと広く展開されているSACK<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/>オプションを用いて、時間ベースの推論を行うことです。時間ベースの推論は、フライトサイズに依存しないため、DupAckカウント方式よりも堅牢であり、したがってアプリケーション制限されたトラフィックに対して効果的です。
+        </t>
+        <t indent="0" pn="section-3.1-2">概念的には、RACKは送信したすべてのデータセグメント（再送を含む）に対して仮想タイマーを保持します。各タイマーは、最新のRTT測定値に、起こりうるパケットの並べ替えに対応するための追加の遅延の余裕（「並べ替えウィンドウ（reordering window）」と呼びます）を加えたものに基づいて、動的に満了します。あるセグメントのタイマーが満了すると、RACKは対応するセグメントを再送のために失われたものとしてマークします。</t>
+        <t indent="0" pn="section-3.1-3">実際には、アルゴリズムとしてのRACKは、必要がないため、送信したすべてのセグメントに対してタイマーを設定するわけではありません。その代わりに、送信者は、再送を含め、送信したすべてのデータセグメントの最新の送信時刻を記録します。ACKを受信するたびに、送信者は（適格であれば）最新のRTT測定値を計算し、送信済みでまだ配送されていないすべてのセグメントの満了時刻を調整します。あるセグメントが満了していれば、RACKはそれを失われたものとしてマークします。
+        </t>
+        <t indent="0" pn="section-3.1-4">RACKの時間ベースのロジックは再送と元の送信に等しく適用されるため、
+ 失われた再送も検出できます。あるセグメントが再送されたものの、その最新の（再）送信タイムスタンプが満了している場合、並べ替えウィンドウの後に、そのセグメントは失われたものとしてマークされます。</t>
+      </section>
+      <section anchor="tlp-sending-one-segment-to-probe-losses-quickly-with-rack" numbered="true" toc="include" removeInRFC="false" pn="section-3.2">
+        <name slugifiedName="name-tlp-sending-one-segment-to-">TLP：RACKで損失を素早くプローブするために1つのセグメントを送信する</name>
+        <t indent="0" pn="section-3.2-1">RACKはACKフィードバックから損失を推論しますが、場合によってはACKがまばらになることがあります。特に、インフライトが小さい場合や損失が多い場合です。厄介なケースとして、フライトの最後のいくつかのセグメントが失われることがあります。<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>や<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>で説明されている動作では、実際にはフライトの大部分が配送されているにもかかわらず、送信者のRTOが満了して輻輳ウィンドウがリセットされてしまいます。</t>
+        <t indent="0" pn="section-3.2-2">大きな輻輳ウィンドウを持つ送信者が、アプリケーションの書き込みの後に100個の新しいデータセグメントを送信し、最後の3つのセグメントだけが失われた例を考えてみてください。RACK-TLPがない場合、RTOが満了し、送信者は最初の未確認応答のセグメントを再送し、輻輳ウィンドウは1からスロースタートします。すべての再送が確認応答された後、輻輳ウィンドウは4に増加します。このアプリケーション転送の合計配送時間は3 RTTと1 RTOであり、フライトのごく一部しか失われていないことを考えると、大きなコストです。代わりに、損失がフライト内で3セグメント早く発生していたなら、高速回復が1往復以内にすべての損失を回復し、輻輳ウィンドウのリセットを回避できていたでしょう。
+        </t>
+        <t indent="0" pn="section-3.2-3">このようなシナリオでは高速回復が望ましいでしょう。TLPは、それを可能にするためにRACKが必要とするフィードバックを誘発するように設計されています。最後の（100番目の）セグメントが最初に送信された後、TLPは2往復の時間で、次に利用可能な（新しい）セグメントを送信するか、最後の（シーケンスが最大の）セグメントを再送して、ネットワークをプローブします。これが「Tail Loss Probe」という名前の由来です。プローブの配送が成功すると、ACKが返されます。RACKはこのACKを使用して、98番目と99番目のセグメントが失われたことを検出し、高速回復を開始し、両方を再送して成功させます。合計の回復時間は4 RTTであり、輻輳ウィンドウは完全にリセットされるのではなく、部分的に縮小されるだけです。プローブも失われた場合、送信者はRTO回復を発動し、輻輳ウィンドウをリセットします。</t>
+      </section>
+      <section anchor="rack-tlp-reordering-resilience-with-a-time-threshold" numbered="true" toc="include" removeInRFC="false" pn="section-3.3">
+        <name slugifiedName="name-rack-tlp-reordering-resilie">RACK-TLP：時間しきい値による並べ替えへの耐性</name>
+        <section anchor="reordering-design-rationale" numbered="true" toc="include" removeInRFC="false" pn="section-3.3.1">
+          <name slugifiedName="name-reordering-design-rationale">並べ替えに関する設計の根拠</name>
+          <t indent="0" pn="section-3.3.1-1">SACKされたセグメントを示すACKを受信したとき、送信者は、それが並べ替えの結果なのか損失の結果なのかをすぐには判断できません。欠落しているシーケンス範囲が後で再送なしに埋められた場合に、後から振り返って両者を区別できるだけです。したがって、損失検出アルゴリズムは、パケットの並べ替えとパケット損失を区別しようとするために、ある程度の待ち時間（並べ替えウィンドウ）を見込んでおく必要があります。
+          </t>
+          <t indent="0" pn="section-3.3.1-2">DupAckカウント方式における並べ替えウィンドウは、DupThresh個のSACKされたセグメントまたは重複確認応答を受信するまでの経過時間として暗黙的に定義されます。この方式は、ネットワークの並べ替えの程度（シーケンス距離で表したもの）がDupThreshより小さく、かつ損失の後に少なくともDupThresh個のセグメントが確認応答される場合に効果的です。並べ替えの程度がデフォルトのDupThreshである3パケットより大きい場合、1つの代替案は、FlightSizeに基づいてDupThreshを動的に適応させることです（たとえば、送信者がDupThreshをFlightSizeの半分に調整する）。しかし、これは次の2種類の並べ替えではうまく機能しません。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.3.1-3"><li pn="section-3.3.1-3.1" derivedCounter="1.">アプリケーション制限されたフライトで、最後のフルサイズでないセグメントが最初に配送され、その後フライト内の残りのフルサイズのセグメントが順番どおりに配送される場合。この並べ替えのパターンは、セグメントが並列の転送経路を通過する場合に発生することがあります。このようなシナリオでは、パケット距離で表した並べ替えの程度は、フライトサイズより1セグメント少なくなります。
+ </li>
+            <li pn="section-3.3.1-3.2" derivedCounter="2.">部分的に順不同で配送されるセグメントのフライト。このパターンの原因の1つは、受信者における並べ替えバッファーが不十分な状態での、無線リンク層の再送です。このようなシナリオでは、無線の送信者は最初はデータパケットを順番どおりに送信しますが、一部が失われてリンク層の再送によって回復されます。無線の受信者は、並べ替えバッファーが不十分なため、TCPデータパケットを受信した順に配送します。このようなシナリオでのランダムな無線伝送エラーにより、パケット距離で表した並べ替えの程度は、フライトサイズまでの大きく変動する値をとります。</li>
+          </ol>
+          <t indent="0" pn="section-3.3.1-4">上記の2つのケースでは、パケット距離で表した並べ替えの程度は大きく変動します。そのため、<xref target="RFC4653" format="default" sectionFormat="of" derivedContent="RFC4653"/>のような動的適応の変種を含め、DupAckカウント方式は効果がありません。一方、このようなケースでの時間差で表した並べ替えの程度は、通常、1往復時間以内に収まります。
+これは、パケットが同程度の伝搬遅延を持つ互いに素な経路を通過するか、ローカルのアクセス技術によって素早く修復されるためです。したがって、パケットしきい値の代わりに時間しきい値を使用することは、高速回復を可能にしつつ、一定の範囲で並べ替えへの耐性を持たせるという中間点を実現します。これが、RACK-TLPの並べ替え耐性の設計の根拠です。</t>
+          <t indent="0" pn="section-3.3.1-5">具体的には、RACK-TLPは時間単位の新しい動的な並べ替えウィンドウのパラメーターを導入し、送信者は次の両方の条件が満たされた場合にデータセグメントSが失われたとみなします。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.3.1-6"><li pn="section-3.3.1-6.1" derivedCounter="1.">Sより後に送信された別のデータセグメントが配送されている。</li>
+            <li pn="section-3.3.1-6.2" derivedCounter="2.">推定往復時間に並べ替えウィンドウを加えた時間が経過した後も、Sが配送されていない。</li>
+          </ol>
+          <t indent="0" pn="section-3.3.1-7">
+ 条件（1）は、Sが送信されてから少なくとも1往復の時間が経過したことを意味することに注意してください。</t>
+        </section>
+        <section anchor="reordering-window-adaptation" numbered="true" toc="include" removeInRFC="false" pn="section-3.3.2">
+          <name slugifiedName="name-reordering-window-adaptatio">並べ替えウィンドウの適応</name>
+          <t indent="0" pn="section-3.3.2-1">RACKの並べ替えウィンドウは、過度な並べ替えを抑止するために、妥当かつ明確な範囲内で、測定された並べ替えイベントの継続時間に適応します。より具体的には、送信者は次のように並べ替えウィンドウを設定します。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.3.2-2"><li anchor="rule1" pn="section-3.3.2-2.1" derivedCounter="1.">これまでコネクションで並べ替えが観測されておらず、かつ（a）最後の回復以降に3つのセグメントがSACKされたか、（b）送信者がすでに高速回復またはRTO回復の状態にある場合、並べ替えウィンドウはゼロに設定される<bcp14>べきです（SHOULD）</bcp14>。それ以外の場合、並べ替えウィンドウは往復時間の小さな割合から開始する<bcp14>べきです（SHOULD）</bcp14>。往復時間の推定値が利用できない場合はゼロから開始します。
+ </li>
+            <li anchor="rule2" pn="section-3.3.2-2.2" derivedCounter="2.">送信者が重複選択的確認応答（DSACK）オプション<xref target="RFC2883" format="default" sectionFormat="of" derivedContent="RFC2883"/>を受信した場合、RACKの並べ替えウィンドウは（後述の<xref target="step4" format="none" sectionFormat="of" derivedContent="">「ステップ4：RACKの並べ替えウィンドウを更新する」</xref>の<xref target="step4alg" format="none" sectionFormat="of" derivedContent="">アルゴリズム</xref>を使用して）適応的に増加する<bcp14>べきです（SHOULD）</bcp14>。DSACKを受信したことは、送信者が偽の再送を行ったことを示唆しており、それは並べ替えウィンドウが小さすぎたことが原因である可能性があります。</li>
+            <li anchor="rule3" pn="section-3.3.2-2.3" derivedCounter="3.">RACKの並べ替えウィンドウには上限を設け<bcp14>なければなりません（MUST）</bcp14>。この上限はSRTTである<bcp14>べきです（SHOULD）</bcp14>。</li>
+          </ol>
+          <t indent="0" pn="section-3.3.2-3">ルール<xref target="rule2" format="none" sectionFormat="of" derivedContent="">2</xref>と<xref target="rule3" format="none" sectionFormat="of" derivedContent="">3</xref>は、前述した長引くリンク層の損失回復のエピソードなどの動的な要因によって引き起こされる並べ替えに適応するために必要です。並べ替えウィンドウを1回増加させるごとに、送信者がDSACKを受信する新しい往復が必要です。したがって、並べ替えの程度によっては、完全に適応するまでに複数の往復を要する場合があります。</t>
+          <t indent="0" pn="section-3.3.2-4">短いフローでは、初期の並べ替えウィンドウが小さいことは、偽の再送のリスクを伴いつつも、損失を素早く回復するのに役立ちます。その根拠は、短いフローでの偽の再送は、過度な追加のネットワークトラフィックを生み出さないと予想されることです。長いフローでは、この設計は1往復以内の並べ替えを許容します。これは、小さな時間スケールでの並べ替え（最短経路の往復時間内での並べ替え）に対処します。</t>
+          <t indent="0" pn="section-3.3.2-5">しかし、初期の並べ替えウィンドウが小さく、並べ替えウィンドウの適応的な増加に上限があるということは、並べ替えには引き続きコストがかかり、それが過度な並べ替えを抑止することを意味します。</t>
+        </section>
+      </section>
+      <section anchor="an-example-of-rack-tlp-in-action-fast-recovery" numbered="true" toc="include" removeInRFC="false" pn="section-3.4">
+        <name slugifiedName="name-an-example-of-rack-tlp-in-a">RACK-TLPの動作例：高速回復</name>
+        <t indent="0" pn="section-3.4-1"><xref target="fig1" format="default" sectionFormat="of" derivedContent="Figure 1"/>の次の例は、RACK-TLPアルゴリズムの動作を示しています。</t>
+        <figure anchor="fig1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-rack-tlp-protocol-example">RACK-TLPプロトコルの例</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.4-2.1">
+ Event  TCP DATA SENDER                            TCP DATA RECEIVER
+ _____  ____________________________________________________________
+   1.   Send P0, P1, P2, P3          --&gt;
+	[P1, P2, P3 dropped by network]
+
+   2.                                &lt;--          Receive P0, ACK P0
+
+   3a.  2RTTs after (2), TLP timer fires
+   3b.  TLP: retransmits P3          --&gt;
+
+   4.                                &lt;--         Receive P3, SACK P3
+
+   5a.  Receive SACK for P3
+   5b.  RACK: marks P1, P2 lost
+   5c.  Retransmit P1, P2            --&gt;
+	[P1 retransmission dropped by network]
+
+   6.                                &lt;--    Receive P2, SACK P2 &amp; P3
+
+   7a.  RACK: marks P1 retransmission lost
+   7b.  Retransmit P1                --&gt;
+
+   8.                                &lt;--          Receive P1, ACK P3
+ </artwork>
+        </figure>
+        <t anchor="fig1desc" indent="0" pn="section-3.4-3"><xref target="fig1" format="default" sectionFormat="of" derivedContent="Figure 1"/>は、送信者が4つのセグメント（P0、P1、P2、P3）を送信し、最後の3つのセグメントが失われる様子を示しています。2往復の後、TLPは損失プローブを送信し、最後のセグメントP3を再送して、SACKフィードバックを求め、ACKクロックを回復させます（イベント3）。P3が配送されたことにより、RACKは、P1とP2はP3より前に送信されたため、おそらく失われたと推論できます（イベント5b）。そして送信者はP1とP2を再送します。残念ながら、P1の再送は再び失われます。しかし、P2の再送が配送されたことにより、RACKはP1の再送がおそらく失われたと推論できます（イベント7a）。したがって、P1は再送されるべきです（イベント7b）。<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>は、連続する2つのデータウィンドウでの損失や再送の損失は輻輳の2つの兆候として扱わなければならず、その結果、2つの別個の輻輳制御の反応となるという原則を義務付けていることに注意してください。</t>
+      </section>
+      <section anchor="an-example-of-rack-tlp-in-action-rto" numbered="true" toc="include" removeInRFC="false" pn="section-3.5">
+        <name slugifiedName="name-an-example-of-rack-tlp-in-ac">RACK-TLPの動作例：RTO</name>
+        <t indent="0" pn="section-3.5-1">RACKは、高速回復を強化するだけでなく、偽の再送を減らすことでRTO回復の精度も向上させます。</t>
+        <t indent="0" pn="section-3.5-2">RACKがない場合、RTOタイマーが満了すると、送信者は未確認応答のセグメントをすべて失われたものとしてマークします。この方式は偽の再送につながる可能性があります。たとえば、1つのセグメントが1秒のRTOで送信され、その後アプリケーションがさらにデータを書き込み、最初のセグメントのRTOが満了する直前に2番目と3番目のセグメントが送信される単純なケースを考えてみてください。どのセグメントも失われなかったとします。RACKがない場合、偽のRTOが発生すると、送信者は3つのセグメントすべてを失われたものとしてマークし、最初のセグメントを再送します。最初のセグメントの元のコピーに対するACKが偽のRTO再送の直後に到着した場合、送信者は2番目と3番目のセグメントが失われたと（誤って）推定しているため、スロースタートを続行し、それらを不必要に再送します。</t>
+        <t indent="0" pn="section-3.5-3">RACKがある場合、RTOタイマーが満了したときに自動的に失われたものとしてマークされるセグメントは、（1 RTO前に送信されたため）最初のセグメントだけです。他のすべてのセグメントについては、RACKは、そのセグメントが送信されてから少なくとも1往復が経過した場合にのみ、そのセグメントを失われたものとしてマークします。前の例のシナリオを、今度はRACKありで考えてみてください。RACKがある場合、RTOが満了すると、送信者は最初のセグメントだけを失われたものとしてマークし、そのセグメントを再送します。ごく最近送信された他の2つのセグメントは、送信されてから1往復未満であり、失われたことを示すACKもないため、失われたものとしてマークされません。RTO再送に対するACKを受信すると、RACKの送信者は2番目や3番目のセグメントをまだ再送せず、RTOタイマーを再設定し、新しいRTO間隔が経過するのを待ってから、2番目や3番目のセグメントを失われたものとしてマークします。</t>
+      </section>
+      <section anchor="design-summary" numbered="true" toc="include" removeInRFC="false" pn="section-3.6">
+        <name slugifiedName="name-design-summary">設計のまとめ</name>
+        <t indent="0" pn="section-3.6-1">まとめると、RACK-TLPは、時間とともに変化する小さな程度の並べ替えに適応し、ほとんどの損失を1〜2往復以内に素早く回復し、コストのかかるRTO回復を回避することを目指しています。並べ替えがある場合、適応アルゴリズムは、損失と並べ替えを区別するために待機する際に、ときには不要な遅延を課すことがあります。しかし、待機によるペナルティーは1往復に制限され、そのような遅延は並べ替えを観測するのに十分な長さのフローに限定されます。</t>
+      </section>
+    </section>
+    <section anchor="requirements" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-requirements">要件</name>
+      <t indent="0" pn="section-4-1">読者は、TCPの輻輳制御<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、選択的確認応答<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/>、損失回復<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>の各RFCで示されている定義に精通していることが期待されます。RACK-TLPには次の要件があります。
+      </t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4-2"><li pn="section-4-2.1" derivedCounter="1.">コネクションは選択的確認応答（SACK）オプション<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/>を使用し<bcp14>なければなりません（MUST）</bcp14>。また、送信者はコネクションごとにSACKスコアボードの情報を保持し<bcp14>なければなりません（MUST）</bcp14>（ここでの「SACKスコアボード」は、<xref target="RFC6675" sectionFormat="comma" section="3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc6675#section-3" derivedContent="RFC6675"/>と同じ意味です）。</li>
+        <li pn="section-4-2.2" derivedCounter="2.">送信者は、送信した各データセグメントについて、その最新の送信時刻を、粒度がコネクションの最小RTTの1/4より細かいタイムスタンプで保存し<bcp14>なければなりません（MUST）</bcp14>。執筆時点では、データセンター内のトラフィックにはマイクロ秒の分解能が適しており、インターネットにはミリ秒以下の粒度が適しています。
+
+ RACK-TLPは、TSOアグリゲート内の複数のセグメントに同じタイムスタンプを共有させることで、TSO（TCPセグメンテーションオフロード）をサポートした形で実装できることに注意してください。</li>
+        <li pn="section-4-2.3" derivedCounter="3.">RACKのDSACKベースの並べ替えウィンドウの適応は<bcp14>推奨されます（RECOMMENDED）</bcp14>が、必須ではありません。
+ </li>
+        <li pn="section-4-2.4" derivedCounter="4.">TLPにはRACKが必要です。</li>
+      </ol>
+    </section>
+    <section anchor="definitions" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-definitions">定義</name>
+      <t indent="0" pn="section-5-1">読者は、<xref target="RFC0793" format="default" sectionFormat="of" derivedContent="RFC793"/>の変数SND.UNA、SND.NXT、SEG.ACK、SEG.SEQ、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>の送信者最大セグメントサイズ（SMSS）とFlightSize、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>のDupThresh、<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>のRTOとSRTTに精通していることが期待されます。RACK-TLPの実装は、いくつかの新しい用語を使用し、以下で説明するセグメントごととコネクションごとの新しい状態を保存する必要があります。</t>
+      <section anchor="terms" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-terms">用語</name>
+        <t indent="0" pn="section-5.1-1">以下の用語は、後述の変数とアルゴリズムを説明するために使用されます。
+        </t>
+        <dl newline="true" indent="3" spacing="normal" pn="section-5.1-2">
+          <dt pn="section-5.1-2.1">RACK.segment</dt>
+          <dd pn="section-5.1-2.2">選択的または累積的に確認応答されたすべてのセグメントのうち、（再送を含めて）最も最近に送信されたセグメントを「RACK.segment」という用語で表します。</dd>
+          <dt pn="section-5.1-2.3">RACK.ack_ts</dt>
+          <dd pn="section-5.1-2.4">RACK.segmentのシーケンス範囲全体が選択的または累積的に確認応答された時刻を表します。</dd>
+        </dl>
+      </section>
+      <section anchor="per-segment-variables" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-per-segment-variables">セグメントごとの変数</name>
+        <t indent="0" pn="section-5.2-1">これらの変数は、データセグメントの最新の送信の状態を示します。</t>
+        <dl newline="true" indent="3" spacing="normal" pn="section-5.2-2">
+          <dt pn="section-5.2-2.1">Segment.lost</dt>
+          <dd pn="section-5.2-2.2">セグメントの最新の（再）送信が失われたものとしてマークされ、再送する必要がある場合は真です。それ以外の場合は偽です。</dd>
+          <dt pn="section-5.2-2.3">Segment.retransmitted</dt>
+          <dd pn="section-5.2-2.4">セグメントが一度でも再送されたことがある場合は真です。それ以外の場合は偽です。
+ </dd>
+          <dt pn="section-5.2-2.5">Segment.xmit_ts</dt>
+          <dd pn="section-5.2-2.6">データセグメントの最後の送信（再送があればそれを含む）の時刻であり、<xref target="requirements" format="none" sectionFormat="of" derivedContent="">「要件」</xref>セクションで規定したクロック粒度を持ちます。最大値INFINITE_TSは無効なタイムスタンプを示し、そのセグメントが現在フライト中ではないことを表します。</dd>
+          <dt pn="section-5.2-2.7">Segment.end_seq</dt>
+          <dd pn="section-5.2-2.8">データセグメントの最後のシーケンス番号の次のシーケンス番号です。</dd>
+        </dl>
+      </section>
+      <section anchor="per-connection-variables" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-per-connection-variables">コネクションごとの変数</name>
+        <dl newline="true" indent="3" spacing="normal" pn="section-5.3-1">
+          <dt pn="section-5.3-1.1">RACK.xmit_ts</dt>
+          <dd pn="section-5.3-1.2">RACK.segmentの最新の送信タイムスタンプです。
+ </dd>
+          <dt pn="section-5.3-1.3">RACK.end_seq</dt>
+          <dd pn="section-5.3-1.4">RACK.segmentのSegment.end_seqです。</dd>
+          <dt pn="section-5.3-1.5">RACK.segs_sacked</dt>
+          <dd pn="section-5.3-1.6">SACKスコアボード内で選択的に確認応答されたセグメントの総数を返します。
+ </dd>
+          <dt pn="section-5.3-1.7">RACK.fack</dt>
+          <dd pn="section-5.3-1.8">選択的または累積的に確認応答された最大のシーケンス（つまり、フォワード確認応答）です。</dd>
+          <dt pn="section-5.3-1.9">RACK.min_RTT</dt>
+          <dd pn="section-5.3-1.10">コネクションの推定最小往復時間（RTT）です。</dd>
+          <dt pn="section-5.3-1.11">RACK.rtt</dt>
+          <dd pn="section-5.3-1.12">コネクション上で最も最近に配送された（累積的または選択的に確認応答された）セグメントのうち、偽の再送の可能性があるとして無効とマークされていないもののRTTです。
+ </dd>
+          <dt pn="section-5.3-1.13">RACK.reordering_seen</dt>
+          <dd pn="section-5.3-1.14">送信者がデータセグメントの並べ替えイベントを検出したかどうかを示します。</dd>
+          <dt pn="section-5.3-1.15">RACK.reo_wnd</dt>
+          <dd pn="section-5.3-1.16">セグメントの送信時刻の記録に使用する時間の単位で計算される並べ替えウィンドウです。RACKがセグメントを失われたものとしてマークする時点を遅らせるために使用されます。</dd>
+          <dt pn="section-5.3-1.17">RACK.dsack_round</dt>
+          <dd pn="section-5.3-1.18">最新の往復でDSACKオプションを受信したかどうかを示します。</dd>
+          <dt pn="section-5.3-1.19">RACK.reo_wnd_mult</dt>
+          <dd pn="section-5.3-1.20">RACK.reo_wndを調整するために適用される乗数です。</dd>
+          <dt pn="section-5.3-1.21">RACK.reo_wnd_persist</dt>
+          <dd pn="section-5.3-1.22">RACK.reo_wndをリセットするまでの損失回復の回数です。</dd>
+          <dt pn="section-5.3-1.23">
+         TLP.is_retrans</dt>
+          <dd pn="section-5.3-1.24">未確認応答のTLP再送があるかどうかを示す真偽値です。</dd>
+          <dt pn="section-5.3-1.25">TLP.end_seq</dt>
+          <dd pn="section-5.3-1.26">TLPプローブを送信した時点のSND.NXTの値です。</dd>
+          <dt pn="section-5.3-1.27">
+        TLP.max_ack_delay:</dt>
+          <dd pn="section-5.3-1.28">遅延ACKの最大間隔として送信者が見込む値です。</dd>
+        </dl>
+      </section>
+      <section anchor="per-connection-timers" numbered="true" toc="include" removeInRFC="false" pn="section-5.4">
+        <name slugifiedName="name-per-connection-timers">コネクションごとのタイマー</name>
+        <dl newline="true" indent="3" spacing="normal" pn="section-5.4-1">
+          <dt pn="section-5.4-1.1">RACK並べ替えタイマー</dt>
+          <dd pn="section-5.4-1.2">一部のセグメントがSACK済みとしてマークされているときに、並べ替えと損失を区別しようとするために、RACKが並べ替えの解消を待つことを可能にするタイマーです。
+</dd>
+          <dt pn="section-5.4-1.3">TLP PTO</dt>
+          <dd pn="section-5.4-1.4">ACKが期限を過ぎており、送信者がSACKまたはACKのフィードバックを求めるためにTLPセグメントを送信すべきであることを示すタイマーイベントです。 </dd>
+        </dl>
+        <t indent="0" pn="section-5.4-2">これらのタイマーは、RTOタイマー<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>を含む、送信者が維持する既存のタイマーを補強するものです。RACK-TLPの送信者は、フライト中の未確認応答のセグメントがある場合に、これら3つのタイマー（RACK並べ替えタイマー、TLP PTOタイマー、RTOタイマー）のうちの1つを設定します。実装は、次のタイマー満了時に発動するイベントを示す追加の変数とともに、単一のタイマーをこれらの間で多重化することで、3つのタイマーすべての管理を簡素化できます。</t>
+      </section>
+    </section>
+    <section anchor="rack-algorithm-details" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-rack-algorithm-details">RACKアルゴリズムの詳細</name>
+      <section anchor="upon-transmitting-a-data-segment" numbered="true" toc="include" removeInRFC="false" pn="section-6.1">
+        <name slugifiedName="name-upon-transmitting-a-data-se">データセグメントの送信時</name>
+        <t indent="0" pn="section-6.1-1">新しいセグメントを送信するとき、または古いセグメントを再送するときは、その時刻をSegment.xmit_tsに記録し、Segment.lostをFALSEに設定します。セグメントを再送するときは、Segment.retransmittedをTRUEに設定します。 </t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.1-2">
+RACK_transmit_new_data(Segment):
+        Segment.xmit_ts = Now()
+        Segment.lost = FALSE
+
+RACK_retransmit_data(Segment):
+        Segment.retransmitted = TRUE
+        Segment.xmit_ts = Now()
+        Segment.lost = FALSE
+</sourcecode>
+      </section>
+      <section anchor="upon-receiving-an-ack" numbered="true" toc="include" removeInRFC="false" pn="section-6.2">
+        <name slugifiedName="name-upon-receiving-an-ack">ACKの受信時</name>
+        <t anchor="step1" indent="0" pn="section-6.2-1">ステップ1：RACK.min_RTTを更新する。</t>
+        <t indent="0" pn="section-6.2-2"><xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>または<xref target="RFC7323" format="default" sectionFormat="of" derivedContent="RFC7323"/>によって得られたRTT測定値を使用して、RACK.min_RTTの推定最小RTTを更新します。送信者は、すべてのRTT測定値の単純な全体最小値を追跡するのではなく、大幅に長い経路に移行した際に適応できるよう、最近のRTT測定値をウィンドウ付き最小値フィルターで推定した値を追跡す<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t anchor="step2" indent="0" pn="section-6.2-3">
+ステップ2：配送されたセグメントのうち最も最近に送信されたものの状態を更新する。</t>
+        <t indent="0" pn="section-6.2-4">このステップでは、RACKは、配送されたセグメントのうち最も最近に送信されたもの（RACK.segment）を追跡する状態を更新します。RACKは、その最新の送信タイムスタンプをRACK.xmit_tsに、その最大のシーケンス番号をRACK.end_seqに保持します。これら2つの変数は、後のステップで、まだ配送されていないセグメントがおそらく失われたかどうかを推定するために使用されます。
+
+ACKで提供される情報に基づいて、累積的にACKされた、またはSACKされた各セグメントは、スコアボードで配送済みとしてマークされます。ACKは再送されたデータセグメントも確認応答することがあり、また再送は偽のものである可能性があるため、送信者は誤った推論を避けるよう注意する必要があります。たとえば、送信者が偽の再送のタイミング情報を使用すると、RACK.rttが大幅に過小評価される可能性があります。</t>
+        <t indent="0" pn="section-6.2-5">誤った推論を避けるため、セグメントのシーケンス範囲のいずれかの部分が以前に再送されており、かつ次の2つの条件のいずれかが真である場合は、そのセグメントを無効として無視します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.2-6"><li pn="section-6.2-6.1" derivedCounter="1.">ACKのタイムスタンプオプション<xref target="RFC7323" format="default" sectionFormat="of" derivedContent="RFC7323"/>のTimestamp Echo Replyフィールド（TSecr）が利用可能であり、そのACKがセグメントの最後の再送を確認応答したものではないことを示している。</li>
+          <li pn="section-6.2-6.2" derivedCounter="2.">セグメントが最後に再送されてからRACK.min_rtt未満しか経過していない。 </li>
+        </ol>
+        <t indent="0" pn="section-6.2-7">
+2つ目のチェックは、TCPタイムスタンプオプションが利用できない場合や、往復時間がTCPタイムスタンプのクロック粒度より小さい場合のための経験則です。
+</t>
+        <t indent="0" pn="section-6.2-8">このACKによって新たにACKまたはSACKされたセグメントのうち、上記のチェックに合格したすべてのセグメントについて、RACK.rttを、このACKを用いて計算したRTTサンプルに更新します。さらに、最新のSegment.xmit_tsがRACK.xmit_tsより進んでいれば、それをRACK.xmit_tsに記録します。（たとえば、クロック粒度の制限により）Segment.xmit_tsがRACK.xmit_tsと等しい場合は、RACK.segmentに関連する状態を更新するかどうかを決める際に、Segment.end_seqとRACK.end_seqを比較して同順位を解消します。</t>
+        <t indent="0" pn="section-6.2-9">ステップ2を疑似コードでまとめると次のようになります。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-10">
+RACK_sent_after(t1, seq1, t2, seq2):
+    If t1 &gt; t2:
+        Return true
+    Else if t1 == t2 AND seq1 &gt; seq2:
+        Return true
+    Else:
+        Return false
+
+RACK_update():
+    For each Segment newly acknowledged, cumulatively or selectively,
+    in ascending order of Segment.xmit_ts:
+        rtt = Now() - Segment.xmit_ts
+        If Segment.retransmitted is TRUE:
+            If ACK.ts_option.echo_reply &lt; Segment.xmit_ts:
+               Continue
+            If rtt &lt; RACK.min_rtt:
+               Continue
+
+        RACK.rtt = rtt
+        If RACK_sent_after(Segment.xmit_ts, Segment.end_seq
+                           RACK.xmit_ts, RACK.end_seq):
+            RACK.xmit_ts = Segment.xmit_ts
+            RACK.end_seq = Segment.end_seq
+
+</sourcecode>
+        <t anchor="step3" indent="0" pn="section-6.2-11">ステップ3：データセグメントの並べ替えを検出する。</t>
+        <t indent="0" pn="section-6.2-12">並べ替えを検出するために、送信者は、元のデータセグメントが順不同で配送されている状況を探します。そのようなケースを検出するために、送信者は、選択的または累積的に確認応答された最大のシーケンスをRACK.fack変数で追跡します。「.fack」は、最も「前方のACK（Forward ACK）」を表します（この用語は<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>から採用しています）。一度も再送されていないセグメントで、RACK.fackより下にあるものが（選択的または累積的に）確認応答された場合、そのセグメントは順不同で配送されたことになります。そのようなセグメントが特定された場合、送信者はRACK.reordering_seenをTRUEに設定します。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-13">
+RACK_detect_reordering():
+    For each Segment newly acknowledged, cumulatively or selectively,
+    in ascending order of Segment.end_seq:
+        If Segment.end_seq &gt; RACK.fack:
+            RACK.fack = Segment.end_seq
+        Else if Segment.end_seq &lt; RACK.fack AND
+                Segment.retransmitted is FALSE:
+            RACK.reordering_seen = TRUE
+</sourcecode>
+        <t anchor="step4" indent="0" pn="section-6.2-14">ステップ4：RACKの並べ替えウィンドウを更新する。</t>
+        <t indent="0" pn="section-6.2-15">RACKの並べ替えウィンドウRACK.reo_wndは、セグメントを失われたものとしてマークする前の、状況が落ち着くまでの時間に対する適応的な猶予として機能します。このステップでは、<xref target="reordering-window-adaptation" format="none" sectionFormat="of" derivedContent="">「並べ替えウィンドウの適応」</xref>セクションで概説した原則に従う詳細なアルゴリズムを記述します。</t>
+        <t indent="0" pn="section-6.2-16"><xref target="step3" format="none" sectionFormat="of" derivedContent="">前のステップ</xref>に基づいて並べ替えが観測されていない場合、送信者が高速回復に入る方法の1つは、（<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>と同様に）SACKされたセグメントの数がDupThresh以上になったときです。さらに、並べ替えが観測されていない場合、RACK.reo_wndは、高速回復またはRTO回復に入るときと、その最中のどちらでも0に設定されます。</t>
+        <t indent="0" pn="section-6.2-17">そうではなく、何らかの並べ替えが観測されている場合、RACKはDupThreshに基づいて高速回復を開始することはありません。</t>
+        <t indent="0" pn="section-6.2-18">並べ替えが観測されているかどうかにかかわらず、RACKは並べ替えウィンドウを使用して、失われたものとしてマークできるセグメントがあるかどうかを評価します。その結果、SACKされていない一部のセグメントについて並べ替えウィンドウが経過している限り、SACKされたセグメントがいくつであっても、送信者は高速回復に入ります。</t>
+        <t indent="0" pn="section-6.2-19">並べ替えウィンドウが0に設定されていない場合、RACK.reo_wndは保守的な値であるRACK.min_RTT/4から始まります。この値が選ばれたのは、Linux TCPが、並べ替えがある場合の偽の損失検出を減らすために、Early Retransmit<xref target="RFC5827" format="default" sectionFormat="of" derivedContent="RFC5827"/>を遅らせる実装で同じ係数を使用しており、経験上これがかなりうまく機能したためです<xref target="DMCG11" format="default" sectionFormat="of" derivedContent="DMCG11"/>。 </t>
+        <t indent="0" pn="section-6.2-20">しかし、前のステップである<xref target="step3" format="none" sectionFormat="of" derivedContent="">ステップ3</xref>での並べ替えの検出には、並べ替えウィンドウが小さすぎて実際の並べ替えに対処できない場合に、自己強化的な欠点があります。そのような場合、RACKは並べ替えられたセグメントを誤って失われたものとしてマークし、それらを再送させる可能性があります。そして今度は、その再送により、<xref target="step3" format="none" sectionFormat="of" derivedContent="">ステップ3</xref>が並べ替えを検出するのに必要な条件が満たされなくなる可能性があります。なぜなら、この仕組みは一度も再送されていないセグメントに対するACKやSACKだけを必要とするからです。場合によっては、このようなシナリオが続き、RACKは並べ替えウィンドウが小さすぎることに気付かずに、セグメントを誤って失われたものとしてマークし続けることがあります。
+</t>
+        <t indent="0" pn="section-6.2-21">上記の問題を回避するため、RACKは受信者からのDSACKオプションを使用して、より高い程度の並べ替えに動的に適応します。DSACKオプション付きのACKを受信したことは、偽の再送の可能性を示しており、RACK.reo_wndが小さすぎる可能性を示唆しています。RACK.reo_wndは、送信者が何らかのDSACKオプションを受信した往復ごとに線形に増加し、DSACKを受信した往復がN回あった後には、RACK.reo_wndは(N+1) * min_RTT / 4となります。ただし、上限はSRTTです。</t>
+        <t indent="0" pn="section-6.2-22">並べ替えが一時的なものであれば、適応によって大きくなった並べ替えウィンドウは、後の損失回復を不必要に遅らせることになります。そのため、RACKは膨らんだRACK.reo_wndを最大16回の損失回復の間使い続け、その後RACK.reo_wndを開始値であるmin_RTT / 4にリセットします。並べ替えウィンドウをリセットすることの欠点は、並べ替えが大きいままである場合に、偽の高速回復のエピソードを引き起こすリスクがあることです。この方式の根拠は、そのような偽の回復を、およそ16回の回復につき1回（7%未満）に制限することです。
+</t>
+        <t indent="0" pn="section-6.2-23">適応的な並べ替えウィンドウの線形の倍率を追跡するために、RACKは変数RACK.reo_wnd_multを使用します。この変数は1に初期化され、観測された並べ替えに応じて適応します。</t>
+        <t indent="0" pn="section-6.2-24">次の疑似コードは、RACKの並べ替えウィンドウを更新する上記のアルゴリズムを実装したものです。</t>
+        <sourcecode anchor="step4alg" name="" type="pseudocode" markers="false" pn="section-6.2-25">
+RACK_update_reo_wnd():
+
+    /* DSACKベースの並べ替えウィンドウの適応 */
+    If RACK.dsack_round is not None AND
+       SND.UNA &gt;= RACK.dsack_round:
+        RACK.dsack_round = None
+    /* DSACKを受信した往復ごとに並べ替えウィンドウを大きくする。
+       DSACKのない回復が16回続いたらウィンドウをリセットする */
+    If RACK.dsack_round is None AND
+       any DSACK option is present on latest received ACK:
+        RACK.dsack_round = SND.NXT
+        RACK.reo_wnd_mult += 1
+        RACK.reo_wnd_persist = 16
+    Else if exiting Fast or RTO recovery:
+        RACK.reo_wnd_persist -= 1
+        If RACK.reo_wnd_persist &lt;= 0:
+            RACK.reo_wnd_mult = 1
+
+    If RACK.reordering_seen is FALSE:
+        If in Fast or RTO recovery:
+            Return 0
+        Else if RACK.segs_sacked &gt;= DupThresh:
+            Return 0
+    Return min(RACK.reo_wnd_mult * RACK.min_RTT / 4, SRTT)
+</sourcecode>
+        <t anchor="step5" indent="0" pn="section-6.2-26">ステップ5：損失を検出する。</t>
+        <t indent="0" pn="section-6.2-27">SACKされていない各セグメントについて、後に送信された別のセグメントが配送されており、かつ並べ替えウィンドウが経過している場合、RACKはそのセグメントが失われたとみなします。RACKは、RACK.segmentが対象のセグメントより十分後に送信された場合、RACK.segmentがS/ACKされてから十分な時間が経過した場合、またはその両者の組み合わせの場合に、並べ替えウィンドウが経過したとみなします。より正確には、RACKは次の場合にセグメントを失われたものとしてマークします。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-28">
+ RACK.xmit_ts &gt;= Segment.xmit_ts
+        AND
+ RACK.xmit_ts - Segment.xmit_ts + (now - RACK.ack_ts) &gt;= RACK.reo_wnd
+</sourcecode>
+        <t indent="0" pn="section-6.2-29">この2つ目の条件を、セグメントが失われたものとしてマークされる時点である「now」について解くと、次のようになります。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-30">
+now &gt;= Segment.xmit_ts + RACK.reo_wnd + (RACK.ack_ts - RACK.xmit_ts)
+</sourcecode>
+        <t indent="0" pn="section-6.2-31">ここで、(RACK.ack_ts - RACK.xmit_ts)は、配送されたセグメントのうち最も最近に（再）送信されたものの往復時間です。セグメントが順番どおりに配送される場合、配送されたセグメントのうち最も最近に（再）送信されたものは、最も最近に配送されたものでもあります。したがって、RACK.rtt == RACK.ack_ts - RACK.xmit_tsとなります。しかし、セグメントが並べ替えられた場合、最も最近に配送されたセグメントは、最も最近に（再）送信されたセグメントより前に送信されたものです。したがって、RACK.rtt &gt; (RACK.ack_ts - RACK.xmit_ts)となります。 </t>
+        <t indent="0" pn="section-6.2-32">RACK.RTT &gt;= (RACK.ack_ts - RACK.xmit_ts)であるため、前の式は、送信者が次の場合にセグメントが失われたと宣言できる、ということに帰着します。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-33">
+now &gt;= Segment.xmit_ts + RACK.reo_wnd + RACK.rtt
+</sourcecode>
+        <t indent="0" pn="section-6.2-34">これは、RACKの送信者は次の場合にセグメントが失われたと宣言すべきである、と述べることと同等です。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-35">
+Segment.xmit_ts + RACK.rtt + RACK.reo_wnd - now &lt;= 0
+</sourcecode>
+        <t indent="0" pn="section-6.2-36">左辺の値が正の場合、それはセグメントが失われたとみなされるまでの残りの待ち時間を表すことに注意してください。しかし、（たとえば、損失やアプリケーション制限された送信のために）マーキングを引き起こすACKがそれ以上返ってこない場合、タイムアウト（RTO）のリスクがあります。適時に損失を検出するために、送信者は並べ替えタイマーを設定することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。このタイマーは、並べ替えウィンドウ内のすべての未確認応答のセグメントが失われたとRACKが結論付ける最も早い時点で満了します。</t>
+        <t indent="0" pn="section-6.2-37">次の疑似コードは、上記のアルゴリズムを実装したものです。ACKを受信したとき、またはRACK並べ替えタイマーが満了したときに、RACK_detect_loss_and_arm_timer()を呼び出します。高速なネットワークでは同一のタイムスタンプを持つ複数のセグメントがよくあるため、このアルゴリズムはTCPのシーケンス空間を使用してタイムスタンプの同順位を解消します。 </t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.2-38">
+RACK_detect_loss():
+    timeout = 0
+    RACK.reo_wnd = RACK_update_reo_wnd()
+    For each segment, Segment, not acknowledged yet:
+        If RACK_sent_after(RACK.xmit_ts, RACK.end_seq,
+                           Segment.xmit_ts, Segment.end_seq):
+            remaining = Segment.xmit_ts + RACK.rtt +
+                        RACK.reo_wnd - Now()
+            If remaining &lt;= 0:
+                Segment.lost = TRUE
+                Segment.xmit_ts = INFINITE_TS
+            Else:
+                timeout = max(remaining, timeout)
+    Return timeout
+
+RACK_detect_loss_and_arm_timer():
+    timeout = RACK_detect_loss()
+    If timeout != 0
+        Arm the RACK timer to call
+        RACK_detect_loss_and_arm_timer() after timeout
+</sourcecode>
+        <t indent="0" pn="section-6.2-39">最適化として、実装はRACK.xmit_tsより前に送信されたセグメントだけをチェックすることを選択できます。これは、特にフライト中のセグメントが多い場合に、SACKスコアボード全体を走査するよりも効率的になり得ます。実装は、Segment.xmit_ts順に並べた別の双方向連結リストを使用し、セグメントが（再）送信されたときにリストの末尾に挿入し、配送されたとき、または失われたものとしてマークされたときにリストから削除できます。Linux TCPでは、この最適化により、高速なWANネットワークでの一部の高速回復のエピソードにおいて、CPU使用率が桁違いに改善されました。</t>
+      </section>
+      <section anchor="upon-rto-expiration" numbered="true" toc="include" removeInRFC="false" pn="section-6.3">
+        <name slugifiedName="name-upon-rto-expiration">RTOの満了時</name>
+        <t indent="0" pn="section-6.3-1">RTOタイマーが満了すると、RACKは（1 RTO前に送信されたため）最初の未処理のセグメントを失われたものとしてマークします。他のすべてのセグメントについては、RACKは、そのセグメントが送信されてからの経過時間が、最近のRTTと並べ替えウィンドウの合計以上である場合にのみ、そのセグメントを失われたものとしてマークします。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-6.3-2">
+RACK_mark_losses_on_RTO():
+    For each segment, Segment, not acknowledged yet:
+        If SEG.SEQ == SND.UNA OR
+           Segment.xmit_ts + RACK.rtt + RACK.reo_wnd - Now() &lt;= 0:
+            Segment.lost = TRUE
+</sourcecode>
+      </section>
+    </section>
+    <section anchor="tlp-algorithm-details" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-tlp-algorithm-details">TLPアルゴリズムの詳細</name>
+      <section anchor="initializing-state" numbered="true" toc="include" removeInRFC="false" pn="section-7.1">
+        <name slugifiedName="name-initializing-state">状態の初期化</name>
+        <t indent="0" pn="section-7.1-1">コネクション、高速回復、またはRTO回復を開始するときに、TLP.is_retransとTLP.end_seqをリセットします。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-7.1-2">
+TLP_init():
+    TLP.end_seq = None
+    TLP.is_retrans = false
+</sourcecode>
+      </section>
+      <section anchor="scheduling-a-loss-probe" numbered="true" toc="include" removeInRFC="false" pn="section-7.2">
+        <name slugifiedName="name-scheduling-a-loss-probe">損失プローブのスケジューリング</name>
+        <t indent="0" pn="section-7.2-1">
+送信者は、通常の送信処理の中で、セグメントを送信するための損失プローブタイムアウト（PTO）をスケジュールします。送信者は、（それ自体が損失プローブではない）新しいデータを送信した後、または新しいデータを累積的に確認応答するACKを受信したときに、損失プローブのPTOタイマーを開始または再開始す<bcp14>べきです（SHOULD）</bcp14>。ただし、すでに高速回復中、RTO回復中である場合や、セグメントがSACKされている（つまり、RACK.segs_sackedがゼロではない）場合は除きます。これらの条件が除外されるのは、Limited Transmit<xref target="RFC3042" format="default" sectionFormat="of" derivedContent="RFC3042"/>、RACK並べ替えタイマー、Forward RTO-Recovery（F-RTO）<xref target="RFC5682" format="default" sectionFormat="of" derivedContent="RFC5682"/>などの同様の仕組みによって対処されるためです。</t>
+        <t indent="0" pn="section-7.2-2">送信者は、いくつかの要因を考慮してPTOの間隔を計算します。</t>
+        <t indent="0" pn="section-7.2-3">第一に、デフォルトのPTO間隔は2*SRTTです。通常の状況、つまり損失がない場合、ACKは典型的には1 SRTTで到着するため、その時点でACKが期限を過ぎていると宣言するのは賢明です。ネットワークとエンドホストの遅延の変動によってACKがSRTTを超えて遅れる可能性があることを考えると、PTOをちょうどSRTTにすると、偽のプローブを引き起こすリスクがあります。したがって、PTOは保守的に、SRTTの次の整数倍に選ばれます。</t>
+        <t indent="0" pn="section-7.2-4">第二に、SRTTの推定値が利用できない場合、PTOは1秒である<bcp14>べきです（SHOULD）</bcp14>。この保守的な値は、<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>による、SRTTが利用できない場合のRTOの値に対応します。</t>
+        <t indent="0" pn="section-7.2-5">第三に、FlightSizeが1セグメントである場合、送信者は、遅延している可能性のある確認応答に対応し、偽の再送のリスクを減らすために、PTOをTLP.max_ack_delayだけ増やしても<bcp14>よいです（MAY）</bcp14>。TLP.max_ack_delayの実際の値は実装固有です。 </t>
+        <t indent="0" pn="section-7.2-6">最後に、RTOが発火する時刻（ここでは「TCP_RTO_expiration()」と表記します）が、PTOについて計算した時刻より早い場合、送信者はそのRTOの時刻にTLPを送信するようスケジュールします。</t>
+        <t indent="0" pn="section-7.2-7">これらの考慮事項を疑似コードの形でまとめると、送信者はPTOの長さを選択するために次のロジックを使用す<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-7.2-8">
+TLP_calc_PTO():
+    If SRTT is available:
+        PTO = 2 * SRTT
+        If FlightSize is one segment:
+           PTO += TLP.max_ack_delay
+    Else:
+        PTO = 1 sec
+
+    If Now() + PTO &gt; TCP_RTO_expiration():
+        PTO = TCP_RTO_expiration() - Now()
+</sourcecode>
+      </section>
+      <section anchor="sending-a-loss-probe-upon-pto-expiration" numbered="true" toc="include" removeInRFC="false" pn="section-7.3">
+        <name slugifiedName="name-sending-a-loss-probe-upon-p">PTOの満了時の損失プローブの送信</name>
+        <t indent="0" pn="section-7.3-1">
+PTOタイマーが満了したとき、送信者は、損失プローブを送信する前に、次の両方の条件が満たされているかどうかを確認し<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-7.3-2"><li pn="section-7.3-2.1" derivedCounter="1.">第一に、まだフライト中の以前の損失プローブが他にないこと。これにより、送信者が輻輳ウィンドウの制限を超えてフライト中に持つ追加のパケットは、どの時点でも最大1つになることが保証されます。この不変条件は、未確認応答の最新のTLP損失プローブの終了シーケンスを示す状態変数TLP.end_seqを使用して維持されます。この変数は、損失プローブが確認応答されたとき、または失われたか無関係になったとみなされたときにリセットされます。</li>
+          <li pn="section-7.3-2.2" derivedCounter="2.">第二に、最後の損失プローブの送信またはコネクションの開始のうち遅い方以降に、送信者がRTT測定値を取得していること。この条件により、損失プローブの再送が、経路のRTTの増加にSRTTを適応させるのに必要なRTTサンプルの取得を妨げないことが保証されます。</li>
+        </ol>
+        <t indent="0" pn="section-7.3-3">これら2つの条件のいずれかが満たされない場合、送信者は損失プローブの送信をスキップし<bcp14>なければなりません（MUST）</bcp14>。そして、このセクションの最後で規定するように、RTOタイマーの再設定に進ま<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-7.3-4">両方の条件が満たされる場合、まだ送信していないデータセグメントが存在し、受信ウィンドウが許すならば、送信者はそれを送信し、それに応じてFlightSizeを増やす<bcp14>べきです（SHOULD）</bcp14>。次のACKが到着するまでの間、一時的にFlightSizeが輻輳ウィンドウより1パケット大きくなる可能性があることに注意してください。</t>
+        <t indent="0" pn="section-7.3-5">そのような未送信のセグメントが利用できない場合、送信者はこれまでに送信したシーケンスが最大のセグメントを再送し、TLP.is_retransをtrueに設定す<bcp14>べきです（SHOULD）</bcp14>。このセグメントが選ばれるのは、TCPにおける再送の曖昧性の問題に対処するためです。送信者がN個のセグメントを送信し、その後最後のセグメント（セグメントN）を損失プローブとして再送し、その後セグメントNに対するSACKを受信したとします。送信者がRACKの並べ替えウィンドウの満了を待つ限り、そのSACKがセグメントNの元の送信に対するものか、TLPの再送に対するものかは問題になりません。どちらの場合でも、セグメントNに対するSACKの到着は、セグメントNに先行するN-1個のセグメントがおそらく失われたという証拠となります。</t>
+        <t indent="0" pn="section-7.3-6">元の未処理のデータセグメントが1つしかない場合（N=1）にも、同じロジックが（自明に）適用されます。単一の未処理のセグメントに対するACKは、そのセグメントに先行するN-1=0個のセグメントが失われたことを送信者に伝えます。さらに、未処理のセグメントがN&gt;1個であってもN=1個であっても、元の最後のセグメントまたはそのTLP再送が失われたかどうかという問題があります。送信者は、TLP回復検出（後述）を使用して、そのような損失があったかどうかを推定します。 </t>
+        <t indent="0" pn="section-7.3-7">送信者は、再送または新しいデータの損失プローブのいずれかを送信するときに、<xref target="upon-transmitting-a-data-segment" format="none" sectionFormat="of" derivedContent="">「データセグメントの送信時」</xref>セクションのRACKの送信手順に従わ<bcp14>なければなりません（MUST）</bcp14>。これは、損失プローブに対するACKを使用して損失を検出するために重要です。</t>
+        <t indent="0" pn="section-7.3-8">
+損失プローブの送信を試みた後、損失プローブが送信されたかどうかにかかわらず、FlightSizeがゼロでなければ、送信者はPTOタイマーではなくRTOタイマーを再設定し<bcp14>なければなりません（MUST）</bcp14>。これにより、TLPが失敗した場合にRTO回復が最後の手段として残ることが保証されます。次の疑似コードは、これらの動作をまとめたものです。</t>
+        <sourcecode name="" type="pseudocode" markers="false" pn="section-7.3-9">
+TLP_send_probe():
+
+    If TLP.end_seq is None and
+       Sender has taken a new RTT sample since last probe or
+       the start of connection:
+        TLP.is_retrans = false
+        Segment = send buffer segment starting at SND.NXT
+        If Segment exists and fits the peer receive window limit:
+           /* シーケンスが最小の未送信のSegmentを送信する */
+           Transmit Segment
+           RACK_transmit_data(Segment)
+           TLP.end_seq = SND.NXT
+           Increase FlightSize by Segment length
+        Else:
+           /* 送信済みでシーケンスが最大のSegmentを再送する */
+           Segment = send buffer segment ending at SND.NXT
+           Transmit Segment
+           RACK_retransmit_data(Segment)
+           TLP.end_seq = SND.NXT
+           TLP.is_retrans = true
+
+    If FlightSize is not zero:
+        Rearm RTO timer to fire at timeout = now + RTO
+</sourcecode>
+      </section>
+      <section anchor="detecting-losses-using-the-ack-of-the-loss-probe" numbered="true" toc="include" removeInRFC="false" pn="section-7.4">
+        <name slugifiedName="name-detecting-losses-using-the-">損失プローブのACKを使用した損失の検出</name>
+        <t indent="0" pn="section-7.4-1">損失プローブで終わるフライトにパケット損失がある場合、損失プローブによって求められたフィードバックは、損失のパターンに応じて、2つのシナリオのうちのいずれかを明らかにします。</t>
+        <section anchor="general-case-detecting-packet-losses-using-rack-" numbered="true" toc="include" removeInRFC="false" pn="section-7.4.1">
+          <name slugifiedName="name-general-case-detecting-pack">一般的なケース：RACKを使用したパケット損失の検出</name>
+          <t indent="0" pn="section-7.4.1-1">損失プローブと、そのプローブを確認応答するACKが正常に配送された場合、RACK-TLPは、他のACKと同様にこのACKを使用して、プローブより前に送信されたセグメントが破棄されたかどうかを検出します。損失プローブより前に送信された未確認応答のデータセグメントは、十分に過去に送信されている（少なくとも1 PTOに、損失プローブがACKされるまでの1往復を加えた時間が経過している）ため、RACKは通常、それらが失われたと推論します。より具体的には、RACK_detect_loss()（<xref target="step5" format="none" sectionFormat="of" derivedContent="">ステップ5</xref>）が、それらの以前のセグメントを失われたものとしてマークします。そして送信者は、それらの損失を回復するために高速回復を開始します。</t>
+        </section>
+        <section anchor="special-case-detecting-a-single-loss-repaired-by-the-loss-probe" numbered="true" toc="include" removeInRFC="false" pn="section-7.4.2">
+          <name slugifiedName="name-special-case-detecting-a-si">特殊なケース：損失プローブによって修復された単一の損失の検出</name>
+          <t indent="0" pn="section-7.4.2-1">TLPの再送が、フライト中の失われたシーケンス範囲をすべて修復した場合（つまり、フライトの最後のセグメントだけが失われた場合）、損失プローブに対するACKは通常の累積ACKのように見えます。これは通常、このパケット損失イベントに対する輻輳制御の反応を引き起こしません。次のTLP回復検出の仕組みは、ACKを調べてこの特殊なケースを検出し、輻輳制御が適切に反応するようにします<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>。</t>
+          <t indent="0" pn="section-7.4.2-2">TLPの再送の後、送信者は、損失プローブ自体によって回復された単一の損失というこの特殊なケースがないかを確認します。これを行うために、送信者は、元のセグメントとTLPの再送の両方が受信者に到着したこと、つまり損失がなかったことを示す重複ACKまたはDSACKがないかを確認します。TLPの送信者がそのような表示を受信しない場合、送信者は輻輳制御の目的で、元のデータセグメント、TLPの再送、または対応するACKが失われたと想定し<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-7.4.2-3">
+TLPの再送が偽のものである場合、DSACKを使用する受信者は、TLP.end_seqをカバーするACKをDSACKオプション付きで返します（ケース1）。受信者がDSACKをサポートしていない場合は、SACKオプションのないDupAckを返します（ケース2）。送信者がいずれかのケースに一致するACKを受信した場合、送信者は、受信者が元のデータセグメントとTLPプローブの再送の両方を受信したと推定します。送信者はTLPのエピソードが完了したとみなし、TLP.end_seqをNoneに設定することでその事実を記録します。
+</t>
+          <t indent="0" pn="section-7.4.2-4">TLP.end_seqより後のシーケンス番号をカバーするACKを受信した時点で、送信者は、元のセグメントとTLPプローブの再送セグメントに対するACKをすべて受信しているはずです。その時点で、TLP.end_seqがまだ設定されており、したがってTLPプローブの再送が未確認応答のままであることを示している場合、送信者は、少なくとも1つのデータセグメントが失われたと推定すべきです。その場合、送信者は高速回復と同等の輻輳制御の反応を発動す<bcp14>べきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-7.4.2-5">より正確には、送信者は各ACKについて次の処理を実行します。</t>
+          <sourcecode name="" type="pseudocode" markers="false" pn="section-7.4.2-6">
+TLP_process_ack(ACK):
+    If TLP.end_seq is not None AND ACK's ack. number &gt;= TLP.end_seq:
+        If not TLP.is_retrans:
+            TLP.end_seq = None    /* 新しいデータのTLPが配送された */
+        Else if ACK has a DSACK option matching TLP.end_seq:
+            TLP.end_seq = None    /* 上記のケース1 */
+        Else If ACK's ack. number &gt; TLP.end_seq:
+            TLP.end_seq = None    /* 単一の損失を修復した */
+            (Invoke congestion control to react to
+             the loss event the probe has repaired)
+        Else If ACK is a DupAck without any SACK option:
+            TLP.end_seq = None     /* 上記のケース2 */
+</sourcecode>
+        </section>
+      </section>
+    </section>
+    <section anchor="managing-rack-tlp-timers" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-managing-rack-tlp-timers">RACK-TLPのタイマーの管理</name>
+      <t indent="0" pn="section-8-1">RACK並べ替えタイマー、TLP PTOタイマー、RTO、ゼロウィンドウプローブ（ZWP）タイマー<xref target="RFC0793" format="default" sectionFormat="of" derivedContent="RFC793"/>は相互に排他的であり、異なるシナリオで使用されます。RACK並べ替えタイマーまたはTLP PTOタイマーを設定するとき、送信者は保留中の他のタイマーをすべてキャンセルす<bcp14>べきです（SHOULD）</bcp14>。実装は、タイマーの種類を示す追加の状態変数とともに、1つのタイマーを持つことが期待されます。</t>
+    </section>
+    <section anchor="discussion" numbered="true" toc="include" removeInRFC="false" pn="section-9">
+      <name slugifiedName="name-discussion">議論</name>
+      <section anchor="advantages-and-disadvantages" numbered="true" toc="include" removeInRFC="false" pn="section-9.1">
+        <name slugifiedName="name-advantages-and-disadvantage">利点と欠点</name>
+        <t indent="0" pn="section-9.1-1">RACK-TLPの最大の利点は、元のデータ送信であれ再送であれ、すべてのデータセグメントを、それより時間的に前に送信されたセグメントの損失を検出するために使用できることです。これにより、RACK-TLPは、アプリケーション制限されたデータのフライト、再送の損失、データセグメントの並べ替えイベントがある場合に、高速回復を使用できます。次の例を考えてみてください。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-9.1-2"><li pn="section-9.1-2.1" derivedCounter="1.">アプリケーションデータのフライトの末尾でのパケット破棄：送信者が、3つのデータセグメント（P1、P2、P3）からなるアプリケーション制限されたフライトを送信し、P1とP3が失われたとします。各セグメントの送信は、前のセグメントの送信から少なくともRACK.reo_wnd後であるとします。RACKは、P2のSACKを受信したときにP1を失われたものとしてマークし、これによりP1がR1として再送されます。R1が累積的に確認応答されると、RACKはP3を失われたものとしてマークし、送信者はP3をR3として再送します。この例は、RACKがRTO回復なしに、トランザクションの末尾での特定の破棄を修復できることを示しています。従来の重複ACKしきい値<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>も、損失回復アルゴリズム<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>も、Forward Acknowledgment<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>アルゴリズムも、必要なセグメント数またはシーケンス数のために、そのような損失を検出できないことに注意してください。</li>
+          <li pn="section-9.1-2.2" derivedCounter="2.">再送の損失：3つのデータセグメント（P1、P2、P3）からなるフライトが送信され、P1とP2が破棄されたとします。各セグメントの送信は、前のセグメントの送信から少なくともRACK.reo_wnd後であるとします。P3がSACKされると、RACKはP1とP2を失われたものとしてマークし、それらはR1とR2として再送されます。R1が再び失われ、R2はSACKされたとします。RACKはR1を失われたものとしてマークし、再び再送を開始します。この場合も、従来の3重複ACKしきい値方式も、損失回復アルゴリズム<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>も、Forward Acknowledgment<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>アルゴリズムも、そのような損失を検出できません。そして、このような再送の損失は、TCPがレート制限されている場合、特にバケットの深さが大きくレート制限が低いトークンバケットポリサーによって制限されている場合に発生することがあります。そのような場合、標準の輻輳制御ではレートをポリシングされたレート未満に下げるのに複数の往復を要するため、再送が繰り返し失われることがよくあります。</li>
+          <li pn="section-9.1-2.3" derivedCounter="3.">パケットの並べ替え：セグメントのフライトが（P1、P2、P3）として送信される単純な並べ替えイベントを考えてみてください。P1とP2はMaximum Sender Size（MSS）オクテットの完全なペイロードを運びますが、P3は1オクテットのペイロードしか持ちません。送信者は以前に並べ替えを検出しており、そのためRACK.reo_wndはmin_RTT/4であるとします。ここで、P3が並べ替えられ、P1とP2より前に最初に配送されます。P1とP2がmin_RTT/4以内に配送される限り、RACKはP1とP2が失われたとはみなしません。しかし、P1とP2が並べ替えウィンドウの外で配送された場合、RACKはやはりP1とP2を誤って失われたものとしてマークします。
+</li>
+        </ol>
+        <t indent="0" pn="section-9.1-3">上記の例は、RACK-TLPが、送信者がアプリケーションによって制限されている場合に特に有用であることを示しています。これは、対話的なトラフィックやリクエスト／レスポンスのトラフィックで起こり得ます。同様に、RACKは、送信者が受信ウィンドウによって制限されている場合にも機能します。これは、受信ウィンドウを使用して送信者を絞るアプリケーションで起こり得ます。</t>
+        <t indent="0" pn="section-9.1-4">RACK-TLPは、DupAckカウントと比べて、TCPセグメンテーションオフロード（TSO）とより効率的に連携します。同じTSOアグリゲート内のセグメントは同じ送信タイムスタンプを持つため、RACKは常にTSOアグリゲート全体を失われたものとしてマークします。対照的に、シーケンスのカウントに基づくアルゴリズム（たとえば、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>）は、TSOアグリゲート内のセグメントの一部だけを失われたものとしてマークする場合があり、スタックに、TSOアグリゲートのコストの高い断片化を行うか、スコアボードで個々のセグメントに選択的に損失のタグを付けることを強います。</t>
+        <t indent="0" pn="section-9.1-5">RACK-TLPの主な欠点は、DupAckカウントと比べて追加の状態が必要になることです。RACKでは、送信者は、送信した各セグメントの送信時刻を、コネクションの最小RTTの1/4より細かいクロック粒度で記録する必要があります。RTT推定のためにすでにこれを記録しているTCP実装では、パケットごとの新しい状態は必要ありません。しかし、まだセグメントの送信時刻を記録していない実装では、送信時刻を追跡するためにパケットごとの内部状態（セグメントまたはTSOアグリゲートごとに4オクテットまたは8オクテットと想定されます）を追加する必要があります。対照的に、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>で説明されている損失検出方式では、SACKスコアボード以外にパケットごとの状態は必要ありません。これは、RTTが送信者のTCPのクロック粒度より小さい場合がある超低RTTのネットワーク（たとえば、データセンター内）で特に有用です。もう1つの欠点は、（他の再送タイマーと同様に）並べ替えタイマーが早期に満了し、特にDSACKがサポートされていない場合に、偽の再送が増える可能性があることです。</t>
+      </section>
+      <section anchor="relationships-with-other-loss-recovery-algorithms" numbered="true" toc="include" removeInRFC="false" pn="section-9.2">
+        <name slugifiedName="name-relationships-with-other-lo">他の損失回復アルゴリズムとの関係</name>
+        <t indent="0" pn="section-9.2-1">RACK-TLPの主な動機は、いくつかの標準的な損失回復アルゴリズム<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> <xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/> <xref target="RFC5827" format="default" sectionFormat="of" derivedContent="RFC5827"/> <xref target="RFC4653" format="default" sectionFormat="of" derivedContent="RFC4653"/>に対する汎用的な代替を提供することです。特に、TCPのSACK損失回復アルゴリズム<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>は再送の損失を扱うように設計されていないため、そのNextSeg()は再送の損失に対して機能せず、また、それに対応して必要となる追加の輻輳への反応も規定していません。したがって、アルゴリズム<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>をRACK-TLPとともに使用<bcp14>してはなりません（MUST NOT）</bcp14>。代わりに、そのようなケースに注意深く対処する修正された回復アルゴリズムが必要です。</t>
+        <t indent="0" pn="section-9.2-2">Early Retransmitの仕組み<xref target="RFC5827" format="default" sectionFormat="of" derivedContent="RFC5827"/>とTCPのNCR<xref target="RFC4653" format="default" sectionFormat="of" derivedContent="RFC4653"/>は、現在または以前のフライトサイズに基づいて重複ACKしきい値を動的に調整します。RACK-TLPは、時間ベースの並べ替えウィンドウを使用するという異なる方式をとります。RACK-TLPは、FlightSizeの制限がなく、追加の並べ替えウィンドウを持つ、拡張されたEarly Retransmit<xref target="RFC5827" format="default" sectionFormat="of" derivedContent="RFC5827"/>とみなすことができます。<xref target="FACK" format="default" sectionFormat="of" derivedContent="FACK"/>は、元のセグメントのシーケンス範囲が、SACKされた最大のシーケンスより十分に下にある場合に、そのセグメントが失われたとみなします。ある意味では、RACK-TLPは、シーケンス空間ではなく時間空間で動作するFACKの一般化された形とみなすことができ、それにより、並べ替え、アプリケーション制限されたトラフィック、再送の損失をよりうまく扱うことができます。</t>
+        <t indent="0" pn="section-9.2-3">RACK-TLPは、標準のRTO<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>、RTO Restart<xref target="RFC7765" format="default" sectionFormat="of" derivedContent="RFC7765"/>、F-RTO<xref target="RFC5682" format="default" sectionFormat="of" derivedContent="RFC5682"/>、Eifelアルゴリズム<xref target="RFC3522" format="default" sectionFormat="of" derivedContent="RFC3522"/>と互換性があります。これは、RACK-TLPがACKイベントを使用して損失を検出するだけだからです。RACK-TLPは、RTOタイマーの計算を変更することも、偽のRTOを検出することもありません。RACK-TLPは、RTOの前にTLPを置き、RTO後の潜在的な偽の再送を減らすことで、<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>の動作をわずかに変更します。</t>
+      </section>
+      <section anchor="interaction-with-congestion-control" numbered="true" toc="include" removeInRFC="false" pn="section-9.3">
+        <name slugifiedName="name-interaction-with-congestion">輻輳制御との相互作用</name>
+        <t indent="0" pn="section-9.3-1">RACK-TLPは、意図的に損失検出を輻輳制御から切り離しています。RACK-TLPは損失を検出するだけであり、輻輳制御アルゴリズム<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> <xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/>を変更しません。RACK-TLPによって失われたものとしてマークされたセグメントは、輻輳制御が適切と判断するまで再送<bcp14>してはなりません（MUST NOT）</bcp14>。<xref target="fig1" format="default" sectionFormat="of" derivedContent="Figure 1"/>に続く段落（<xref target="fig1desc" format="default" sectionFormat="of" derivedContent="Section 3.4, Paragraph 3"/>）で述べたように、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>は、連続する2つのデータウィンドウでの損失や再送の損失は輻輳の2つの兆候として扱わなければならず、その結果、2つの別個の反応を引き起こすという原則を義務付けています。RACK-TLPによって検出された損失に対してとる具体的な輻輳制御の動作には、Proportional Rate Reduction（PRR）アルゴリズム<xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/>が<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+
+PRR<xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/>がない場合、RACK-TLPが再送の損失を検出したときは、輻輳制御は<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>の前述の原則に従って、追加の輻輳への反応を引き起こさ<bcp14>なければなりません（MUST）</bcp14>。1つのウィンドウ内で複数の元の送信または再送が失われた場合、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>で規定されている輻輳制御は、ウィンドウごとに1回だけ反応します。輻輳制御の実装者は、RACK-TLPによってもたらされるこの微妙な状況を注意深く考慮することをお勧めします。</t>
+        <t indent="0" pn="section-9.3-2">唯一の例外（RACK-TLPが輻輳制御アルゴリズムを調整する唯一の方法）は、輻輳ウィンドウが完全に使用されている場合でも、未処理の損失プローブを1つ送信できることです。ただし、この一時的な超過分は、輻輳制御のために追跡されるフライト中のデータに計上されるため、輻輳制御は次のACKで超過分を解消します。 </t>
+        <t indent="0" pn="section-9.3-3">並べ替えが観測された後にパケット損失が発生した場合、RACK-TLPは、純粋なDupAckカウント方式よりも損失の検出に時間がかかる場合があります。この場合、TCPはその間にACKを受信するたびに輻輳ウィンドウを増やし続ける可能性があり、送信者をより積極的にします。</t>
+        <t indent="0" pn="section-9.3-4">
+次の簡単な例は、RACK-TLPありとRACK-TLPなしの損失検出が、輻輳制御とどのように相互作用するかを比較したものです。SACKが有効なコネクションで、送信者の輻輳ウィンドウ（cwnd）が20セグメントであるとします。送信者は10個のデータセグメントを送信し、そのすべてが失われます。</t>
+        <t indent="0" pn="section-9.3-5">RACK-TLPがない場合、送信者はタイムアウトし、cwndを1にリセットし、最初のセグメントを再送します。スロースタートを使用して10個の失われたセグメントすべてを再送するには、4往復（1 + 2 + 4 + 3 = 10）かかります。回復の遅延はRTO + 4*RTTとなり、輻輳ウィンドウの検証により、最終的なcwndは4セグメントになります。</t>
+        <t indent="0" pn="section-9.3-6">RACK-TLPがある場合、送信者は2*RTT後にTLPを送信してDupAckを受け取り、それによりRACKが損失を検出して高速回復を開始できます。送信者がProportional Rate Reduction<xref target="RFC6937" format="default" sectionFormat="of" derivedContent="RFC6937"/>を実装している場合、フライト中のセグメント数（0）がスロースタートしきい値（10）より小さいため、残りの9個の失われたセグメントを再送するためにスロースタートを行います。スロースタートでは、失われたセグメントすべてを再送するのに、やはり4往復（1 + 2 + 4 + 3 = 10）かかります。回復の遅延は2*RTT + 4*RTTとなり、最終的なcwndはスロースタートしきい値である10セグメントに設定されます。</t>
+        <t indent="0" pn="section-9.3-7">RTTが最小RTO（<xref target="RFC6298" format="default" sectionFormat="of" derivedContent="RFC6298"/>では1秒）よりはるかに小さい場合や、RTTが大きい場合には、回復の遅延の差（RTO + 4*RTT対6*RTT）は大きくなり得ます。前者のケースは、ローカルエリアネットワーク、データセンターネットワーク、または深く展開されたコンテンツ配信ネットワークで発生し得ます。後者のケースは、ひどく輻輳した、または遅延の大きいネットワークがある発展途上地域で発生し得ます。</t>
+      </section>
+      <section anchor="tlp-recovery-detection-with-delayed-acks" numbered="true" toc="include" removeInRFC="false" pn="section-9.4">
+        <name slugifiedName="name-tlp-recovery-detection-with">遅延ACKがある場合のTLP回復検出</name>
+        <t indent="0" pn="section-9.4-1">遅延ACKやストレッチACKは、TLPによる修復の検出を複雑にします。そのようなACKでは、送信者が通常予想されるよりも少ないACKを、より長い時間をかけて受信することになるためです。この複雑さを緩和するため、送信者は、TLP損失プローブの再送を送信する前に、受信者が保留している遅延ACKをすべて送信し終えるのに十分な時間だけ待つよう試みるべきです。上述の送信者のアルゴリズムは、TLP.max_ack_delayという形でそのような遅延を備えています。さらに、受信者がDSACKをサポートしている場合、遅延ACKのケースでは、送信者のTLP回復検出の仕組み（前述）は、DSACKの情報を使用して、元の送信とTLPの再送の両方が受信者に到着したことを推論できます。</t>
+        <t indent="0" pn="section-9.4-2">ACKの損失や、DSACKのない遅延ACKがある場合、実際にはパケット損失がなかったにもかかわらず送信者が輻輳ウィンドウを縮小するため、このアルゴリズムは保守的です。実際には、これは許容可能であり、むしろ望ましい可能性さえあります。逆方向の経路に輻輳がある場合、輻輳ウィンドウを縮小することは賢明な場合があるからです。</t>
+      </section>
+      <section anchor="rack-tlp-for-other-transport-protocols" numbered="true" toc="include" removeInRFC="false" pn="section-9.5">
+        <name slugifiedName="name-rack-tlp-for-other-transpor">他のトランスポートプロトコルのためのRACK-TLP</name>
+        <t indent="0" pn="section-9.5-1">RACK-TLPは、他のトランスポートプロトコル（たとえば、<xref target="I-D.ietf-quic-recovery" format="default" sectionFormat="of" derivedContent="QUIC-LR"/>）でも実装できます。<xref target="SPROUT" format="default" sectionFormat="of" derivedContent="SPROUT"/>の損失検出アルゴリズムも、RACKと同様に損失検出を改善するために、10 msの並べ替えウィンドウを使用するよう独自に設計されました。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-10">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-10-1">RACK-TLPアルゴリズムの動作はSACKオプションで伝えられる情報に基づいているため、<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>のセキュリティーに関する考慮事項のセクションで説明されているものと同様のセキュリティー上の考慮事項があります。 </t>
+      <t indent="0" pn="section-10-2">さらに、RACK-TLPは、ACK分割攻撃<xref target="SCWA99" format="default" sectionFormat="of" derivedContent="SCWA99"/>に対して脆弱ではないため、損失回復アルゴリズム<xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>よりもリスクが低くなっています。ACK分割攻撃では、送信されたMSSサイズのセグメントに対して、受信者または攻撃者が、ACKごとに1バイトずつ追加で選択的または累積的に確認応答するMSS個のACKを送信することがあります。これはRACKを欺くことはできません。このようなシナリオでは、セグメント内のすべてのシーケンス範囲は同時に送信されたため同じ送信タイムスタンプを持つので、RACK.xmit_tsは進みません。言い換えると、RACKでは、セグメントの1バイトだけをSACKすることと、セグメント全体をSACKすることは同じ効果を持ちます。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-11">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-11-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.ietf-quic-recovery" to="QUIC-LR"/>
+    <displayreference target="RFC0793" to="RFC793"/>
+    <references pn="section-12">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-12.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2018" target="https://www.rfc-editor.org/info/rfc2018" quoteTitle="true" derivedAnchor="RFC2018">
+          <front>
+            <title>TCP Selective Acknowledgment Options</title>
+            <author initials="M." surname="Mathis" fullname="M. Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Mahdavi" fullname="J. Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Floyd" fullname="S. Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Romanow" fullname="A. Romanow">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="October"/>
+            <abstract>
+              <t indent="0">This memo proposes an implementation of SACK and discusses its performance and related issues.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2018"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2018"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t indent="0">In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC2883" target="https://www.rfc-editor.org/info/rfc2883" quoteTitle="true" derivedAnchor="RFC2883">
+          <front>
+            <title>An Extension to the Selective Acknowledgement (SACK) Option for TCP</title>
+            <author initials="S." surname="Floyd" fullname="S. Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Mahdavi" fullname="J. Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Mathis" fullname="M. Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Podolsky" fullname="M. Podolsky">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2000" month="July"/>
+            <abstract>
+              <t indent="0">This note defines an extension of the Selective Acknowledgement (SACK) Option for TCP.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2883"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2883"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="V." surname="Paxson" fullname="V. Paxson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Blanton" fullname="E. Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2009" month="September"/>
+            <abstract>
+              <t indent="0">This document defines TCP's four intertwined congestion control algorithms: slow start, congestion avoidance, fast retransmit, and fast recovery.  In addition, the document specifies how TCP should begin transmission after a relatively long idle period, as well as discussing various acknowledgment generation methods.  This document obsoletes RFC 2581.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC6298" target="https://www.rfc-editor.org/info/rfc6298" quoteTitle="true" derivedAnchor="RFC6298">
+          <front>
+            <title>Computing TCP's Retransmission Timer</title>
+            <author initials="V." surname="Paxson" fullname="V. Paxson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Chu" fullname="J. Chu">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Sargent" fullname="M. Sargent">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="June"/>
+            <abstract>
+              <t indent="0">This document defines the standard algorithm that Transmission Control Protocol (TCP) senders are required to use to compute and manage their retransmission timer.  It expands on the discussion in Section 4.2.3.1 of RFC 1122 and upgrades the requirement of supporting the algorithm from a SHOULD to a MUST.  This document obsoletes RFC 2988.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6298"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6298"/>
+        </reference>
+        <reference anchor="RFC6675" target="https://www.rfc-editor.org/info/rfc6675" quoteTitle="true" derivedAnchor="RFC6675">
+          <front>
+            <title>A Conservative Loss Recovery Algorithm Based on Selective Acknowledgment (SACK) for TCP</title>
+            <author initials="E." surname="Blanton" fullname="E. Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Wang" fullname="L. Wang">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="I." surname="Jarvinen" fullname="I. Jarvinen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Kojo" fullname="M. Kojo">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Nishida" fullname="Y. Nishida">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="August"/>
+            <abstract>
+              <t indent="0">This document presents a conservative loss recovery algorithm for TCP that is based on the use of the selective acknowledgment (SACK) TCP option.  The algorithm presented in this document conforms to the spirit of the current congestion control specification (RFC 5681), but allows TCP senders to recover more effectively when multiple segments are lost from a single flight of data. This document obsoletes RFC 3517 and describes changes from it.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6675"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6675"/>
+        </reference>
+        <reference anchor="RFC7323" target="https://www.rfc-editor.org/info/rfc7323" quoteTitle="true" derivedAnchor="RFC7323">
+          <front>
+            <title>TCP Extensions for High Performance</title>
+            <author initials="D." surname="Borman" fullname="D. Borman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Braden" fullname="B. Braden">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="V." surname="Jacobson" fullname="V. Jacobson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Scheffenegger" fullname="R. Scheffenegger" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="September"/>
+            <abstract>
+              <t indent="0">This document specifies a set of TCP extensions to improve performance over paths with a large bandwidth * delay product and to provide reliable operation over very high-speed paths.  It defines the TCP Window Scale (WS) option and the TCP Timestamps (TS) option and their semantics.  The Window Scale option is used to support larger receive windows, while the Timestamps option can be used for at least two distinct mechanisms, Protection Against Wrapped Sequences (PAWS) and Round-Trip Time Measurement (RTTM), that are also described herein.</t>
+              <t indent="0">This document obsoletes RFC 1323 and describes changes from it.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7323"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7323"/>
+        </reference>
+        <reference anchor="RFC0793" target="https://www.rfc-editor.org/info/rfc793" quoteTitle="true" derivedAnchor="RFC793">
+          <front>
+            <title>Transmission Control Protocol</title>
+            <author initials="J." surname="Postel" fullname="J. Postel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1981" month="September"/>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="793"/>
+          <seriesInfo name="DOI" value="10.17487/RFC0793"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t indent="0">RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-12.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="DMCG11" quoteTitle="true" target="https://doi.org/10.1145/2068816.2068832" derivedAnchor="DMCG11">
+          <front>
+            <title>Proportional Rate Reduction for TCP</title>
+            <author initials="N." surname="Dukkipati" fullname="Nandita Dukkipati"/>
+            <author initials="M." surname="Matthis" fullname="Matt Mathis"/>
+            <author initials="Y." surname="Cheng" fullname="Yuchung Cheng"/>
+            <author initials="M." surname="Ghobadi" fullname="Monia Ghobadi"/>
+            <date month="November" year="2011"/>
+          </front>
+          <seriesInfo name="Proceedings of the 2011 ACM SIGCOMM Conference on Internet Measurement Conference" value="pp. 155-170"/>
+          <seriesInfo name="DOI" value="10.1145/2068816.2068832"/>
+        </reference>
+        <reference anchor="FACK" quoteTitle="true" target="https://doi.org/10.1145/248157.248181" derivedAnchor="FACK">
+          <front>
+            <title>Forward acknowledgement: refining TCP congestion control</title>
+            <author initials="M." surname="Mathis" fullname="Matt Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Mahdavi" fullname="Jamshid Mahdavi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1996" month="August"/>
+          </front>
+          <seriesInfo name="ACM SIGCOMM Computer Communication Review" value="Volume 26, Issue 4"/>
+          <seriesInfo name="DOI" value="10.1145/248157.248181"/>
+        </reference>
+        <reference anchor="POLICER16" quoteTitle="true" target="https://doi.org/10.1145/2934872.2934873" derivedAnchor="POLICER16">
+          <front>
+            <title>An Internet-Wide Analysis of Traffic Policing</title>
+            <author initials="T." surname="Flach" fullname="Tobias Flach">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Papageorge" fullname="Pavlos Papageorge">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Terzis" fullname="Andreas Terzis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="L." surname="Pedrosa" fullname="Luis Pedrosa">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Cheng" fullname="Yuchung Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Karim" fullname="Tayeb Karim">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Katz-Bassett" fullname="Ethan Katz-Bassett">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Govindan" fullname="Ramesh Govindan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="August"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/2934872.2934873"/>
+          <refcontent>Proceedings of the 2016 ACM SIGCOMM Conference pp. 468-482</refcontent>
+        </reference>
+        <reference anchor="I-D.ietf-quic-recovery" quoteTitle="true" target="https://tools.ietf.org/html/draft-ietf-quic-recovery-34" derivedAnchor="QUIC-LR">
+          <front>
+            <title>QUIC Loss Detection and Congestion Control</title>
+            <author fullname="Jana Iyengar">
+              <organization showOnFrontPage="true">Fastly</organization>
+            </author>
+            <author fullname="Ian Swett">
+              <organization showOnFrontPage="true">Google</organization>
+            </author>
+            <date month="January" day="14" year="2021"/>
+            <abstract>
+              <t indent="0">   This document describes loss detection and congestion control
+   mechanisms for QUIC.
+
+Note to Readers
+
+   Discussion of this draft takes place on the QUIC working group
+   mailing list (quic@ietf.org (mailto:quic@ietf.org)), which is
+   archived at https://mailarchive.ietf.org/arch/
+   search/?email_list=quic.
+
+   Working Group information can be found at https://github.com/quicwg;
+   source code and issues list for this draft can be found at
+   https://github.com/quicwg/base-drafts/labels/-recovery.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-quic-recovery-34"/>
+          <format type="TXT" target="https://www.ietf.org/internet-drafts/draft-ietf-quic-recovery-34.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="RFC3042" target="https://www.rfc-editor.org/info/rfc3042" quoteTitle="true" derivedAnchor="RFC3042">
+          <front>
+            <title>Enhancing TCP's Loss Recovery Using Limited Transmit</title>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Balakrishnan" fullname="H. Balakrishnan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Floyd" fullname="S. Floyd">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2001" month="January"/>
+            <abstract>
+              <t indent="0">This document proposes a new Transmission Control Protocol (TCP) mechanism that can be used to more effectively recover lost segments when a connection's congestion window is small, or when a large number of segments are lost in a single transmission window.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3042"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3042"/>
+        </reference>
+        <reference anchor="RFC3522" target="https://www.rfc-editor.org/info/rfc3522" quoteTitle="true" derivedAnchor="RFC3522">
+          <front>
+            <title>The Eifel Detection Algorithm for TCP</title>
+            <author initials="R." surname="Ludwig" fullname="R. Ludwig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Meyer" fullname="M. Meyer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2003" month="April"/>
+            <abstract>
+              <t indent="0">The Eifel detection algorithm allows a TCP sender to detect a posteriori whether it has entered loss recovery unnecessarily.  It requires that the TCP Timestamps option defined in RFC 1323 be enabled for a connection.  The Eifel detection algorithm makes use of the fact that the TCP Timestamps option eliminates the retransmission ambiguity in TCP.  Based on the timestamp of the first acceptable ACK that arrives during loss recovery, it decides whether loss recovery was entered unnecessarily.  The Eifel detection algorithm provides a basis for future TCP enhancements.  This includes response algorithms to back out of loss recovery by restoring a TCP sender's congestion control state. This memo defines an Experimental Protocol for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="3522"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3522"/>
+        </reference>
+        <reference anchor="RFC4653" target="https://www.rfc-editor.org/info/rfc4653" quoteTitle="true" derivedAnchor="RFC4653">
+          <front>
+            <title>Improving the Robustness of TCP to Non-Congestion Events</title>
+            <author initials="S." surname="Bhandarkar" fullname="S. Bhandarkar">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A. L. N." surname="Reddy" fullname="A. L. N. Reddy">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Blanton" fullname="E. Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="August"/>
+            <abstract>
+              <t indent="0">This document specifies Non-Congestion Robustness (NCR) for TCP.  In the absence of explicit congestion notification from the network, TCP uses loss as an indication of congestion.  One of the ways TCP detects loss is using the arrival of three duplicate acknowledgments. However, this heuristic is not always correct, notably in the case when network paths reorder segments (for whatever reason), resulting in degraded performance.  TCP-NCR is designed to mitigate this degraded performance by increasing the number of duplicate acknowledgments required to trigger loss recovery, based on the current state of the connection, in an effort to better disambiguate true segment loss from segment reordering.  This document specifies the changes to TCP, as well as the costs and benefits of these modifications.  This memo defines an Experimental Protocol for the Internet community.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4653"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4653"/>
+        </reference>
+        <reference anchor="RFC5682" target="https://www.rfc-editor.org/info/rfc5682" quoteTitle="true" derivedAnchor="RFC5682">
+          <front>
+            <title>Forward RTO-Recovery (F-RTO): An Algorithm for Detecting Spurious Retransmission Timeouts with TCP</title>
+            <author initials="P." surname="Sarolahti" fullname="P. Sarolahti">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Kojo" fullname="M. Kojo">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Yamamoto" fullname="K. Yamamoto">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Hata" fullname="M. Hata">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2009" month="September"/>
+            <abstract>
+              <t indent="0">The purpose of this document is to move the F-RTO (Forward RTO-Recovery) functionality for TCP in RFC 4138 from Experimental to Standards Track status.  The F-RTO support for Stream Control Transmission Protocol (SCTP) in RFC 4138 remains with Experimental status.  See Appendix B for the differences between this document and RFC 4138.</t>
+              <t indent="0">Spurious retransmission timeouts cause suboptimal TCP performance because they often result in unnecessary retransmission of the last window of data.  This document describes the F-RTO detection algorithm for detecting spurious TCP retransmission timeouts.  F-RTO is a TCP sender-only algorithm that does not require any TCP options to operate.  After retransmitting the first unacknowledged segment triggered by a timeout, the F-RTO algorithm of the TCP sender monitors the incoming acknowledgments to determine whether the timeout was spurious.  It then decides whether to send new segments or retransmit unacknowledged segments.  The algorithm effectively helps to avoid additional unnecessary retransmissions and thereby improves TCP performance in the case of a spurious timeout.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5682"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5682"/>
+        </reference>
+        <reference anchor="RFC5827" target="https://www.rfc-editor.org/info/rfc5827" quoteTitle="true" derivedAnchor="RFC5827">
+          <front>
+            <title>Early Retransmit for TCP and Stream Control Transmission Protocol (SCTP)</title>
+            <author initials="M." surname="Allman" fullname="M. Allman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Avrachenkov" fullname="K. Avrachenkov">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="U." surname="Ayesta" fullname="U. Ayesta">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Blanton" fullname="J. Blanton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hurtig" fullname="P. Hurtig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="May"/>
+            <abstract>
+              <t indent="0">This document proposes a new mechanism for TCP and Stream Control Transmission Protocol (SCTP) that can be used to recover lost segments when a connection's congestion window is small.  The "Early Retransmit" mechanism allows the transport to reduce, in certain special circumstances, the number of duplicate acknowledgments required to trigger a fast retransmission.  This allows the transport to use fast retransmit to recover segment losses that would otherwise require a lengthy retransmission timeout.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5827"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5827"/>
+        </reference>
+        <reference anchor="RFC6937" target="https://www.rfc-editor.org/info/rfc6937" quoteTitle="true" derivedAnchor="RFC6937">
+          <front>
+            <title>Proportional Rate Reduction for TCP</title>
+            <author initials="M." surname="Mathis" fullname="M. Mathis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Dukkipati" fullname="N. Dukkipati">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="Y." surname="Cheng" fullname="Y. Cheng">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="May"/>
+            <abstract>
+              <t indent="0">This document describes an experimental Proportional Rate Reduction (PRR) algorithm as an alternative to the widely deployed Fast Recovery and Rate-Halving algorithms.  These algorithms determine the amount of data sent by TCP during loss recovery.  PRR minimizes excess window adjustments, and the actual window size at the end of recovery will be as close as possible to the ssthresh, as determined by the congestion control algorithm.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6937"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6937"/>
+        </reference>
+        <reference anchor="RFC7765" target="https://www.rfc-editor.org/info/rfc7765" quoteTitle="true" derivedAnchor="RFC7765">
+          <front>
+            <title>TCP and Stream Control Transmission Protocol (SCTP) RTO Restart</title>
+            <author initials="P." surname="Hurtig" fullname="P. Hurtig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Brunstrom" fullname="A. Brunstrom">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Petlund" fullname="A. Petlund">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Welzl" fullname="M. Welzl">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="February"/>
+            <abstract>
+              <t indent="0">This document describes a modified sender-side algorithm for managing the TCP and Stream Control Transmission Protocol (SCTP) retransmission timers that provides faster loss recovery when there is a small amount of outstanding data for a connection.  The modification, RTO Restart (RTOR), allows the transport to restart its retransmission timer using a smaller timeout duration, so that the effective retransmission timeout (RTO) becomes more aggressive in situations where fast retransmit cannot be used.  This enables faster loss detection and recovery for connections that are short lived or application limited.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7765"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7765"/>
+        </reference>
+        <reference anchor="SCWA99" quoteTitle="true" target="https://doi.org/10.1145/505696.505704" derivedAnchor="SCWA99">
+          <front>
+            <title>TCP congestion control with a misbehaving receiver</title>
+            <author initials="S." surname="Savage" fullname="Stefan Savage">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Cardwell" fullname="Neal Cardwell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Wetherall" fullname="David Wetherall">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Anderson" fullname="Tom Anderson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1999" month="October"/>
+          </front>
+          <seriesInfo name="ACM Computer Communication Review" value="29(5)"/>
+          <seriesInfo name="DOI" value="10.1145/505696.505704"/>
+        </reference>
+        <reference anchor="SPROUT" quoteTitle="true" derivedAnchor="SPROUT">
+          <front>
+            <title>Stochastic Forecasts Achieve High Throughput and Low Delay over Cellular Networks</title>
+            <author initials="K." surname="Winstein" fullname="Keith Winstein"/>
+            <author initials="A." surname="Sivaraman" fullname="Anirudh Sivaraman"/>
+            <author initials="H." surname="Balakrishnan" fullname="Hari Balakrishnan"/>
+            <date year="2013"/>
+          </front>
+          <refcontent>10th USENIX Symposium on Networked Systems Design and Implementation (NSDI '13)"</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgments" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、FACKに関する洞察を与えてくれた<contact fullname="Matt Mathis"/>と、この研究のきっかけとなったパケットごとのタイマーのアイデアを与えてくれた<contact fullname="Michael Welzl"/>に感謝します。<contact fullname="Eric Dumazet"/>, <contact fullname="Randy Stewart"/>, <contact fullname="Van Jacobson"/>, <contact fullname="Ian Swett"/>, <contact fullname="Rick Jones"/>, <contact fullname="Jana Iyengar"/>, <contact fullname="Hiren Panchasara"/>, <contact fullname="Praveen Balasubramanian"/>, <contact fullname="Yoshifumi Nishida"/>, <contact fullname="Bob Briscoe"/>, <contact fullname="Felix Weinrank"/>, <contact fullname="Michael Tüxen"/>, <contact fullname="Martin Duke"/>, <contact fullname="Ilpo Jarvinen"/>, <contact fullname="Theresa Enghardt"/>, <contact fullname="Mirja Kühlewind"/>, <contact fullname="Gorry Fairhurst"/>, <contact fullname="Markku Kojo"/>、<contact fullname="Yi Huang"/>は、この文書、またはLinux、FreeBSD、Windows、QUICにおける実装に貢献しました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Yuchung Cheng" initials="Y." surname="Cheng">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>ycheng@google.com</email>
+        </address>
+      </author>
+      <author fullname="Neal Cardwell" initials="N." surname="Cardwell">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>ncardwell@google.com</email>
+        </address>
+      </author>
+      <author fullname="Nandita Dukkipati" initials="N." surname="Dukkipati">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>nanditad@google.com</email>
+        </address>
+      </author>
+      <author fullname="Priyaranjan Jha" initials="P." surname="Jha">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <email>priyarjha@google.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

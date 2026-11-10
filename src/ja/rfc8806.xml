@@ -1,0 +1,618 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" consensus="true" docName="draft-ietf-dnsop-7706bis-12" indexInclude="true" ipr="trust200902" number="8806" obsoletes="7706" prepTime="2020-06-18T13:48:25" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-dnsop-7706bis-12" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8806" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Root Server Local">リゾルバーのローカルでのルートサーバーの運用</title>
+    <seriesInfo name="RFC" value="8806" stream="IETF"/>
+    <author fullname="Warren Kumari" initials="W." surname="Kumari">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <email>Warren@kumari.net</email>
+      </address>
+    </author>
+    <author fullname="Paul Hoffman" initials="P." surname="Hoffman">
+      <organization showOnFrontPage="true">ICANN</organization>
+      <address>
+        <email>paul.hoffman@icann.org</email>
+      </address>
+    </author>
+    <date month="06" year="2020"/>
+    <keyword>DNS</keyword>
+    <keyword>local-root</keyword>
+    <abstract pn="section-abstract">
+      <t pn="section-abstract-1">一部のDNS再帰リゾルバーは、最も近いDNSルートサーバーまでのラウンドトリップ時間が望ましい値より長くなっています。
+      そのようなリゾルバーは、ネットワーク攻撃を受けている間などに、ルートサーバーからレスポンスを得るのが難しくなることがあります。
+      また、DNSルートサーバーに送信されるリクエストを第三者に盗み見られることを防ぎたいと考えるDNS再帰リゾルバーの運用者もいます。
+      どちらの場合も、リゾルバーは、ループバックアドレス上やリゾルバーソフトウェア内など、同じサーバー上で完全なルートゾーンのコピーを提供することにより、ラウンドトリップ時間を大幅に短縮し、リクエストが観測されることを防げます。
+      この文書は、DNSの他のユーザーに問題を引き起こさないようなルートゾーンのコピーを開始し、維持する方法を示します。
+      その代償として、運用者にとっては運用上の脆弱さがいくらか増すことになります。</t>
+      <t pn="section-abstract-2">この文書はRFC 7706を廃止します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。
+        </t>
+        <t pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+            RFC 7841のセクション2を参照してください。
+        </t>
+        <t pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8806" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t pn="section-boilerplate.2-1">
+            Copyright (c) 2020 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t pn="section-boilerplate.2-2">
+            この文書は、BCP 78およびIETFドキュメントに関するIETFトラストの法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）にしたがう必要があります。これらの文書をよく確認し、この文書に関するあなたの権利と制限を説明しています。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているSimplified BSD Licenseのテキストが含まれている必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+              <li pn="section-toc.1-1.1.2.1">
+                <t keepWithNext="true" pn="section-toc.1-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-changes-from-rfc-7706">RFC 7706からの変更</xref></t>
+              </li>
+              <li pn="section-toc.1-1.1.2.2">
+                <t keepWithNext="true" pn="section-toc.1-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-notation">要件の表記</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements">要件</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operation-of-the-root-zone-">ローカルサーバーでのルートゾーンの運用</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t pn="section-toc.1-1.7.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-current-sources-of-the-root">ルートゾーンの現在の入手元</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t pn="section-toc.1-1.7.2.1.1"><xref derivedContent="A.1" format="counter" sectionFormat="of" target="section-a.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-root-zone-services">ルートゾーンサービス</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t pn="section-toc.1-1.8.1"><xref derivedContent="Appendix B" format="default" sectionFormat="of" target="section-appendix.b"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configurations-of-c">一般的な実装の設定例</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t pn="section-toc.1-1.8.2.1.1"><xref derivedContent="B.1" format="counter" sectionFormat="of" target="section-b.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-bind-">設定例：BIND 9.12</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t pn="section-toc.1-1.8.2.2.1"><xref derivedContent="B.2" format="counter" sectionFormat="of" target="section-b.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-unbou">設定例：Unbound 1.8</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.3">
+                <t pn="section-toc.1-1.8.2.3.1"><xref derivedContent="B.3" format="counter" sectionFormat="of" target="section-b.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-bind-9">設定例：BIND 9.14</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.4">
+                <t pn="section-toc.1-1.8.2.4.1"><xref derivedContent="B.4" format="counter" sectionFormat="of" target="section-b.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-unboun">設定例：Unbound 1.9</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.5">
+                <t pn="section-toc.1-1.8.2.5.1"><xref derivedContent="B.5" format="counter" sectionFormat="of" target="section-b.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-knot-">設定例：Knot Resolver</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.6">
+                <t pn="section-toc.1-1.8.2.6.1"><xref derivedContent="B.6" format="counter" sectionFormat="of" target="section-b.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-configuration-micro">設定例：Microsoft Windows Server 2012</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.d"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="intro" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t pn="section-1-1">DNS再帰リゾルバーは、存在しないドメイン名に対するものも含め、クライアントからのすべてのクエリーに回答を提供しなければなりません。
+      再帰リゾルバーのキャッシュにないトップレベルドメイン（TLD）に含まれる名前がクエリーされるたびに、リゾルバーは、そのTLDの情報を取得するため、またはそのTLDが存在しないことを確認するために、ルートサーバーにクエリーを送信しなければなりません。
+      研究によれば、ルートに届くクエリーの大多数は、ルートゾーンに存在しない名前に対するものです。</t>
+      <t pn="section-1-2">再帰リゾルバーからルートサーバーへのクエリーの多くは、他のサーバーへの紹介（referral）という回答を受け取ります。
+      悪意のある第三者は、再帰リゾルバーとルートサーバーの間のネットワーク上でそのトラフィックを観測できるかもしれません。</t>
+      <t pn="section-1-3">この設計の主な目的は、ルートサーバーに影響を与えるネットワーク攻撃の間に、ルートゾーンへのクエリーに対してより信頼性の高い回答を提供することと、クエリーとレスポンスがネットワーク上で見えないようにすることです。
+      この設計は、TLDに対する正当なクエリーについてスタブリゾルバーへのレスポンスを速くすることには、おそらくほとんど効果がありません。
+      なぜなら、ほとんどのTLDのTTLは通常長く（1日から2日程度）、そのため通常はすでに再帰リゾルバーのキャッシュに入っているからです。
+      ルートサーバーからの否定応答のTTLについても同じことが言えます。
+      （この設計の主な目的はルートゾーンを提供することですが、この方法は任意のゾーンに使用できます。）</t>
+      <t pn="section-1-4">この文書は、再帰リゾルバーの運用者が、完全なルートゾーンをローカルに持ち、ルートゾーンに対するクエリーを外部から隠すための方法を説明します。
+      基本的な考え方は、再帰サーバーと同じホスト上に最新のルートゾーンサービスを作成し、再帰リゾルバーがルートの情報を検索するときにそのサービスを使用するというものです。
+      再帰リゾルバーは、リモートのルートサーバーからのすべてのレスポンスを検証するのと同じように、同じホスト上のルートサービスからのすべてのレスポンスを検証します。</t>
+      <t pn="section-1-5">この設計では、サーバーが他のシステムに権威ある回答を提供することを防ぐために、新しいルートゾーンサービスを再帰リゾルバーと同じサーバー上で実行することだけを明示的に許可しています。
+      具体的には、ローカルシステム上のルートサービスは、同じホスト上のリゾルバーからのクエリーにのみ応答するように設定<bcp14>しなければなりません（MUST）</bcp14>。
+      また、他のリゾルバーからのクエリーに応答しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      <t pn="section-1-6"><xref target="RFC7706" format="default" sectionFormat="of" derivedContent="RFC7706">RFC 7706</xref>が公開された時点では、これが「ベストプラクティス」であるかどうかについてコンセンサスがなかったため、これは議論の余地があるものと考えられていました。
+      実際、多くの人々は、以前は存在しなかった新しい運用要素をローカルのDNS運用に持ち込むことから、これは過度にリスクの高いやり方だと感じていました。
+      それ以降、DNS運用コミュニティーでは、個々のリゾルバーのためにルートゾーンをローカルで提供することは合理的なやり方であるという考え方へと、おおむね移行しています。
+      上記の利点はただで得られるものではありません。
+      この新しいシステムが正しく動作しなければ、ユーザーが誤ったデータを受け取ったり、再帰的な名前解決のシステム全体が、診断の難しい形で故障したりする可能性があります。</t>
+      <t pn="section-1-7">この設計では、再帰リゾルバーと同じマシン上で動作する権威サービスを使用します。
+      一般的なオープンソースの再帰リゾルバーソフトウェアは、一部のゾーンの権威サーバーとして動作するために新しい機能を追加する必要はありませんが、他の再帰リゾルバーソフトウェアは、同じホスト上で動作する権威サーバーと通信できるようにする必要があるかもしれません。
+      一部のリゾルバーソフトウェアは、論理的な「ビュー」で分離したうえで権威サーバーとリゾルバーの両方として動作することをサポートしており、これによりローカルのルートを単一のプロセス内で実装できます。
+      その例は<xref target="examples" format="default" sectionFormat="of" derivedContent="Appendix B"/>で見ることができます。</t>
+      <t pn="section-1-8">この文書で議論している問題の一部を解決するための別のアプローチが、<xref target="RFC8198" format="default" sectionFormat="of" derivedContent="RFC8198"/>で説明されています。</t>
+      <t pn="section-1-9">読者は<xref target="RFC8499" format="default" sectionFormat="of" derivedContent="RFC8499"/>を理解していることが前提です。</t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-changes-from-rfc-7706">RFC 7706からの変更</name>
+        <t pn="section-1.1-1">RFC 7706は、検証リゾルバーを実行しているホストのループバックインターフェイス上でルートサーバーのインスタンスを実行することを明示的に要求していました。
+        しかし、RFC 7706には、ループバックインターフェイスを使用しない一般的なソフトウェアの設定方法の例も含まれていました。
+        この文書は、ループバックインターフェイスを使用するという制約を緩め、実際には、必ずしも権威サーバーではないローカルサービスの使用も許可します。
+        ただし、この文書は、その単一のホスト上で動作するシステムだけがその権威ルートサーバーまたはサービスにクエリーできるという要件を維持しています。</t>
+        <t pn="section-1.1-2">この文書は、ローカルのルートサービスを実行するユースケースを、運用者がRFC 7706を使用する理由として挙げたものとより一致するように変更します。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-1.1-3">
+          <li pn="section-1.1-3.1">すでにそうしているものもあり、そうすることに関心を示しているものもあるため、この設計のための設定を含む再帰DNSサーバーの配布の禁止を削除しました。</li>
+          <li pn="section-1.1-3.2">ローカルのルートサーバーが故障した場合に、この設計を使用する再帰リゾルバーが通常の（リモートの）ルートサーバーの使用に切り替えてもよいという考え方を追加しました。</li>
+          <li pn="section-1.1-3.3">ルートゾーンのコピーを入手できる場所の一覧を更新しました。</li>
+          <li pn="section-1.1-3.4">他のリゾルバーの例を追加し、既存の例を更新しました。</li>
+        </ul>
+      </section>
+      <section anchor="reqnot" numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-requirements-notation">要件の表記</name>
+        <t pn="section-1.2-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+    </section>
+    <section anchor="reqs" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-requirements">要件</name>
+      <t pn="section-2-1">この文書で説明するメカニズムを実装するためには、次のことが必要です。</t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-2-2">
+        <li pn="section-2-2.1">システムは、ゾーン内のすべての署名付きレコードをDNSSEC <xref target="RFC4033" format="default" sectionFormat="of" derivedContent="RFC4033"/>で検証できなければ<bcp14>なりません（MUST）</bcp14>。</li>
+        <li pn="section-2-2.2">システムは、DNSルートの署名に使用される鍵署名鍵（Key Signing Key、KSK）<xref target="RFC4033" format="default" sectionFormat="of" derivedContent="RFC4033"/>の公開部分の最新のコピーを持っていなければ<bcp14>なりません（MUST）</bcp14>。</li>
+        <li pn="section-2-2.3">システムは、（DNSSEC関連のすべてのレコードを含む）ルートゾーン全体のコピーを取得できなければ<bcp14>なりません（MUST）</bcp14>。</li>
+        <li pn="section-2-2.4">システムは、同じホスト上でルートゾーンの権威サービスを実行できなければ<bcp14>なりません（MUST）</bcp14>。
+          権威ルートサービスは、同じホストからのクエリーにのみ応答<bcp14>しなければなりません（MUST）</bcp14>。
+          権威ルートサービスが他のホストからのクエリーに応答しないようにする方法の1つは、ループバックアドレス（つまり、IPv4では127/8の範囲のアドレス、IPv6では::1）のいずれかでのみ応答するルートの権威サーバーを実行することです。
+          もう1つの方法は、リゾルバーソフトウェアにルートゾーンの権威サーバーとしても動作させ、ただし自分自身からのクエリーに回答する場合に限ることです。</li>
+      </ul>
+      <t pn="section-2-3">上記の一覧から導かれる帰結として、ローカルの権威サーバーで使用されるルートゾーン内の権威データは、DNSのルートゾーン内の同じデータと同一で<bcp14>なければなりません（MUST）</bcp14>。
+      ルートゾーンのコピー内の署名されていないデータ（グルーレコード）を変更することは可能ですが、そのような変更はローカルのルートゾーンにアクセスする再帰サーバーに問題を引き起こす可能性があります。
+      したがって、グルーレコードに変更を加える<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+    </section>
+    <section anchor="zoneop" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-operation-of-the-root-zone-">ローカルサーバーでのルートゾーンの運用</name>
+      <t pn="section-3-1">ここで説明するシステムにおけるルートの権威サーバーの運用は、再帰リゾルバーの運用とは別に行うこともできますし、再帰リゾルバーシステムの設定の一部とすることもできます。</t>
+      <t pn="section-3-2">ルートゾーンをセットアップする手順は次のとおりです。</t>
+      <ol spacing="normal" type="1" start="1" pn="section-3-3">
+        <li pn="section-3-3.1" derivedCounter="1.">ルートゾーンのコピーを取得します。（現在の入手元のいくつかについては<xref target="sources" format="default" sectionFormat="of" derivedContent="Appendix A"/>を参照してください。）</li>
+        <li pn="section-3-3.2" derivedCounter="2.">同じホスト上の再帰リゾルバー以外のシステムがアクセスできないような方法で、ルートゾーンの権威サービスを開始します。</li>
+      </ol>
+      <t pn="section-3-4"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>で説明されているように、ルートゾーンの内容は、ルートゾーンのSOAレコードのタイマーを使用してリフレッシュ<bcp14>しなければなりません（MUST）</bcp14>。
+      このことは本質的に、ローカルのルートゾーンの内容が、グローバルなルートサーバーの内容よりも少し遅れる可能性が高いことを意味します。
+      なぜなら、グローバルなルートサーバーはNOTIFYメッセージを契機として更新されるからです。</t>
+      <t pn="section-3-5">ルートゾーンにローカルの権威サーバーを使用するシステムが、SOAの期限切れ時刻（expire）より前にルートゾーンの内容をリフレッシュできないというリスクがあります。
+      ルートゾーンにローカルの権威サーバーを使用するシステムは、ルートゾーンの古いデータを提供しては<bcp14>なりません（MUST NOT）</bcp14>。
+      古いデータが提供されるリスクを軽減するために、ローカルのルートサーバーは、古いデータを提供することになると検出した場合、ただちにローカルでないルートサーバーの使用に切り替え<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t pn="section-3-6">ルートゾーンに内部サービスを使用しているリゾルバーでは、SOAの期限切れ時刻より前にルートゾーンの内容をリフレッシュできない場合、リゾルバーはただちにローカルでないルートサーバーの使用に切り替え<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t pn="section-3-7">ルートゾーンの内容のリフレッシュに失敗した場合、その結果は壊滅的なものになり得ます。
+      たとえば、あるTLDのすべてのNSレコードが短期間（2日間など）のうちに変更されることがあります。
+      その間にローカルのルートゾーンのリフレッシュが壊れていると、再帰リゾルバーはそのTLDゾーン全体について誤ったデータを持つことになります。</t>
+      <t pn="section-3-8">この文書の手順を使用する管理者は、ローカルのルートゾーンの内容がリフレッシュされていることを確認する自動化された方法を用意する<bcp14>べきです（SHOULD）</bcp14>。
+      これはリゾルバーソフトウェアの一部であってもかまいません。
+      これを行う方法の1つは、ローカルのルートゾーンのSOAを定期的にチェックし、それが変化していることを確認する別のプロセスを用意することです。
+      この文書の公開時点では、ルートゾーンのSOAは、現在の日付を数字で表したものに2桁のカウンターを付加したものであり、ルートゾーンの内容が変わっていなくてもSOAは毎日変更されます。
+      たとえば、2019年1月2日のルートゾーンのSOAは2019010201でした。
+      プロセスはこの事実を利用して、（この文書では規定しないプログラムを使用して）ローカルのルートゾーンの内容のチェックを作成できます。</t>
+    </section>
+    <section anchor="security" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t pn="section-4-1"><xref target="reqs" format="default" sectionFormat="of" derivedContent="Section 2"/>に示すDNSSEC関連の要件に従わないシステムは、リモートのルートサーバーからのレスポンスに対してDNSSEC検証を行わない再帰リゾルバーと同じように、だまされて誤ったレスポンスを返す可能性があります。
+      この文書で説明する方法を展開する人は誰でも、DNSSEC <xref target="RFC4033" format="default" sectionFormat="of" derivedContent="RFC4033"/>を展開することの運用上の利点とコストを理解しておくべきです。</t>
+      <t pn="section-4-2"><xref target="intro" format="default" sectionFormat="of" derivedContent="Section 1"/>で述べたように、この設計は、ルートゾーン情報のローカルのコピーが、そのホスト上のリゾルバーからのみ利用可能であることを明示的に要求しています。
+      これには、改ざんされたルートのコピーに依存しようとするかもしれないローカルのリゾルバーのクライアントへの被害を限定するというセキュリティー特性があります。</t>
+    </section>
+    <section numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t pn="section-5-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-6.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1035" target="https://www.rfc-editor.org/info/rfc1035" quoteTitle="true" derivedAnchor="RFC1035">
+          <front>
+            <title>Domain names - implementation and specification</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t>This RFC is the revised specification of the protocol and format used in the implementation of the Domain Name System.  It obsoletes RFC-883. This memo documents the details of the domain name client - server communication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1035"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1035"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t>In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4033" target="https://www.rfc-editor.org/info/rfc4033" quoteTitle="true" derivedAnchor="RFC4033">
+          <front>
+            <title>DNS Security Introduction and Requirements</title>
+            <author initials="R." surname="Arends" fullname="R. Arends">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Austein" fullname="R. Austein">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Larson" fullname="M. Larson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="Massey" fullname="D. Massey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Rose" fullname="S. Rose">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2005" month="March"/>
+            <abstract>
+              <t>The Domain Name System Security Extensions (DNSSEC) add data origin authentication and data integrity to the Domain Name System.  This document introduces these extensions and describes their capabilities and limitations.  This document also discusses the services that the DNS security extensions do and do not provide.  Last, this document describes the interrelationships between the documents that collectively describe DNSSEC.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4033"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4033"/>
+        </reference>
+        <reference anchor="RFC7706" target="https://www.rfc-editor.org/info/rfc7706" quoteTitle="true" derivedAnchor="RFC7706">
+          <front>
+            <title>Decreasing Access Time to Root Servers by Running One on Loopback</title>
+            <author initials="W." surname="Kumari" fullname="W. Kumari">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="November"/>
+            <abstract>
+              <t>Some DNS recursive resolvers have longer-than-desired round-trip times to the closest DNS root server.  Some DNS recursive resolver operators want to prevent snooping of requests sent to DNS root servers by third parties.  Such resolvers can greatly decrease the round-trip time and prevent observation of requests by running a copy of the full root zone on a loopback address (such as 127.0.0.1). This document shows how to start and maintain such a copy of the root zone that does not pose a threat to other users of the DNS, at the cost of adding some operational fragility for the operator.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7706"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7706"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t>RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8499" target="https://www.rfc-editor.org/info/rfc8499" quoteTitle="true" derivedAnchor="RFC8499">
+          <front>
+            <title>DNS Terminology</title>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Sullivan" fullname="A. Sullivan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Fujiwara" fullname="K. Fujiwara">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2019" month="January"/>
+            <abstract>
+              <t>The Domain Name System (DNS) is defined in literally dozens of different RFCs.  The terminology used by implementers and developers of DNS protocols, and by operators of DNS systems, has sometimes changed in the decades since the DNS was first defined.  This document gives current definitions for many of the terms used in the DNS in a single document.</t>
+              <t>This document obsoletes RFC 7719 and updates RFC 2308.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="219"/>
+          <seriesInfo name="RFC" value="8499"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8499"/>
+        </reference>
+      </references>
+      <references pn="section-6.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="Manning2013" target="http://www.sfc.wide.ad.jp/dissertation/bill_e.html" quoteTitle="true" derivedAnchor="Manning2013">
+          <front>
+            <title>Client Based Naming</title>
+            <author fullname="William Manning" initials="W." surname="Manning"/>
+            <date month="May" year="2013"/>
+          </front>
+        </reference>
+        <reference anchor="RFC5936" target="https://www.rfc-editor.org/info/rfc5936" quoteTitle="true" derivedAnchor="RFC5936">
+          <front>
+            <title>DNS Zone Transfer Protocol (AXFR)</title>
+            <author initials="E." surname="Lewis" fullname="E. Lewis">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Hoenes" fullname="A. Hoenes" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2010" month="June"/>
+            <abstract>
+              <t>The standard means within the Domain Name System protocol for maintaining coherence among a zone's authoritative name servers consists of three mechanisms.  Authoritative Transfer (AXFR) is one of the mechanisms and is defined in RFC 1034 and RFC 1035.</t>
+              <t>The definition of AXFR has proven insufficient in detail, thereby forcing implementations intended to be compliant to make assumptions, impeding interoperability.  Yet today we have a satisfactory set of implementations that do interoperate.  This document is a new definition of AXFR -- new in the sense that it records an accurate definition of an interoperable AXFR mechanism.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5936"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5936"/>
+        </reference>
+        <reference anchor="RFC8198" target="https://www.rfc-editor.org/info/rfc8198" quoteTitle="true" derivedAnchor="RFC8198">
+          <front>
+            <title>Aggressive Use of DNSSEC-Validated Cache</title>
+            <author initials="K." surname="Fujiwara" fullname="K. Fujiwara">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Kato" fullname="A. Kato">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="W." surname="Kumari" fullname="W. Kumari">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="July"/>
+            <abstract>
+              <t>The DNS relies upon caching to scale; however, the cache lookup generally requires an exact match.  This document specifies the use of NSEC/NSEC3 resource records to allow DNSSEC-validating resolvers to generate negative answers within a range and positive answers from wildcards.  This increases performance, decreases latency, decreases resource utilization on both authoritative and recursive servers, and increases privacy.  Also, it may help increase resilience to certain DoS attacks in some circumstances.</t>
+              <t>This document updates RFC 4035 by allowing validating resolvers to generate negative answers based upon NSEC/NSEC3 records and positive answers in the presence of wildcards.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8198"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8198"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="sources" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-current-sources-of-the-root">ルートゾーンの現在の入手元</name>
+      <t pn="section-appendix.a-1">ルートゾーンは、検証に必要なすべてのDNSSECレコードが付随している限り、どこから取得してもかまいません。
+      現在、ルートゾーンは、xfr.lax.dns.icann.orgおよびxfr.cjr.dns.icann.orgのDNSサーバーから、TCP上のゾーン転送AXFR <xref target="RFC5936" format="default" sectionFormat="of" derivedContent="RFC5936"/>によってICANNから入手できます。
+      ルートゾーンファイルは、&lt;<eref target="https://www.iana.org/domains/root/files" brackets="none"/>&gt;で説明されている方法を使用して入手できます。</t>
+      <t pn="section-appendix.a-2">現在、ルートは、次のルートサーバー運用者からもTCP上のAXFRによって取得できます。</t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-appendix.a-3">
+        <li pn="section-appendix.a-3.1">b.root-servers.net</li>
+        <li pn="section-appendix.a-3.2">c.root-servers.net</li>
+        <li pn="section-appendix.a-3.3">d.root-servers.net</li>
+        <li pn="section-appendix.a-3.4">f.root-servers.net</li>
+        <li pn="section-appendix.a-3.5">g.root-servers.net</li>
+        <li pn="section-appendix.a-3.6">k.root-servers.net</li>
+      </ul>
+      <t pn="section-appendix.a-4">上記のサービスはいずれも利用可能であることが保証されていない点に注意することが非常に重要です。
+      ICANNや一部のルートサーバー運用者が、上記のサーバーでAXFR機能を停止する可能性があります。
+      （上記のアドレスのように）エニーキャストである可能性が高いアドレスに対してTCP上のAXFRを使用すると、エニーキャストが原因で転送の問題が発生することも考えられますが、現在の実績からはその可能性は低いことが示されています。</t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-a.1">
+        <name slugifiedName="name-root-zone-services">ルートゾーンサービス</name>
+        <t pn="section-a.1-1">この文書の公開時点では、稼働中のルートゾーンサービスが1つあり、計画段階にあると発表されているものが1つあります。
+      このセクションでは、既知の稼働中のサービスをすべて説明します。</t>
+        <t pn="section-a.1-2">LocalRoot（&lt;<eref target="https://localroot.isi.edu/" brackets="none"/>&gt;）は、この文書の考え方の多くを具体化した実験的なサービスです。
+      このサービスは、ルートゾーンをAXFRによって配布し、またLocalRootシステムがルートゾーンの変更を検知したときにDNS NOTIFYメッセージも提供します。</t>
+      </section>
+    </section>
+    <section anchor="examples" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-example-configurations-of-c">一般的な実装の設定例</name>
+      <t pn="section-appendix.b-1">このセクションでは、この文書で示した要件を正しく実装していると考えられる、いくつかの広く使われている再帰サーバーソフトウェアの設定の断片を示します。
+      これらの例は、<xref target="RFC7706" format="default" sectionFormat="of" derivedContent="RFC7706"/>の公開以降に更新されています。</t>
+      <t pn="section-appendix.b-2">このセクションのIPv4アドレスとIPv6アドレスは、2020年3月に、root-servers.netゾーン内の既知の1文字の名前について、各アドレスからのTCP上のAXFRをテストすることによって確認しました。</t>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-b.1">
+        <name slugifiedName="name-example-configuration-bind-">設定例：BIND 9.12</name>
+        <t pn="section-b.1-1">BIND 9.12は、再帰リゾルバーと権威サーバーの両方として動作します。
+        このため、次の設定では2つのサーバーの間に「運命共有（fate-sharing）」があります。
+        つまり、ルートサーバーが停止すると、BIND全体が停止している可能性が高いということです。</t>
+        <t pn="section-b.1-2">BINDの将来のバージョンでは、ルートやその他のゾーンのローカルなミラーを作成するための、はるかに堅牢な方法がサポートされる予定であることに注意してください。
+        <xref target="bind-9-14" format="default" sectionFormat="of" derivedContent="Appendix B.3"/>を参照してください。</t>
+        <t pn="section-b.1-3">この設定を使用すると、ルートゾーン内の情報に対するクエリーには、権威ある回答（Authoritative Answer、AA）ビットがセットされていない状態で回答が返されます。</t>
+        <t pn="section-b.1-4">ゾーンをスレーブとして取り込む場合、BIND 9.12は、そのゾーンを別のビュー（またはソフトウェアの別のインスタンス）にスレーブとして取り込むか、再帰処理も行っている同じビューまたはインスタンスにスレーブとして取り込むかによって、ゾーンデータを異なる方法で扱います。</t>
+        <dl newline="false" spacing="normal" pn="section-b.1-5">
+          <dt pn="section-b.1-5.1">検証：</dt>
+          <dd pn="section-b.1-5.2">別々のビューまたは別々のインスタンスを使用する場合、スレーブゾーン内のDSレコードは、再帰サーバーがゾーンデータにアクセスする際に検証されます。
+            同じビューを使用する場合、スレーブゾーンに対してこの検証は行われません。</dd>
+          <dt pn="section-b.1-5.3">キャッシュ：</dt>
+          <dd pn="section-b.1-5.4">別々のビューまたはインスタンスを使用する場合、再帰サーバーは、従来の「ルートヒント（root hints）」方式を使用する場合とまったく同じように、スレーブゾーンに対するすべてのクエリーをキャッシュします。
+            したがって、他のビューまたはインスタンス内のゾーンがリフレッシュまたは更新されても、古いレコードのTTLが切れるまで、変更された情報は再帰サーバーに反映されません。
+            現在、DSレコードと委任NSレコードのTTLは2日間です。
+            同じビューを使用する場合、再帰サーバー内のすべてのゾーンデータは、ゾーンのコピーを受信するとすぐに更新されます。</dd>
+        </dl>
+        <artwork name="" type="" align="left" alt="" pn="section-b.1-6">
+view root {
+    match-destinations { 127.12.12.12; };
+    zone "." {
+        type slave;
+        file "rootzone.db";
+        notify no;
+        masters {
+            199.9.14.201;         # b.root-servers.net
+            192.33.4.12;          # c.root-servers.net
+            199.7.91.13;          # d.root-servers.net
+            192.5.5.241;          # f.root-servers.net
+            192.112.36.4;         # g.root-servers.net
+            193.0.14.129;         # k.root-servers.net
+            192.0.47.132;         # xfr.cjr.dns.icann.org
+            192.0.32.132;         # xfr.lax.dns.icann.org
+            2001:500:200::b;      # b.root-servers.net
+            2001:500:2::c;        # c.root-servers.net
+            2001:500:2d::d;       # d.root-servers.net
+            2001:500:2f::f;       # f.root-servers.net
+            2001:500:12::d0d;     # g.root-servers.net
+            2001:7fd::1;          # k.root-servers.net
+            2620:0:2830:202::132; # xfr.cjr.dns.icann.org
+            2620:0:2d0:202::132;  # xfr.lax.dns.icann.org
+        };
+    };
+};
+
+view recursive {
+    dnssec-validation auto;
+    allow-recursion { any; };
+    recursion yes;
+    zone "." {
+        type static-stub;
+        server-addresses { 127.12.12.12; };
+    };
+};
+</artwork>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-b.2">
+        <name slugifiedName="name-example-configuration-unbou">設定例：Unbound 1.8</name>
+        <t pn="section-b.2-1">BINDと同様に、Unboundもバージョン1.8以降では、再帰リゾルバーと権威サーバーの両方として動作できます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-b.2-2">
+auth-zone:
+    name: "."
+    master: 199.9.14.201         # b.root-servers.net
+    master: 192.33.4.12          # c.root-servers.net
+    master: 199.7.91.13          # d.root-servers.net
+    master: 192.5.5.241          # f.root-servers.net
+    master: 192.112.36.4         # g.root-servers.net
+    master: 193.0.14.129         # k.root-servers.net
+    master: 192.0.47.132         # xfr.cjr.dns.icann.org
+    master: 192.0.32.132         # xfr.lax.dns.icann.org
+    master: 2001:500:200::b      # b.root-servers.net
+    master: 2001:500:2::c        # c.root-servers.net
+    master: 2001:500:2d::d       # d.root-servers.net
+    master: 2001:500:2f::f       # f.root-servers.net
+    master: 2001:500:12::d0d     # g.root-servers.net
+    master: 2001:7fd::1          # k.root-servers.net
+    master: 2620:0:2830:202::132 # xfr.cjr.dns.icann.org
+    master: 2620:0:2d0:202::132  # xfr.lax.dns.icann.org
+    fallback-enabled: yes
+    for-downstream: no
+    for-upstream: yes
+</artwork>
+      </section>
+      <section anchor="bind-9-14" numbered="true" toc="include" removeInRFC="false" pn="section-b.3">
+        <name slugifiedName="name-example-configuration-bind-9">設定例：BIND 9.14</name>
+        <t pn="section-b.3-1">BIND 9.14では、小さな設定オプションでルートゾーンのローカルなミラーをセットアップできます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-b.3-2">
+zone "." {
+    type mirror;
+};
+</artwork>
+        <t pn="section-b.3-3">ルートゾーンに対するこの単純な「type mirror」の設定がルートゾーンで機能するのは、IANAルートゾーンのプライマリーサーバーのデフォルトの一覧がBIND 9.14に組み込まれているためです。
+        その他のゾーンのミラーリングをセットアップするには、プライマリーサーバーの一覧を明示的に指定する必要があります。</t>
+        <t pn="section-b.3-4">この簡略化された設定の使い方の詳細については、BIND 9.14のドキュメントを参照してください。</t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-b.4">
+        <name slugifiedName="name-example-configuration-unboun">設定例：Unbound 1.9</name>
+        <t pn="section-b.4-1">Unboundの最近のバージョンには、ルートゾーンのローカルなミラーリングを可能にする「auth-zone」機能があります。
+        設定は次のようになります。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-b.4-2">
+auth-zone:
+    name: "."
+    master: "b.root-servers.net"
+    master: "c.root-servers.net"
+    master: "d.root-servers.net"
+    master: "f.root-servers.net"
+    master: "g.root-servers.net"
+    master: "k.root-servers.net"
+        fallback-enabled: yes
+    for-downstream: no
+    for-upstream: yes
+    zonefile: "root.zone"
+</artwork>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-b.5">
+        <name slugifiedName="name-example-configuration-knot-">設定例：Knot Resolver</name>
+        <t pn="section-b.5-1">Knot Resolverは、「prefill」モジュールを使用してルートゾーンの情報を読み込みます。
+        これについては、&lt;<eref target="https://knot-resolver.readthedocs.io/en/v5.0.1/modules-rfc7706.html" brackets="none"/>&gt;で説明されています。</t>
+      </section>
+      <section numbered="true" toc="include" removeInRFC="false" pn="section-b.6">
+        <name slugifiedName="name-example-configuration-micro">設定例：Microsoft Windows Server 2012</name>
+        <t pn="section-b.6-1">Windows Server 2012には、「DNS Manager」コンポーネント内にDNSサーバーが含まれています。
+        このコンポーネントを有効にすると、再帰サーバーとして動作します。
+        DNS Managerは、権威サーバーとしても動作できます。</t>
+        <t pn="section-b.6-2">この設定を使用すると、ルートゾーン内の情報に対するクエリーには、AAビットがセットされた状態で回答が返されます。</t>
+        <t pn="section-b.6-3">この文書の要件を実装するようにDNS Managerを設定する手順は次のとおりです。</t>
+        <ol spacing="normal" type="1" start="1" pn="section-b.6-4">
+          <li pn="section-b.6-4.1" derivedCounter="1.">DNS ManagerのGUIを起動します。
+            これは、コマンドライン（「dnsmgmt.msc」）から、またはService Manager（「Tools」メニューの「DNS」コマンド）から行えます。</li>
+          <li pn="section-b.6-4.2" derivedCounter="2.">サービスが実行されているサーバーの下の階層で、「Forward Lookup Zones」を右クリックし、「New Zone」を選択します。
+            これにより、一連のダイアログボックスが表示されます。</li>
+          <li pn="section-b.6-4.3" derivedCounter="3.">「Zone Type」ダイアログボックスで、「Secondary zone」を選択します。</li>
+          <li pn="section-b.6-4.4" derivedCounter="4.">「Zone Name」ダイアログボックスで、「.」を入力します。</li>
+          <li pn="section-b.6-4.5" derivedCounter="5.">「Master DNS Servers」ダイアログボックスで、「b.root‑servers.net」を入力します。
+            システムは、そのサーバーからゾーン転送を行えることを検証します。
+            （この設定が完了すると、DNS Managerはすべてのルートゾーンサーバーからの転送を試みます。）</li>
+          <li pn="section-b.6-4.6" derivedCounter="6.">「Completing the New Zone Wizard」ダイアログボックスで、「Finish」をクリックします。</li>
+          <li pn="section-b.6-4.7" derivedCounter="7.">DNS Managerが再帰リゾルバーとして動作していることを確認します。
+            階層内のサーバー名を右クリックし、ダイアログボックスで「Advanced」タブを選択します。
+            「Disable recursion (also disables forwarders)」が選択されておらず、「Enable DNSSEC validation for remote responses」が選択されていることを確認します。</li>
+        </ol>
+      </section>
+    </section>
+    <section numbered="false" toc="include" removeInRFC="false" pn="section-appendix.c">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t pn="section-appendix.c-1">著者らは、ループバックアドレス上でルートゾーンのコピーを実行することは新しい概念ではなく、長年にわたって多くの人々とその考え方について話し合ってきたことを十分に認めます。
+      たとえば、<contact fullname="Bill Manning"/>は、2013年の博士論文<xref target="Manning2013" format="default" sectionFormat="of" derivedContent="Manning2013"/>において、これらの問題に対する同様の解決策を説明しています。</t>
+      <t pn="section-appendix.c-2"><contact fullname="Evan Hunt"/>は、要件のロジックに大きく貢献しました。
+      その他の重要な貢献者には、<contact fullname="Wouter       Wijngaards"/>、<contact fullname="Tony Hain"/>、<contact fullname="Doug       Barton"/>、<contact fullname="Greg Lindsay"/>、<contact fullname="Akira Kato"/>がいます。
+      著者らはまた、この文書が同じホスト上でルートゾーンを運用する方法を説明したものにすぎず、そうすることを推奨するものではないことを明確にするよう求める多くのコメントを、オフラインで受け取りました。</t>
+      <t pn="section-appendix.c-3"><xref target="RFC7706" format="default" sectionFormat="of" derivedContent="RFC7706"/>のこの改訂に貢献した人々には、<contact fullname="Florian Obser"/>、<contact fullname="nusenu"/>、<contact fullname="Wouter Wijngaards"/>、<contact fullname="Mukund Sivaraman"/>、<contact fullname="Bob       Harold"/>、<contact fullname="Leo Vegoda"/>がいます。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.d">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Warren Kumari" initials="W." surname="Kumari">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <email>Warren@kumari.net</email>
+        </address>
+      </author>
+      <author fullname="Paul Hoffman" initials="P." surname="Hoffman">
+        <organization showOnFrontPage="true">ICANN</organization>
+        <address>
+          <email>paul.hoffman@icann.org</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

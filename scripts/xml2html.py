@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 
 import xml2rfc
 import lxml
@@ -1205,6 +1206,32 @@ class HtmlWriter:
         for c in x:
             self.render1(bcp14, c)
         return bcp14
+
+    # Unicode 文字の表記
+    def render1_u(self, h, x):
+        span = build('span')
+        h.append(span)
+        span.set('class', 'unicode')
+        chars = x.text or ''
+        parts = []
+        for f in (x.get('format') or 'lit-name-num').split('-'):
+            if not chars:
+                continue
+            if f == 'lit':
+                parts.append('"%s"' % chars)
+            elif f == 'num':
+                parts.append(' '.join('U+%04X' % ord(c) for c in chars))
+            elif f == 'name':
+                parts.append(', '.join(unicodedata.name(c, '') for c in chars))
+            elif f == 'ascii' and x.get('ascii'):
+                parts.append(x.get('ascii'))
+        if parts:
+            span.text = parts[0]
+            if len(parts) > 1:
+                span.text += ' (' + ', '.join(parts[1:]) + ')'
+        if x.tail:
+            span.tail = x.tail
+        return span
 
     def inline_text_renderer(self, h, x):
         h.text = x.text.lstrip() if x.text else ''

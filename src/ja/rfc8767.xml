@@ -1,0 +1,600 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" consensus="true" docName="draft-ietf-dnsop-serve-stale-10" indexInclude="true" ipr="trust200902" number="8767" prepTime="2020-03-31T14:58:06" scripts="Common,Latin" sortRefs="true" submissionType="IETF" symRefs="true" tocDepth="3" tocInclude="true" updates="1034, 1035, 2181" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-dnsop-serve-stale-10" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8767" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="DNS Serve-Stale">DNSの回復力を向上させるための古いデータの提供</title>
+    <seriesInfo name="RFC" value="8767" stream="IETF"/>
+    <author initials="D." surname="Lawrence" fullname="David C Lawrence">
+      <organization showOnFrontPage="true">Oracle</organization>
+      <address>
+        <email>tale@dd.org</email>
+      </address>
+    </author>
+    <author initials="W." surname="Kumari" fullname="Warren &quot;Ace&quot; Kumari">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <postal>
+          <street>1600 Amphitheatre Parkway</street>
+          <city>Mountain View</city>
+          <region>CA</region>
+          <code>94043</code>
+          <country>United States of America</country>
+        </postal>
+        <email>warren@kumari.net</email>
+      </address>
+    </author>
+    <author initials="P." surname="Sood" fullname="Puneet Sood">
+      <organization showOnFrontPage="true">Google</organization>
+      <address>
+        <email>puneets@google.com</email>
+      </address>
+    </author>
+    <date month="03" year="2020"/>
+    <keyword>DNS</keyword>
+    <keyword>DDoS</keyword>
+    <keyword>Resiliency</keyword>
+    <keyword>Denial-of-Service</keyword>
+    <keyword>Expired</keyword>
+    <abstract pn="section-abstract">
+      <t pn="section-abstract-1">この文書は、期限切れのデータを更新するために権威ネームサーバーに到達できない場合に、再帰リゾルバーが古いDNSデータを使用して障害を回避するための方法（serve-stale）を定義します。
+serve-staleの動機の1つは、DNSをDoS攻撃に対してより回復力のあるものにし、それによって攻撃ベクトルとしての魅力を低下させることです。
+この文書は、TTLの期限切れ後もデータをキャッシュに保持できるように、RFC 1034とRFC 1035のTTLの定義を更新します。
+また、最上位ビットがセットされた値を0ではなく正の値として解釈することでRFC 2181を更新し、上限として7日を提案します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t pn="section-boilerplate.1-1">
+            これはインターネット標準化過程（Internet Standards Track）の文書です。
+        </t>
+        <t pn="section-boilerplate.1-2">
+            この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+            この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+            この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+            インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。
+        </t>
+        <t pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8767" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t pn="section-boilerplate.2-1">
+            Copyright (c) 2020 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+            この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+            Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-background">背景</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-standards-action">標準化アクション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-method">方法の例</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-consideratio">実装に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-caveats">実装上の注意点</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-status">実装状況</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-edns-option">EDNSオプション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t keepWithNext="true" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-considerations">プライバシーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t keepWithNext="true" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-nat-considerations">NATに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t keepWithNext="true" pn="section-toc.1-1.13.1"><xref derivedContent="13" format="counter" sectionFormat="of" target="section-13"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t keepWithNext="true" pn="section-toc.1-1.14.1"><xref derivedContent="14" format="counter" sectionFormat="of" target="section-14"/>. <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.14.2">
+              <li pn="section-toc.1-1.14.2.1">
+                <t keepWithNext="true" pn="section-toc.1-1.14.2.1.1"><xref derivedContent="14.1" format="counter" sectionFormat="of" target="section-14.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.14.2.2">
+                <t keepWithNext="true" pn="section-toc.1-1.14.2.2.1"><xref derivedContent="14.2" format="counter" sectionFormat="of" target="section-14.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t keepWithNext="true" pn="section-toc.1-1.15.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.16">
+            <t keepWithNext="true" pn="section-toc.1-1.16.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t pn="section-1-1">従来、DNSリソースレコード（RR）の生存時間（Time To Live、TTL）は、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>での記述と使用法、および<xref target="RFC2181" format="default" sectionFormat="of" derivedContent="RFC2181"/>での明確化に基づいて、レコードを破棄しなければならなくなるまでに使用できる最大秒数を表すものと理解されてきました。</t>
+      <t pn="section-1-2">この文書は、再帰リゾルバーが情報を更新できないという例外的な状況において、期限切れのデータを使用することを明示的に許可するようにTTLの定義を拡張します。
+これは、権威サーバーが返すはずの元のデータが通常は変化していない場合であっても、権威サーバーからの応答が得られないことが障害を引き起こしうるという観察に基づいています。</t>
+      <t pn="section-1-3">以下では、回復力と新鮮さという相反する要求のバランスをとりながら、このように古いデータを使用するための方法を説明します。</t>
+      <t pn="section-1-4">この文書は、TTLの期限切れ後もデータをキャッシュに保持できるように、<xref target="RFC1034" format="default" sectionFormat="of" derivedContent="RFC1034"/>と<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>のTTLの定義を更新します。
+また、最上位ビットがセットされた値を0ではなく正の値として解釈することで<xref target="RFC2181" format="default" sectionFormat="of" derivedContent="RFC2181"/>を更新し、上限として7日を提案します。</t>
+    </section>
+    <section anchor="terminology" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      <t pn="section-2-2">DNS用語の用語集については、<xref target="RFC8499" format="default" sectionFormat="of" derivedContent="RFC8499"/>を参照してください。</t>
+    </section>
+    <section anchor="background" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-background">背景</name>
+      <t pn="section-3-1">権威サーバーが到達不能になる理由は、サービス拒否（DoS）攻撃やネットワークの問題など、数多くあります。
+再帰サーバーがあるクエリーについて権威サーバーに接続できないものの、TTLを過ぎた関連データをまだ保持している場合、「古いパンでもパンがないよりはまし」という比喩的な前提のもとで、その情報は応答の生成になお役立つ可能性があります。</t>
+      <t pn="section-3-2"><xref target="RFC1035" sectionFormat="comma" section="3.2.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc1035#section-3.2.1" derivedContent="RFC1035"/>は、TTLは「情報源に再度問い合わせるべきまでに、リソースレコードをキャッシュしてもよい時間間隔を指定する」と述べています。
+<xref target="RFC1035" sectionFormat="comma" section="4.1.3" format="default" derivedLink="https://rfc-editor.org/rfc/rfc1035#section-4.1.3" derivedContent="RFC1035"/>はさらに、TTLは「破棄されるべきまでに、リソースレコードをキャッシュしてもよい時間間隔（秒単位）を指定する」と述べています。</t>
+      <t pn="section-3-3">これらの記述を英語として自然に解釈すれば、TTLの期限を過ぎたレコードは使用してはならないことは十分に明らかであるように思われます。
+しかし、<xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>は、「may」と「should」の解釈を緩めた<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>のより厳密な用語法よりも前に書かれたものです。</t>
+      <t pn="section-3-4"><xref target="RFC2181" format="default" sectionFormat="of" derivedContent="RFC2181"/>は「生存時間の正確な定義」を提供することを目指していましたが、<xref target="RFC2181" sectionFormat="of" section="8" format="default" derivedLink="https://rfc-editor.org/rfc/rfc2181#section-8" derivedContent="RFC2181"/>が主に扱っていたのは、データの期限切れの振る舞いではなく、値の数値範囲でした。
+ただし、同セクションは「TTLは最大の生存時間を指定するものであり、必須の生存時間を指定するものではない」と述べて締めくくられています。
+この文言にもBCP 14のキーワード<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>は含まれていませんが、TTLの期限を過ぎるとデータが使用できなくなるという自然言語としての含意は伝えています。</t>
+      <t pn="section-3-5">この文書の執筆時点で、いくつかの大規模なオペレーターが、何らかの形で古いデータを応答に使用しています。
+BIND、Knot Resolver、OpenDNS、Unboundを含む多くの再帰リゾルバーパッケージが、古いデータを使用するためのオプションを提供しています。
+Apple macOSも、mDNSResponderのHappy Eyeballsアルゴリズムの一部として古いデータを使用できます。
+これまでの運用経験を総合すると、古いデータの使用は、最小限の欠点で大きな利益をもたらしうるということです。</t>
+    </section>
+    <section anchor="standards-action" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-standards-action">標準化アクション</name>
+      <t pn="section-4-1"><xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>のセクション<xref target="RFC1035" section="3.2.1" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc1035#section-3.2.1" derivedContent="RFC1035"/>と<xref target="RFC1035" section="4.1.3" sectionFormat="bare" format="default" derivedLink="https://rfc-editor.org/rfc/rfc1035#section-4.1.3" derivedContent="RFC1035"/>におけるTTLの定義を、次のように改めます。</t>
+      <dl newline="false" spacing="normal" indent="5" pn="section-4-2">
+        <dt pn="section-4-2.1">TTL</dt>
+        <dd pn="section-4-2.2">
+  期間を秒数で指定する32ビット符号なし整数です。
+リソースレコードはこの期間キャッシュ<bcp14>してもよいです（MAY）</bcp14>。期間が過ぎたら、情報源に再度問い合わせ<bcp14>なければなりません（MUST）</bcp14>。
+値が0の場合は、そのRRは進行中のトランザクションでのみ使用でき、キャッシュすべきではないことを意味すると解釈されます。
+値は数日から数週間程度で上限を設ける<bcp14>べきです（SHOULD）</bcp14>。推奨される上限は604,800秒（7日）です。
+TTLの期限が切れたときにデータを権威ある形で更新できない場合、そのレコードは期限切れでないかのように使用<bcp14>してもよいです（MAY）</bcp14>。
+詳細については、[RFC8767]のセクション<xref target="example-method" format="counter" sectionFormat="of" derivedContent="5"/>と<xref target="implementation-considerations" format="counter" sectionFormat="of" derivedContent="6"/>を参照してください。</dd>
+      </dl>
+      <t pn="section-4-3">最上位ビットがセットされた値を0ではなく正の値として解釈することは<xref target="RFC2181" format="default" sectionFormat="of" derivedContent="RFC2181"/>からの変更であり、その理由は<xref target="implementation-considerations" format="default" sectionFormat="of" derivedContent="Section 6"/>で説明します。
+<xref target="RFC2181" sectionFormat="of" section="8" format="default" derivedLink="https://rfc-editor.org/rfc/rfc2181#section-8" derivedContent="RFC2181"/>で許されている31ビットすべてを使った68年ではなく、7日という上限を提案することは、現在の主要なDNSリゾルバーの慣行を反映したものです。</t>
+      <t pn="section-4-4">古いレコードを含む応答を返す場合、再帰リゾルバーはメッセージ内の期限切れの各レコードのTTLを0より大きい値に設定<bcp14>しなければなりません（MUST）</bcp14>。その値は30秒が<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+説明については<xref target="implementation-considerations" format="default" sectionFormat="of" derivedContent="Section 6"/>を参照してください。</t>
+      <t pn="section-4-5">DNS応答コードが0（NoError）または3（NXDomain）のいずれかであり、権威応答（Authoritative Answer、AA）ビットがセットされている権威サーバーからの応答は、リゾルバーにおけるデータを更新したものとみなさ<bcp14>なければなりません（MUST）</bcp14>。
+それ以外の応答コードを持つ権威サーバーからの応答は、データの更新に失敗したものとみなし、以前の状態をそのまま残す<bcp14>べきです（SHOULD）</bcp14>。
+議論については<xref target="implementation-considerations" format="default" sectionFormat="of" derivedContent="Section 6"/>を参照してください。</t>
+    </section>
+    <section anchor="example-method" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-example-method">方法の例</name>
+      <t pn="section-5-1">TTLをデータを更新すべき時期を示すシグナルとするという意図を尊重しつつ、再帰リゾルバーがこの回復力のための機能を責任をもって実装する方法は1つではありません。</t>
+      <t pn="section-5-2">この方法の例では、4つの注目すべきタイマーが、古いデータの使用に関する判断を左右します。</t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-5-3">
+        <li pn="section-5-3.1">クライアント応答タイマー。再帰リゾルバーが名前解決リクエストを受信してから応答を送信するまでに許容すべき最大時間です。</li>
+        <li pn="section-5-3.2">クエリー解決タイマー。再帰リゾルバーがクエリーの処理に費やす合計時間の上限を定めます。</li>
+        <li pn="section-5-3.3">失敗再確認タイマー。失敗したルックアップを再試行する頻度を制限します。</li>
+        <li pn="section-5-3.4">最大古さタイマー。レコードを期限切れ後に保持する時間の上限を定めます。</li>
+      </ul>
+      <t pn="section-5-4">ほとんどの再帰リゾルバーは、クエリー解決タイマーと、実質的に何らかの種類の失敗再確認タイマーをすでに備えています。
+クライアント応答タイマーと最大古さタイマーは、このメカニズムのための新しい概念です。</t>
+      <t pn="section-5-5">再帰リゾルバーはリクエストを受信したら、クライアント応答タイマーを開始すべきです。
+このタイマーは、クライアントのタイムアウトを避けるために使用されます。
+このタイマーは設定可能にすべきです。推奨値は1.8秒で、一般的なタイムアウト値である2秒をわずかに下回りつつ、リゾルバーが名前を解決する機会を十分に与える値です。</t>
+      <t pn="section-5-6">次にリゾルバーは、リクエストを満たす期限切れでないレコードがキャッシュにあるかを確認し、あればそれを返します。
+関連する期限切れでないデータが見つからず、リクエストに再帰要求（Recursion Desired）フラグがセットされていない場合は、期限切れのレコードを求めてキャッシュを参照することなく、ただちに応答を返すべきです。
+通常、この応答はそのゾーンを担当する権威ネームサーバーへのリファラルになりますが、詳細は実装に依存します。</t>
+      <t pn="section-5-7">反復ルックアップを行う場合は、失敗再確認タイマーを参照します。
+応答しない、あるいはその他の理由で失敗している権威ネームサーバーからの更新の試行は、30秒に1回を超える頻度で行わないことが推奨されます。
+このリクエストがこの期間内に受信された場合は、リクエストを満たすために、ただちにキャッシュを参照して古いデータを探してもかまいません。</t>
+      <t pn="section-5-8">失敗再確認タイマーの期間外であれば、リゾルバーはクエリー解決タイマーを開始し、反復解決の処理を始めるべきです。
+このタイマーは、外部の権威サーバーに接続する際にリゾルバーが行う作業の上限を定めるもので、一般的には10秒から30秒程度です。
+まだ処理中のルックアップの試行中にこのタイマーが満了した場合、その解決の試みは放棄されます。</t>
+      <t pn="section-5-9">クライアント応答タイマーが経過するまでに応答が完全に決定していない場合、リゾルバーは次に、リクエストを満たす期限切れのデータがあるかどうかキャッシュを確認すべきです。
+もしあれば、（<xref target="standards-action" format="default" sectionFormat="of" derivedContent="Section 4"/>で規定されているとおり）0より大きいTTLでそのデータを応答メッセージに追加します。
+その後、リゾルバーがデータの更新の試行を続けている間に、応答がクライアントに送信されます。</t>
+      <t pn="section-5-10">解決の試行中にどの権威サーバーにも到達できない場合、リゾルバーは委任の更新を試み、クエリー解決タイマーの残り時間で反復ルックアップの処理を再開すべきです。
+この再開は、1回の解決の試みにつき1回だけ行うべきです。</t>
+      <t pn="section-5-11">解決処理とは別に、最大古さタイマーはキャッシュ管理に使用され、クエリー解決処理からは独立しています。
+このタイマーは、多くのリゾルバーに存在する最大キャッシュTTLとは概念的に異なります。
+後者は、権威サーバーから受信したTTLの値を制限するもので、<xref target="standards-action" format="default" sectionFormat="of" derivedContent="Section 4"/>のTTLの定義では7日にすることが推奨されています。
+最大古さタイマーは設定可能にすべきです。
+このタイマーは、レコードの期限が切れた後、そのレコードをキャッシュに保持すべき期間を定義します。
+推奨値は1日から3日の間です。</t>
+    </section>
+    <section anchor="implementation-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-implementation-consideratio">実装に関する考慮事項</name>
+      <t pn="section-6-1">この文書は主に古いデータを提供することの背後にある問題を説明するものであり、意図的に形式的なアルゴリズムは提供していません。
+この概念はそれほど複雑ではなく、詳細はリゾルバーの作者が各自のコードベースで実装するのに任せるのが最善です。
+serve-staleの処理はローカルな操作であり、相互運用性のために展開間で変数をそろえる必要はありません。
+とはいえ、関係するタイマーをはじめとして、さまざまな実装上の選択が与える影響を強調しておきたいと思います。</t>
+      <t pn="section-6-2">これらのうち最も明白なのは最大古さタイマーです。
+この変数が大きすぎると、キャッシュのメモリー使用量が過剰になる可能性があります。
+一方、小さすぎると、必要なときに使用できるレコードがキャッシュにない場合があるため、serve-staleの手法の効果が低下します。
+短い値は、1日未満であっても、障害の大部分に効果的に対処できます。
+最大1週間といった長い値にすると、監視システムが解決の問題に気付き、人の介入によってそれを修正するための時間が得られます。
+運用経験上、適切な担当者を見つけ出すのが難しく、残念ながら状況の改善に時間がかかることもあります。</t>
+      <t pn="section-6-3">メモリー消費量の増加は、キャッシュが枯渇した際に、期限切れでないレコードよりも古いレコードの削除を優先することで緩和できる可能性があります。
+追い出し戦略では、アクティブではあるが古いレコードを保持するために、レコードの最終使用時刻や人気度などの追加要素を考慮することもできます。
+古いレコードだけを手動でフラッシュする機能も有用でしょう。</t>
+      <t pn="section-6-4">クライアント応答タイマーも、検討に値する変数です。
+この値が短すぎると、権威サーバーが実際には到達可能であるものの遅いだけの場合でも古い応答が使用されてしまうリスクがあります。
+その結果、望ましくない応答が返される可能性があります。
+逆に、待ち時間が長すぎると、ユーザー体験に悪影響を与えます。</t>
+      <t pn="section-6-5">失敗再確認タイマーでバランスをとるべきなのは、権威サーバーが再び利用可能になったことを検出する応答性と、解決のための追加のリソース使用量です。
+この変数が大きすぎると、権威サーバーに到達可能になった後も古い応答が返され続ける可能性があります。
+<xref target="RFC2308" sectionFormat="comma" section="7" format="default" derivedLink="https://rfc-editor.org/rfc/rfc2308#section-7" derivedContent="RFC2308"/>によれば、この値は5分以下にすべきです。
+この変数が小さすぎると、権威サーバーが大量の余分なトラフィックの標的になる可能性があります。</t>
+      <t pn="section-6-6">応答中の古いレコードに設定するTTLについては、歴史的に、0秒のTTLは一部の実装で問題となっており、負の値は既存のソフトウェアに効果的に伝えることができません。
+その他の非常に短いTTLは、TTLを尊重するクライアントが急速に更新を試みるため、輻輳崩壊につながる可能性があります。
+推奨値の30秒は、実用上の悪影響なしにこれらの潜在的な問題を回避するだけでなく、フォワーディングリゾルバーのようにTTLを尊重するあらゆるクライアントからの以降のクエリーのレートを制限します。</t>
+      <t pn="section-6-7">最上位ビットがセットされたTTLを、<xref target="RFC2181" format="default" sectionFormat="of" derivedContent="RFC2181"/>のように0として扱うのではなく、正の値として扱ってから上限で制限するという変更については、その根拠は基本的に、エンジニアリング上の単純さと、取るに足らない運用上の経緯との比較です。
+負のTTLには、単に0を送信すれば満たされたであろう意味以外に、合理的な意図をもった意味はありませんでした。
+同様に、2^25秒（1年）以上のTTLを送信することにも、現実的には実用上の目的はありませんでした。
+また、DNS運用・分析・研究センター（DNS-OARC）の「Day in the Life」サンプル<xref target="DITL" format="default" sectionFormat="of" derivedContent="DITL"/>には、実環境で最上位ビットがセットされたTTLの記録もありません。
+オペレーターがこれらを意図的に使用する明らかな理由がない以上、そのようなTTLに遭遇しうる理由として残るのは、エラーか非標準の実験のどちらかです。
+そのどちらも、先頭のビットがセットされている場合を、続く11ビットのいずれかがセットされている場合と異なる扱いにし、<xref target="standards-action" format="default" sectionFormat="of" derivedContent="Section 4"/>に従って上限で制限することの明白で説得力のある理由にはなりません。</t>
+      <t pn="section-6-8">実装上のもう1つの考慮事項は、ルックアップに古いネームサーバーのアドレスを使用することです。
+これを明示的に述べるのは、一部のリゾルバーでは、ネームサーバーのアドレスの取得が通常のキャッシュルックアップとは別の経路になっているためです。
+権威サーバーのアドレスを更新できない場合でも、権威サーバー自体が稼働していれば、解決は成功する可能性があります。
+たとえば、あるトップレベルドメインに対する攻撃によってそのネームサーバーがオフラインになった場合を考えてみてください。
+そのトップレベルドメイン内のサブドメインについて期限切れのグルーアドレスを保持していたserve-staleリゾルバーは、それらのサブドメイン内の名前を、以前にルックアップしたことのない名前であっても、引き続き解決できます。</t>
+      <t pn="section-6-9">NoErrorとNXDomainの応答だけが、以前に関連付けられた応答を無効にすべきであるという<xref target="standards-action" format="default" sectionFormat="of" derivedContent="Section 4"/>の指示は、リゾルバーが通常遭遇するその他のRCODEが、質問中の名前やそれに関連するデータについて何の主張もしないという事実に由来します。
+これは、（たとえばプリフェッチ中に）ルックアップが失敗しても既存のキャッシュの状態には影響しないという、既存のリゾルバーの振る舞いと一致します。
+一部の権威サーバーのオペレーターは、自身のサーバーが本当の権威応答を返す代わりにServFailのようなエラーを返している場合には、古い応答を使用してほしいと述べています。
+実装者は、この状況で古い応答を返すことを決定<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t pn="section-6-10">serve-staleの目標は、データの更新に関するすべての明白なエラーに対して回復力を提供することなので、これらのその他のRCODEは、権威応答が得られなかった場合と同等であるものとして扱われます。
+以前に存在していた名前に対するNXDomainはエラーである可能性も十分にありますが、正当な場合とエラーの場合とでオペレーターの意図を区別する効果的な方法がないため、そのようには扱いません。</t>
+      <t pn="section-6-11">IETFでの議論の中で、すべての権威サーバーがRefusedというRCODEの応答を返す場合、それは、まだそのゾーンの委任が向けられているサーバーからそのゾーンを取り下げることを示す明示的なシグナルなのかもしれない、という提案がありました。
+しかし、Refusedは、一時的な設定の失敗を表しうる複数の失敗を意味するように多重に使われてもいます。
+運用経験から、意図的にRefusedを返すことは、委任を更新することや、長期間の否定キャッシュのために適切なSOAとともにNXDomainを返すことに比べて、ゾーンを明示的に取り下げる方法としては不適切であることがわかっています。
+それでもなお、実装者は、すべての権威サーバーがRefusedを返すことを、古いデータの使用を差し止めるものとして扱うかどうかを検討<bcp14>してもよいです（MAY）</bcp14>。</t>
+    </section>
+    <section anchor="implementation-caveats" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-implementation-caveats">実装上の注意点</name>
+      <t pn="section-7-1">DNSの設計の本来の意図と、オペレーターが期待する振る舞いに従うため、古いデータは更新に失敗した場合にのみ使用されます。
+もし古いデータを常にただちに使用し、クライアントへの応答を送信した後でキャッシュの更新を試みるとすれば、リゾルバーは、問題なく更新できたはずのデータを頻繁に送信することになるでしょう。
+現代のリゾルバーは効率化のためにプリフェッチやリクエストの統合などの手法を使用しているため、古いデータが存在する場合に、クライアントのリクエストのたびに新しいルックアップの流れを開始する必要はありません。
+そうではなく、古いデータをクライアントに渡す前に、そのデータを更新するための誠実な努力が最近行われていればよいのです。</t>
+      <t pn="section-7-2">古い応答を送信した後も、クエリー解決のタイムアウトまで解決の試行を続けることが重要です。
+なぜなら、病的な解決の中には、利用できないサーバーや不良なネットワーク、その他の問題に対処しながら成功するまでに何秒もかかるものがあるからです。
+期限切れのデータを含む応答を送信した時点で解決の試行を止めてしまうと、こうした病的なケースでの応答は決して更新されないことになります。</t>
+      <t pn="section-7-3">TTLが0秒のデータを現在のトランザクションを超えて使用することの禁止は引き続き有効であり、そのようなデータはそもそもキャッシュされないため、古いデータへのフォールバックにも使用できないことが明示的に含まれます。</t>
+      <t pn="section-7-4">期限切れのキャッシュの中で、正規名（Canonical Name、CNAME）レコードやDNAMEレコード<xref target="RFC6672" format="default" sectionFormat="of" derivedContent="RFC6672"/>が同じ所有者名の他のレコードと混在していると、予想外の結果を引き起こす可能性があることに注意してください。
+これは、ホスト名がIPv4アドレス（A）レコードを持つ状態からCNAMEに変更されたときに、BINDの初期の実装で観察されました。
+使用されていたBINDのバージョンは、CNAMEを受信したときにキャッシュ内の他のタイプを追い出しませんでした。これは通常の運用では大きな問題ではありません。
+しかし、両方のレコードの期限が切れ、権威サーバーが利用できなくなった後、古い応答へのフォールバックによって、新しいCNAMEではなく古いAが返されました。</t>
+    </section>
+    <section anchor="implementation-status" numbered="true" toc="include" removeInRFC="false" pn="section-8">
+      <name slugifiedName="name-implementation-status">実装状況</name>
+      <t pn="section-8-1"><xref target="example-method" format="default" sectionFormat="of" derivedContent="Section 5"/>で説明したアルゴリズムは、もともとBIND 9.7.0へのパッチとして実装されました。
+これは2011年からAkamaiの本番ネットワークで使用されており、大規模なインシデントになっていたはずの一時的な障害や長期の障害を効果的に緩和してきました。
+このパッチはInternet Systems Consortiumに提供され、この機能は現在、BIND 9.12以降でstale-answer-enable、stale-answer-ttl、max-stale-ttlの各オプションによって利用できます。</t>
+      <t pn="section-8-2">Unboundにも古い応答を提供するための同様の機能があり、最近プリフェッチによる応答の更新を試みて失敗していた場合には、ただちに古いデータで応答します。
+バージョン1.10.0からは、Unboundを<xref target="example-method" format="default" sectionFormat="of" derivedContent="Section 5"/>で説明したアルゴリズムに従うように設定することもできます。
+どちらの振る舞いも、利用可能なserve-expired-*オプションで設定と微調整ができます。</t>
+      <t pn="section-8-3">Knot Resolverには、次の場所にデモモジュールがあります：
+<eref target="https://knot-resolver.readthedocs.io/en/stable/modules-serve_stale.html" brackets="angle"/>。</t>
+      <t pn="section-8-4">Appleのシステムリゾルバーも古い応答を使用することが知られていますが、詳細は容易には入手できません。</t>
+      <t pn="section-8-5">研究論文「When the Dike Breaks: Dissecting DNS Defenses During DDoS」<xref target="DikeBreaks" format="default" sectionFormat="of" derivedContent="DikeBreaks"/>では、著者らは、権威サーバーが攻撃を受けた際にリゾルバーが古い応答を使用している例をいくつか検出しました。
+彼らの研究結果は、この手法がより広く採用されれば、攻撃中に失敗したり異常に長い解決時間がかかったりする多数のリクエストについて、回復力が大幅に向上することを示唆しています。</t>
+    </section>
+    <section anchor="edns-option" numbered="true" toc="include" removeInRFC="false" pn="section-9">
+      <name slugifiedName="name-edns-option">EDNSオプション</name>
+      <t pn="section-9-1">IETFでのserve-staleに関する議論の中で、EDNSオプション<xref target="RFC6891" format="default" sectionFormat="of" derivedContent="RFC6891"/>を利用できるようにすべきだという提案がありました。
+1つの提案は、古い可能性のあるデータの取得をオプトインするために使用するというもので、もう1つは、応答に古いデータが使用されたことを通知するというものでした。</t>
+      <t pn="section-9-2">この手法は、すべてのクライアントについてDNSの回復力をただちに向上させるのに役立つことを意図していたため、オプトインのユースケースは却下されました。</t>
+      <t pn="section-9-3">報告のケースも、提案されたオプションのより単純なバージョンでさえ、認識される価値が小さいわりに実装の手間がかかりすぎるため、最終的に却下されました。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-10">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t pn="section-10-1">最も明白なセキュリティー上の問題は、署名がその有効期間外に返される可能性があるため、古いデータを使用するとDNSSEC検証の失敗の可能性が高まることです。
+古い否定レコードは、キャッシュされたNSECレコードやNSEC3レコードのために、新たに公開されたTLSAまたはDSのRRが使用されない可能性のある時間枠を広げることがあります。
+これらのシナリオは、権威サーバーに到達できない場合（この文書の手法が使用される唯一の場合）にのみ問題となるため、serve-staleは、本来なら成功していたはずの場面に新たな失敗を持ち込むものではありません。</t>
+      <t pn="section-10-2">さらに、悪意のある者が、権威サーバーがなくなった後もレコードを存続させるためにDNSキャッシュを使用することが知られています。
+serve-staleの機能は、新たなリスクを持ち込むものではないものの、この攻撃をより容易にする可能性があります。
+加えて、攻撃者はこれを権威サーバーへのDDoS攻撃と組み合わせ、古い情報をより長い期間キャッシュさせることを明確に意図する可能性もあります。
+しかし、攻撃者にそのような能力があるのなら、古いデータの寿命を延ばすことよりもはるかに悪いことができるでしょう。</t>
+      <t pn="section-10-3"><xref target="CloudStrife" format="default" sectionFormat="of" derivedContent="CloudStrife"/>では、古いDNSデータ、すなわち名前の所有者がもはや使用していないアドレスを指すホスト名が、セキュリティーを乗っ取るために、たとえばドメイン検証済み証明書を攻撃者に不正に発行させるために、どのように使用されうるかが示されました。
+この文書はこの分野で新たな脆弱性を生み出すものではありませんが、そのような攻撃が可能な時間枠を広げる可能性はあります。
+提案されている緩和策は、認証局が名前のルックアップのたびに、DNSルートから始めて各名前を完全にルックアップすべきであるというものです。
+あるいは、認証局は古いデータを提供しないリゾルバーを使用すべきです。</t>
+    </section>
+    <section anchor="privacy-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-11">
+      <name slugifiedName="name-privacy-considerations">プライバシーに関する考慮事項</name>
+      <t pn="section-11-1">この文書は、実質的に新たなプライバシーの問題を追加するものではありません。</t>
+    </section>
+    <section anchor="nat-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-12">
+      <name slugifiedName="name-nat-considerations">NATに関する考慮事項</name>
+      <t pn="section-12-1">ここで説明した方法は、NATデバイスの使用による影響を受けません。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-13">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t pn="section-13-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-14">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-14.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1034" target="https://www.rfc-editor.org/info/rfc1034" quoteTitle="true" derivedAnchor="RFC1034">
+          <front>
+            <title>Domain names - concepts and facilities</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t>This RFC is the revised basic definition of The Domain Name System.  It obsoletes RFC-882.  This memo describes the domain style names and their used for host address look up and electronic mail forwarding.  It discusses the clients and servers in the domain name system and the protocol used between them.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1034"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1034"/>
+        </reference>
+        <reference anchor="RFC1035" target="https://www.rfc-editor.org/info/rfc1035" quoteTitle="true" derivedAnchor="RFC1035">
+          <front>
+            <title>Domain names - implementation and specification</title>
+            <author initials="P.V." surname="Mockapetris" fullname="P.V. Mockapetris">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1987" month="November"/>
+            <abstract>
+              <t>This RFC is the revised specification of the protocol and format used in the implementation of the Domain Name System.  It obsoletes RFC-883. This memo documents the details of the domain name client - server communication.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="13"/>
+          <seriesInfo name="RFC" value="1035"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1035"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t>In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC2181" target="https://www.rfc-editor.org/info/rfc2181" quoteTitle="true" derivedAnchor="RFC2181">
+          <front>
+            <title>Clarifications to the DNS Specification</title>
+            <author initials="R." surname="Elz" fullname="R. Elz">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Bush" fullname="R. Bush">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="July"/>
+            <abstract>
+              <t>This document considers some areas that have been identified as problems with the specification of the Domain Name System, and proposes remedies for the defects identified. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2181"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2181"/>
+        </reference>
+        <reference anchor="RFC2308" target="https://www.rfc-editor.org/info/rfc2308" quoteTitle="true" derivedAnchor="RFC2308">
+          <front>
+            <title>Negative Caching of DNS Queries (DNS NCACHE)</title>
+            <author initials="M." surname="Andrews" fullname="M. Andrews">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1998" month="March"/>
+            <abstract>
+              <t>RFC1034 provided a description of how to cache negative responses.  It however had a fundamental flaw in that it did not allow a name server to hand out those cached responses to other resolvers, thereby greatly reducing the effect of the caching.  This document addresses issues raise in the light of experience and replaces RFC1034 Section 4.3.4. [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2308"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2308"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t>RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-14.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="CloudStrife" target="https://www.ndss-symposium.org/wp-content/uploads/2018/02/ndss2018_06A-4_Borgolte_paper.pdf" quoteTitle="true" derivedAnchor="CloudStrife">
+          <front>
+            <title>Cloud Strife: Mitigating the Security Risks of Domain-Validated Certificates</title>
+            <seriesInfo name="DOI" value="10.1145/3232755.3232859"/>
+            <seriesInfo name="ACM" value="2018 Applied Networking Research Workshop"/>
+            <author initials="K." surname="Borgolte" fullname="Kevin Borgolte">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Fiebig" fullname="Tobias Fiebig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Hao" fullname="Shuang Hao">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Kruegel" fullname="Christopher Kruegel">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="G." surname="Vigna" fullname="Giovanni Vigna">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="July"/>
+          </front>
+        </reference>
+        <reference anchor="DikeBreaks" target="https://www.isi.edu/~johnh/PAPERS/Moura18b.pdf" quoteTitle="true" derivedAnchor="DikeBreaks">
+          <front>
+            <title>When the Dike Breaks: Dissecting DNS Defenses During DDoS</title>
+            <seriesInfo name="DOI" value="10.1145/3278532.3278534"/>
+            <seriesInfo name="ACM" value="2018 Internet Measurement Conference"/>
+            <author initials="G.C.M." surname="Moura" fullname="Giovane C. M. Moura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Heidemann" fullname="John Heidemann">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Müller" fullname="Moritz Müller">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R. de O." surname="Schmidt" fullname="Ricardo de O. Schmidt">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Davids" fullname="Marco Davids">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="October"/>
+          </front>
+        </reference>
+        <reference anchor="DITL" target="https://www.dns-oarc.net/oarc/data/ditl" quoteTitle="true" derivedAnchor="DITL">
+          <front>
+            <title>DITL Traces and Analysis</title>
+            <author>
+              <organization showOnFrontPage="true">DNS-OARC</organization>
+            </author>
+            <date month="January" year="2018"/>
+          </front>
+        </reference>
+        <reference anchor="RFC6672" target="https://www.rfc-editor.org/info/rfc6672" quoteTitle="true" derivedAnchor="RFC6672">
+          <front>
+            <title>DNAME Redirection in the DNS</title>
+            <author initials="S." surname="Rose" fullname="S. Rose">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="W." surname="Wijngaards" fullname="W. Wijngaards">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012" month="June"/>
+            <abstract>
+              <t>The DNAME record provides redirection for a subtree of the domain name tree in the DNS.  That is, all names that end with a particular suffix are redirected to another part of the DNS.  This document obsoletes the original specification in RFC 2672 as well as updates the document on representing IPv6 addresses in DNS (RFC 3363). [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6672"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6672"/>
+        </reference>
+        <reference anchor="RFC6891" target="https://www.rfc-editor.org/info/rfc6891" quoteTitle="true" derivedAnchor="RFC6891">
+          <front>
+            <title>Extension Mechanisms for DNS (EDNS(0))</title>
+            <author initials="J." surname="Damas" fullname="J. Damas">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Graff" fullname="M. Graff">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Vixie" fullname="P. Vixie">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="April"/>
+            <abstract>
+              <t>The Domain Name System's wire protocol includes a number of fixed fields whose range has been or soon will be exhausted and does not allow requestors to advertise their capabilities to responders.  This document describes backward-compatible mechanisms for allowing the protocol to grow.</t>
+              <t>This document updates the Extension Mechanisms for DNS (EDNS(0)) specification (and obsoletes RFC 2671) based on feedback from deployment experience in several implementations.  It also obsoletes RFC 2673 ("Binary Labels in the Domain Name System") and adds considerations on the use of extended labels in the DNS.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="75"/>
+          <seriesInfo name="RFC" value="6891"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6891"/>
+        </reference>
+        <reference anchor="RFC8499" target="https://www.rfc-editor.org/info/rfc8499" quoteTitle="true" derivedAnchor="RFC8499">
+          <front>
+            <title>DNS Terminology</title>
+            <author initials="P." surname="Hoffman" fullname="P. Hoffman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Sullivan" fullname="A. Sullivan">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="K." surname="Fujiwara" fullname="K. Fujiwara">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2019" month="January"/>
+            <abstract>
+              <t>The Domain Name System (DNS) is defined in literally dozens of different RFCs.  The terminology used by implementers and developers of DNS protocols, and by operators of DNS systems, has sometimes changed in the decades since the DNS was first defined.  This document gives current definitions for many of the terms used in the DNS in a single document.</t>
+              <t>This document obsoletes RFC 7719 and updates RFC 2308.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="219"/>
+          <seriesInfo name="RFC" value="8499"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8499"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t pn="section-appendix.a-1">著者らは、レビューとフィードバックをいただいた<contact fullname="Brian Carpenter"/>、<contact fullname="Vladimir Cunat"/>、<contact fullname="Robert Edmonds"/>、<contact fullname="Tony Finch"/>、<contact fullname="Bob Harold"/>、<contact fullname="Tatuya Jinmei"/>、<contact fullname="Matti Klock"/>、<contact fullname="Jason Moreau"/>、<contact fullname="Giovane Moura"/>、<contact fullname="Jean Roy"/>、<contact fullname="Mukund Sivaraman"/>、<contact fullname="Davey Song"/>、<contact fullname="Paul Vixie"/>、<contact fullname="Ralf Weber"/>、<contact fullname="Paul Wouters"/>に感謝します。
+多数のプルリクエストを提出してくれた<contact fullname="Paul Hoffman"/>には特に感謝します。</t>
+      <t pn="section-appendix.a-2">最終レビューをしていただいた次のIESGメンバーにも感謝します：<contact fullname="Roman Danyliw"/>、<contact fullname="Benjamin Kaduk"/>、<contact fullname="Suresh Krishnan"/>、<contact fullname="Mirja Kühlewind"/>、<contact fullname="Adam Roach"/>。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="D." surname="Lawrence" fullname="David C Lawrence">
+        <organization showOnFrontPage="true">Oracle</organization>
+        <address>
+          <email>tale@dd.org</email>
+        </address>
+      </author>
+      <author initials="W." surname="Kumari" fullname="Warren &quot;Ace&quot; Kumari">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <postal>
+            <street>1600 Amphitheatre Parkway</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>warren@kumari.net</email>
+        </address>
+      </author>
+      <author initials="P." surname="Sood" fullname="Puneet Sood">
+        <organization showOnFrontPage="true">Google</organization>
+        <address>
+          <email>puneets@google.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

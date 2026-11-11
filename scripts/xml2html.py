@@ -16,6 +16,7 @@ from xml2rfc.util.name import ( full_author_name_expansion, short_author_role,
                                 ref_author_name_first, ref_author_name_last, 
                                 short_author_name_set, full_author_name_set,
                                 short_org_name_set, full_org_name, )
+from xml2rfc.util.unicode import expand_unicode_element
 
 build = ElementMaker(makeelement=html_parser.makeelement)
 
@@ -1146,6 +1147,19 @@ class HtmlWriter:
         for c in x:
             self.render1(code, c)
         return code
+
+    # Unicode 文字
+    def render1_u(self, h, x):
+        span = build('span', {'class': 'unicode'})
+        h.append(span)
+        try:
+            span.text = expand_unicode_element(x)
+        except (RuntimeError, ValueError) as e:
+            print('warning: failed to expand <u> element (pn=%s): %s' % (x.get('pn'), e), file=sys.stderr)
+            span.text = x.text or ''
+        if x.tail:
+            span.tail = x.tail
+        return span
 
     # 強調
     def render1_strong(self, h, x):

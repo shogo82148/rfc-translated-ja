@@ -1,0 +1,1119 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="exp" docName="draft-sheffer-tls-pinning-ticket-12" indexInclude="true" ipr="trust200902" number="8672" prepTime="2019-10-31T13:56:41" scripts="Common,Latin" sortRefs="true" submissionType="independent" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-sheffer-tls-pinning-ticket-12" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8672" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="Pinning with Tickets">チケットを用いたTLSサーバーアイデンティティーのピン留め</title>
+    <seriesInfo name="RFC" value="8672" stream="independent"/>
+    <author initials="Y." surname="Sheffer" fullname="Yaron Sheffer">
+      <organization showOnFrontPage="true">Intuit</organization>
+      <address>
+        <email>yaronf.ietf@gmail.com</email>
+      </address>
+    </author>
+    <author initials="D." surname="Migault" fullname="Daniel Migault">
+      <organization showOnFrontPage="true">Ericsson</organization>
+      <address>
+        <email>daniel.migault@ericsson.com</email>
+      </address>
+    </author>
+    <date month="10" year="2019"/>
+    <area>General</area>
+    <keyword>public-key certificates, trust-on-first-use, TOFU</keyword>
+    <abstract pn="section-abstract">
+      <t pn="section-abstract-1">誤発行された公開鍵証明書は、TLSクライアントがTLSサーバーを適切に認証することを妨げる可能性があります。
+この状況を検出し、不正な公開鍵証明書で認証されたTLSエンドポイントとクライアントがTLSセッションを確立するのを防ぐために、いくつかの代替手段が提案されてきました。
+これらのメカニズムは、広く展開されていないか、公開Webのブラウジングに限定されています。</t>
+      <t pn="section-abstract-2">この文書は、サーバーのアイデンティティーをピン留めする方法として、不透明なピン留めチケットを用いたTLSへの実験的な拡張を提案します。
+最初のTLSセッションの間に、サーバーは元となる暗号化されたピン留めチケットを提供します。
+後続のTLSセッションの確立では、サーバーはピン留めチケットを受け取ると、そのピン留めチケットを復号できること、したがってピン留め保護鍵を所有していることを証明します。
+これによりクライアントは、そのTLSセッションが元のTLSセッションと同じTLSサーバーとの間で確立されていると安全に結論付けることができます。
+この提案の重要な特性の1つは、手動の管理作業が一切必要ないことです。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。
+        </t>
+        <t pn="section-boilerplate.1-2">
+            この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+            これは、他のいかなるRFCストリームからも独立した、RFCシリーズへの寄稿です。
+            RFCエディターは自らの裁量でこの文書の公開を選択しており、実装や展開における価値については何ら表明していません。
+            RFCエディターによって公開が承認された文書は、いずれのレベルのインターネット標準の候補にもなりません。
+            RFC 7841のセクション2を参照してください。
+        </t>
+        <t pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8672" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t pn="section-boilerplate.2-1">
+            Copyright (c) 2019 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (https://trustee.ietf.org/license-info)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.3">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1">
+          <li pn="section-boilerplate.3-1.1">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="Introduction" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.1.2">
+              <li pn="section-boilerplate.3-1.1.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.1.2.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="Conventions Used in This Document" format="title" sectionFormat="of" target="name-conventions-used-in-this-do">この文書で使用する規則</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.1.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.1.2.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="Scope of Experimentation" format="title" sectionFormat="of" target="name-scope-of-experimentation">実験の範囲</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.2">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="Protocol Overview" format="title" sectionFormat="of" target="name-protocol-overview">プロトコルの概要</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.2.2">
+              <li pn="section-boilerplate.3-1.2.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="Initial Connection" format="title" sectionFormat="of" target="name-initial-connection">最初の接続</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.2.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="Subsequent Connections" format="title" sectionFormat="of" target="name-subsequent-connections">後続の接続</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.2.2.3">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.2.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="Indexing the Pins" format="title" sectionFormat="of" target="name-indexing-the-pins">ピンのインデックス付け</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.3">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="Message Definitions" format="title" sectionFormat="of" target="name-message-definitions">メッセージの定義</xref></t>
+          </li>
+          <li pn="section-boilerplate.3-1.4">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="Cryptographic Operations" format="title" sectionFormat="of" target="name-cryptographic-operations">暗号操作</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.4.2">
+              <li pn="section-boilerplate.3-1.4.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.4.2.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="Pinning Secret" format="title" sectionFormat="of" target="name-pinning-secret">ピン留めシークレット</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.4.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.4.2.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="Pinning Ticket" format="title" sectionFormat="of" target="name-pinning-ticket">ピン留めチケット</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.4.2.3">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.4.2.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="Pinning Protection Key" format="title" sectionFormat="of" target="name-pinning-protection-key">ピン留め保護鍵</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.4.2.4">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.4.2.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="Pinning Proof" format="title" sectionFormat="of" target="name-pinning-proof">ピン留め証明</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.5">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="Operational Considerations" format="title" sectionFormat="of" target="name-operational-considerations">運用上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.5.2">
+              <li pn="section-boilerplate.3-1.5.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="Protection Key Synchronization" format="title" sectionFormat="of" target="name-protection-key-synchronizat">保護鍵の同期</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="Ticket Lifetime" format="title" sectionFormat="of" target="name-ticket-lifetime">チケットの有効期間</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.3">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="Certificate Renewal" format="title" sectionFormat="of" target="name-certificate-renewal">証明書の更新</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.4">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="Certificate Revocation" format="title" sectionFormat="of" target="name-certificate-revocation">証明書の失効</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.5">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="Disabling Pinning" format="title" sectionFormat="of" target="name-disabling-pinning">ピン留めの無効化</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.6">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.6.1"><xref derivedContent="5.6" format="counter" sectionFormat="of" target="section-5.6"/>.  <xref derivedContent="Server Compromise" format="title" sectionFormat="of" target="name-server-compromise">サーバーの侵害</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.5.2.7">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.5.2.7.1"><xref derivedContent="5.7" format="counter" sectionFormat="of" target="section-5.7"/>.  <xref derivedContent="Disaster Recovery" format="title" sectionFormat="of" target="name-disaster-recovery">災害復旧</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.6">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="Security Considerations" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.6.2">
+              <li pn="section-boilerplate.3-1.6.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="Trust-on-First-Use (TOFU) and MITM Attacks" format="title" sectionFormat="of" target="name-trust-on-first-use-tofu-and">初回使用時信頼（TOFU）とMITM攻撃</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="Pervasive Monitoring" format="title" sectionFormat="of" target="name-pervasive-monitoring">広範な監視</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.3">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="Server-Side Error Detection" format="title" sectionFormat="of" target="name-server-side-error-detection">サーバー側でのエラー検出</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.4">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.4.1"><xref derivedContent="6.4" format="counter" sectionFormat="of" target="section-6.4"/>.  <xref derivedContent="Client Policy and SSL Proxies" format="title" sectionFormat="of" target="name-client-policy-and-ssl-proxi">クライアントのポリシーとSSLプロキシー</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.5">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.5.1"><xref derivedContent="6.5" format="counter" sectionFormat="of" target="section-6.5"/>.  <xref derivedContent="Client-Side Error Behavior" format="title" sectionFormat="of" target="name-client-side-error-behavior">クライアント側でのエラー時の動作</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.6">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.6.1"><xref derivedContent="6.6" format="counter" sectionFormat="of" target="section-6.6"/>.  <xref derivedContent="Stolen and Forged Tickets" format="title" sectionFormat="of" target="name-stolen-and-forged-tickets">盗まれたチケットと偽造されたチケット</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.7">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.7.1"><xref derivedContent="6.7" format="counter" sectionFormat="of" target="section-6.7"/>.  <xref derivedContent="Client Privacy" format="title" sectionFormat="of" target="name-client-privacy">クライアントのプライバシー</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.6.2.8">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.6.2.8.1"><xref derivedContent="6.8" format="counter" sectionFormat="of" target="section-6.8"/>.  <xref derivedContent="Ticket Protection Key Management" format="title" sectionFormat="of" target="name-ticket-protection-key-manag">チケット保護鍵の管理</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.7">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="IANA Considerations" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-boilerplate.3-1.8">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="References" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.8.2">
+              <li pn="section-boilerplate.3-1.8.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="Normative References" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.8.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="Informative References" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.9">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.9.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="Previous Work" format="title" sectionFormat="of" target="name-previous-work">先行研究</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-boilerplate.3-1.9.2">
+              <li pn="section-boilerplate.3-1.9.2.1">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.9.2.1.1"><xref derivedContent="A.1" format="counter" sectionFormat="of" target="section-a.1"/>.  <xref derivedContent="Comparison: HPKP" format="title" sectionFormat="of" target="name-comparison-hpkp">比較: HPKP</xref></t>
+              </li>
+              <li pn="section-boilerplate.3-1.9.2.2">
+                <t keepWithNext="true" pn="section-boilerplate.3-1.9.2.2.1"><xref derivedContent="A.2" format="counter" sectionFormat="of" target="section-a.2"/>.  <xref derivedContent="Comparison: TACK" format="title" sectionFormat="of" target="name-comparison-tack">比較: TACK</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-boilerplate.3-1.10">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="Acknowledgments" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-boilerplate.3-1.11">
+            <t keepWithNext="true" pn="section-boilerplate.3-1.11.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="Authors' Addresses" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t pn="section-1-1">誤発行された公開鍵証明書は、TLS<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>クライアントがTLSサーバーを適切に認証することを妨げる可能性があります。
+これは、グローバルな公開鍵基盤（PKI）の文脈において重大なリスクであり、企業内での大規模な証明書の展開においても同様です。</t>
+      <t pn="section-1-2">この文書は、サーバーのアイデンティティーをピン留めする方法として、不透明なピン留めチケットを用いたTLSへの実験的な拡張を提案します。
+このアプローチは、実装と展開が容易であることを意図しており、TLSセッション再開<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>の背後にあるアイデアのいくつかを再利用しています。</t>
+      <t pn="section-1-3">チケットによるピン留めは、第2要素のサーバー認証方式であり、TLS鍵交換で提供される認証方式の代替として提案されているものではありません。
+より具体的には、クライアントはTLS鍵交換が正常に完了した後にのみ、ピン留めによるアイデンティティー確認方式を使用します。
+言い換えると、ピン留めによるアイデンティティー確認方式は、認証済みのTLSセッション上でのみ実行されます。
+チケットによるピン留めは証明書の情報をピン留めしないため、真に独立した第2要素の認証であることに注意してください。</t>
+      <t pn="section-1-4">チケットによるピン留めは、初回使用時信頼（trust-on-first-use、TOFU）のメカニズムです。
+つまり、最初のサーバー認証はPKI証明書の検証のみに基づきますが、後続のセッションでは、クライアントは通常のPKI証明書による認証に加えて、サーバーがチケットを復号できることに基づいてサーバーのアイデンティティーをさらに確認します。</t>
+      <t pn="section-1-5">最初のTLSセッションの確立中に、クライアントはサーバーにピン留めチケットを要求します。
+要求を受け取ると、サーバーは、クライアントとサーバー以外のピアにとって予測不可能であることが期待されるピン留めシークレットを生成します。
+この提案では、ピン留めシークレットはTLS鍵交換中に交換されるパラメーターから生成されるため、クライアントとサーバーはそれぞれローカルで独立して生成できます。
+サーバーは、ピン留めシークレットを取り出すために必要な情報を含むピン留めチケットを構築します。
+次にサーバーはチケットを暗号化し、関連付けられたピン留め有効期間とともにピン留めチケットをクライアントに返します。</t>
+      <t pn="section-1-6">ピン留め有効期間の値は、サーバーがサーバー側のチケット暗号化鍵をどれだけの期間保持することを約束するかを示します。
+この鍵により、サーバーはプロトコル交換を正しく完了し、自身のアイデンティティーを証明できます。
+サーバーの約束（およびチケットの有効期間）は、通常、数週間程度です。</t>
+      <t pn="section-1-7">鍵交換が完了し、サーバーが認証されたとみなされると、クライアントはピン留めシークレットをローカルで生成し、サーバーの識別子をキャッシュして、ピン留めシークレット、ならびにピン留めチケットとそれに関連付けられた有効期間のインデックスとします。</t>
+      <t pn="section-1-8">クライアントがサーバーとの新しいTLSセッションを再確立するとき、クライアントはピン留めチケットをサーバーに送信します。
+それを受け取ると、サーバーはピン留めシークレットを知っていることの証明を返します。
+鍵交換が完了し、サーバーが認証されると、クライアントは、自身が保存しているピン留めシークレットを使用して、サーバーから返されたピン留め証明を検査します。
+証明が一致すれば、クライアントは、現在接続しているサーバーが実際に正しいサーバーであると結論付けることができます。</t>
+      <t pn="section-1-9">この文書はTLS 1.3にのみ適用されます。
+私たちは、このアイデアをプロトコルの以前のバージョンに後付けすることも可能であると考えていますが、それには大幅な変更が必要になります。
+一例として、TLS 1.2<xref target="RFC5246" format="default" sectionFormat="of" derivedContent="RFC5246"/>以前のバージョンは、ここでチケットの転送に使用しているような、暗号化されたハンドシェイク拡張の汎用的な仕組みを提供していません。</t>
+      <t pn="section-1-10">以前のピン留めソリューションと比べた、このプロトコルの主な利点は次のとおりです。</t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-1-11">
+        <li pn="section-1-11.1">このプロトコルはTLSレベルで動作するため、アプリケーションレベルのHTTPに限定されません。</li>
+        <li pn="section-1-11.2">このプロトコルは、サーバーのIPアドレス、認証局（CA）、公開鍵の変更に対して堅牢です。
+サーバーは、ピン留め保護鍵の所有によって特徴付けられ、この鍵がクライアントに提供されることはありません。
+CAや公開鍵などのサーバーの設定パラメーターは、ピン留めチケットプロトコルに影響を与えることなく変更できます。</li>
+        <li pn="section-1-11.3">単一のパラメーター（チケットの有効期間）を設定すれば、運用は完全に自動化されます。
+サーバー管理者は、バックアップ証明書や明示的なピンの管理に煩わされる必要はありません。</li>
+        <li pn="section-1-11.4">サーバークラスターについては、既存のインフラストラクチャー<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>が存在する場合はそれを再利用します。</li>
+        <li pn="section-1-11.5">おそらく中間者（MITM）攻撃によって生じるピン留めエラーは、クライアントとサーバーの両方で検出できます。
+これにより、大規模な分析を用いてサーバー側でMITM攻撃を検出でき、クライアントが明示的にエラーを報告することに頼る必要がありません。</li>
+      </ul>
+      <t pn="section-1-12">用語に関する注記: この分野の他のソリューションとは異なり、このプロトコルはサーバーの証明書を意識しないため、私たちは「証明書のピン留め」（または「公開鍵のピン留め」）を行いません。
+この新しいソリューションについては、「サーバーアイデンティティーのピン留め」という用語を好んで使います。
+私たちのソリューションでは、サーバーは、暗号化されたチケットを読み取って復号できることの証明を生成することで、自身のアイデンティティーを証明します。
+その結果、アイデンティティーの証明は、ピン留め保護鍵の所有の証明に依存します。
+しかし、この鍵がクライアントと交換されたり、クライアントに知られたりすることはないため、この鍵自体をピン留めすることはできません。</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" toc="include" removeInRFC="false" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-do">この文書で使用する規則</name>
+        <t pn="section-1.1-1">
+    キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+    「<bcp14>要求されています（REQUIRED）</bcp14>」、
+    「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+    「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+    「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+    「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+    BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+    ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+        </t>
+      </section>
+      <section anchor="scope-of-experimentation" numbered="true" toc="include" removeInRFC="false" pn="section-1.2">
+        <name slugifiedName="name-scope-of-experimentation">実験の範囲</name>
+        <t pn="section-1.2-1">この文書は、TLSプロトコルへの実験的な拡張を記述します。
+このセクションでは、この実験に対する制約と、この実験がどのように有用な情報をもたらし、場合によっては標準化につながりうるかを定義します。</t>
+        <t pn="section-1.2-2">このプロトコルは、サーバーがこのプロトコルをサポートしていない場合、最初にクライアントが単一のPinningTicket拡張を送信することを除いて、クライアントとサーバーが通常のTLS交換にフォールバックするように設計されています。
+さらに、このプロトコルは、サーバーのアイデンティティーの検証を強化すること（「第2要素」）のみを目的として設計されています。
+その結果、実装やプロトコル自体のエラーであっても、通常のTLS交換と比べてセキュリティーが弱まることにはならないはずです。
+これら2点を踏まえると、同意したクライアントとサーバーの実装の間で、オープンなインターネット上で実験を実施できます。</t>
+        <t pn="section-1.2-3">この実験の目標は、次のことを証明することです。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-1.2-4">
+          <li pn="section-1.2-4.1">サポートしていないクライアントとサーバーは影響を受けないこと。</li>
+          <li pn="section-1.2-4.2">クライアントがサーバーに頻繁に（チケットの有効期間と比べて）接続する場合でも、ごくまれにしか接続しない場合でも、サポートしているクライアントとサーバーの間の接続性が通常の状況下で維持されること。</li>
+          <li pn="section-1.2-4.3">企業のミドルボックスがそのような接続性を妨げないこと。</li>
+          <li pn="section-1.2-4.4">誤発行された証明書や、TLSを認識する不正なミドルボックスによって、実際に接続性が損なわれ、これらのケースがクライアント側とサーバー側の一方または両方で検出されること。
+また、そのような事象の後でもクライアントとサーバーを回復させ、通常の接続性を復元できること。</li>
+        </ul>
+        <t pn="section-1.2-5">2年間の展開が成功した後、著者らは実験の結果をまとめた文書を公開し、このプロトコルを提案標準（Proposed Standard）として検討してもらうために再提出する予定です。</t>
+      </section>
+    </section>
+    <section anchor="protocol-overview" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-protocol-overview">プロトコルの概要</name>
+      <t pn="section-2-1">このプロトコルは、特定のクライアントがサーバーに初めて接続するときと、後続の接続の、2つのフェーズで構成されます。</t>
+      <t pn="section-2-2">このプロトコルは、完全なTLSハンドシェイクと0-RTTハンドシェイクの両方をサポートします。
+以下では完全なハンドシェイクの文脈で説明しますが、0-RTTハンドシェイクでの動作も同一であるはずです。</t>
+      <t pn="section-2-3">この文書には、<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>で説明されているチケットによる再開メカニズムといくつかの類似点があります。
+しかし、この文書の範囲は、<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>やその他のメカニズムで実装されるセッション再開メカニズムとは異なります。
+具体的には、ピン留めチケットはTLSセッションに関連付けられた状態を一切運ばないため、セッション再開やクライアント認証には使用できません。
+代わりに、ピン留めチケットには暗号化されたピン留めシークレットだけが含まれます。
+ピン留めチケットは、サーバーがそれを復号できること、つまりピン留め保護鍵を所有していることを証明するために、サーバーによって使用されます。</t>
+      <t pn="section-2-4"><xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>は<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>によって廃止されており、チケットによる再開は現在<xref target="RFC8446" sectionFormat="of" section="2.2" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-2.2" derivedContent="RFC8446"/>で定義されています。
+この文書では<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>を参考情報の文書として参照しています。
+これは、この文書にステートレスなチケットによる再開についてのより詳しい議論が含まれているためであり、また、チケットによる再開には、執筆時点でまだ広く展開されているTLS 1.2での豊富な運用経験があるためです。
+この経験は、展開の経験とともに、アイデンティティーのピン留めに容易に再利用できます。</t>
+      <t pn="section-2-5">TLS 1.3では、セッション再開は事前共有鍵（Pre-Shared Key: PSK）に基づいています。
+これはこのプロトコルとは直交しています。
+TLS 1.3では、TLSセッションをPKIとピン留めチケットを用いて確立し、後でPSKを用いて再開できます。</t>
+      <t pn="section-2-6">しかし、この文書で説明するプロトコルは、誤発行された証明書の問題に対処するものです。
+したがって、PSKのような、証明書に基づくTLS鍵交換以外で使用されることは想定されていません。
+その結果、PSKハンドシェイクには、ここで定義する拡張を含めては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      <section anchor="initial-connection" numbered="true" toc="include" removeInRFC="false" pn="section-2.1">
+        <name slugifiedName="name-initial-connection">最初の接続</name>
+        <t pn="section-2.1-1">クライアントは、サーバーに初めて接続するとき、空のPinningTicket拡張を送信することでピン留めチケットを要求し、サーバーの最初の応答の一部として、返されたPinningTicket拡張の中でそれを受け取ります。</t>
+        <artwork name="" type="ascii-art" align="left" alt="" pn="section-2.1-2">
+ Client                                               Server
+
+ ClientHello
+   + key_share
+   + signature_algorithms
+   + PinningTicket         --------&gt;
+                                                 ServerHello
+                                                 + key_share
+                                       {EncryptedExtensions
+                                            + PinningTicket}
+                                       {CertificateRequest*}
+                                              {Certificate*}
+                                        {CertificateVerify*}
+                           &lt;--------              {Finished}
+ {Certificate*}
+ {CertificateVerify*}
+ {Finished}                --------&gt;
+ [Application Data]        &lt;-------&gt;      [Application Data]
+
+        *  Indicates optional or situation-dependent
+           messages that are not always sent.
+
+        {} Indicates messages protected using keys
+           derived from the ephemeral secret.
+
+        [] Indicates messages protected using keys
+           derived from the master secret.
+</artwork>
+        <t pn="section-2.1-3">クライアントがPinningTicket拡張をサポートしていて、そのサーバーに関連付けられたピン留めチケットを持っていない場合、その交換は最初の接続とみなされます。
+クライアントがピン留めチケットを持っていない他の理由としては、クライアントがピン留めチケットのストアを消去した場合や、ピン留めチケットの約束された有効期間が満了した場合があります。</t>
+        <t pn="section-2.1-4">PinningTicket拡張を受信すると、サーバーはピン留めシークレット（<xref target="pinning-secret" format="default" sectionFormat="of" derivedContent="Section 4.1"/>）を計算し、ピン留め保護鍵（<xref target="pinning-ticket-key" format="default" sectionFormat="of" derivedContent="Section 4.3"/>）で暗号化したピン留めチケット（<xref target="pinning-ticket" format="default" sectionFormat="of" derivedContent="Section 4.2"/>）を送信します。
+ピン留めチケットには有効期間の値が関連付けられます。
+サーバーは、この約束された有効期間が示す期間中、ピン留め保護鍵を保持し、受信したピン留めチケットを復号できるようにしておく責任を負います。</t>
+        <t pn="section-2.1-5">ピン留めチケットが生成されると、サーバーは、EncryptedExtensionsメッセージに埋め込まれたPinningTicket拡張に入れて、ピン留めチケットと約束された有効期間を返します。
+なお、PinningTicket拡張をHelloRetryRequestの一部として送信しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+        <t pn="section-2.1-6">ピン留めチケットを受信したとき、クライアントは、鍵交換が完了してサーバーが認証されるまで、それを受け入れては<bcp14>なりません（MUST NOT）</bcp14>。
+鍵交換が正常に完了しなかった場合、クライアントは受信したピン留めチケットを無視<bcp14>しなければなりません（MUST）</bcp14>。
+そうでない場合、クライアントはピン留めシークレットを計算します。
+そして、ピン留めチケットの有効期間が示す期間、ピン留めシークレットとピン留めチケットをキャッシュ<bcp14>すべきです（SHOULD）</bcp14>。
+クライアントは、示された有効期間の終わりに、キャッシュした値を消去<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      </section>
+      <section anchor="subsequent-connections" numbered="true" toc="include" removeInRFC="false" pn="section-2.2">
+        <name slugifiedName="name-subsequent-connections">後続の接続</name>
+        <t pn="section-2.2-1">クライアントが以前に接続したことのあるサーバー（サーバーの識別については<xref target="indexing" format="default" sectionFormat="of" derivedContent="Section 2.3"/>を参照）への接続を開始するとき、クライアントはそのサーバー用のピン留めチケットを送信<bcp14>すべきです（SHOULD）</bcp14>。
+以前のTLSセッションの確立中に計算されたピン留めチケット、ピン留めシークレット、ピン留めチケットの有効期間は、現在のセッション中に生成されうる新しいチケットと区別するため、この文書では「元の」ものと呼びます。</t>
+        <t pn="section-2.2-2">サーバーは、チケットから元のpinning_secretの値を取り出さ<bcp14>なければなりません（MUST）</bcp14>。
+そして、次のものを含むPinningTicket拡張で応答<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-2.2-3">
+          <li pn="section-2.2-3.1">クライアントから送信されたチケットをサーバーが理解できることの証明。
+この証明は、ピン留めチケットを、サーバーの（現在の）公開鍵および進行中のTLSセッションに結び付けます。
+この証明は必須であり、クライアントがピン留めチケットを送信した場合は含め<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-2.2-3.2">新しいピン留めチケット。
+接続ごとにチケットを更新する主な理由はプライバシーです。
+つまり、チケットが固定的なクライアント識別子として機能することを避けるためです。
+新しいピン留めチケットは長さ0であってもかまいませんが、各応答に長さが0でない新しいチケットを含めることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</li>
+        </ul>
+        <t pn="section-2.2-4">サーバーが受信したチケットを検証できない場合、それはこのクライアントに対する過去のMITM攻撃を示している可能性があります。
+その場合、サーバーはhandshake_failureアラートで接続を中断<bcp14>しなければなりません（MUST）</bcp14>。
+また、この失敗をログに記録<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t pn="section-2.2-5">クライアントは証明を検証<bcp14>しなければなりません（MUST）</bcp14>。
+検証に失敗した場合、クライアントはhandshake_failureアラートを発行して接続を中断<bcp14>しなければなりません（MUST）</bcp14>（<xref target="client_error" format="default" sectionFormat="of" derivedContent="Section 6.5"/>も参照）。
+クライアントがPinningTicket拡張を省略することによって「フォールバック」しようとしないことが重要です。</t>
+        <t pn="section-2.2-6">接続が正常に確立されたとき、つまりFinishedメッセージが検証された後、クライアントは、元のチケットを置き換えて、新しいチケットを対応するpinning_secretとともに保存<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t pn="section-2.2-7">これは拡張ではありますが、クライアントがすでにサーバー用のチケットを持っている場合、クライアントはサーバーの応答にPinningTicket拡張がないことを攻撃と解釈<bcp14>しなければなりません（MUST）</bcp14>。
+これは、サーバーが以前にチケットを尊重することを約束しているためです。
+この場合、クライアントは接続を中断<bcp14>しなければなりません（MUST）</bcp14>。
+この拡張のサポートの段階的な縮小については、<xref target="ramp_down" format="default" sectionFormat="of" derivedContent="Section 5.5"/>も参照してください。</t>
+      </section>
+      <section anchor="indexing" numbered="true" toc="include" removeInRFC="false" pn="section-2.3">
+        <name slugifiedName="name-indexing-the-pins">ピンのインデックス付け</name>
+        <t pn="section-2.3-1">各ピンは、特にホスト名、プロトコル（TLSまたはDTLS）、ポート番号を含む識別子の集合に関連付けられます。
+言い換えると、ポートTCP/443のピンは、DTLSのピンやポートTCP/8443のピンとは異なる場合があります。
+これらの識別子は、確立するTLSセッションだけでなく、サーバーのアイデンティティーを特徴付けるのに適切であることが期待されます。
+ホスト名を使用する場合、それはServer Name Indication（SNI）拡張の中で送信された値で<bcp14>なければなりません（MUST）</bcp14>。
+この定義はWebオリジン<xref target="RFC6454" format="default" sectionFormat="of" derivedContent="RFC6454"/>の概念に似ていますが、URLの存在を前提としません。</t>
+        <t pn="section-2.3-2">チケットによるピン留めの目的は、サーバーのアイデンティティーをピン留めすることです。
+その結果、サーバーのアイデンティティーと無関係な情報をインデックス付けで考慮しては<bcp14>なりません（MUST NOT）</bcp14>。
+より具体的には、IPアドレスは一時的なものであり、SNIでは禁止されているため、ピンをIPアドレスに関連付けては<bcp14>なりません（MUST NOT）</bcp14>。
+同様に、サーバーに関連付けられたCA名や公開鍵は、時間とともに変わる可能性があるため、インデックス付けに使用しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="message-definitions" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-message-definitions">メッセージの定義</name>
+      <t pn="section-3-1">このセクションでは、PinningTicket拡張の形式を定義します。
+メッセージの表記は<xref target="RFC8446" format="default" sectionFormat="of" derivedContent="RFC8446"/>に従います。</t>
+      <sourcecode name="" type="c" markers="false" pn="section-3-2">
+ opaque pinning_ticket&lt;0..2^16-1&gt;;
+
+ opaque pinning_proof&lt;0..2^8-1&gt;;
+
+ struct {
+   select (Role) {
+     case client:
+       pinning_ticket ticket&lt;0..2^16-1&gt;; //最初の接続では省略
+
+     case server:
+       pinning_proof proof&lt;0..2^8-1&gt;; //最初の接続では証明なし
+       pinning_ticket ticket&lt;0..2^16-1&gt;; //段階的縮小時は省略
+       uint32 lifetime;
+   }
+} PinningTicketExtension;
+</sourcecode>
+      <dl newline="false" spacing="normal" indent="10" pn="section-3-3">
+        <dt pn="section-3-3.1">ticket</dt>
+        <dd pn="section-3-3.2">
+  クライアントが送信する、またはサーバーが返すピン留めチケット。
+チケットはクライアントにとって不透明です。
+拡張は、ちょうど0個または1個のチケットを含ま<bcp14>なければなりません（MUST）</bcp14>。</dd>
+        <dt pn="section-3-3.3">proof</dt>
+        <dd pn="section-3-3.4">
+  受信したチケットをサーバーが理解していること、したがって元々そのチケットの生成に使用されたシークレットを所有していることを、サーバーが示すもの。
+拡張は、ちょうど0個または1個の証明を含ま<bcp14>なければなりません（MUST）</bcp14>。</dd>
+        <dt pn="section-3-3.5">lifetime</dt>
+        <dd pn="section-3-3.6">
+  提示されたチケットを将来受け入れることをサーバーが約束する期間（秒単位）。</dd>
+      </dl>
+    </section>
+    <section anchor="crypto" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-cryptographic-operations">暗号操作</name>
+      <t pn="section-4-1">このセクションでは、プロトコルのピアが実行する暗号操作の詳細を示します。</t>
+      <section anchor="pinning-secret" numbered="true" toc="include" removeInRFC="false" pn="section-4.1">
+        <name slugifiedName="name-pinning-secret">ピン留めシークレット</name>
+        <t pn="section-4.1-1">ピン留めシークレットは、クライアントとサーバーによってローカルで生成されます。
+つまり、両者は同じ入力を使用してそれを生成する必要があります。
+サーバーは対応するピン留めチケットをServerHelloメッセージと同じフライトに含めるため、この値はServerHelloメッセージが送信される前に生成されなければなりません。
+さらに、ピン留めシークレットは、クライアントとサーバー以外のいかなる当事者にとっても予測不可能でなければなりません。</t>
+        <t pn="section-4.1-2">ピン留めシークレットは、<xref target="RFC8446" sectionFormat="of" section="7.1" format="default" derivedLink="https://rfc-editor.org/rfc/rfc8446#section-7.1" derivedContent="RFC8446"/>で説明されている、TLS 1.3が提供するDerive-Secret関数を使用して導出されます。</t>
+        <sourcecode name="" type="c" markers="false" pn="section-4.1-3">
+pinning secret = Derive-Secret(Handshake Secret, "pinning secret",
+         ClientHello...ServerHello)
+</sourcecode>
+      </section>
+      <section anchor="pinning-ticket" numbered="true" toc="include" removeInRFC="false" pn="section-4.2">
+        <name slugifiedName="name-pinning-ticket">ピン留めチケット</name>
+        <t pn="section-4.2-1">ピン留めチケットには、ピン留めシークレットが含まれます。
+ピン留めチケットはクライアントからサーバーに提供され、サーバーはピン留めシークレットを取り出すためにそれを復号し、ピン留め証明で応答します。
+その結果、ピン留めチケットの特性は次のとおりです。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-4.2-2">
+          <li pn="section-4.2-2.1">ピン留めチケットは、強力な暗号アルゴリズムを使用して暗号化および完全性保護され<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-4.2-2.2">ピン留めチケットは、長期的なピン留め保護鍵で保護され<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-4.2-2.3">ピン留め保護鍵を更新できるように、ピン留めチケットにはピン留め保護鍵のIDまたはシリアル番号を含め<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-4.2-2.4">ピン留めチケットには、ピン留めシークレットに加えて、他の情報を含めても<bcp14>よいです（MAY）</bcp14>。
+追加の情報を含める場合は、プライバシーへの影響を評価するために注意深くレビューを行う必要があります。</li>
+        </ul>
+        <t pn="section-4.2-3">ピン留めチケットの形式はこの文書では規定しませんが、<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>で提案されているものに似た形式が<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      </section>
+      <section anchor="pinning-ticket-key" numbered="true" toc="include" removeInRFC="false" pn="section-4.3">
+        <name slugifiedName="name-pinning-protection-key">ピン留め保護鍵</name>
+        <t pn="section-4.3-1">ピン留め保護鍵はサーバーだけが使用するため、サーバーの実装に固有のままです。
+<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>は2つの鍵の使用を推奨していますが、関連データ付き認証付き暗号（AEAD）アルゴリズムを使用する場合は、単一の鍵だけが必要です。</t>
+        <t pn="section-4.3-2">単一のサーバーがSNIメカニズムを使用して複数の仮想サーバーのTLSを終端する場合、ピン留めを有効にしたまま仮想サーバーを異なるサーバー間で移行できるようにするために、サーバーは仮想サーバーごとに別々の保護鍵を使用することが強く<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+        <t pn="section-4.3-3"><xref target="cluster" format="default" sectionFormat="of" derivedContent="Section 5.1"/>で述べるように、サーバーが実際にはマシンのクラスターである場合、同じサーバー名へのTLS接続を受け付けるすべてのノード間で保護鍵を同期<bcp14>しなければなりません（MUST）</bcp14>。
+<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>が展開されている場合、これを行う簡単な方法は、すでに同期されているセッションチケット保護鍵から保護鍵を導出することです。
+たとえば、次のようにします。</t>
+        <sourcecode name="" type="c" markers="false" pn="section-4.3-4">
+pinning_protection_key = HKDF-Expand(resumption_protection_key,
+                              "pinning protection", L)
+</sourcecode>
+        <t pn="section-4.3-5">ここで、resumption_protection_keyは<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>で定義されているチケット保護鍵です。
+resumption_protection_keyとpinning_protection_keyはどちらもサーバーだけが使用します。</t>
+        <t pn="section-4.3-6">上記の解決策は、resumption_protection_keyの管理に関連するコード変更を最小限にしようとするものです。
+欠点は、この鍵がセッションチケットを直接暗号化するためと、pinning_protection_keyを導出するための両方に使用されることであり、このような単一の鍵の混合した使用は、暗号のベストプラクティスに沿っていません。
+可能であれば、resumption_protection_keyはpinning_protection_keyと無関係とし、それぞれを関連するサーバー間で別々に共有することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      </section>
+      <section anchor="pinning-proof" numbered="true" toc="include" removeInRFC="false" pn="section-4.4">
+        <name slugifiedName="name-pinning-proof">ピン留め証明</name>
+        <t pn="section-4.4-1">ピン留め証明は、サーバーがピン留めチケットを復号してピン留めシークレットを取り出せたことを示すために、サーバーによって送信されます。
+証明は予測不可能でなければならず、リプレイされてはなりません。
+ピン留めチケットと同様に、ピン留め証明はServerHelloメッセージの中でサーバーによって送信されます。
+さらに、偽の証明書を持つMITMサーバーが、元のサーバーからピン留め証明を取得できてはなりません。</t>
+        <t pn="section-4.4-2">これらの要件に対処するため、ピン留め証明は、TLSセッションとサーバーの公開鍵の両方に結び付けられます。</t>
+        <sourcecode name="" type="c" markers="false" pn="section-4.4-3">
+pinning_proof_secret=Derive-Secret(Handshake Secret, 
+             "pinning proof 1", ClientHello...ServerHello)
+
+proof = HMAC(original_pinning_secret, "pinning proof 2" +
+             pinning_proof_secret + Hash(server_public_key))
+</sourcecode>
+        <t pn="section-4.4-4">ここで、HMAC<xref target="RFC2104" format="default" sectionFormat="of" derivedContent="RFC2104"/>はハンドシェイクでネゴシエートされたハッシュアルゴリズムを使用し、サーバーの公開鍵に対しても同じハッシュを使用します。
+original_pinning_secretの値は、現在の交換で計算される可能性のある新しいピン留めシークレットの値と区別するために、クライアントから送信されたチケットから取り出されたシークレット値を指します。
+server_public_keyの値は、公開鍵のDER表現、具体的にはSubjectPublicKeyInfo構造そのままです。</t>
+      </section>
+    </section>
+    <section anchor="operational-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-operational-considerations">運用上の考慮事項</name>
+      <t pn="section-5-1">現在のプロトコルの背後にある主な動機は、手動の操作を必要とせずにアイデンティティーのピン留めを可能にすることです。
+手動の操作はヒューマンエラーを起こしやすく、公開鍵のピン留めの場合には、容易に「サーバーの文鎮化（server bricking）」、つまりサーバーが一部またはすべてのユーザーからアクセスできなくなる事態を招くおそれがあります。
+この目標を達成するため、アイデンティティーのピン留めで説明する操作は現在のTLSセッション内でのみ実行され、CAのアイデンティティーや公開鍵などのTLS設定パラメーターには一切依存しません。
+その結果、設定の変更によってクライアントとサーバーの間の状態が同期しなくなる可能性は低くなります。</t>
+      <section anchor="cluster" numbered="true" toc="include" removeInRFC="false" pn="section-5.1">
+        <name slugifiedName="name-protection-key-synchronizat">保護鍵の同期</name>
+        <t pn="section-5.1-1">このプロトコルを展開する際の唯一の運用上の要件は、サーバーがクラスターの一部である場合、保護鍵（チケットの暗号化に使用する鍵）をすべてのクラスターメンバー間で同期<bcp14>しなければならない（MUST）</bcp14>ということです。
+このプロトコルは、再開チケット保護鍵<xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>がすでにクラスターメンバー間で同期されていれば、それ以上何もする必要がないように設計されています。</t>
+        <t pn="section-5.1-2">さらに、同期は即時である必要はありません。
+たとえば、保護鍵はロールオーバーの数分前または数時間前に配布できます。
+そのようなシナリオでは、各クラスターメンバーは、まだ古いバージョンを使用して鍵を生成している間でも、新しいバージョンの保護鍵で保護されたチケットを受け入れられ<bcp14>なければなりません（MUST）</bcp14>。
+これにより、クライアントが「新しい」チケットを受け取ったときに、次にそのチケットをまだ拒否するクラスターメンバーに当たることがなくなります。</t>
+        <t pn="section-5.1-3">設定ミスにより、サーバーの時計が大幅にずれることがあります。
+たとえば、サーバーの時計が1年先に設定されてしまい、システムが期限切れの鍵を自動的に削除することを許可されている場合を考えてみてください。
+するとサーバーは、多くの未処理の鍵をとうに期限切れであるとして削除し、結果としてクライアントが保存している有効なチケットを拒否することになります。
+このようなシナリオでは、サーバーが多数のクライアントからアクセスできなくなる可能性があります。</t>
+        <t pn="section-5.1-4">鍵を削除する決定では、少なくとも、チケットの有効期間の最大値に加えて、クラスターのサーバー間で予想される時刻のずれと、クラスター内の異なるサーバー間に新しい鍵を配布するための時間差を考慮すべきです。</t>
+      </section>
+      <section anchor="ticket-lifetime" numbered="true" toc="include" removeInRFC="false" pn="section-5.2">
+        <name slugifiedName="name-ticket-lifetime">チケットの有効期間</name>
+        <t pn="section-5.2-1">チケットの有効期間は、サーバーがチケットに埋め込まれたシークレットを知っていることをクライアントに証明できるように、チケットに対応する保護鍵をこの期間保持するというサーバーによる約束です。
+本番システムでは、有効期間は7日から31日の間に<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      </section>
+      <section anchor="certificate-renewal" numbered="true" toc="include" removeInRFC="false" pn="section-5.3">
+        <name slugifiedName="name-certificate-renewal">証明書の更新</name>
+        <t pn="section-5.3-1">このプロトコルは、サーバーの証明書が更新された場合でも、クライアントが正しいサーバーと通信し続けることを保証します。
+この意味で、ピン留めは証明書に関連付けられておらず、これが、この文書で説明するプロトコルを「サーバーアイデンティティーのピン留め」と呼ぶ理由です。</t>
+        <t pn="section-5.3-2">ピン留め証明で使用される公開鍵の範囲は現在のTLSセッションのみであるため、ピン留め証明でサーバーの公開鍵を使用しても、この特性は影響を受けないことに注意してください。</t>
+      </section>
+      <section anchor="certificate-revocation" numbered="true" toc="include" removeInRFC="false" pn="section-5.4">
+        <name slugifiedName="name-certificate-revocation">証明書の失効</name>
+        <t pn="section-5.4-1">このプロトコルは証明書の検証とは直交しています。
+つまり、サーバーの証明書が失効している場合やその他の理由で無効な場合、クライアントはチケットに関連する動作にかかわらず、そのサーバーへの接続を拒否<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="ramp_down" numbered="true" toc="include" removeInRFC="false" pn="section-5.5">
+        <name slugifiedName="name-disabling-pinning">ピン留めの無効化</name>
+        <t pn="section-5.5-1">このプロトコルを実装するサーバーは、次のような「段階的縮小（ramp down）」の動作モードを持た<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-5.5-2">
+          <li pn="section-5.5-2.1">サーバーは、有効なピン留めチケットを引き続き受け入れ、証明で正しく応答します。</li>
+          <li pn="section-5.5-2.2">サーバーは、新しいピン留めチケットを返しません。</li>
+        </ul>
+        <t pn="section-5.5-3">しばらくすると、有効なチケットを保持するクライアントはいなくなり、この機能を無効にできるようになります。
+新しいピン留めチケットを受け取らなかったクライアントが、必ずしも元のチケットを削除する必要はないことに注意してください。
+代わりに、クライアントはその有効期間が満了するまでチケットを使い続けてもかまいません。
+しかし、<xref target="privacy" format="default" sectionFormat="of" derivedContent="Section 6.7"/>で詳しく述べるように、チケットの値がTLSセッションの関連付けに使用される可能性があるため、クライアントによるチケットの再利用はプライバシー上の懸念を生じる可能性があります。</t>
+        <t pn="section-5.5-4">より短い有効期間で新しいピン留めチケットを発行しても、段階的縮小のプロセスを遅らせるだけです。
+より短い有効期間は、実際に新しい接続を開始したクライアントにしか影響しないためです。
+他のクライアントには、自身のピン留めチケットの元の有効期間が引き続き適用されます。</t>
+      </section>
+      <section anchor="server-compromise" numbered="true" toc="include" removeInRFC="false" pn="section-5.6">
+        <name slugifiedName="name-server-compromise">サーバーの侵害</name>
+        <t pn="section-5.6-1">サーバーの侵害が検出された場合、ピン留め保護鍵を直ちにローテーション<bcp14>しなければなりません（MUST）</bcp14>。
+しかし、サーバーは、侵害された古い鍵を使用する有効なチケットを引き続き受け入れ<bcp14>なければなりません（MUST）</bcp14>。
+古いピン留めチケットをまだ保持しているクライアントはMITM攻撃に対して脆弱なままですが、正しいサーバーに接続したクライアントは、新たに生成されたピン留め保護鍵で保護された新しいチケットを直ちに受け取ります。</t>
+        <t pn="section-5.6-2">ピン留め保護鍵が直接侵害された場合、たとえばバックアップのコピーが誤って公開された場合にも、同じ手順が適用されます。</t>
+      </section>
+      <section anchor="disaster-recovery" numbered="true" toc="include" removeInRFC="false" pn="section-5.7">
+        <name slugifiedName="name-disaster-recovery">災害復旧</name>
+        <t pn="section-5.7-1">本番環境のすべてのWebサーバーは、災害（悪意のある活動を含む）によって消失した場合に復旧できるように、バックアップを取る必要があります。
+バックアップには証明書とその秘密鍵が含まれることが多く、これらは安全にバックアップされなければなりません。
+ピン留めシークレットは、まだ受け入れられている以前のバージョンも含めて、定期的にバックアップされなければなりません。
+しかし、ピン留めシークレットは認証の第2要素としてのみ使用されるため、サーバーの秘密鍵と同じレベルの機密性は必要ありません。</t>
+        <t pn="section-5.7-2"><xref target="RFC5077" format="default" sectionFormat="of" derivedContent="RFC5077"/>のセッション再開鍵はセキュリティー上より機微であり、通常はバックアップすべきではなく、むしろエフェメラル鍵として扱うべきであることに、読者は注意すべきです。
+サーバーが再開鍵からピン留めシークレットを導出する場合（<xref target="pinning-secret" format="default" sectionFormat="of" derivedContent="Section 4.1"/>）であっても、再開鍵をバックアップしては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t pn="section-6-1">このセクションでは、提案する拡張に関連するいくつかのセキュリティー上の側面を検討します。</t>
+      <section anchor="trust-on-first-use-tofu-and-mitm-attacks" numbered="true" toc="include" removeInRFC="false" pn="section-6.1">
+        <name slugifiedName="name-trust-on-first-use-tofu-and">初回使用時信頼（TOFU）とMITM攻撃</name>
+        <t pn="section-6.1-1">このプロトコルは、初回使用時信頼のプロトコルです。
+クライアントが最初に「正しい」サーバーに接続した場合、受け取った各チケットの有効期間の間、MITM攻撃者から保護されます。
+クライアントが定期的に接続する場合（もちろん、サーバーが選択した有効期間によります）、偽の証明書に対して常に保護され続けます。</t>
+        <t pn="section-6.1-2">しかし、クライアントが最初に攻撃者に接続した場合、「正しい」サーバーへの後続の接続は失敗します。
+サーバーの運用者は、そのような大規模な攻撃が検出されて修復された時点で、破損したピンを削除する方法についてクライアントに助言したいと考えるかもしれません。</t>
+        <t pn="section-6.1-3">このプロトコルは、元のサーバーにリアルタイムでアクセスできる能動的なMITM攻撃者に対して脆弱にならないように設計されています。
+ピン留め証明にはサーバーの公開鍵のハッシュが含まれており、クライアントが接続を開始しているサーバーによって実際に証明が生成されたことをクライアントに保証します。</t>
+      </section>
+      <section anchor="pervasive-monitoring" numbered="true" toc="include" removeInRFC="false" pn="section-6.2">
+        <name slugifiedName="name-pervasive-monitoring">広範な監視</name>
+        <t pn="section-6.2-1">一部の組織、さらには一部の国は、その構成員に対して広範な監視<xref target="RFC7258" format="default" sectionFormat="of" derivedContent="RFC7258"/>を行っています。
+これは多くの場合、常時稼働するSSLプロキシーという形をとります。
+TOFUの特性のため、このプロトコルはそのような場合には何のセキュリティーも提供しません。</t>
+        <t pn="section-6.2-2">広範な監視は、<xref target="privacy" format="default" sectionFormat="of" derivedContent="Section 6.7"/>で詳しく述べるプライバシー上の懸念を生じる可能性もあります。</t>
+      </section>
+      <section anchor="server_error" numbered="true" toc="include" removeInRFC="false" pn="section-6.3">
+        <name slugifiedName="name-server-side-error-detection">サーバー側でのエラー検出</name>
+        <t pn="section-6.3-1">独特なことに、このプロトコルでは、サーバーが、不正なチケットを提示し、したがってMITM攻撃の被害者であると想定できるクライアントを検出できます。
+サーバーの運用者は、過去にいくつかの国で発生した偽の証明書による攻撃と同様に、そのようなケースを進行中の攻撃の兆候として利用できます。</t>
+      </section>
+      <section anchor="client_policy" numbered="true" toc="include" removeInRFC="false" pn="section-6.4">
+        <name slugifiedName="name-client-policy-and-ssl-proxi">クライアントのポリシーとSSLプロキシー</name>
+        <t pn="section-6.4-1">好むと好まざるとにかかわらず、一部のクライアントは通常SSLプロキシーの背後に展開されています。
+<xref target="RFC7469" format="default" sectionFormat="of" derivedContent="RFC7469"/>と同様に、ローカルポリシーに従って一部のホストに対するピン留めを無効にできるようにすることは許容されます。
+たとえば、ユーザーエージェント（UA）は、検証済みの証明書チェーンが、UA（または基盤となるプラットフォーム）に組み込まれたトラストアンカーではなく、ユーザー定義のトラストアンカーで終端するホストに対して、ピン留めを無効に<bcp14>してもよいです（MAY）</bcp14>。
+さらに、クライアントは、そのようなホストからの空のPinningTicket拡張を有効な応答として受け入れても<bcp14>よいです（MAY）</bcp14>。</t>
+      </section>
+      <section anchor="client_error" numbered="true" toc="include" removeInRFC="false" pn="section-6.5">
+        <name slugifiedName="name-client-side-error-behavior">クライアント側でのエラー時の動作</name>
+        <t pn="section-6.5-1">クライアントは、ピン留めされたサーバーから不正な形式の、または空のPinningTicket拡張を受信した場合、ハンドシェイクを中断<bcp14>しなければなりません（MUST）</bcp14>。
+クライアントがリクエストを再試行する場合、再試行のメッセージでPinningTicketを省略しては<bcp14>なりません（MUST NOT）</bcp14>。
+そうしなければ、クライアントは<xref target="RFC7507" format="default" sectionFormat="of" derivedContent="RFC7507"/>で説明されているものと同様の、自明なフォールバック攻撃にさらされることになります。</t>
+        <t pn="section-6.5-2">しかし、<xref target="client_policy" format="default" sectionFormat="of" derivedContent="Section 6.4"/>の助言に従わない場合、この規則は、SSLプロキシーの背後からオープンなインターネットへ移動するクライアントや、その逆のクライアントに悪影響を与える可能性があります。
+したがって、ブラウザーやライブラリーのベンダーは、保存されたピンを削除するための文書化された方法を提供することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      </section>
+      <section anchor="stolen-and-forged-tickets" numbered="true" toc="include" removeInRFC="false" pn="section-6.6">
+        <name slugifiedName="name-stolen-and-forged-tickets">盗まれたチケットと偽造されたチケット</name>
+        <t pn="section-6.6-1">ピン留めチケットはサーバーではなくクライアントを保護するために使用されるため、攻撃者は、関連付けられたピン留めシークレットなどの他のピン留めパラメーターと組み合わせたとしても、ピン留めチケットを盗むことによって何の利益も得られません。
+同様に、特定のサーバー用のチケットを偽造しても無意味です。</t>
+      </section>
+      <section anchor="privacy" numbered="true" toc="include" removeInRFC="false" pn="section-6.7">
+        <name slugifiedName="name-client-privacy">クライアントのプライバシー</name>
+        <t pn="section-6.7-1">このプロトコルは、クライアントが接続のたびに新しいチケットを要求して受け取る限り、外部の攻撃者が異なるリクエストを単一のクライアントに結び付けられないように設計されています。
+これは特に段階的縮小の間、サーバーが新しいチケットを提供せず、クライアントが同じチケットを再利用する場合に懸念となる可能性があります。
+このようなプライバシー上の懸念を軽減または回避するために、サーバーは有効期間を短くした新しいチケットを発行することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+これにより、少なくとも、クライアントのTLSセッションを結び付けられる期間を短くできます。
+サーバーは、すべてのチケットが期限切れになったと確信できるまで、有効期間が0秒のチケットを発行<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <t pn="section-6.7-2">一方、クライアントの接続先のサーバーは、クライアントを容易に追跡できます。
+これは、クライアントが複数のアイデンティティーでサーバー（たとえばメールサーバー）に接続することを想定している場合に問題となる可能性があります。
+実装は、全般的に、または特定のサーバーについて、ユーザーがピン留めをオプトアウトできるように<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t pn="section-6.7-3">この文書では、チケットの正確な内容を定義しません。
+クライアント固有の情報をチケットに含めることは、プライバシー上の懸念を生じるため、<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>。</t>
+      </section>
+      <section anchor="ticket-protection-key-management" numbered="true" toc="include" removeInRFC="false" pn="section-6.8">
+        <name slugifiedName="name-ticket-protection-key-manag">チケット保護鍵の管理</name>
+        <t pn="section-6.8-1">チケットの形式はこの文書では義務付けていませんが、認証付き暗号を使用してチケットを保護することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+認証付き暗号に一般的に使用されるアルゴリズムの一部、たとえばGalois/Counter Mode（GCM）は、ノンスの再利用に対して非常に脆弱であり、この問題はクラスター環境で増幅されます。
+したがって、AES-GCMまたは同等のAEADを選択する実装は、次の3つの選択肢のいずれかを採用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-6.8-2">
+          <li pn="section-6.8-2.1">ノンスの名前空間をクラスターメンバー間で分割し、各メンバーで単調増加するカウンターを使用します。
+たとえば、ノンスをクラスターメンバーIDと増分カウンターを連結したものに設定します。</li>
+          <li pn="section-6.8-2.2">ランダムなノンスを生成しますが、いわゆる誕生日限界を避けます。
+つまり、同じチケットピン留め保護鍵に対して、許容される最大数（AES-128-GCMでは2**64）を超える暗号化されたチケットを決して生成しないようにします。</li>
+          <li pn="section-6.8-2.3">Karthik Bhargavanによるとされる代替の設計は次のとおりです。
+128ビットのマスター鍵K_masterから始め、暗号化のたびに256ビットのランダムなノンスを生成し、K = HKDF(K_master, Nonce || "key")、次にN = HKDF(K_master, Nonce || "nonce")を計算します。
+これらの値を使用して、チケットをAES-GCM(K, N, data)で暗号化します。
+そして、このノンスはチケットとともに保存および送信されるべきです。</li>
+        </ul>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" toc="include" removeInRFC="false" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t pn="section-7-1">IANAは、「TLS ExtensionType Values」レジストリーにTicketPinning拡張の値を割り当てました。</t>
+      <t pn="section-7-2"><xref target="RFC8447" format="default" sectionFormat="of" derivedContent="RFC8447"/>は、IANAが「TLS ExtensionType Values」レジストリー<xref target="TLS-EXT" format="default" sectionFormat="of" derivedContent="TLS-EXT"/>を更新するための手順、要件、必要な情報を定義しています。
+登録手続きは「Specification Required」<xref target="RFC8126" format="default" sectionFormat="of" derivedContent="RFC8126"/>です。</t>
+      <t pn="section-7-3">TicketPinning拡張は次のように登録されています。
+（この拡張はPrivate Useに限定されないため、最初のバイトは0〜254の範囲にあります。）</t>
+      <dl newline="false" spacing="normal" pn="section-7-4">
+        <dt pn="section-7-4.1">値:</dt>
+        <dd pn="section-7-4.2">32</dd>
+        <dt pn="section-7-4.3">名前:</dt>
+        <dd pn="section-7-4.4">ticket_pinning</dd>
+        <dt pn="section-7-4.5">推奨:</dt>
+        <dd pn="section-7-4.6">No</dd>
+        <dt pn="section-7-4.7">TLS 1.3:</dt>
+        <dd pn="section-7-4.8">CH, EE（拡張がClientHelloメッセージとEncryptedExtensionsメッセージに存在することを示します）</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.perrin-tls-tack" to="TLS-TACK"/>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t>In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC8126" target="https://www.rfc-editor.org/info/rfc8126" quoteTitle="true" derivedAnchor="RFC8126">
+          <front>
+            <title>Guidelines for Writing an IANA Considerations Section in RFCs</title>
+            <author initials="M." surname="Cotton" fullname="M. Cotton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="T." surname="Narten" fullname="T. Narten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="June"/>
+            <abstract>
+              <t>Many protocols make use of points of extensibility that use constants to identify various protocol parameters.  To ensure that the values in these fields do not have conflicting uses and to promote interoperability, their allocations are often coordinated by a central record keeper.  For IETF protocols, that role is filled by the Internet Assigned Numbers Authority (IANA).</t>
+              <t>To make assignments in a given registry prudently, guidance describing the conditions under which new values should be assigned, as well as when and how modifications to existing values can be made, is needed.  This document defines a framework for the documentation of these guidelines by specification authors, in order to assure that the provided guidance for the IANA Considerations is clear and addresses the various issues that are likely in the operation of a registry.</t>
+              <t>This is the third edition of this document; it obsoletes RFC 5226.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="26"/>
+          <seriesInfo name="RFC" value="8126"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8126"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t>RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8446" target="https://www.rfc-editor.org/info/rfc8446" quoteTitle="true" derivedAnchor="RFC8446">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t>This document specifies version 1.3 of the Transport Layer Security (TLS) protocol.  TLS allows client/server applications to communicate over the Internet in a way that is designed to prevent eavesdropping, tampering, and message forgery.</t>
+              <t>This document updates RFCs 5705 and 6066, and obsoletes RFCs 5077, 5246, and 6961.  This document also specifies new requirements for TLS 1.2 implementations.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8446"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+        <reference anchor="RFC8447" target="https://www.rfc-editor.org/info/rfc8447" quoteTitle="true" derivedAnchor="RFC8447">
+          <front>
+            <title>IANA Registry Updates for TLS and DTLS</title>
+            <author initials="J." surname="Salowey" fullname="J. Salowey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="S." surname="Turner" fullname="S. Turner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2018" month="August"/>
+            <abstract>
+              <t>This document describes a number of changes to TLS and DTLS IANA registries that range from adding notes to the registry all the way to changing the registration policy.  These changes were mostly motivated by WG review of the TLS- and DTLS-related registries undertaken as part of the TLS 1.3 development process.</t>
+              <t>This document updates the following RFCs: 3749, 5077, 4680, 5246, 5705, 5878, 6520, and 7301.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8447"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8447"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="Netcraft" target="https://news.netcraft.com/archives/2016/03/30/http-public-key-pinning-youre-doing-it-wrong.html" quoteTitle="true" derivedAnchor="Netcraft">
+          <front>
+            <title>HTTP Public Key Pinning: You're doing it wrong!</title>
+            <author initials="P." surname="Mutton" fullname="Paul Mutton">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2016" month="March"/>
+          </front>
+        </reference>
+        <reference anchor="Oreo" quoteTitle="true" derivedAnchor="Oreo">
+          <front>
+            <title>Firm Grip Handshakes: A Tool for Bidirectional Vouching</title>
+            <author initials="O." surname="Berkman">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="B." surname="Pinkas">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Yung">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2012"/>
+          </front>
+          <seriesInfo name="Cryptology and Network Security" value="pp. 142-157"/>
+        </reference>
+        <reference anchor="RFC2104" target="https://www.rfc-editor.org/info/rfc2104" quoteTitle="true" derivedAnchor="RFC2104">
+          <front>
+            <title>HMAC: Keyed-Hashing for Message Authentication</title>
+            <author initials="H." surname="Krawczyk" fullname="H. Krawczyk">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="M." surname="Bellare" fullname="M. Bellare">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Canetti" fullname="R. Canetti">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="February"/>
+            <abstract>
+              <t>This document describes HMAC, a mechanism for message authentication using cryptographic hash functions. HMAC can be used with any iterative cryptographic hash function, e.g., MD5, SHA-1, in combination with a secret shared key.  The cryptographic strength of HMAC depends on the properties of the underlying hash function.  This memo provides information for the Internet community.  This memo does not specify an Internet standard of any kind</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="2104"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2104"/>
+        </reference>
+        <reference anchor="RFC5077" target="https://www.rfc-editor.org/info/rfc5077" quoteTitle="true" derivedAnchor="RFC5077">
+          <front>
+            <title>Transport Layer Security (TLS) Session Resumption without Server-Side State</title>
+            <author initials="J." surname="Salowey" fullname="J. Salowey">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Zhou" fullname="H. Zhou">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="P." surname="Eronen" fullname="P. Eronen">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="January"/>
+            <abstract>
+              <t>This document describes a mechanism that enables the Transport Layer Security (TLS) server to resume sessions and avoid keeping per-client session state.  The TLS server encapsulates the session state into a ticket and forwards it to the client.  The client can subsequently resume a session using the obtained ticket.  This document obsoletes RFC 4507.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5077"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5077"/>
+        </reference>
+        <reference anchor="RFC5246" target="https://www.rfc-editor.org/info/rfc5246" quoteTitle="true" derivedAnchor="RFC5246">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+            <author initials="T." surname="Dierks" fullname="T. Dierks">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Rescorla" fullname="E. Rescorla">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2008" month="August"/>
+            <abstract>
+              <t>This document specifies Version 1.2 of the Transport Layer Security (TLS) protocol.  The TLS protocol provides communications security over the Internet.  The protocol allows client/server applications to communicate in a way that is designed to prevent eavesdropping, tampering, or message forgery.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="5246"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5246"/>
+        </reference>
+        <reference anchor="RFC6454" target="https://www.rfc-editor.org/info/rfc6454" quoteTitle="true" derivedAnchor="RFC6454">
+          <front>
+            <title>The Web Origin Concept</title>
+            <author initials="A." surname="Barth" fullname="A. Barth">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2011" month="December"/>
+            <abstract>
+              <t>This document defines the concept of an "origin", which is often used as the scope of authority or privilege by user agents.  Typically, user agents isolate content retrieved from different origins to prevent malicious web site operators from interfering with the operation of benign web sites.  In addition to outlining the principles that underlie the concept of origin, this document details how to determine the origin of a URI and how to serialize an origin into a string.  It also defines an HTTP header field, named "Origin", that indicates which origins are associated with an HTTP request.   [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6454"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6454"/>
+        </reference>
+        <reference anchor="RFC6962" target="https://www.rfc-editor.org/info/rfc6962" quoteTitle="true" derivedAnchor="RFC6962">
+          <front>
+            <title>Certificate Transparency</title>
+            <author initials="B." surname="Laurie" fullname="B. Laurie">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Langley" fullname="A. Langley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="E." surname="Kasper" fullname="E. Kasper">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2013" month="June"/>
+            <abstract>
+              <t>This document describes an experimental protocol for publicly logging the existence of Transport Layer Security (TLS) certificates as they are issued or observed, in a manner that allows anyone to audit certificate authority (CA) activity and notice the issuance of suspect certificates as well as to audit the certificate logs themselves.  The intent is that eventually clients would refuse to honor certificates that do not appear in a log, effectively forcing CAs to add all issued certificates to the logs.</t>
+              <t>Logs are network services that implement the protocol operations for submissions and queries that are defined in this document.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="6962"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6962"/>
+        </reference>
+        <reference anchor="RFC7258" target="https://www.rfc-editor.org/info/rfc7258" quoteTitle="true" derivedAnchor="RFC7258">
+          <front>
+            <title>Pervasive Monitoring Is an Attack</title>
+            <author initials="S." surname="Farrell" fullname="S. Farrell">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="H." surname="Tschofenig" fullname="H. Tschofenig">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2014" month="May"/>
+            <abstract>
+              <t>Pervasive monitoring is a technical attack that should be mitigated in the design of IETF protocols, where possible.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="188"/>
+          <seriesInfo name="RFC" value="7258"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7258"/>
+        </reference>
+        <reference anchor="RFC7469" target="https://www.rfc-editor.org/info/rfc7469" quoteTitle="true" derivedAnchor="RFC7469">
+          <front>
+            <title>Public Key Pinning Extension for HTTP</title>
+            <author initials="C." surname="Evans" fullname="C. Evans">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="C." surname="Palmer" fullname="C. Palmer">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="R." surname="Sleevi" fullname="R. Sleevi">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="April"/>
+            <abstract>
+              <t>This document defines a new HTTP header that allows web host operators to instruct user agents to remember ("pin") the hosts' cryptographic identities over a period of time.  During that time, user agents (UAs) will require that the host presents a certificate chain including at least one Subject Public Key Info structure whose fingerprint matches one of the pinned fingerprints for that host.  By effectively reducing the number of trusted authorities who can authenticate the domain during the lifetime of the pin, pinning may reduce the incidence of man-in-the-middle attacks due to compromised Certification Authorities.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7469"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7469"/>
+        </reference>
+        <reference anchor="RFC7507" target="https://www.rfc-editor.org/info/rfc7507" quoteTitle="true" derivedAnchor="RFC7507">
+          <front>
+            <title>TLS Fallback Signaling Cipher Suite Value (SCSV) for Preventing Protocol Downgrade Attacks</title>
+            <author initials="B." surname="Moeller" fullname="B. Moeller">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="A." surname="Langley" fullname="A. Langley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="April"/>
+            <abstract>
+              <t>This document defines a Signaling Cipher Suite Value (SCSV) that prevents protocol downgrade attacks on the Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS) protocols.  It updates RFCs 2246, 4346, 4347, 5246, and 6347.  Server update considerations are included.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7507"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7507"/>
+        </reference>
+        <reference anchor="RFC8555" target="https://www.rfc-editor.org/info/rfc8555" quoteTitle="true" derivedAnchor="RFC8555">
+          <front>
+            <title>Automatic Certificate Management Environment (ACME)</title>
+            <author initials="R." surname="Barnes" fullname="R. Barnes">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Hoffman-Andrews" fullname="J. Hoffman-Andrews">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="D." surname="McCarney" fullname="D. McCarney">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Kasten" fullname="J. Kasten">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2019" month="March"/>
+            <abstract>
+              <t>Public Key Infrastructure using X.509 (PKIX) certificates are used for a number of purposes, the most significant of which is the authentication of domain names.  Thus, certification authorities (CAs) in the Web PKI are trusted to verify that an applicant for a certificate legitimately represents the domain name(s) in the certificate.  As of this writing, this verification is done through a collection of ad hoc mechanisms.  This document describes a protocol that a CA and an applicant can use to automate the process of verification and certificate issuance.  The protocol also provides facilities for other certificate management functions, such as certificate revocation.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8555"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8555"/>
+        </reference>
+        <reference anchor="TLS-EXT" target="https://www.iana.org/assignments/tls-extensiontype-values/" quoteTitle="true" derivedAnchor="TLS-EXT">
+          <front>
+            <title>TLS Extension Type Value</title>
+            <author>
+              <organization showOnFrontPage="true">IANA</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="I-D.perrin-tls-tack" quoteTitle="true" target="https://tools.ietf.org/html/draft-perrin-tls-tack-02" derivedAnchor="TLS-TACK">
+          <front>
+            <title>Trust Assertions for Certificate Keys</title>
+            <author initials="M" surname="Marlinspike" fullname="Moxie Marlinspike">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="January" day="7" year="2013"/>
+            <abstract>
+              <t>This document defines a TLS Extension that enables a TLS server to support "pinning" to a self-chosen signing key.  A client contacting a pinned host will require the server to present a signature from the signing key over the TLS server's public key.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-perrin-tls-tack-02"/>
+          <format type="TXT" target="http://www.ietf.org/internet-drafts/draft-perrin-tls-tack-02.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="previous-work" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-previous-work">先行研究</name>
+      <t pn="section-appendix.a-1">グローバルなPKIシステムは、証明書を発行するCAへの信頼に依存しています。
+その結果、信頼されたCAが侵害されると、組織の承認なしにその組織の証明書（誤発行された証明書、または「偽の」証明書）を発行し、その証明書を使用してその組織になりすます可能性があります。
+これらの弱点を解決するための試みは数多くあり、Certificate Transparency（CT）プロトコル<xref target="RFC6962" format="default" sectionFormat="of" derivedContent="RFC6962"/>、HTTP Public Key Pinning（HPKP）<xref target="RFC7469" format="default" sectionFormat="of" derivedContent="RFC7469"/>、Trust Assertions for Certificate Keys（TACK）<xref target="I-D.perrin-tls-tack" format="default" sectionFormat="of" derivedContent="TLS-TACK"/>などがあります。</t>
+      <t pn="section-appendix.a-2">CTは、強制モードで「実際に」使用できるようになるまでに、現存する数百の認証局（CA）の大部分の協力を必要とします。
+関連する業界フォーラム（CA/Browser Forum）が、実際にそのような広範な採用を推進していることは注目に値します。
+しかし、多くの組織は内部のインフラストラクチャーを公開することを望まないため、CTの公開という性質により、CTは企業での使用には不適切であることがよくあります。</t>
+      <t pn="section-appendix.a-3">TACKには現在の提案といくつかの類似点がありますが、その作業は停滞しているようです。
+<xref target="tack" format="default" sectionFormat="of" derivedContent="Appendix A.2"/>では、私たちの提案をTACKと比較します。</t>
+      <t pn="section-appendix.a-4">HPKPはIETF標準ですが、これまでのところ展開が難しいことがわかっています。
+HPKPは、証明書チェーンに列挙された公開鍵の1つである公開鍵をピン留め（固定）します。
+その結果、HPKPは証明書管理プロセスと調整する必要があります。
+証明書管理はHPKPに影響を与えるため、HPKPの失敗の確率が高まります。
+Automated Certificate Management Environment（ACME）ワーキンググループで証明書管理を自動化する作業が行われているにもかかわらず、多くの場合、あるいはほとんどの場合、証明書は依然として手動で管理されているという事実を考えると、このリスクはさらに高くなります。
+その結果、HPKPは完全には自動化できず、エラーを起こしやすい手動の設定が必要になります。
+このようなエラーにより、一部のクライアントがWebサーバーにアクセスできなくなる可能性があります。
+さらに、HPKPはHTTPヘッダーを使用するため、このソリューションはHTTPSに固有のものであり、TLSに汎用的なものではありません。
+一方、この文書は、サーバーの証明書管理から独立しており、完全かつ容易に自動化できるソリューションを提供します。
+<xref target="hpkp" format="default" sectionFormat="of" derivedContent="Appendix A.1"/>では、HPKPとこの文書をより詳しく比較します。</t>
+      <t pn="section-appendix.a-5">チケットによるピン留めの提案は、TLSセッション再開の背後にあるアイデアのいくつかを再利用することで、サーバーアイデンティティーのピン留めのための、はるかに実装と展開が容易なソリューションによってこれらのメカニズムを補強します。</t>
+      <t pn="section-appendix.a-6">このセクションでは、チケットによるピン留めを、2つの以前の提案であるHPKPおよびTACKと比較します。</t>
+      <section anchor="hpkp" numbered="true" toc="include" removeInRFC="false" pn="section-a.1">
+        <name slugifiedName="name-comparison-hpkp">比較: HPKP</name>
+        <t pn="section-a.1-1">Webサーバーのアイデンティティーをピン留めするための現在のIETF標準は、HPKP<xref target="RFC7469" format="default" sectionFormat="of" derivedContent="RFC7469"/>です。</t>
+        <t pn="section-a.1-2">HPKPとこの文書の主な違いは次のとおりです。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-a.1-3">
+          <li pn="section-a.1-3.1">HPKPはその範囲をHTTPSに限定していますが、この文書はTLS上のすべてのアプリケーションを対象としています。</li>
+          <li pn="section-a.1-3.2">HPKPは、サーバーの公開鍵（または証明書チェーン上の別の公開鍵）をピン留めするため、証明書の管理に大きく依存しています。
+このような依存は、特に証明書管理がまだあまり自動化されていないため、潜在的なエラーの範囲を広げます。
+一方、現在の提案は証明書管理から独立しています。</li>
+          <li pn="section-a.1-3.3">HPKPは、公開されていて標準的なTLS認証に使用される公開鍵をピン留めします。
+アイデンティティーのピン留めは、ピン留め鍵の所有に依存しており、この鍵は公開されず、標準的なTLS認証にも関与しません。
+その結果、アイデンティティーのピン留めは、完全に独立した第2要素の認証メカニズムです。</li>
+          <li pn="section-a.1-3.4">HPKPは、鍵の誤発行から回復するためにバックアップ鍵に依存しています。
+私たちは、そのようなバックアップのメカニズムは過度の複雑さとコストを追加すると考えています。
+現在のメカニズムの信頼性は、主に高度に自動化されていることに基づいています。</li>
+          <li pn="section-a.1-3.5">HPKPは、クライアントがreport-uriにエラーを報告することに依存しています。
+この文書では帯域外のメカニズムは一切必要なく、サーバーには自動的に通知されます。
+これにより、より容易で信頼性の高い健全性の監視が可能になります。</li>
+        </ul>
+        <t pn="section-a.1-4">一方、HPKPには、アイデンティティーのピン留めと共通する次の側面があります。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-a.1-5">
+          <li pn="section-a.1-5.1">どちらのメカニズムもハードフェイルを提供します。
+HPKPでは失敗を認識するのはクライアントだけですが、現在の提案ではクライアントとサーバーの両方に失敗が通知されます。
+これにより、そのような失敗から自動的に回復するためのさらなるメカニズムの余地が生まれます。</li>
+          <li pn="section-a.1-5.2">どちらのメカニズムも、非常に長い有効期間を持つ無効なチケット（たとえばランダムなもの）やHTTPヘッダーがユーザーに提供されるようなサーバーの侵害の影響を受けます。
+アイデンティティーのピン留めでは、この有効期間を31日より長くす<bcp14>べきではありません（SHOULD NOT）</bcp14>。
+どちらの場合も、クライアントはこの有効期間の間、サーバーに再接続できなくなります。
+現在の提案では攻撃者はTLS層を侵害する必要がありますが、HPKPでは攻撃者はHTTPサーバーを侵害する必要があります。
+TLSレベルの侵害のほうが、通常は攻撃者にとってより困難であると言えるでしょう。</li>
+        </ul>
+        <t pn="section-a.1-6">残念ながら、HPKPはまだ広く展開されていません。
+2016年3月の時点で、HPKPを使用しているサーバーの数は3000未満でした<xref target="Netcraft" format="default" sectionFormat="of" derivedContent="Netcraft"/>。
+これは単に惰性によるものかもしれませんが、私たちは、主な理由はHPKPと、企業のサーバーにHPKPを実装するために必要な手動の証明書管理との相互作用にあると考えています。
+間違い（たとえば、新しいピンの展開が早すぎたり遅すぎたりすること）を犯した場合の代償は、一部のクライアントがサーバーを使用できなくなることです。</t>
+        <t pn="section-a.1-7">この点を示すために、セキュリティー上重要なWebサーバーにHPKPを展開する際に必要な手順の一覧を示します。</t>
+        <ol spacing="normal" type="1" start="1" pn="section-a.1-8">
+          <li pn="section-a.1-8.1" derivedCounter="1.">
+            <t pn="section-a.1-8.1.1">稼働中のサーバーではないコンピューター上で、2つの公開鍵と秘密鍵のペアを生成します。
+2つ目は「backup1」の鍵ペアです。</t>
+            <sourcecode type="bash" markers="false" pn="section-a.1-8.1.2">
+openssl genrsa -out "example.com.key" 2048;
+
+openssl genrsa -out "example.com.backup1.key" 2048;
+</sourcecode>
+          </li>
+          <li pn="section-a.1-8.2" derivedCounter="2.">
+            <t pn="section-a.1-8.2.1">両方の公開鍵のハッシュを生成します。
+これらはHPKPヘッダーで使用されます。</t>
+            <sourcecode type="bash" markers="false" pn="section-a.1-8.2.2">
+openssl rsa -in "example.com.key" -outform der -pubout | \
+openssl dgst -sha256 -binary | openssl enc -base64  
+
+openssl rsa -in "example.com.backup1.key" -outform der \
+-pubout | openssl dgst -sha256 -binary | openssl enc -base64
+</sourcecode>
+          </li>
+          <li pn="section-a.1-8.3" derivedCounter="3.">
+            <t pn="section-a.1-8.3.1">最初の鍵ペアについて、CN（Common Name）フィールドにドメイン名を含めた単一の証明書署名リクエスト（CSR）を生成します。</t>
+            <sourcecode type="bash" markers="false" pn="section-a.1-8.3.2">
+openssl req -new -subj "/C=GB/ST=Area/L=Town/O=Org/ \
+CN=example.com" -key "example.com.key" -out "example.com.csr"; 
+</sourcecode>
+          </li>
+          <li pn="section-a.1-8.4" derivedCounter="4.">このCSRをCAに送信し、ドメインを所有していることを証明するための一連の手続きを経ます。
+CAは、通常1〜2年以内に有効期限が切れる単一の証明書を発行します。</li>
+          <li pn="section-a.1-8.5" derivedCounter="5.">
+            <t pn="section-a.1-8.5.1">稼働中のサーバーに、最初の鍵ペアとその証明書をアップロードして設定します。
+この時点で、手順2で作成した2つのハッシュを使用して、「Public-Key-Pins」ヘッダーを追加できます。</t>
+            <t pn="section-a.1-8.5.2">
+この時点では、最初の鍵ペアだけがサーバーにアップロードされていることに注意してください。</t>
+          </li>
+          <li pn="section-a.1-8.6" derivedCounter="6.">2つ目の（backup1）鍵ペアを、どこか安全な場所、おそらくパスワードマネージャーのような暗号化された場所に保管します。
+これは単なる鍵ペアなので有効期限はありません。
+次の証明書を取得する必要があるときのために準備しておくだけです。</li>
+          <li pn="section-a.1-8.7" derivedCounter="7.">時間が経過します。
+おそらく1年弱（証明書の有効期限切れを待つ場合）、あるいは、サーバーが侵害されたことがわかって鍵ペアと証明書を交換する必要がある場合は、それより早いかもしれません。</li>
+          <li pn="section-a.1-8.8" derivedCounter="8.">「backup1」の鍵ペアを使用して新しいCSRを作成し、CAから新しい証明書を取得します。</li>
+          <li pn="section-a.1-8.9" derivedCounter="9.">新しいバックアップ鍵ペア（backup2）を生成し、そのハッシュを取得して、安全な場所（ここでも、稼働中のサーバー上ではない場所）に保管します。</li>
+          <li pn="section-a.1-8.10" derivedCounter="10.">古い証明書と古い鍵ペアを置き換え、「Public-Key-Pins」ヘッダーを更新して古いハッシュを削除し、新しい「backup2」の鍵ペアを追加します。</li>
+        </ol>
+        <t pn="section-a.1-9">上記の手順では、証明書の発行とバックアップ鍵ペアの保管の両方に手動の手順が含まれていることに注意してください。
+ACMEプロトコル<xref target="RFC8555" format="default" sectionFormat="of" derivedContent="RFC8555"/>を実行する自動化されたCAを使用したとしても、鍵のバックアップを自動化するのは困難でしょう。</t>
+      </section>
+      <section anchor="tack" numbered="true" toc="include" removeInRFC="false" pn="section-a.2">
+        <name slugifiedName="name-comparison-tack">比較: TACK</name>
+        <t pn="section-a.2-1">HPKPと比べると、TACK<xref target="I-D.perrin-tls-tack" format="default" sectionFormat="of" derivedContent="TLS-TACK"/>はこの文書により似ています。
+この文書はTACKの共通鍵暗号版であると主張することさえできます。
+とはいえ、いくつかの重要な違いがあります。</t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-a.2-2">
+          <li pn="section-a.2-2.1">おそらく最も重要な違いは、TACKではサーバー証明書の検証がもはや必須ではなく、実際にTACKはそれを「<bcp14>してもよいです（MAY）</bcp14>」の要件として規定していることです（<xref target="I-D.perrin-tls-tack" sectionFormat="comma" section="5.3" format="default" derivedLink="https://tools.ietf.org/html/draft-perrin-tls-tack-02#section-5.3" derivedContent="TLS-TACK"/>）。
+チケットによるピン留めでは、クライアントによる証明書の検証は「<bcp14>しなければなりません（MUST）</bcp14>」の要件のままであり、チケットは第2要素としてのみ機能します。
+ピン留めシークレットが侵害されても、サーバーのセキュリティーが直ちに危険にさらされることはありません。</li>
+          <li pn="section-a.2-2.2">TACKとこの文書はどちらも、ライフサイクルに関する限りサーバー証明書とはほぼ直交しているため、どちらも手動の手順なしで展開できます。</li>
+          <li pn="section-a.2-2.3">TACKは、楕円曲線デジタル署名アルゴリズム（ECDSA）を使用してサーバーの公開鍵に署名します。
+これにより、協力するクライアントは、サーバーのアサーションを互いに共有できます。
+これはTACKのオプション機能であり、ピン留めチケットでは実現できないものです。</li>
+          <li pn="section-a.2-2.4">TACKでは、複数のサーバーがその公開鍵を共有できます。
+このような共有は、この文書では許可されていません。</li>
+          <li pn="section-a.2-2.5">TACKでは、サーバーが特定のクライアントを追跡できないため、この文書よりも優れたプライバシー特性を持っています。</li>
+          <li pn="section-a.2-2.6">TACKには、ピンの有効期間を決定する興味深い方法があり、30日という厳格な上限のもとで、ピンが最初に観測されてからの期間を有効期間とします。
+この文書では有効期間を明示的にしており、展開においてより柔軟である可能性があります。
+たとえば、ユーザーがまれにしか訪問しないWebサイトは、ユーザーが毎日訪問することを想定している他のサイトよりも長い期間を選択できます。</li>
+        </ul>
+      </section>
+    </section>
+    <section anchor="acknowledgments" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t pn="section-appendix.b-1">この提案の背後にある元のアイデアは、Moti Yung、Benny Pinkas、Omer Berkmanによって<xref target="Oreo" format="default" sectionFormat="of" derivedContent="Oreo"/>で発表されました。
+現在のプロトコルは元のOreoプロトコルの遠い親戚にすぎず、誤りはすべてこの文書の著者のみの責任です。</t>
+      <t pn="section-appendix.b-2">この文書にコメントをくださったAdrian Farrel、Dave Garrett、Daniel Kahn Gillmor、Alexey Melnikov、Yoav Nir、Eric Rescorla、Benjamin Kaduk、Rich Salzに感謝します。
+HPKPの展開スクリプトを提供してくれたCraig Francisと、いくつかの実りある議論をしてくれたRalph Holzに特に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author initials="Y." surname="Sheffer" fullname="Yaron Sheffer">
+        <organization showOnFrontPage="true">Intuit</organization>
+        <address>
+          <email>yaronf.ietf@gmail.com</email>
+        </address>
+      </author>
+      <author initials="D." surname="Migault" fullname="Daniel Migault">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <email>daniel.migault@ericsson.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

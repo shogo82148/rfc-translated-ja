@@ -1,0 +1,1482 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-rundgren-json-canonicalization-scheme-17" indexInclude="true" ipr="trust200902" number="8785" prepTime="2020-06-29T09:56:36" scripts="Common,Latin" sortRefs="true" submissionType="independent" symRefs="true" tocDepth="4" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-rundgren-json-canonicalization-scheme-17" rel="prev"/>
+  <link href="https://dx.doi.org/10.17487/rfc8785" rel="alternate"/>
+  <link href="urn:issn:2070-1721" rel="alternate"/>
+  <front>
+    <title abbrev="JSON Canonicalization Scheme">JSON正規化方式（JCS）</title>
+    <seriesInfo name="RFC" value="8785" stream="independent"/>
+    <author fullname="Anders Rundgren" initials="A." surname="Rundgren">
+      <organization showOnFrontPage="true">Independent</organization>
+      <address>
+        <postal>
+          <city>Montpellier</city>
+          <country>France</country>
+        </postal>
+        <email>anders.rundgren.net@gmail.com</email>
+        <uri>https://www.linkedin.com/in/andersrundgren/</uri>
+      </address>
+    </author>
+    <author fullname="Bret Jordan" initials="B." surname="Jordan">
+      <organization showOnFrontPage="true">Broadcom</organization>
+      <address>
+        <postal>
+          <street>1320 Ridder Park Drive</street>
+          <region>CA</region>
+          <code>95131</code>
+          <city>San Jose</city>
+          <country>United States of America</country>
+        </postal>
+        <email>bret.jordan@broadcom.com</email>
+      </address>
+    </author>
+    <author fullname="Samuel Erdtman" initials="S." surname="Erdtman">
+      <organization showOnFrontPage="true">Spotify AB</organization>
+      <address>
+        <postal>
+          <street>Birger Jarlsgatan 61, 4tr</street>
+          <code>113 56</code>
+          <city>Stockholm</city>
+          <country>Sweden</country>
+        </postal>
+        <email>erdtman@spotify.com</email>
+      </address>
+    </author>
+    <date month="06" year="2020"/>
+    <area>Security</area>
+    <workgroup/>
+    <keyword>JSON</keyword>
+    <keyword>ECMAScript</keyword>
+    <keyword>Signatures</keyword>
+    <keyword>Cryptography</keyword>
+    <keyword>Canonicalization</keyword>
+    <abstract pn="section-abstract">
+      <t pn="section-abstract-1">
+        ハッシュ化や署名のような暗号操作では、操作を確実に再現できるように、データを不変の形式で表現する必要があります。
+
+        これに対処する方法の1つは、データの正規化された表現を作成することです。
+        正規化を使うと、データを元の形式のまま「ワイヤー」上で交換しつつ、
+        生成側と消費側のエンドポイントで、正規化したデータに対して実行した暗号操作が一貫した結果を生むようにできます。
+      </t>
+      <t pn="section-abstract-2">
+        この文書は、JSON正規化方式（JSON Canonicalization Scheme、JCS）について説明します。
+        この仕様は、ECMAScriptで定義されたJSONプリミティブの厳密なシリアル化方法に基づき、
+        JSONデータをInternet JSON（I-JSON）サブセットに制約し、決定論的なプロパティーのソートを用いることによって、
+        JSONデータの正規化された表現を作成する方法を定義します。
+      </t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t pn="section-boilerplate.1-1">
+            この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。
+        </t>
+        <t pn="section-boilerplate.1-2">
+            これは、他のいかなるRFCストリームからも独立した、RFCシリーズへの寄稿です。
+            RFCエディターは自らの裁量でこの文書の公開を選択しており、実装や展開における価値については何ら表明していません。
+            RFCエディターによって公開が承認された文書は、いずれのレベルのインターネット標準の候補にもなりません。
+            RFC 7841のセクション2を参照してください。
+        </t>
+        <t pn="section-boilerplate.1-3">
+            この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+            <eref target="https://www.rfc-editor.org/info/rfc8785" brackets="none"/> で入手できます。
+        </t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t pn="section-boilerplate.2-1">
+            Copyright (c) 2020 IETF Trust and the persons identified as the
+            document authors. All rights reserved.
+        </t>
+        <t pn="section-boilerplate.2-2">
+            この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>)に従うものとします。
+            これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+        </t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-detailed-operation">動作の詳細</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t keepWithNext="true" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-creation-of-input-data">入力データの作成</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-generation-of-canonical-jso">正規JSONデータの生成</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2">
+                  <li pn="section-toc.1-1.3.2.2.2.1">
+                    <t pn="section-toc.1-1.3.2.2.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-whitespace">空白</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.2">
+                    <t pn="section-toc.1-1.3.2.2.2.2.1"><xref derivedContent="3.2.2" format="counter" sectionFormat="of" target="section-3.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-serialization-of-primitive-">プリミティブデータ型のシリアル化</xref></t>
+                    <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2.2.2.2">
+                      <li pn="section-toc.1-1.3.2.2.2.2.2.1">
+                        <t pn="section-toc.1-1.3.2.2.2.2.2.1.1"><xref derivedContent="3.2.2.1" format="counter" sectionFormat="of" target="section-3.2.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-serialization-of-literals">リテラルのシリアル化</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.3.2.2.2.2.2.2">
+                        <t pn="section-toc.1-1.3.2.2.2.2.2.2.1"><xref derivedContent="3.2.2.2" format="counter" sectionFormat="of" target="section-3.2.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-serialization-of-strings">文字列のシリアル化</xref></t>
+                      </li>
+                      <li pn="section-toc.1-1.3.2.2.2.2.2.3">
+                        <t pn="section-toc.1-1.3.2.2.2.2.2.3.1"><xref derivedContent="3.2.2.3" format="counter" sectionFormat="of" target="section-3.2.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-serialization-of-numbers">数値のシリアル化</xref></t>
+                      </li>
+                    </ul>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.3">
+                    <t pn="section-toc.1-1.3.2.2.2.3.1"><xref derivedContent="3.2.3" format="counter" sectionFormat="of" target="section-3.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sorting-of-object-propertie">オブジェクトのプロパティーのソート</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.3.2.2.2.4">
+                    <t pn="section-toc.1-1.3.2.2.2.4.1"><xref derivedContent="3.2.4" format="counter" sectionFormat="of" target="section-3.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-utf-8-generation">UTF-8の生成</xref></t>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t pn="section-toc.1-1.7.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ecmascript-sample-canonical">ECMAScriptによる正規化器のサンプル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t pn="section-toc.1-1.8.1"><xref derivedContent="Appendix B" format="default" sectionFormat="of" target="section-appendix.b"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-number-serialization-sample">数値のシリアル化のサンプル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t pn="section-toc.1-1.9.1"><xref derivedContent="Appendix C" format="default" sectionFormat="of" target="section-appendix.c"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-canonicalized-json-as-wire-">「ワイヤーフォーマット」としての正規化されたJSON</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t pn="section-toc.1-1.10.1"><xref derivedContent="Appendix D" format="default" sectionFormat="of" target="section-appendix.d"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dealing-with-big-numbers">大きな数値の扱い</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t pn="section-toc.1-1.11.1"><xref derivedContent="Appendix E" format="default" sectionFormat="of" target="section-appendix.e"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-string-subtype-handling">文字列のサブタイプの扱い</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+              <li pn="section-toc.1-1.11.2.1">
+                <t pn="section-toc.1-1.11.2.1.1"><xref derivedContent="E.1" format="counter" sectionFormat="of" target="section-e.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-subtypes-in-arrays">配列内のサブタイプ</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t pn="section-toc.1-1.12.1"><xref derivedContent="Appendix F" format="default" sectionFormat="of" target="section-appendix.f"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-guidelines">実装ガイドライン</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t pn="section-toc.1-1.13.1"><xref derivedContent="Appendix G" format="default" sectionFormat="of" target="section-appendix.g"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-open-source-implementations">オープンソース実装</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t pn="section-toc.1-1.14.1"><xref derivedContent="Appendix H" format="default" sectionFormat="of" target="section-appendix.h"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-other-json-canonicalization">JSON正規化に関するその他の取り組み</xref></t>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t pn="section-toc.1-1.15.1"><xref derivedContent="Appendix I" format="default" sectionFormat="of" target="section-appendix.i"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-development-portal">開発ポータル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.16">
+            <t pn="section-toc.1-1.16.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.j"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.17">
+            <t pn="section-toc.1-1.17.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.k"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="Introduction" numbered="true" toc="include" removeInRFC="false" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t pn="section-1-1">
+        この文書は、JSON正規化方式（JSON Canonicalization Scheme、JCS）について説明します。
+        この仕様は、ECMAScript <xref target="ECMA-262" format="default" sectionFormat="of" derivedContent="ECMA-262"/>で定義されたJSONプリミティブの厳密なシリアル化方法に基づき、
+        JSONデータをI-JSON <xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>サブセットに制約し、
+        決定論的なプロパティーのソートを用いることによって、
+        JSON <xref target="RFC8259" format="default" sectionFormat="of" derivedContent="RFC8259"/>データの正規化された表現を作成する方法を定義します。
+        JCSの出力は、暗号的手法で利用できる、JSONデータの「ハッシュ可能な」表現です。
+        以降の段落では、主な設計上の考慮事項の概要を述べます。
+      </t>
+      <t pn="section-1-2">
+        ハッシュ化や署名のような暗号操作では、操作を確実に再現できるように、データを不変の形式で表現する必要があります。
+        これを実現する方法の1つは、base64url <xref target="RFC4648" format="default" sectionFormat="of" derivedContent="RFC4648"/>のような、
+        単純で固定された表現を持つ形式にデータを変換することです。
+        JSON Web Signature（JWS）<xref target="RFC7515" format="default" sectionFormat="of" derivedContent="RFC7515"/>は、この方法でこの問題に対処しました。
+        もう1つの解決策は、XML署名 <xref target="XMLDSIG" format="default" sectionFormat="of" derivedContent="XMLDSIG"/>標準で行われたのと同様に、データの正規化されたバージョンを作成することです。
+      </t>
+      <t pn="section-1-3">  
+        正規化方式の主な利点は、データを元の形式のまま保てることです。
+        これがJCSの中核となる理論的根拠です。
+        言い換えると、正規化を使えば、JSONオブジェクトは署名された後でもJSONオブジェクトのままでいられます。
+        これにより、システムの設計、文書化、ログ記録を簡素化できます。
+      </t>
+      <t pn="section-1-4">
+        「車輪の再発明」を避けるため、JCSは、バージョン6以降のECMAScript（別名JavaScript）<xref target="ECMA-262" format="default" sectionFormat="of" derivedContent="ECMA-262"/>で定義されたJSONプリミティブ（文字列、数値、リテラル）のシリアル化に依拠しています。
+      </t>
+      <t pn="section-1-5">
+        経験豊富なXML開発者であれば、XML署名の検証を通すのに苦労したことを覚えているかもしれません。
+        これは通常、非常に複雑なXML正規化規則や、同じく複雑なWebサービスのセキュリティー標準の解釈の違いによるものでした。
+        JCSが同様の問題に悩まされないはずの理由は、次のとおりです。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-1-6">
+        <li pn="section-1-6.1">
+          JSONには名前空間の概念やデフォルト値がありません。
+        </li>
+        <li pn="section-1-6.2">
+          データはI‑JSON <xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>サブセットに制約されます。
+          これにより、正規化を扱うための特別なパーサーが不要になります。
+        </li>
+        <li pn="section-1-6.3">
+          JCSと互換性のあるJSONプリミティブのシリアル化は、現在、ほとんどのWebブラウザーとNode.js <xref target="NODEJS" format="default" sectionFormat="of" derivedContent="NODEJS"/>でサポートされています。
+        </li>
+        <li pn="section-1-6.4">
+          JCSの仕様全体は、現在、複数のオープンソース実装でサポートされています（<xref target="open.source" format="default" sectionFormat="of" derivedContent="Appendix G"/>を参照）。
+          実装ガイドラインについては<xref target="impl.guidelines" format="default" sectionFormat="of" derivedContent="Appendix F"/>も参照してください。
+        </li>
+      </ul>
+      <t pn="section-1-7">
+        JCSは、JSON Web Key（JWK）Thumbprint <xref target="RFC7638" format="default" sectionFormat="of" derivedContent="RFC7638"/>やKeybase <xref target="KEYBASE" format="default" sectionFormat="of" derivedContent="KEYBASE"/>など、JSONの正規化に依存するいくつかの既存のシステムと互換性があります。
+      </t>
+      <t pn="section-1-8">
+        暗号以外での潜在的な用途については、<xref target="I-D.rundgren-comparable-json" format="default" sectionFormat="of" derivedContent="JSONCOMP"/>を参照してください。
+      </t>
+      <t pn="section-1-9">
+        この文書の想定読者は、JSONツールのベンダーと、JSONベースの暗号ソリューションの設計者です。
+        読者は、「JSON」オブジェクトを含め、ECMAScriptに精通していることを前提とします。
+      </t>
+    </section>
+    <section anchor="Terminology" numbered="true" toc="include" removeInRFC="false" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t pn="section-2-1">
+        この文書はIETFの標準化過程にはないことに注意してください。
+        ただし、準拠する実装は、セキュリティーと相互運用性の理由から、規定された振る舞いに従うことが求められます。
+        この文書では、その必要な振る舞いを記述するためにBCP 14を使用します。
+      </t>
+      <t pn="section-2-2">
+キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。
+      </t>
+    </section>
+    <section anchor="Operation" numbered="true" toc="include" removeInRFC="false" pn="section-3">
+      <name slugifiedName="name-detailed-operation">動作の詳細</name>
+      <t pn="section-3-1">
+        このセクションでは、正規化されたJSON表現の作成に関する詳細と、JCSがそれらにどのように対処するかを説明します。 
+      </t>
+      <t pn="section-3-2">
+        <xref target="impl.guidelines" format="default" sectionFormat="of" derivedContent="Appendix F"/>では、既存のJSONツールにJCSのサポートを追加する方法を説明します。この方法が<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+      </t>
+      <section anchor="json.datacreation" numbered="true" toc="include" removeInRFC="false" pn="section-3.1">
+        <name slugifiedName="name-creation-of-input-data">入力データの作成</name>
+        <t pn="section-3.1-1">
+          正規化してシリアル化するデータは、通常、次のいずれかの方法で作成されます。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-3.1-2">
+          <li pn="section-3.1-2.1">
+              以前に生成されたJSONデータを解析する。
+          </li>
+          <li pn="section-3.1-2.2">
+              プログラムでデータを作成する。
+          </li>
+        </ul>
+        <t pn="section-3.1-3">
+          使用する方法にかかわらず、シリアル化するデータはI‑JSON <xref target="RFC7493" format="default" sectionFormat="of" derivedContent="RFC7493"/>の形式に適合させ<bcp14>なければなりません（MUST）</bcp14>。これは次のことを意味します。
+        </t>
+        <ul spacing="normal" bare="false" empty="false" pn="section-3.1-4">
+          <li pn="section-3.1-4.1">
+              JSONオブジェクトは、重複したプロパティー名を持っては<bcp14>なりません（MUST NOT）</bcp14>。
+          </li>
+          <li pn="section-3.1-4.2">
+              JSONの文字列データは、Unicode <xref target="UNICODE" format="default" sectionFormat="of" derivedContent="UNICODE"/>として表現可能で<bcp14>なければなりません（MUST）</bcp14>。
+          </li>
+          <li pn="section-3.1-4.3">
+              JSONの数値データは、IEEE 754 <xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>の倍精度値として表現可能で<bcp14>なければなりません（MUST）</bcp14>。
+            IEEE 754の倍精度が提供するよりも高い精度や長い整数を必要とするアプリケーションでは、そのような数値をJSON文字列として表現することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+            これを相互運用可能かつ拡張可能な方法で行う方法の詳細については、<xref target="json.bignumbers" format="default" sectionFormat="of" derivedContent="Appendix D"/>を参照してください。 
+          </li>
+        </ul>
+        <t pn="section-3.1-5">
+          追加の制約として、解析されたJSONの文字列データは、その後のシリアル化の間に変更されては<bcp14>なりません（MUST NOT）</bcp14>。
+          詳細については、<xref target="string.subtypes" format="default" sectionFormat="of" derivedContent="Appendix E"/>を参照してください。
+        </t>
+        <t pn="section-3.1-6">
+          注：Unicode標準は、「Unicode正規化」<xref target="UCNORM" format="default" sectionFormat="of" derivedContent="UCNORM"/>と呼ばれる、特定の文字シーケンスを並べ替える可能性を提供していますが、
+          JCSに準拠した文字列処理ではこれを考慮しません。
+          つまり、JCSに依存する方式に関与するすべてのコンポーネントは、Unicodeの文字列データを「そのまま」保持<bcp14>しなければなりません（MUST）</bcp14>。
+        </t>
+      </section>
+      <section anchor="json.canonicalization" numbered="true" toc="include" removeInRFC="false" pn="section-3.2">
+        <name slugifiedName="name-generation-of-canonical-jso">正規JSONデータの生成</name>
+        <t pn="section-3.2-1">
+          以降のサブセクションでは、前のセクションで詳しく述べたデータの正規化されたJSON表現を作成するために必要な手順を説明します。
+        </t>
+        <t pn="section-3.2-2">
+          <xref target="canonicalize.js" format="default" sectionFormat="of" derivedContent="Appendix A"/>に、JCSの仕様に合致する、ECMAScriptベースの正規化器のサンプルコードを示します。
+        </t>
+        <section anchor="json.whitespace" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.1">
+          <name slugifiedName="name-whitespace">空白</name>
+          <t pn="section-3.2.1-1">
+            JSONトークンの間に空白を出力しては<bcp14>なりません（MUST NOT）</bcp14>。
+          </t>
+        </section>
+        <section anchor="json.serialization.data" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.2">
+          <name slugifiedName="name-serialization-of-primitive-">プリミティブデータ型のシリアル化</name>
+          <t pn="section-3.2.2-1">
+            次のJSONオブジェクトを解析すると仮定します。
+          </t>
+          <sourcecode type="json" markers="false" pn="section-3.2.2-2">
+  {
+    "numbers": [333333333.33333329, 1E30, 4.50,
+                2e-3, 0.000000000000000000000000001],
+    "string": "\u20ac$\u000F\u000aA'\u0042\u0022\u005c\\\"\/",
+    "literals": [null, true, false]
+  }
+</sourcecode>
+          <t pn="section-3.2.2-3">
+            解析したデータを、その後ECMAScriptの「JSON.stringify()」に準拠したシリアライザーを使ってシリアル化すると、
+            結果は（表示のためだけに改行を加えています）元のデータとはかなり異なるものになります。
+          </t>
+          <sourcecode type="json" markers="false" pn="section-3.2.2-4">
+  {"numbers":[333333333.3333333,1e+30,4.5,0.002,1e-27],"string":
+  "€$\u000f\nA'B\"\\\\\"/","literals":[null,true,false]}
+</sourcecode>
+          <t pn="section-3.2.2-5">
+            解析したデータとそれをシリアル化したものとが異なる理由は、
+            入力データには（JSON <xref target="RFC8259" format="default" sectionFormat="of" derivedContent="RFC8259"/>で定義されているように）幅広い許容範囲がある一方で、
+            出力データは（ECMAScriptで定義されているように）固定された表現を持つためです。
+            例からわかるように、数値は丸めの対象にもなります。
+          </t>
+          <t pn="section-3.2.2-6">
+            以降のサブセクションでは、JCSにおけるプリミティブなJSONデータ型のシリアル化について説明します。
+            この部分はECMAScriptのものと同一です。
+            将来のバージョンのECMAScriptが以下のシリアル化方法のいずれかを無効にするという（ありそうもない）事態が起きた場合は、
+            この仕様に従い続けるか、新しい仕様を作成するかは、開発者コミュニティーに委ねられます。
+          </t>
+          <section anchor="json.ser.literals" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.2.1">
+            <name slugifiedName="name-serialization-of-literals">リテラルのシリアル化</name>
+            <t pn="section-3.2.2.1-1">
+              JSON <xref target="RFC8259" format="default" sectionFormat="of" derivedContent="RFC8259"/>に従い、リテラル「null」、「true」、「false」は、それぞれnull、true、falseとしてシリアル化<bcp14>しなければなりません（MUST）</bcp14>。 
+            </t>
+          </section>
+          <section anchor="json.ser.string" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.2.2">
+            <name slugifiedName="name-serialization-of-strings">文字列のシリアル化</name>
+            <t pn="section-3.2.2.2-1">
+              JSONの文字列データ（JSONオブジェクトのプロパティー名も含みます）では、
+              各Unicodeコードポイントを以下で説明するとおりにシリアル化<bcp14>しなければなりません（MUST）</bcp14>（<xref target="ECMA-262" format="default" sectionFormat="of" derivedContent="ECMA-262"/>のセクション24.3.2.2を参照）。
+            </t>
+            <ul spacing="normal" bare="false" empty="false" pn="section-3.2.2.2-2">
+              <li pn="section-3.2.2.2-2.1">
+                Unicodeの値が従来のASCII制御文字の範囲（U+0000からU+001F）に含まれる場合、
+                それが事前定義されたJSON制御文字U+0008、U+0009、U+000A、U+000C、U+000Dのいずれかでない限り、
+                小文字の16進数を使ったUnicode表記（\uhhhh）でシリアル化<bcp14>しなければなりません（MUST）</bcp14>。
+                事前定義されたJSON制御文字は、それぞれ\b、\t、\n、\f、\rとしてシリアル化<bcp14>しなければなりません（MUST）</bcp14>。
+              </li>
+              <li pn="section-3.2.2.2-2.2">
+                Unicodeの値がASCII制御文字の範囲外にある場合、
+                それがU+005C（\）またはU+0022（"）と等価でない限り、「そのまま」シリアル化<bcp14>しなければなりません（MUST）</bcp14>。
+                U+005CとU+0022は、それぞれ\\と\"としてシリアル化<bcp14>しなければなりません（MUST）</bcp14>。
+               </li>
+            </ul>
+            <t pn="section-3.2.2.2-3">
+              最後に、結果として得られたUnicodeコードポイントの並びを、二重引用符（"）で囲ま<bcp14>なければなりません（MUST）</bcp14>。
+            </t>
+            <t pn="section-3.2.2.2-4">
+              注：「孤立サロゲート」（たとえばU+DEAD）のような無効なUnicodeデータは、署名の破損を含む相互運用性の問題につながる可能性があるため、
+              そのようなデータが出現した場合、準拠したJCS実装は適切なエラーで終了<bcp14>しなければなりません（MUST）</bcp14>。
+            </t>
+          </section>
+          <section anchor="json.ser.number" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.2.3">
+            <name slugifiedName="name-serialization-of-numbers">数値のシリアル化</name>
+            <t pn="section-3.2.2.3-1">
+              ECMAScriptは、JSONの数値データを表現するためにIEEE 754 <xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>の倍精度標準に基づいています。
+              そのようなデータは、「Note 2」の拡張を含め、<xref target="ECMA-262" format="default" sectionFormat="of" derivedContent="ECMA-262"/>のセクション7.1.12.1に従ってシリアル化<bcp14>しなければなりません（MUST）</bcp14>。
+            </t>
+            <t pn="section-3.2.2.3-2">
+              この部分は比較的複雑なため、アルゴリズム自体はこの文書には含めていません。 
+              JCSに準拠した数値のシリアル化を実装する人にとっては、V8 <xref target="V8" format="default" sectionFormat="of" derivedContent="V8"/>におけるGoogleの実装が参考になるでしょう。
+              互換性のあるもう1つの数値シリアル化のリファレンス実装はRyu <xref target="RYU" format="default" sectionFormat="of" derivedContent="RYU"/>で、
+              これは<xref target="open.source" format="default" sectionFormat="of" derivedContent="Appendix G"/>で言及しているJCSのオープンソースJava実装で使われています。 
+              <xref target="json.ieee754.test" format="default" sectionFormat="of" derivedContent="Appendix B"/>には、IEEE 754のサンプル値と、それに対応するJSONシリアル化の一覧を掲載しています。
+            </t>
+            <t pn="section-3.2.2.3-3">
+              注：非数（Not a Number、NaN）とInfinityはJSONでは許可されていないため、
+              NaNまたはInfinityが出現した場合、準拠したJCS実装は適切なエラーで終了<bcp14>しなければなりません（MUST）</bcp14>。
+            </t>
+          </section>
+        </section>
+        <section anchor="json.sorting.properties" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.3">
+          <name slugifiedName="name-sorting-of-object-propertie">オブジェクトのプロパティーのソート</name>
+          <t pn="section-3.2.3-1">
+            前の手順でプリミティブなJSONデータ型の表現は正規化されましたが、
+            JSONオブジェクトのプロパティーが辞書式（アルファベット）順になっていないため、
+            この結果はまだ「正規」とは言えません。
+          </t>
+          <t pn="section-3.2.3-2">
+            <xref target="json.serialization.data" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>のサンプルに適用すると、
+            適切に正規化されたバージョンは次のようになるはずです（表示のためだけに改行を加えています）。
+          </t>
+          <sourcecode type="json" markers="false" pn="section-3.2.3-3">
+  {"literals":[null,true,false],"numbers":[333333333.3333333,
+  1e+30,4.5,0.002,1e-27],"string":"€$\u000f\nA'B\"\\\\\"/"}
+</sourcecode>
+          <t pn="section-3.2.3-4">
+            JCSにおけるJSONオブジェクトのプロパティーの辞書式ソートの規則は、次のとおりです。
+          </t>
+          <ul spacing="normal" bare="false" empty="false" pn="section-3.2.3-5">
+            <li pn="section-3.2.3-5.1">
+                JSONオブジェクトのプロパティーは再帰的にソート<bcp14>しなければなりません（MUST）</bcp14>。
+                つまり、子のJSONオブジェクトもそのプロパティーをソート<bcp14>しなければなりません（MUST）</bcp14>。
+            </li>
+            <li pn="section-3.2.3-5.2">
+              JSONの配列データについても、JSONオブジェクトが存在するかどうかを走査<bcp14>しなければなりません（MUST）</bcp14>（オブジェクトが見つかった場合は、そのプロパティーをソート<bcp14>しなければなりません（MUST）</bcp14>）。
+              ただし、配列要素の順序を変更しては<bcp14>なりません（MUST NOT）</bcp14>。
+            </li>
+          </ul>
+          <t pn="section-3.2.3-6">
+            JSONオブジェクトのプロパティーをソートする際には、次の措置に従わ<bcp14>なければなりません（MUST）</bcp14>。
+          </t>
+          <ul spacing="normal" bare="false" empty="false" pn="section-3.2.3-7">
+            <li pn="section-3.2.3-7.1">
+              ソート処理は、「生の」（エスケープされていない）形式のプロパティー名文字列に対して適用します。
+              つまり、改行文字はU+000Aとして扱います。
+            </li>
+            <li pn="section-3.2.3-7.2">
+              ソートするプロパティー名文字列は、UTF-16 <xref target="UNICODE" format="default" sectionFormat="of" derivedContent="UNICODE"/>コード単位の配列として形式化します。
+              ソートは純粋な値の比較に基づき、コード単位はロケール設定に依存しない符号なし整数として扱います。
+            </li>
+            <li pn="section-3.2.3-7.3">
+              <t pn="section-3.2.3-7.3.1">
+                2つのプロパティー名文字列は、両方の文字列にとって有効なインデックスのいずれかで異なる値を持つか、長さが異なるか、またはその両方です。
+                1つ以上のインデックス位置で異なる値を持つ場合、そのような最小のインデックスをkとします。
+                このとき、「&lt;」演算子を使って判定した位置kの値が小さいほうの文字列が、もう一方の文字列より辞書式順序で前になります。
+                異なるインデックス位置が存在しない場合は、短いほうの文字列が長いほうの文字列より辞書式順序で前になります。
+              </t>
+              <t pn="section-3.2.3-7.3.2">
+                平たく言えば、これはプロパティー名が次のように昇順にソートされることを意味します。
+              </t>
+              <artwork type="ascii-art" align="left" alt="" pn="section-3.2.3-7.3.3">
+        ""
+        "a"
+        "aa"
+        "ab"
+</artwork>
+            </li>
+          </ul>
+          <t pn="section-3.2.3-8">
+            ソートアルゴリズムをUTF-16コード単位に基づかせた理由は、
+            それがECMAScript（WebブラウザーやNode.jsで使われています）、Java、.NETの文字列型に直接対応するためです。
+            さらに、JSONはUTF-16コード単位で表現されたエスケープシーケンスしかサポートしていないため、
+            いずれにせよそのようなデータの知識と処理は必要です。
+            文字列データに別の内部表現を使用するシステムでは、ソートの前にJSONのプロパティー名文字列をUTF-16コード単位の配列に変換する必要があります。
+            UTF-8またはUTF-32からUTF-16への変換は、Unicode <xref target="UNICODE" format="default" sectionFormat="of" derivedContent="UNICODE"/>標準で定義されています。
+          </t>
+          <t pn="section-3.2.3-9">
+   次のJSONテストデータを使って、JCS実装におけるソート方式の正しさを検証できます。
+          </t>
+          <sourcecode type="json" markers="false" pn="section-3.2.3-10">
+  {
+    "\u20ac": "Euro Sign",
+    "\r": "Carriage Return",
+    "\ufb33": "Hebrew Letter Dalet With Dagesh",
+    "1": "One",
+    "\ud83d\ude00": "Emoji: Grinning Face",
+    "\u0080": "Control",
+    "\u00f6": "Latin Small Letter O With Diaeresis"
+  }
+</sourcecode>
+          <t pn="section-3.2.3-11">
+            プロパティー文字列をソートした後の、期待される引数の順序は次のとおりです。
+          </t>
+          <artwork type="ascii-art" align="left" alt="" pn="section-3.2.3-12">  "Carriage Return"
+  "One"
+  "Control"
+  "Latin Small Letter O With Diaeresis"
+  "Euro Sign"
+  "Emoji: Grinning Face"
+  "Hebrew Letter Dalet With Dagesh"</artwork>
+          <t pn="section-3.2.3-13">
+            注：決定論的なプロパティーの順序を得るという目的であれば、UTF-8やUTF-32でエンコードされたデータをソートしても機能しますが、
+            上記のようなJSONデータに対する結果は異なるものになり、この仕様と互換性がなくなります。
+
+            ただし、実際には、プロパティー名が7ビットASCIIの範囲外で定義されることはまれなので、
+            UTF-8またはUTF-32形式の文字列データをUTF-16に変換せずにソートしても、JCSとの互換性を保つことができます。
+            これが実行可能な選択肢であるかどうかは、JCSが使用される環境に依存します。
+          </t>
+        </section>
+        <section anchor="json.utf8" numbered="true" toc="include" removeInRFC="false" pn="section-3.2.4">
+          <name slugifiedName="name-utf-8-generation">UTF-8の生成</name>
+          <t pn="section-3.2.4-1">
+            最後に、プラットフォームに依存しない表現を作成するため、前の手順の結果をUTF-8でエンコード<bcp14>しなければなりません（MUST）</bcp14>。
+          </t>
+          <t pn="section-3.2.4-2">
+            <xref target="json.sorting.properties" format="default" sectionFormat="of" derivedContent="Section 3.2.3"/>のサンプルに適用すると、次のバイト列（ここでは16進数表記で示します）が得られるはずです。
+          </t>
+          <artwork type="ascii-art" align="left" alt="" pn="section-3.2.4-3">  7b 22 6c 69 74 65 72 61 6c 73 22 3a 5b 6e 75 6c 6c 2c 74 72
+  75 65 2c 66 61 6c 73 65 5d 2c 22 6e 75 6d 62 65 72 73 22 3a
+  5b 33 33 33 33 33 33 33 33 33 2e 33 33 33 33 33 33 33 2c 31
+  65 2b 33 30 2c 34 2e 35 2c 30 2e 30 30 32 2c 31 65 2d 32 37
+  5d 2c 22 73 74 72 69 6e 67 22 3a 22 e2 82 ac 24 5c 75 30 30
+  30 66 5c 6e 41 27 42 5c 22 5c 5c 5c 5c 5c 22 2f 22 7d</artwork>
+          <t pn="section-3.2.4-4">
+            このデータは、暗号的手法への入力として使用できることを意図しています。
+          </t>
+        </section>
+      </section>
+    </section>
+    <section anchor="IANA" numbered="true" toc="include" removeInRFC="false" pn="section-4">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t pn="section-4-1">
+        この文書にはIANAアクションはありません。
+      </t>
+    </section>
+    <section anchor="Security" numbered="true" toc="include" removeInRFC="false" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t pn="section-5-1">
+        バッファーのオーバーフローなど、システムの完全性に影響を与えかねない事態を避けるため、入力データの健全性チェックを行うことが極めて重要です。
+      </t>
+      <t pn="section-5-2">
+        <xref target="impl.guidelines" format="default" sectionFormat="of" derivedContent="Appendix F"/>で説明しているような署名方式にJCSを適用する場合、
+        アプリケーションは受信したデータに基づいて動作する前に、次の操作を実行<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <ol spacing="normal" type="1" start="1" pn="section-5-3">
+        <li pn="section-5-3.1" derivedCounter="1.">
+          JSONデータを解析し、それがI-JSONに準拠していることを検証する。
+        </li>
+        <li pn="section-5-3.2" derivedCounter="2.">
+          データが使用されるエコシステムで定義された規則に従って、データの正しさを検証する。
+          これには、署名データを保持するプロパティーの特定も含まれます。
+        </li>
+        <li pn="section-5-3.3" derivedCounter="3.">
+          署名を検証する。
+        </li>
+      </ol>
+      <t pn="section-5-4">
+        これらの手順のいずれかが失敗した場合、進行中の操作を中止<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+    </section>
+  </middle>
+  <back>
+    <displayreference target="I-D.rundgren-comparable-json" to="JSONCOMP"/>
+    <references pn="section-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-6.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="ECMA-262" target="https://www.ecma-international.org/ecma-262/10.0/index.html" quoteTitle="true" derivedAnchor="ECMA-262">
+          <front>
+            <title>ECMAScript 2019 Language Specification</title>
+            <author>
+              <organization showOnFrontPage="true">ECMA International</organization>
+            </author>
+            <date year="2019" month="June"/>
+          </front>
+          <refcontent>Standard ECMA-262 10th Edition</refcontent>
+        </reference>
+        <reference anchor="IEEE754" target="https://ieeexplore.ieee.org/document/8766229" quoteTitle="true" derivedAnchor="IEEE754">
+          <front>
+            <title>IEEE Standard for Floating-Point Arithmetic</title>
+            <seriesInfo name="DOI" value="10.1109/IEEESTD.2019.8766229"/>
+            <author>
+              <organization showOnFrontPage="true">IEEE</organization>
+            </author>
+          </front>
+          <refcontent>IEEE 754-2019</refcontent>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner" fullname="S. Bradner">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="1997" month="March"/>
+            <abstract>
+              <t>In many standards track documents several words are used to signify the requirements in the specification.  These words are often capitalized. This document defines these words as they should be interpreted in IETF documents.  This document specifies an Internet Best Current Practices for the Internet Community, and requests discussion and suggestions for improvements.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7493" target="https://www.rfc-editor.org/info/rfc7493" quoteTitle="true" derivedAnchor="RFC7493">
+          <front>
+            <title>The I-JSON Message Format</title>
+            <author initials="T." surname="Bray" fullname="T. Bray" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="March"/>
+            <abstract>
+              <t>I-JSON (short for "Internet JSON") is a restricted profile of JSON designed to maximize interoperability and increase confidence that software can process it successfully with predictable results.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7493"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7493"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba" fullname="B. Leiba">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="May"/>
+            <abstract>
+              <t>RFC 2119 specifies common key words that may be used in protocol  specifications.  This document aims to reduce the ambiguity by clarifying that only UPPERCASE usage of the key words have the  defined special meanings.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8259" target="https://www.rfc-editor.org/info/rfc8259" quoteTitle="true" derivedAnchor="RFC8259">
+          <front>
+            <title>The JavaScript Object Notation (JSON) Data Interchange Format</title>
+            <author initials="T." surname="Bray" fullname="T. Bray" role="editor">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2017" month="December"/>
+            <abstract>
+              <t>JavaScript Object Notation (JSON) is a lightweight, text-based, language-independent data interchange format.  It was derived from the ECMAScript Programming Language Standard.  JSON defines a small set of formatting rules for the portable representation of structured data.</t>
+              <t>This document removes inconsistencies with other specifications of JSON, repairs specification errors, and offers experience-based interoperability guidance.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="STD" value="90"/>
+          <seriesInfo name="RFC" value="8259"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8259"/>
+        </reference>
+        <reference anchor="UCNORM" target="https://www.unicode.org/reports/tr15/" quoteTitle="true" derivedAnchor="UCNORM">
+          <front>
+            <title>Unicode Normalization Forms</title>
+            <author>
+              <organization showOnFrontPage="true">The Unicode Consortium</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="UNICODE" target="https://www.unicode.org/versions/latest/" quoteTitle="true" derivedAnchor="UNICODE">
+          <front>
+            <title>The Unicode Standard</title>
+            <author>
+              <organization showOnFrontPage="true">The Unicode Consortium</organization>
+            </author>
+          </front>
+        </reference>
+      </references>
+      <references pn="section-6.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="I-D.rundgren-comparable-json" quoteTitle="true" target="https://tools.ietf.org/html/draft-rundgren-comparable-json-04" derivedAnchor="JSONCOMP">
+          <front>
+            <title>"Comparable" JSON (JSONCOMP)</title>
+            <author initials="A" surname="Rundgren" fullname="Anders Rundgren">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date month="February" day="13" year="2019"/>
+            <abstract>
+              <t>This application note describes how JCS [JCS] can be utilized to support applications needing canonicalization beyond the core JSON [RFC8259] level, with comparisons as the primary target.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-rundgren-comparable-json-04"/>
+          <format type="TXT" target="http://www.ietf.org/internet-drafts/draft-rundgren-comparable-json-04.txt"/>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="KEYBASE" target="https://keybase.io/docs/api/1.0/canonical_packings" quoteTitle="true" derivedAnchor="KEYBASE">
+          <front>
+            <title>Canonical Packings for JSON and Msgpack</title>
+            <author>
+              <organization showOnFrontPage="true">Keybase</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="NODEJS" target="https://nodejs.org" quoteTitle="true" derivedAnchor="NODEJS">
+          <front>
+            <title>Node.js</title>
+            <author>
+              <organization showOnFrontPage="true">OpenJS Foundation</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="OPENAPI" target="https://www.openapis.org/" quoteTitle="true" derivedAnchor="OPENAPI">
+          <front>
+            <title>The OpenAPI Specification: a broadly adopted industry standard for describing modern APIs</title>
+            <author>
+              <organization showOnFrontPage="true">OpenAPI Initiative</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="RFC4648" target="https://www.rfc-editor.org/info/rfc4648" quoteTitle="true" derivedAnchor="RFC4648">
+          <front>
+            <title>The Base16, Base32, and Base64 Data Encodings</title>
+            <author initials="S." surname="Josefsson" fullname="S. Josefsson">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2006" month="October"/>
+            <abstract>
+              <t>This document describes the commonly used base 64, base 32, and base 16 encoding schemes.  It also discusses the use of line-feeds in encoded data, use of padding in encoded data, use of non-alphabet characters in encoded data, use of different encoding alphabets, and canonical encodings.  [STANDARDS-TRACK]</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="4648"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4648"/>
+        </reference>
+        <reference anchor="RFC7515" target="https://www.rfc-editor.org/info/rfc7515" quoteTitle="true" derivedAnchor="RFC7515">
+          <front>
+            <title>JSON Web Signature (JWS)</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="J." surname="Bradley" fullname="J. Bradley">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Sakimura" fullname="N. Sakimura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="May"/>
+            <abstract>
+              <t>JSON Web Signature (JWS) represents content secured with digital signatures or Message Authentication Codes (MACs) using JSON-based data structures.  Cryptographic algorithms and identifiers for use with this specification are described in the separate JSON Web Algorithms (JWA) specification and an IANA registry defined by that specification.  Related encryption capabilities are described in the separate JSON Web Encryption (JWE) specification.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7515"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7515"/>
+        </reference>
+        <reference anchor="RFC7638" target="https://www.rfc-editor.org/info/rfc7638" quoteTitle="true" derivedAnchor="RFC7638">
+          <front>
+            <title>JSON Web Key (JWK) Thumbprint</title>
+            <author initials="M." surname="Jones" fullname="M. Jones">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <author initials="N." surname="Sakimura" fullname="N. Sakimura">
+              <organization showOnFrontPage="true"/>
+            </author>
+            <date year="2015" month="September"/>
+            <abstract>
+              <t>This specification defines a method for computing a hash value over a JSON Web Key (JWK).  It defines which fields in a JWK are used in the hash computation, the method of creating a canonical form for those fields, and how to convert the resulting Unicode string into a byte sequence to be hashed.  The resulting hash value can be used for identifying or selecting the key represented by the JWK that is the subject of the thumbprint.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="7638"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7638"/>
+        </reference>
+        <reference anchor="RYU" target="https://github.com/ulfjack/ryu" quoteTitle="true" derivedAnchor="RYU">
+          <front>
+            <title>Ryu floating point number serializing algorithm</title>
+            <author/>
+            <date month="May" year="2020"/>
+          </front>
+          <refcontent>commit 27d3c55</refcontent>
+        </reference>
+        <reference anchor="V8" target="https://v8.dev/" quoteTitle="true" derivedAnchor="V8">
+          <front>
+            <title>What is V8?</title>
+            <author>
+              <organization showOnFrontPage="true">Google LLC</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="XMLDSIG" target="https://www.w3.org/TR/xmldsig-core1/" quoteTitle="true" derivedAnchor="XMLDSIG">
+          <front>
+            <title>XML Signature Syntax and Processing Version 1.1</title>
+            <author>
+              <organization showOnFrontPage="true">W3C</organization>
+            </author>
+            <date month="April" year="2013"/>
+          </front>
+          <refcontent>W3C Recommendation</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="canonicalize.js" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.a">
+      <name slugifiedName="name-ecmascript-sample-canonical">ECMAScriptによる正規化器のサンプル</name>
+      <t pn="section-appendix.a-1">
+        以下は、ECMAScriptベースのシステムで使用するためのJCS正規化器の例です。
+      </t>
+      <sourcecode type="javascript" markers="false" pn="section-appendix.a-2">
+  ////////////////////////////////////////////////////////////
+  // このコードの主な目的はJCSアルゴリズムの中核を          //
+  // 示すことなので、エラー処理とUTF-8の生成は              //
+  // 実装していません。                                     //
+  ////////////////////////////////////////////////////////////
+  var canonicalize = function(object) {
+
+      var buffer = '';
+      serialize(object);
+      return buffer;
+
+      function serialize(object) {
+          if (object === null || typeof object !== 'object' ||
+              object.toJSON != null) {
+              /////////////////////////////////////////////////
+              // プリミティブ型またはtoJSON。"JSON"を使用    //
+              /////////////////////////////////////////////////
+              buffer += JSON.stringify(object);
+
+          } else if (Array.isArray(object)) {
+              /////////////////////////////////////////////////
+              // 配列 - 要素の順序を維持                     //
+              /////////////////////////////////////////////////
+              buffer += '[';
+              let next = false;
+              object.forEach((element) =&gt; {
+                  if (next) {
+                      buffer += ',';
+                  }
+                  next = true;
+                  /////////////////////////////////////////
+                  // 配列要素 - 再帰的に展開             //
+                  /////////////////////////////////////////
+                  serialize(element);
+              });
+              buffer += ']';
+
+          } else {
+              /////////////////////////////////////////////////
+              // オブジェクト - 出力前にプロパティーをソート //
+              /////////////////////////////////////////////////
+              buffer += '{';
+              let next = false;
+              Object.keys(object).sort().forEach((property) =&gt; {
+                  if (next) {
+                      buffer += ',';
+                  }
+                  next = true;
+                  /////////////////////////////////////////////
+                  // プロパティー名は文字列。"JSON"を使用    //
+                  /////////////////////////////////////////////
+                  buffer += JSON.stringify(property);
+                  buffer += ':';
+                  //////////////////////////////////////////
+                  // プロパティー値 - 再帰的に展開        //
+                  //////////////////////////////////////////
+                  serialize(object[property]);
+              });
+              buffer += '}';
+          }
+      }
+  };
+</sourcecode>
+    </section>
+    <section anchor="json.ieee754.test" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.b">
+      <name slugifiedName="name-number-serialization-sample">数値のシリアル化のサンプル</name>
+      <t pn="section-appendix.b-1">
+        次の表は、いくつかのエッジケースを含む、ECMAScript互換の数値シリアル化のサンプルの一覧です。
+        「IEEE 754」列は、ECMAScriptにおける「Number」データ型の内部表現を示しています。
+        これは64ビット（倍精度）値を使用するIEEE 754 <xref target="IEEE754" format="default" sectionFormat="of" derivedContent="IEEE754"/>標準に基づくもので、
+        ここでは16進数で表記しています。
+      </t>
+      <table anchor="ECMAScript-TABLE" align="center" pn="table-1">
+        <name slugifiedName="name-ecmascript-compatible-json-">ECMAScript互換のJSON数値シリアル化のサンプル</name>
+        <thead>
+          <tr>
+            <th align="center" colspan="1" rowspan="1">IEEE 754</th>
+            <th align="center" colspan="1" rowspan="1">JSON表現</th>
+            <th align="center" colspan="1" rowspan="1">コメント</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>0000000000000000</tt>
+            </td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>0</tt>
+            </td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>ゼロ</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>8000000000000000</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>0</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>マイナスゼロ</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>0000000000000001</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>5e-324</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>正の最小値</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>8000000000000001</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>-5e-324</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>負の最小値</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>7fefffffffffffff</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>1.7976931348623157e+308</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>正の最大値</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>ffefffffffffffff</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>-1.7976931348623157e+308</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>負の最大値</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>4340000000000000</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>9007199254740992</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>正の最大
+整数    (1)</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>c340000000000000</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>-9007199254740992</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>負の最大
+整数    (1)</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>4430000000000000</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>295147905179352830000</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>~2**68         (2)
+</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>7fffffffffffffff</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>NaN            (3)</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>7ff0000000000000</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>Infinity       (3)</tt></td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>44b52d02c7e14af5</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>9.999999999999997e+22</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>44b52d02c7e14af6</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>1e+23</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>44b52d02c7e14af7</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>1.0000000000000001e+23</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>444b1ae4d6e2ef4e</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>999999999999999700000</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>444b1ae4d6e2ef4f</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>999999999999999900000</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>444b1ae4d6e2ef50</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>1e+21</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>3eb0c6f7a0b5ed8c</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>9.999999999999997e-7</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>3eb0c6f7a0b5ed8d</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>0.000001</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+      </td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>41b3de4355555553</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>333333333.3333332</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>41b3de4355555554</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>333333333.33333325</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>41b3de4355555555</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>333333333.3333333</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>41b3de4355555556</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>333333333.3333334</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>41b3de4355555557</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>333333333.33333343</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>becbf647612f3696</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>-0.0000033333333333333333</tt></td>
+            <td align="left" colspan="1" rowspan="1"/>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>43143ff3c1cb0959</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>1424953923781206.2</tt></td>
+            <td align="left" colspan="1" rowspan="1">
+              <tt>偶数への丸め  (4)</tt></td>
+          </tr>
+        </tbody>
+      </table>
+      <t pn="section-appendix.b-3">
+        注：
+      </t>
+      <ol spacing="normal" type="(%d)" start="1" pn="section-appendix.b-4">
+        <li pn="section-appendix.b-4.1" derivedCounter="(1)">
+          ECMAScriptの「JSON」オブジェクトとの互換性を最大限に保つため、
+          真の整数として解釈される値は、-9007199254740991から9007199254740991の範囲にある<bcp14>べきです（SHOULD）</bcp14>。
+          ただし、アプリケーションで数値がどのように使われるかは、JCSアルゴリズムには影響しません。
+        </li>
+        <li pn="section-appendix.b-4.2" derivedCounter="(2)">
+          2**68のような特定の整数の集合は、拡張精度を持つとみなせるかもしれませんが、
+          JCS/ECMAScriptの数値シリアル化アルゴリズムではこれを考慮しません。
+        </li>
+        <li pn="section-appendix.b-4.3" derivedCounter="(3)">
+            範囲外の値はJSONでは許可されていません。
+            <xref target="json.ser.number" format="default" sectionFormat="of" derivedContent="Section 3.2.2.3"/>を参照してください。
+        </li>
+        <li pn="section-appendix.b-4.4" derivedCounter="(4)">
+          この数値は正確には1424953923781206.25ですが、
+          <xref target="json.ser.number" format="default" sectionFormat="of" derivedContent="Section 3.2.2.3"/>で言及した「Note 2」の規則によって、
+          切り捨てられ、最も近い偶数の値に丸められます。
+        </li>
+      </ol>
+      <t pn="section-appendix.b-5">
+        JCSの数値シリアライザーをより網羅的に検証するには、
+        開発ポータル（<xref target="json.development" format="default" sectionFormat="of" derivedContent="Appendix I"/>を参照）で（現在）入手できる、大量のサンプル値を含むファイルを使ってテストするとよいでしょう。
+        もう1つの選択肢は、ランダムなIEEE 754の値を大量に生成するプログラムとともに、V8 <xref target="V8" format="default" sectionFormat="of" derivedContent="V8"/>を実際のリファレンスとして実行することです。
+      </t>
+    </section>
+    <section anchor="json.wireformat" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.c">
+      <name slugifiedName="name-canonicalized-json-as-wire-">「ワイヤーフォーマット」としての正規化されたJSON</name>
+      <t pn="section-appendix.c-1">
+        正規化処理の結果（<xref target="json.utf8" format="default" sectionFormat="of" derivedContent="Section 3.2.4"/>を参照）は完全に有効なJSONなので、「ワイヤーフォーマット」としても使用できます。
+        ただし、JCSに基づく暗号方式は、ほとんどの場合、外部から提供されたJSONデータがすでに正規化されていることには依存しないため、これは1つの選択肢にすぎません。
+      </t>
+      <t pn="section-appendix.c-2">
+        実際、「JSON.stringify()」を使ってオブジェクトをシリアル化するECMAScript標準の方法では、
+        プロパティーが作成または受信された順序で保持される、より「論理的な」形式が生成されます。
+        次の例は、ECMAScript標準のシリアル化の恩恵を受けられる住所レコードを示しています。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-appendix.c-3">
+  {
+    "name": "John Doe",
+    "address": "2000 Sunset Boulevard",
+    "city": "Los Angeles",
+    "zip": "90001",
+    "state": "CA"
+  }
+</sourcecode>
+      <t pn="section-appendix.c-4">
+        正規化を使うと、上記のプロパティーは「address」、「city」、「name」、「state」、「zip」の順に出力されるため、
+        人間（開発者や技術サポート）の視点からはデータがわかりにくくなります。
+        また、正規化はJSONデータを1行のテキストに変換するため、デバッグやログ記録には理想的ではない場合があります。
+      </t>
+    </section>
+    <section anchor="json.bignumbers" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.d">
+      <name slugifiedName="name-dealing-with-big-numbers">大きな数値の扱い</name>
+      <t pn="section-appendix.d-1">
+        JSONの数値型にはいくつかの問題があります。ここでは次のサンプルオブジェクトでそれを説明します。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-appendix.d-2">
+  {
+    "giantNumber": 1.4e+9999,
+    "payMeThis": 26000.33,
+    "int64Max": 9223372036854775807
+  }
+</sourcecode>
+      <t pn="section-appendix.d-3">
+        上記のサンプルはJSON <xref target="RFC8259" format="default" sectionFormat="of" derivedContent="RFC8259"/>に準拠していますが、
+        アプリケーションは通常、「giantNumber」と「int64Max」を格納するために異なるネイティブデータ型を使用するでしょう。
+        さらに、「payMeThis」のような金額データは、10進数の演算に関する丸めの問題があるため、おそらく浮動小数点データ型には依存しないでしょう。
+      </t>
+      <t pn="section-appendix.d-4">
+        JSONの数値型のこの種の「オーバーロード」を（少なくとも拡張可能な方法で）扱う確立された方法は、
+        プロパティーの名前に基づいて、異なるプロパティーをどう扱うかをパーサーに指示するマッピングメカニズムを使うことです。
+        しかし、これでは、JSONの数値型を本来のやや制約されたJavaScriptの文脈の外で使用する価値が大きく制限されます。
+        また、ECMAScriptの「JSON」オブジェクトは、JSONの数値型へのマッピングもサポートしていません。
+      </t>
+      <t pn="section-appendix.d-5">
+        以上の理由から、現在のJSONエコシステムに自然な居場所を持たない数値は、JSONの文字列型を使ってラップ<bcp14>しなければなりません（MUST）</bcp14>。
+        これはオープンなシステムにおけるデファクトスタンダードに近いものです。
+        これは、<xref target="string.subtypes" format="default" sectionFormat="of" derivedContent="Appendix E"/>で説明する「DateTime」オブジェクトのような、JSONで直接サポートされていない他のデータ型にも当てはまります。
+      </t>
+      <t pn="section-appendix.d-6">
+        JSONの文字列型を使用するシステムの助けを借りれば、次のようにプログラムによる方法であれ、
+      </t>
+      <sourcecode type="" markers="false" pn="section-appendix.d-7">
+  var obj = JSON.parse('{"giantNumber": "1.4e+9999"}');
+  var biggie = new BigNumber(obj.giantNumber);
+</sourcecode>
+      <t pn="section-appendix.d-8">
+        OpenAPI <xref target="OPENAPI" format="default" sectionFormat="of" derivedContent="OPENAPI"/>のような宣言的な方式であれ、
+        JCSは、ECMAScriptを使用する場合も含め、アプリケーションに制限を課しません。
+      </t>
+    </section>
+    <section anchor="string.subtypes" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.e">
+      <name slugifiedName="name-string-subtype-handling">文字列のサブタイプの扱い</name>
+      <t pn="section-appendix.e-1">
+        JSONが備えるデータ型の種類は限られているため、サブタイプを保持するためにJSONの文字列型がよく使われます。
+        これは、JSONの解析方法によっては相互運用性の問題につながる可能性があり、
+        より幅広い利用者を対象とするJCS準拠のアプリケーションは、この問題に対処<bcp14>しなければなりません（MUST）</bcp14>。
+      </t>
+      <t pn="section-appendix.e-2">
+        スキーマの設計者が、「BigInt」サブタイプを保持するためにプロパティー「big」を、
+        「DateTime」サブタイプを保持するために「time」を割り当て、
+        「val」はJCSに準拠したJSONの数値であるとしたJSONオブジェクトを解析したいとします。
+        次の例は、そのようなオブジェクトを示しています。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-appendix.e-3">
+  {
+    "time": "2019-01-28T07:45:10Z",
+    "big": "055",
+    "val": 3.5
+  }
+</sourcecode>
+      <t pn="section-appendix.e-4">このオブジェクトの解析は、次のECMAScriptの文で行えます。</t>
+      <sourcecode type="" markers="false" pn="section-appendix.e-5">
+  var object = JSON.parse(JSON_object_featured_as_a_string);
+</sourcecode>
+      <t pn="section-appendix.e-6">解析後に実際のデータを取り出せます。サブタイプの場合は、解析処理の結果（ECMAScriptオブジェクト）を入力とする変換の手順も伴います。</t>
+      <sourcecode type="" markers="false" pn="section-appendix.e-7">
+  ... = new Date(object.time); // Dateオブジェクト
+  ... = BigInt(object.big);    // 大きな整数
+  ... = object.val;            // JSON/JSの数値
+</sourcecode>
+      <t pn="section-appendix.e-8">
+        「BigInt」データ型は、現在V8 <xref target="V8" format="default" sectionFormat="of" derivedContent="V8"/>でしかネイティブにサポートされていないことに注意してください。
+      </t>
+      <t pn="section-appendix.e-9">
+        <xref target="canonicalize.js" format="default" sectionFormat="of" derivedContent="Appendix A"/>のサンプルコードを使って「object」を正規化すると、次の文字列が返されます。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-appendix.e-10">
+  {"big":"055","time":"2019-01-28T07:45:10Z","val":3.5}
+</sourcecode>
+      <t pn="section-appendix.e-11">
+        これは（JCSに関しては）技術的に正しいものですが、
+        JSONデータを解析する別の方法もあり、次に示すようにECMAScriptでも使用できます。
+      </t>
+      <sourcecode type="" markers="false" pn="section-appendix.e-12">
+  // "BigInt"をJSONでシリアル化可能にするには次のコードが必要
+  BigInt.prototype.toJSON = function() {
+      return this.toString();
+  };
+
+  // 「ストリーム」ベースの方法を使ったJSONの解析
+  var object = JSON.parse(JSON_object_featured_as_a_string,
+      (k,v) =&gt; k == 'time' ? new Date(v) : k == 'big' ? BigInt(v) : v
+  );
+</sourcecode>
+      <t pn="section-appendix.e-13">
+        ここで<xref target="canonicalize.js" format="default" sectionFormat="of" derivedContent="Appendix A"/>の正規化器を「object」に適用すると、次の文字列が生成されます。
+      </t>
+      <sourcecode type="json" markers="false" pn="section-appendix.e-14">
+  {"big":"55","time":"2019-01-28T07:45:10.000Z","val":3.5}
+</sourcecode>
+      <t pn="section-appendix.e-15">
+        この場合、「big」と「time」の文字列引数が元のものから変わってしまっており、
+        おそらくJCSに依存するアプリケーションは失敗するでしょう。
+      </t>
+      <t pn="section-appendix.e-16">
+        この相違の原因は、ストリームベースやスキーマベースのJSONパーサーでは、
+        元の文字列引数が通常その場でネイティブのサブタイプに置き換えられ、
+        そのサブタイプをシリアル化すると、異なるプラットフォーム依存のパターンになる可能性があるためです。
+      </t>
+      <t pn="section-appendix.e-17">
+        つまり、ストリームベースやスキーマベースの解析では、サブタイプを「純粋な」（不変の）JSON文字列型として扱い、
+        指定されたネイティブ型への実際の変換はその後の手順で行わ<bcp14>なければなりません（MUST）</bcp14>。
+        Go、Java、C#のような最新のプログラミングプラットフォームでは、アノテーション、ゲッター、セッターを組み合わせることで、
+        適度な労力でこれを実現できます。
+        以下は、JSONオブジェクトとしてシリアル化可能なクラスの一部を示す、C#/Json.NETでの例です。
+      </t>
+      <sourcecode type="" markers="false" pn="section-appendix.e-18">
+  // 「純粋な」文字列による解決策では、JSONのシリアル化には
+  // ローカルの文字列変数を使い、アプリケーションには
+  // 別の型を公開する
+  [JsonProperty("amount")]
+  private string _amount;
+
+  [JsonIgnore]
+  public decimal Amount {
+      get { return decimal.Parse(_amount); }
+      set { _amount = value.ToString(); }
+  }
+</sourcecode>
+      <t pn="section-appendix.e-19">
+        アプリケーションでは「Amount」に他のプロパティーと同じようにアクセスできますが、
+        JSONの文脈では実際には引用符付き文字列で表現されます。
+      </t>
+      <t pn="section-appendix.e-20">
+        注：上記の例は、I-JSONが課す数値データの制約にも対処しています
+        （C#の「decimal」データ型は、IEEE 754の倍精度とはかなり異なる特性を持っています）。
+      </t>
+      <section anchor="string.subtypes.arrays" numbered="true" toc="include" removeInRFC="false" pn="section-e.1">
+        <name slugifiedName="name-subtypes-in-arrays">配列内のサブタイプ</name>
+        <t pn="section-e.1-1">
+          JSONの配列構造では任意のJSONデータ型を混在させることができるため、
+          いずれにせよ、サブタイプに対処するには独自の解析とシリアル化のコードが必要になる場合があります。
+        </t>
+      </section>
+    </section>
+    <section anchor="impl.guidelines" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.f">
+      <name slugifiedName="name-implementation-guidelines">実装ガイドライン</name>
+      <t pn="section-appendix.f-1">
+        最適な解決策は、JCSのサポートをJSONシリアライザーに直接統合することです（パーサーには変更は不要です）。
+        つまり、正規化はJSONシリアライザーの追加の「モード」にすぎなくなります。
+        しかし、現在はそうなっていません。
+        幸い、既存のJSONシリアライザーの後処理として動作する、外部から提供される正規化器ソフトウェアによって、JCSのサポートを導入できます。
+        この構成により、JCSの実装者は、基になるデータをJSONでどのように表現するかを扱う必要もなくなります。
+      </t>
+      <t pn="section-appendix.f-2">
+        後処理という考え方により、次のような署名作成方式が可能になります。
+      </t>
+      <ol spacing="normal" type="1" start="1" pn="section-appendix.f-3">
+        <li pn="section-appendix.f-3.1" derivedCounter="1.">
+            署名するデータを作成する。
+        </li>
+        <li pn="section-appendix.f-3.2" derivedCounter="2.">
+            既存のJSONツールを使ってデータをシリアル化する。
+        </li>
+        <li pn="section-appendix.f-3.3" derivedCounter="3.">
+            外部の正規化器にシリアル化したデータを処理させ、正規化された結果のデータを返させる。
+        </li>
+        <li pn="section-appendix.f-3.4" derivedCounter="4.">
+            正規化されたデータに署名する。
+        </li>
+        <li pn="section-appendix.f-3.5" derivedCounter="5.">
+            結果として得られた署名値を、指定された署名プロパティーを通じて元のJSONデータに追加する。
+        </li>
+        <li pn="section-appendix.f-3.6" derivedCounter="6.">
+            完成した（署名済みの）JSONオブジェクトを、既存のJSONツールを使ってシリアル化する。
+        </li>
+      </ol>
+      <t pn="section-appendix.f-4">
+        これと互換性のある署名検証方式は、次のようになります。
+      </t>
+      <ol spacing="normal" type="1" start="1" pn="section-appendix.f-5">
+        <li pn="section-appendix.f-5.1" derivedCounter="1.">
+            既存のJSONツールを使って、署名されたJSONデータを解析する。
+        </li>
+        <li pn="section-appendix.f-5.2" derivedCounter="2.">
+            指定された署名プロパティーから署名値を読み取って保存する。
+        </li>
+        <li pn="section-appendix.f-5.3" derivedCounter="3.">
+            解析したJSONオブジェクトから署名プロパティーを削除する。
+        </li>
+        <li pn="section-appendix.f-5.4" derivedCounter="4.">
+            既存のJSONツールを使って、残りのJSONデータをシリアル化する。
+        </li>
+        <li pn="section-appendix.f-5.5" derivedCounter="5.">
+            外部の正規化器にシリアル化したデータを処理させ、正規化された結果のデータを返させる。
+        </li>
+        <li pn="section-appendix.f-5.6" derivedCounter="6.">
+            署名の作成に使用したアルゴリズムと鍵を使って、正規化されたデータが保存した署名値と一致することを検証する。
+        </li>
+      </ol>
+      <t pn="section-appendix.f-6">
+        上記のような正規化器は、事実上ただの「フィルター」であり、まったく異なる多数の暗号方式で使用できる可能性があります。
+      </t>
+      <t pn="section-appendix.f-7">
+        JCSのサポートが統合されたJSONシリアライザーを使えば、どちらの処理でも、正規化の手順の前に行うシリアル化を省くことができます。
+      </t>
+    </section>
+    <section anchor="open.source" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.g">
+      <name slugifiedName="name-open-source-implementations">オープンソース実装</name>
+      <t pn="section-appendix.g-1">
+        次のオープンソース実装は、JCSと互換性があることが検証されています。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-appendix.g-2">
+        <li pn="section-appendix.g-2.1">
+          JavaScript: <eref target="https://www.npmjs.com/package/canonicalize" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.g-2.2">
+          Java: <eref target="https://github.com/erdtman/java-json-canonicalization" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.g-2.3">
+          Go: <eref target="https://github.com/cyberphone/json-canonicalization/tree/master/go" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.g-2.4">
+          .NET/C#: <eref target="https://github.com/cyberphone/json-canonicalization/tree/master/dotnet" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.g-2.5">
+          Python: <eref target="https://github.com/cyberphone/json-canonicalization/tree/master/python3" brackets="angle"/>
+        </li>
+      </ul>
+    </section>
+    <section anchor="json.otherefforts" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.h">
+      <name slugifiedName="name-other-json-canonicalization">JSON正規化に関するその他の取り組み</name>
+      <t pn="section-appendix.h-1">
+        「正規JSON」を作成する取り組みは、ほかにも（現在も過去にも）存在します。
+        以下は、そのいくつかへのURLの一覧です。
+      </t>
+      <ul spacing="normal" bare="false" empty="false" pn="section-appendix.h-2">
+        <li pn="section-appendix.h-2.1">
+          <eref target="https://tools.ietf.org/html/draft-staykov-hu-json-canonical-form-00" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.h-2.2">
+          <eref target="https://gibson042.github.io/canonicaljson-spec/" brackets="angle"/>
+        </li>
+        <li pn="section-appendix.h-2.3">
+          <eref target="http://wiki.laptop.org/go/Canonical_JSON" brackets="angle"/>
+        </li>
+      </ul>
+      <t pn="section-appendix.h-3">
+        列挙した取り組みはすべて、テキストレベルでのJSONからJSONへの変換に基づいています。
+        テキストレベルの正規化の主な特徴は、使用するJSONの流儀に対して中立にできることです。
+        しかし、そのような方式はJSONの解析処理に大きな変更を伴うため、採用の障害となる可能性があります。
+        JCSは、JSONとアプリケーションに一定の制約を課す代わりに、既存のJSONツールと互換性を持つように設計されました。
+      </t>
+    </section>
+    <section anchor="json.development" numbered="true" toc="include" removeInRFC="false" pn="section-appendix.i">
+      <name slugifiedName="name-development-portal">開発ポータル</name>
+      <t pn="section-appendix.i-1">
+        JCSの仕様は、現在次の場所で開発されています。
+        <eref target="https://github.com/cyberphone/ietf-json-canon" brackets="angle"/>
+      </t>
+      <t pn="section-appendix.i-2">
+        JCSのソースコードと広範なテストデータは、次の場所で入手できます。
+        <eref target="https://github.com/cyberphone/json-canonicalization" brackets="angle"/>
+      </t>
+    </section>
+    <section anchor="Acknowledgements" numbered="false" toc="include" removeInRFC="false" pn="section-appendix.j">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t pn="section-appendix.j-1">
+        ECMAScriptの数値シリアル化に基づくことは、もともと<contact fullname="James Manger"/>によって提案されました。
+        これが最終的に、JSONプリミティブに対するECMAScriptのシリアル化方式全体の採用につながりました。
+      </t>
+      <t pn="section-appendix.j-2">
+        この仕様に貴重な意見を提供してくれたその他の人々には、
+        <contact fullname="Scott Ananian"/>,
+        <contact fullname="Tim Bray"/>,
+        <contact fullname="Ben Campbell"/>,
+        <contact fullname="Adrian Farell"/>,
+        <contact fullname="Richard Gibson"/>,
+        <contact fullname="Bron Gondwana"/>,
+        <contact fullname="John-Mark Gurney"/>,
+        <contact fullname="Mike Jones,"/>
+        <contact fullname="John Levine"/>,
+        <contact fullname="Mark Miller"/>,
+        <contact fullname="Matthew Miller"/>,
+        <contact fullname="Mark Nottingham"/>,
+        <contact fullname="Mike Samuel"/>,
+        <contact fullname="Jim Schaad"/>,
+        <contact fullname="Robert Tupelo-Schneck"/>,
+        <contact fullname="Michal Wadas"/>がいます。
+      </t>
+      <t pn="section-appendix.j-3">
+        実環境での概念検証を行うにあたっては、
+        <contact fullname="Ulf Adams"/>、
+        <contact fullname="Tanner Gooding"/>、
+        <contact fullname="Remy Oudompheng"/>
+        が提供してくれた数値シリアル化のソフトウェアとサポートが非常に役立ちました。
+      </t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.k">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Anders Rundgren" initials="A." surname="Rundgren">
+        <organization showOnFrontPage="true">Independent</organization>
+        <address>
+          <postal>
+            <city>Montpellier</city>
+            <country>France</country>
+          </postal>
+          <email>anders.rundgren.net@gmail.com</email>
+          <uri>https://www.linkedin.com/in/andersrundgren/</uri>
+        </address>
+      </author>
+      <author fullname="Bret Jordan" initials="B." surname="Jordan">
+        <organization showOnFrontPage="true">Broadcom</organization>
+        <address>
+          <postal>
+            <street>1320 Ridder Park Drive</street>
+            <region>CA</region>
+            <code>95131</code>
+            <city>San Jose</city>
+            <country>United States of America</country>
+          </postal>
+          <email>bret.jordan@broadcom.com</email>
+        </address>
+      </author>
+      <author fullname="Samuel Erdtman" initials="S." surname="Erdtman">
+        <organization showOnFrontPage="true">Spotify AB</organization>
+        <address>
+          <postal>
+            <street>Birger Jarlsgatan 61, 4tr</street>
+            <code>113 56</code>
+            <city>Stockholm</city>
+            <country>Sweden</country>
+          </postal>
+          <email>erdtman@spotify.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

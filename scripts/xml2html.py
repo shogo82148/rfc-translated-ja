@@ -1150,13 +1150,13 @@ class HtmlWriter:
 
     # Unicode 文字
     def render1_u(self, h, x):
-        try:
-            text = expand_unicode_element(x)
-        except (RuntimeError, ValueError):
-            text = x.text or ''
         span = build('span', {'class': 'unicode'})
         h.append(span)
-        span.text = text
+        try:
+            span.text = expand_unicode_element(x)
+        except (RuntimeError, ValueError) as e:
+            print('warning: failed to expand <u> element (pn=%s): %s' % (x.get('pn'), e), file=sys.stderr)
+            span.text = x.text or ''
         if x.tail:
             span.tail = x.tail
         return span

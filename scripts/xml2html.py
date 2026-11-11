@@ -904,7 +904,11 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
-                if not x.get('derivedContent'):
+                # 日本語訳では format="title" の derivedContent に英語の見出しが残っていることがあるので、訳文を優先する
+                use_content = self.lang == 'ja' and format == 'title' and content
+                if use_content:
+                    a.text = x.text
+                if not x.get('derivedContent') or use_content:
                     # <xref>見出し<tt>...</tt></xref> のように子要素を含む場合
                     for c in x:
                         self.render1(a, c)

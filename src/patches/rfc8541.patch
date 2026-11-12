@@ -1,0 +1,1830 @@
+--- 
++++ 
+@@ -94,6 +94,9 @@
+           <li pn="section-toc.1-1.a">
+             <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>
+           </li>
++          <li pn="section-toc.1-1.b">
++            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">Authors' Addresses</xref></t>
++          </li>
+       </ul>
+       </section>
+     </toc>
+@@ -115,8 +118,8 @@
+ (LSP) generation delay, LSP flooding delay, and LSP retransmission
+ interval.</t>
+       <t indent="0" pn="section-1-5">Some of the values and behaviors of these timers are standardized in
+-protocol specifications, and some are not.  The SPF computation-
+-related timers have generally remained unspecified.</t>
++protocol specifications, and some are not.  The SPF computation-related
++timers have generally remained unspecified.</t>
+       <t indent="0" pn="section-1-6">Implementations are free to implement non-standardized timers in any
+ way.  For some standardized timers, implementations may offer
+ dynamically adjusted timers to help control the churn rather than use
+@@ -143,15 +146,17 @@
+       <t indent="0" pn="section-1-11">This document presents reasons for service providers to have
+ consistent implementation of link state protocols across vendors.  In
+ particular, this document analyzes the impact of using different link
+-state IGP implementations in a single network with regard to micro-
+-loops.  The analysis focuses on the SPF delay algorithm.</t>
++state IGP implementations in a single network with regard to
++micro-loops.  The analysis focuses on the SPF delay algorithm.</t>
+       <t indent="0" pn="section-1-12"><xref target="RFC8405" format="default" sectionFormat="of" derivedContent="RFC8405"/> defines a solution that partially addresses this problem
+ statement, and this document captures the reasoning of the provided
+ solution.</t>
+     </section>
+     <section anchor="problem-statement" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+       <name slugifiedName="name-problem-statement">Problem Statement</name>
+-      <t indent="0" pn="section-2-1"><artwork name="" type="" align="left" alt=""><![CDATA[
++      <figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
++        <name slugifiedName="name-network-topology-experiencing-micro-loops">Network Topology Experiencing Micro-loops</name>
++        <artwork name="" type="" align="left" alt="" pn="section-2-1.1"><![CDATA[
+                            S ---- E
+                            |      |
+                         10 |      | 10
+@@ -160,58 +165,43 @@
+                            |  2
+                            Px
+ ]]></artwork>
+-</t>
+-      <t indent="0" pn="section-2-2"><figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
+-<name slugifiedName="name-figure-1">Network Topology Experiencing Micro-loops</name>
+-<artwork name="" type="" align="left" alt=""><![CDATA[
+-
+-]]></artwork>
+-</figure>
+-</t>
+-      <t indent="0" pn="section-2-3">Figure 1 represents a small network composed of four routers (S, D,
++      </figure>
++      <t indent="0" pn="section-2-2"><xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/> represents a small network composed of four routers (S, D,
+ E, and A).  Router S primarily uses the SD link to reach the prefixes
+ behind router D (named Px).  When the SD link fails, the IGP
+ convergence occurs.  If S converges before E, S will forward the
+ traffic to Px through E; however, because E has not converged yet, E
+ will loop the traffic back to S, leading to a micro-loop.</t>
+-      <t indent="0" pn="section-2-4">The micro-loop appears due to the asynchronous convergence of nodes
++      <t indent="0" pn="section-2-3">The micro-loop appears due to the asynchronous convergence of nodes
+ in a network when an event occurs.</t>
+-      <t indent="0" pn="section-2-5">Multiple factors (or a combination of factors) may increase the
++      <t indent="0" pn="section-2-4">Multiple factors (or a combination of factors) may increase the
+ probability of a micro-loop appearing:</t>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-6">
+-        <li pn="section-2-6.1"> Delay of failure notification: The greater the time gap between E
+-   and S being advised of the failure, the greater the chance that a
+-   micro-loop may appear.</li>
++      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-5">
++        <li pn="section-2-5.1">Delay of failure notification: The greater the time gap between E
++and S being advised of the failure, the greater the chance that a
++micro-loop may appear.</li>
++        <li pn="section-2-5.2">SPF delay: Most implementations support a delay for the SPF
++computation to catch as many events as possible.  If S uses an SPF
++delay timer of x ms, E uses an SPF delay timer of y ms, and x &lt; y,
++E would start converging after S, leading to a potential
++micro-loop.</li>
++        <li pn="section-2-5.3">SPF computation time: This is mostly a matter of CPU power and
++optimizations like incremental SPF.  If S computes its SPF faster
++than E, there is a chance for a micro-loop to appear.  Today, CPUs
++are fast enough to consider the SPF computation time as negligible
++(on the order of milliseconds in a large network).</li>
++        <li pn="section-2-5.4">SPF computation ordering: An SPF trigger can be common to multiple
++IGP areas or levels (e.g., IS-IS Level 1 and Level 2) or to
++multiple address families with multi-topologies.  There is no
++specified order for SPF computation today, and it is
++implementation dependent.  In such scenarios, if the order of SPF
++computation done in S and E for each area, level, topology, or SPF
++algorithm is different, there is a possibility for a micro-loop to
++appear.</li>
++        <li pn="section-2-5.5">RIB and FIB prefix insertion speed or ordering: This is highly
++dependent on the implementation.</li>
+       </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-7">
+-        <li pn="section-2-7.1"> SPF delay: Most implementations support a delay for the SPF
+-   computation to catch as many events as possible.  If S uses an SPF
+-   delay timer of x ms, E uses an SPF delay timer of y ms, and x &lt; y,
+-   E would start converging after S, leading to a potential micro-
+-   loop.</li>
+-      </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-8">
+-        <li pn="section-2-8.1"> SPF computation time: This is mostly a matter of CPU power and
+-   optimizations like incremental SPF.  If S computes its SPF faster
+-   than E, there is a chance for a micro-loop to appear.  Today, CPUs
+-   are fast enough to consider the SPF computation time as negligible
+-   (on the order of milliseconds in a large network).</li>
+-      </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-9">
+-        <li pn="section-2-9.1"> SPF computation ordering: An SPF trigger can be common to multiple
+-   IGP areas or levels (e.g., IS-IS Level 1 and Level 2) or to
+-   multiple address families with multi-topologies.  There is no
+-   specified order for SPF computation today, and it is
+-   implementation dependent.  In such scenarios, if the order of SPF
+-   computation done in S and E for each area, level, topology, or SPF
+-   algorithm is different, there is a possibility for a micro-loop to
+-   appear.</li>
+-      </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-10">
+-        <li pn="section-2-10.1"> RIB and FIB prefix insertion speed or ordering: This is highly
+-   dependent on the implementation.</li>
+-      </ul>
+-      <t indent="0" pn="section-2-11">Even if all of these factors increase the probability of a micro-loop
++      <t indent="0" pn="section-2-6">Even if all of these factors increase the probability of a micro-loop
+ appearing, the SPF delay plays a significant role, especially in case
+ of churn.  As the number of IGP events increases, the delta between
+ the SPF delay values used by routers becomes significant; in fact, it
+@@ -226,7 +216,7 @@
+ to update the FIB is very implementation specific and difficult or
+ impossible to standardize, while the SPF delay algorithm may be
+ standardized.</t>
+-      <t indent="0" pn="section-2-12">As a consequence, this document will focus on an analysis of SPF
++      <t indent="0" pn="section-2-7">As a consequence, this document will focus on an analysis of SPF
+ delay behavior and associated triggers.</t>
+     </section>
+     <section anchor="spf-trigger-strategies" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+@@ -237,17 +227,19 @@
+ run an IP reachability computation instead) if the advertised change
+ does not affect the topology.</t>
+       <t indent="0" pn="section-3-2">Different strategies can trigger the SPF computation:</t>
+-      <t indent="0" pn="section-3-3">1.  An implementation may always run a full SPF for any type of
+-    change.</t>
+-      <t indent="0" pn="section-3-4">2.  An implementation may run a full SPF only when required.  For
+-    example, if a link fails, a local node will run an SPF for its
+-    local LSP update.  If the LSP from the neighbor (describing the
+-    same failure) is received after SPF has started, the local node
+-    can decide that a new full SPF is not required as the topology
+-    has not changed.</t>
+-      <t indent="0" pn="section-3-5">3.  If the topology does not change, an implementation may only
+-    recompute the IP reachability.</t>
+-      <t indent="0" pn="section-3-6">As noted in Section 1, SPF optimizations are not mandatory in
++      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-3-3">
++        <li pn="section-3-3.1" derivedCounter="1.">An implementation may always run a full SPF for any type of
++change.</li>
++        <li pn="section-3-3.2" derivedCounter="2.">An implementation may run a full SPF only when required.  For
++example, if a link fails, a local node will run an SPF for its
++local LSP update.  If the LSP from the neighbor (describing the
++same failure) is received after SPF has started, the local node
++can decide that a new full SPF is not required as the topology
++has not changed.</li>
++        <li pn="section-3-3.3" derivedCounter="3.">If the topology does not change, an implementation may only
++recompute the IP reachability.</li>
++      </ol>
++      <t indent="0" pn="section-3-4">As noted in <xref target="section-1" format="default" sectionFormat="of" derivedContent="Section 1"/>, SPF optimizations are not mandatory in
+ specifications.  This has led to the implementation of different
+ strategies.</t>
+     </section>
+@@ -256,34 +248,33 @@
+       <t indent="0" pn="section-4-1">Implementations of link state routing protocols use different
+ strategies to delay SPF computation.  The two most common SPF delay
+ behaviors are the following:</t>
+-      <t indent="0" pn="section-4-2">1.  Two-step SPF delay</t>
+-      <t indent="0" pn="section-4-3">2.  Exponential back-off delay</t>
+-      <t indent="0" pn="section-4-4">These behaviors are explained in the following sections.</t>
++      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-4-2">
++        <li pn="section-4-2.1" derivedCounter="1.">Two-step SPF delay</li>
++        <li pn="section-4-2.2" derivedCounter="2.">Exponential back-off delay</li>
++      </ol>
++      <t indent="0" pn="section-4-3">These behaviors are explained in the following sections.</t>
+       <section anchor="two-step-spf-delay" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+         <name slugifiedName="name-two-step-spf-delay">Two-Step SPF Delay</name>
+         <t indent="0" pn="section-4.1-1">The SPF delay is managed by four parameters:</t>
+         <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.1-2">
+-          <li pn="section-4.1-2.1"> rapid delay: the amount of time to wait before running SPF after
+-   the initial SPF trigger event.</li>
++          <li pn="section-4.1-2.1">rapid delay: the amount of time to wait before running SPF after
++the initial SPF trigger event.</li>
++          <li pn="section-4.1-2.2">rapid runs: the number of consecutive SPF runs that can use the
++rapid delay.  When the number is exceeded, the delay moves to the
++slow delay value.</li>
++          <li pn="section-4.1-2.3">slow delay: the amount of time to wait before running an SPF.</li>
++          <li pn="section-4.1-2.4">wait time: the amount of time to wait without detecting SPF
++trigger events before going back to the rapid delay.</li>
+         </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.1-3">
+-          <li pn="section-4.1-3.1"> rapid runs: the number of consecutive SPF runs that can use the
+-   rapid delay.  When the number is exceeded, the delay moves to the
+-   slow delay value.</li>
+-        </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.1-4">
+-          <li pn="section-4.1-4.1"> slow delay: the amount of time to wait before running an SPF.</li>
+-        </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.1-5">
+-          <li pn="section-4.1-5.1"> wait time: the amount of time to wait without detecting SPF
+-   trigger events before going back to the rapid delay.</li>
+-        </ul>
+-        <t indent="0" pn="section-4.1-6">Figure 2 displays the evolution of the SPF delay timer (based on a
++        <t indent="0" pn="section-4.1-3"><xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/> displays the evolution of the SPF delay timer (based on a
+ two-step delay algorithm) upon the reception of multiple events.
+-Figure 2 considers the following parameters for the algorithm: rapid
++<xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/> considers the following parameters for the algorithm: rapid
+ delay (RD) = 50 ms, rapid runs = 3, slow delay (SD) = 1 s, wait time
+ = 2 s.</t>
+-        <t indent="0" pn="section-4.1-7">SPF delay time
++        <figure anchor="fig-2" align="left" suppress-title="false" pn="figure-2">
++          <name slugifiedName="name-two-step-spf-delay-algorith">Two-Step SPF Delay Algorithm</name>
++          <artwork name="" type="" align="left" alt="" pn="section-4.1-4.1"><![CDATA[
++SPF delay time
+     ^
+     |
+     |
+@@ -293,16 +284,11 @@
+     |
+ RD- |   x  x   x                    x
+     |
+-    +---------------------------------&gt; Events
++    +---------------------------------> Events
+         |  |   |  | || |            |
+-                        &lt; wait time &gt;</t>
+-        <t indent="0" pn="section-4.1-8"><figure anchor="fig-2" align="left" suppress-title="false" pn="figure-2">
+-<name slugifiedName="name-figure-2">Two-Step SPF Delay Algorithm</name>
+-<artwork name="" type="" align="left" alt=""><![CDATA[
+-
++                        < wait time >
+ ]]></artwork>
+-</figure>
+-</t>
++        </figure>
+       </section>
+       <section anchor="exponential-back-off-delay" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+         <name slugifiedName="name-exponential-back-off-delay">Exponential Back-Off Delay</name>
+@@ -315,27 +301,24 @@
+ algorithm moves back to fast mode.  The SPF delay is managed by four
+ parameters:</t>
+         <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-2">
+-          <li pn="section-4.2-2.1"> first delay: amount of time to wait before running SPF.  This
+-   delay is used only when SPF is in fast mode.</li>
++          <li pn="section-4.2-2.1">first delay: amount of time to wait before running SPF.  This
++delay is used only when SPF is in fast mode.</li>
++          <li pn="section-4.2-2.2">incremental delay: amount of time to wait before running SPF.
++This delay is used only when SPF is in back-off mode and
++increments exponentially at each SPF run.</li>
++          <li pn="section-4.2-2.3">maximum delay: maximum amount of time to wait before running SPF.</li>
++          <li pn="section-4.2-2.4">wait time: amount of time to wait without events before going back
++to fast mode.</li>
+         </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-3">
+-          <li pn="section-4.2-3.1"> incremental delay: amount of time to wait before running SPF.
+-   This delay is used only when SPF is in back-off mode and
+-   increments exponentially at each SPF run.</li>
+-        </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-4">
+-          <li pn="section-4.2-4.1"> maximum delay: maximum amount of time to wait before running SPF.</li>
+-        </ul>
+-        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-5">
+-          <li pn="section-4.2-5.1"> wait time: amount of time to wait without events before going back
+-   to fast mode.</li>
+-        </ul>
+-        <t indent="0" pn="section-4.2-6">Figure 3 displays the evolution of the SPF delay timer (based on an
++        <t indent="0" pn="section-4.2-3"><xref target="fig-3" format="default" sectionFormat="of" derivedContent="Figure 3"/> displays the evolution of the SPF delay timer (based on an
+ exponential back-off delay algorithm) upon the reception of multiple
+-events.  Figure 3 considers the following parameters for the
++events.  <xref target="fig-3" format="default" sectionFormat="of" derivedContent="Figure 3"/> considers the following parameters for the
+ algorithm: first delay (FD) = 50 ms, incremental delay (ID) = 50 ms,
+ maximum delay (MD) = 1 s, wait time = 2 s</t>
+-        <t indent="0" pn="section-4.2-7">SPF delay time
++        <figure anchor="fig-3" align="left" suppress-title="false" pn="figure-3">
++          <name slugifiedName="name-exponential-back-off-delay-">Exponential Back-Off Delay Algorithm</name>
++          <artwork name="" type="" align="left" alt="" pn="section-4.2-4.1"><![CDATA[
++SPF delay time
+     ^
+ MD- |               xx x
+     |
+@@ -351,24 +334,19 @@
+     |
+ FD- |   x  x                        x
+ ID  |
+-    +---------------------------------&gt; Events
++    +---------------------------------> Events
+         |  |   |  | || |            |
+-                        &lt; wait time &gt;
+-       FM-&gt;BM --------------------&gt;FM</t>
+-        <t indent="0" pn="section-4.2-8"><figure anchor="fig-3" align="left" suppress-title="false" pn="figure-3">
+-<name slugifiedName="name-figure-3">Exponential Back-Off Delay Algorithm</name>
+-<artwork name="" type="" align="left" alt=""><![CDATA[
+-
++                        < wait time >
++       FM->BM -------------------->FM
+ ]]></artwork>
+-</figure>
+-</t>
++        </figure>
+       </section>
+     </section>
+     <section anchor="mixing-strategies" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+       <name slugifiedName="name-mixing-strategies">Mixing Strategies</name>
+-      <t indent="0" pn="section-5-1">Figure 1 illustrates a flow of packets from S to D.  S uses optimized
+-SPF triggering (full SPF is triggered only when necessary) and two-
+-step SPF delay (rapid delay = 150 ms, rapid runs = 3, slow delay = 1
++      <t indent="0" pn="section-5-1"><xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/> illustrates a flow of packets from S to D.  S uses optimized
++SPF triggering (full SPF is triggered only when necessary) and
++two-step SPF delay (rapid delay = 150 ms, rapid runs = 3, slow delay = 1
+ s).  As the implementation of S is optimized, PRC is available.  For
+ PRC delay, we consider the same timers as for SPF delay.  E uses an
+ SPF trigger strategy that always computes a full SPF for any change
+@@ -376,684 +354,725 @@
+ = 150 ms, incremental delay = 150 ms, maximum delay = 1 s).</t>
+       <t indent="0" pn="section-5-2">Consider the following sequence of events:</t>
+       <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-3">
+-        <li pn="section-5-3.1"> t0=0 ms: A prefix is declared down in the network.  This event
+-   happens at time=0.</li>
++        <li pn="section-5-3.1">t0=0 ms: A prefix is declared down in the network.  This event
++happens at time=0.</li>
++        <li pn="section-5-3.2">200 ms: The prefix is declared up.</li>
++        <li pn="section-5-3.3">400 ms: The prefix is declared down in the network.</li>
++        <li pn="section-5-3.4">1000 ms: S-D link fails.</li>
+       </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-4">
+-        <li pn="section-5-4.1"> 200 ms: The prefix is declared up.</li>
+-      </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-5">
+-        <li pn="section-5-5.1"> 400 ms: The prefix is declared down in the network.</li>
+-      </ul>
+-      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-6">
+-        <li pn="section-5-6.1"> 1000 ms: S-D link fails.</li>
+-      </ul>
+-      <t indent="0" pn="section-5-7"><table align="center">
+-<thead>
+-<tr>
+-<tr>
+-<td align="left">   Time</td>
+-<td align="left">Network Event</td>
+-<td align="left">Router S Events</td>
+-<td align="left">Router E Events  </td>
+-</tr>
+-</tr>
+-</thead>
+-<tbody>
+-<tr>
+-<td align="left">   t0=0</td>
+-<td align="left">Prefix DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  10 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 150 ms)</td>
+-<td align="left">Schedule SPF (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  160 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  161 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-</tr>
+-<tr>
+-<td align="left">  162 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  163 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  164 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  175 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  178 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  200 ms</td>
+-<td align="left">Prefix UP</td>
+-</tr>
+-<tr>
+-<td align="left">  212 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 150 ms)</td>
+-</tr>
+-<tr>
+-<td align="left">  214 ms </td>
+-<td align="left"> </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  370 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-</tr>
+-<tr>
+-<td align="left">  372 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-</tr>
+-<tr>
+-<td align="left">  373 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  373 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  375 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  376 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  383 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  385 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  400 ms</td>
+-<td align="left">Prefix DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  410 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 300 ms)</td>
+-<td align="left">Schedule SPF (in  300 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  710 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  711 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-</tr>
+-<tr>
+-<td align="left">  712 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  713 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  714 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  716 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left"> 1000 ms</td>
+-<td align="left">S-D link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left"> 1010 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 150 ms)</td>
+-<td align="left">Schedule SPF (in  600 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left"> 1160 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-</tr>
+-<tr>
+-<td align="left"> 1161 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-</tr>
+-<tr>
+-<td align="left"> 1162 ms </td>
+-<td align="left">Micro-loop may start from here</td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left"> 1175 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left"> 1612 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left"> 1615 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left"> 1616 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left"> 1626 ms</td>
+-<td align="left">Micro-loop ends</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-</tbody>
+-</table>
+-</t>
+-      <t indent="0" pn="section-5-8"> Table 1: Route Computation When S and E Use Different Behaviors and
+-                       Multiple Events Appear</t>
+-      <t indent="0" pn="section-5-9">In Table 1, due to discrepancies in the SPF management and after
++      <table anchor="table-1" align="center" pn="table-1">
++        <name slugifiedName="name-route-computation-when-s-an">Route Computation When S and E Use Different Behaviors and Multiple Events Appear</name>
++        <thead>
++          <tr>
++            <th align="left" colspan="1" rowspan="1">Time</th>
++            <th align="left" colspan="1" rowspan="1">Network Event</th>
++            <th align="left" colspan="1" rowspan="1">Router S Events</th>
++            <th align="left" colspan="1" rowspan="1">Router E Events</th>
++          </tr>
++        </thead>
++        <tbody>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">t0=0</td>
++            <td align="left" colspan="1" rowspan="1">Prefix DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">10 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">160 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">161 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">162 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">163 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">164 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">175 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">178 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">200 ms</td>
++            <td align="left" colspan="1" rowspan="1">Prefix UP</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">212 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">214 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">370 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">372 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">373 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">373 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">375 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">376 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">383 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">385 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">400 ms</td>
++            <td align="left" colspan="1" rowspan="1">Prefix DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">410 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 300 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">710 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">711 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">712 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">713 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">714 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">716 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1000 ms</td>
++            <td align="left" colspan="1" rowspan="1">S-D link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1010 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 600 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1160 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1161 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1162 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop may start from here</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1175 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1612 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1615 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1616 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1626 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++        </tbody>
++      </table>
++      <t indent="0" pn="section-5-5">In <xref target="table-1" format="default" sectionFormat="of" derivedContent="Table 1"/>, due to discrepancies in the SPF management and after
+ multiple events of different types, the values of the SPF delay are
+ completely misaligned between node S and node E, leading to the
+ creation of micro-loops.</t>
+-      <t indent="0" pn="section-5-10">The same issue can also appear with only a single type of event as
++      <t indent="0" pn="section-5-6">The same issue can also appear with only a single type of event as
+ shown below:</t>
+-      <t indent="0" pn="section-5-11"><table align="center">
+-<thead>
+-<tr>
+-<tr>
+-<td align="left">   Time</td>
+-<td align="left">Network Event</td>
+-<td align="left">Router S Events</td>
+-<td align="left">Router E Events  </td>
+-</tr>
+-</tr>
+-</thead>
+-<tbody>
+-<tr>
+-<td align="left">   t0=0</td>
+-<td align="left">Link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  10 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 150 ms)</td>
+-<td align="left">Schedule SPF (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  160 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  161 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-</tr>
+-<tr>
+-<td align="left">  162 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  163 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  164 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  175 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  178 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  200 ms</td>
+-<td align="left">Link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  212 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 150 ms)</td>
+-</tr>
+-<tr>
+-<td align="left">  214 ms </td>
+-<td align="left"> </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  370 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-</tr>
+-<tr>
+-<td align="left">  372 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-</tr>
+-<tr>
+-<td align="left">  373 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  373 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  375 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  376 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  383 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  385 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  400 ms</td>
+-<td align="left">Link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  410 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 150 ms)</td>
+-<td align="left">Schedule SPF (in  300 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  560 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-</tr>
+-<tr>
+-<td align="left">  561 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-</tr>
+-<tr>
+-<td align="left">  562 ms </td>
+-<td align="left">Micro-loop may start from here</td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  568 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  710 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  713 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  714 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  716 ms</td>
+-<td align="left">Micro-loop ends</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left"> 1000 ms</td>
+-<td align="left">Link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left"> 1010 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 1 s)</td>
+-<td align="left">Schedule SPF (in  600 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left"> 1612 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left"> 1615 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left"> 1616 ms </td>
+-<td align="left">Micro-loop may start from here</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left"> 1626 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left"> 2012 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-</tr>
+-<tr>
+-<td align="left"> 2014 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-</tr>
+-<tr>
+-<td align="left"> 2015 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left"> 2025 ms</td>
+-<td align="left">Micro-loop ends</td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-</tbody>
+-</table>
+-</t>
+-      <t indent="0" pn="section-5-12">Table 2: Route Computation upon Multiple Link Down Events When S and
+-                      E Use Different Behaviors</t>
++      <table anchor="table-2" align="center" pn="table-2">
++        <name slugifiedName="name-route-computation-upon-mult">Route Computation upon Multiple Link Down Events When S and E Use Different Behaviors</name>
++        <thead>
++          <tr>
++            <th align="left" colspan="1" rowspan="1">Time</th>
++            <th align="left" colspan="1" rowspan="1">Network Event</th>
++            <th align="left" colspan="1" rowspan="1">Router S Events</th>
++            <th align="left" colspan="1" rowspan="1">Router E Events</th>
++          </tr>
++        </thead>
++        <tbody>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">t0=0</td>
++            <td align="left" colspan="1" rowspan="1">Link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">10 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">160 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">161 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">162 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">163 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">164 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">175 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">178 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">200 ms</td>
++            <td align="left" colspan="1" rowspan="1">Link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">212 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">214 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">370 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">372 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">373 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">373 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">375 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">376 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">383 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">385 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">400 ms</td>
++            <td align="left" colspan="1" rowspan="1">Link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">410 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 300 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">560 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">561 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">562 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop may start from here</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">568 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">710 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">713 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">714 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">716 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1000 ms</td>
++            <td align="left" colspan="1" rowspan="1">Link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1010 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 1 s)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 600 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1612 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1615 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1616 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop may start from here</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1626 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">2012 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">2014 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">2015 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">2025 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop ends</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++        </tbody>
++      </table>
+     </section>
+     <section anchor="benefits-of-standardized-spf-delay-behavior" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+       <name slugifiedName="name-benefits-of-standardized-spf-delay-behavior">Benefits of Standardized SPF Delay Behavior</name>
+-      <t indent="0" pn="section-6-1">Table 3 uses the same event sequence as Table 1.  Fewer and/or
++      <t indent="0" pn="section-6-1"><xref target="table-3" format="default" sectionFormat="of" derivedContent="Table 3"/> uses the same event sequence as <xref target="table-1" format="default" sectionFormat="of" derivedContent="Table 1"/>.  Fewer and/or
+ shorter micro-loops are expected using a standardized SPF delay.</t>
+-      <t indent="0" pn="section-6-2"><table align="center">
+-<thead>
+-<tr>
+-<tr>
+-<td align="left">   Time</td>
+-<td align="left">Network Event</td>
+-<td align="left">Router S Events</td>
+-<td align="left">Router E Events  </td>
+-</tr>
+-</tr>
+-</thead>
+-<tbody>
+-<tr>
+-<td align="left">   t0=0</td>
+-<td align="left">Prefix DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  10 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 150 ms)</td>
+-<td align="left">Schedule PRC (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  160 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-<td align="left">PRC starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  161 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-</tr>
+-<tr>
+-<td align="left">  162 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-<td align="left">PRC ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  163 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  175 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  176 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  200 ms</td>
+-<td align="left">Prefix UP</td>
+-</tr>
+-<tr>
+-<td align="left">  212 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 150 ms)</td>
+-</tr>
+-<tr>
+-<td align="left">  213 ms </td>
+-<td align="left"> </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  370 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-<td align="left">PRC starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  372 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-</tr>
+-<tr>
+-<td align="left">  373 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-<td align="left">PRC ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  374 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  383 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left">  384 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left">  400 ms</td>
+-<td align="left">Prefix DOWN</td>
+-</tr>
+-<tr>
+-<td align="left">  410 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule PRC (in 300 ms)</td>
+-<td align="left">Schedule PRC (in  300 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left">  710 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC starts</td>
+-<td align="left">PRC starts    </td>
+-</tr>
+-<tr>
+-<td align="left">  711 ms</td>
+-<td align="left"></td>
+-<td align="left">PRC ends</td>
+-<td align="left">PRC ends     </td>
+-</tr>
+-<tr>
+-<td align="left">  712 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts</td>
+-</tr>
+-<tr>
+-<td align="left">  713 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left">  716 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-<tr>
+-<td align="left"> 1000 ms</td>
+-<td align="left">S-D link DOWN</td>
+-</tr>
+-<tr>
+-<td align="left"> 1010 ms </td>
+-<td align="left"> </td>
+-<td align="left">Schedule SPF (in 150 ms)</td>
+-<td align="left">Schedule SPF (in  150 ms)      </td>
+-</tr>
+-<tr>
+-<td align="left"> 1160 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF starts</td>
+-</tr>
+-<tr>
+-<td align="left"> 1161 ms</td>
+-<td align="left"></td>
+-<td align="left">SPF ends</td>
+-<td align="left">SPF starts    </td>
+-</tr>
+-<tr>
+-<td align="left"> 1162 ms </td>
+-<td align="left">Micro-loop may start from here</td>
+-<td align="left">RIB/FIB starts</td>
+-<td align="left">SPF ends     </td>
+-</tr>
+-<tr>
+-<td align="left"> 1163 ms</td>
+-<td align="left"></td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB starts  </td>
+-</tr>
+-<tr>
+-<td align="left"> 1175 ms</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends</td>
+-</tr>
+-<tr>
+-<td align="left"> 1177 ms</td>
+-<td align="left">Micro-loop ends</td>
+-<td align="left"></td>
+-<td align="left">RIB/FIB ends   </td>
+-</tr>
+-</tbody>
+-</table>
+-</t>
+-      <t indent="0" pn="section-6-3"><artwork name="" type="" align="left" alt=""><![CDATA[
+-  Table 3: Route Computation When S and E Use the Same Standardized
+-                              Behavior
+-]]></artwork>
+-</t>
+-      <t indent="0" pn="section-6-4">As displayed above, there can be other parameters, like router
+-computation power and flooding timers, that may also influence micro-
+-loops.  In all the examples in this document comparing the SPF timer
++      <table anchor="table-3" align="center" pn="table-3">
++        <name slugifiedName="name-route-computation-when-s-and">Route Computation When S and E Use the Same Standardized Behavior</name>
++        <thead>
++          <tr>
++            <th align="left" colspan="1" rowspan="1">Time</th>
++            <th align="left" colspan="1" rowspan="1">Network Event</th>
++            <th align="left" colspan="1" rowspan="1">Router S Events</th>
++            <th align="left" colspan="1" rowspan="1">Router E Events</th>
++          </tr>
++        </thead>
++        <tbody>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">t0=0</td>
++            <td align="left" colspan="1" rowspan="1">Prefix DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">10 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">160 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">161 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">162 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">163 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">175 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">176 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">200 ms</td>
++            <td align="left" colspan="1" rowspan="1">Prefix UP</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">212 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">213 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">370 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">372 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">373 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">374 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">383 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">384 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">400 ms</td>
++            <td align="left" colspan="1" rowspan="1">Prefix DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">410 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">710 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++            <td align="left" colspan="1" rowspan="1">PRC starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">711 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++            <td align="left" colspan="1" rowspan="1">PRC ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">712 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">713 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">716 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1000 ms</td>
++            <td align="left" colspan="1" rowspan="1">S-D link DOWN</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1010 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++            <td align="left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1160 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1161 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++            <td align="left" colspan="1" rowspan="1">SPF starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1162 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop may start from here</td>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++            <td align="left" colspan="1" rowspan="1">SPF ends</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1163 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB starts</td>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1175 ms</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++          </tr>
++          <tr>
++            <td align="left" colspan="1" rowspan="1">1177 ms</td>
++            <td align="left" colspan="1" rowspan="1">Micro-loop ends</td>
++            <td align="left" colspan="1" rowspan="1"/>
++            <td align="left" colspan="1" rowspan="1">RIB/FIB ends</td>
++          </tr>
++        </tbody>
++      </table>
++      <t indent="0" pn="section-6-3">As displayed above, there can be other parameters, like router
++computation power and flooding timers, that may also influence
++micro-loops.  In all the examples in this document comparing the SPF timer
+ behavior of router S and router E, we have made router E a bit slower
+ than router S.  This can lead to micro-loops even when both S and E
+ use a common standardized SPF behavior.  However, by aligning
+@@ -1077,27 +1096,35 @@
+         <reference anchor="RFC1195" target="https://www.rfc-editor.org/info/rfc1195" quoteTitle="true" derivedAnchor="RFC1195">
+           <front>
+             <title>Use of OSI IS-IS for routing in TCP/IP and dual environments</title>
++            <author fullname="R. Callon" initials="R." surname="Callon"/>
+             <date year="1990" month="December"/>
+           </front>
+-          <seriesInfo name="RFC">1195</seriesInfo>
+-          <seriesInfo name="DOI">10.17487/RFC1195</seriesInfo>
++          <seriesInfo name="RFC" value="1195"/>
++          <seriesInfo name="DOI" value="10.17487/RFC1195"/>
+         </reference>
+         <reference anchor="RFC2328" target="https://www.rfc-editor.org/info/rfc2328" quoteTitle="true" derivedAnchor="RFC2328">
+           <front>
+             <title>OSPF Version 2</title>
++            <author fullname="J. Moy" initials="J." surname="Moy"/>
+             <date year="1998" month="April"/>
+           </front>
+-          <seriesInfo name="STD">54</seriesInfo>
+-          <seriesInfo name="RFC">2328</seriesInfo>
+-          <seriesInfo name="DOI">10.17487/RFC2328</seriesInfo>
++          <seriesInfo name="STD" value="54"/>
++          <seriesInfo name="RFC" value="2328"/>
++          <seriesInfo name="DOI" value="10.17487/RFC2328"/>
+         </reference>
+         <reference anchor="RFC8405" target="https://www.rfc-editor.org/info/rfc8405" quoteTitle="true" derivedAnchor="RFC8405">
+           <front>
+             <title>Shortest Path First (SPF) Back-Off Delay Algorithm for Link-State IGPs</title>
++            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
++            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
++            <author fullname="H. Gredler" initials="H." surname="Gredler"/>
++            <author fullname="A. Lindem" initials="A." surname="Lindem"/>
++            <author fullname="P. Francois" initials="P." surname="Francois"/>
++            <author fullname="C. Bowers" initials="C." surname="Bowers"/>
+             <date year="2018" month="June"/>
+           </front>
+-          <seriesInfo name="RFC">8405</seriesInfo>
+-          <seriesInfo name="DOI">10.17487/RFC8405</seriesInfo>
++          <seriesInfo name="RFC" value="8405"/>
++          <seriesInfo name="DOI" value="10.17487/RFC8405"/>
+         </reference>
+       </references>
+       <references pn="section-9.2">
+@@ -1105,31 +1132,65 @@
+         <reference anchor="MICROLOOP-LSRP" quoteTitle="true" derivedAnchor="MICROLOOP-LSRP">
+           <front>
+             <title>Analysis and Minimization of Microloops in Link-state Routing Protocols</title>
++            <author fullname="A. Zinin" initials="A." surname="Zinin"/>
+             <date year="2005" month="October"/>
+           </front>
++          <refcontent>Work in Progress</refcontent>
++          <seriesInfo name="Internet-Draft" value="draft-ietf-rtgwg-microloop-analysis-01"/>
+         </reference>
+         <reference anchor="RFC6976" target="https://www.rfc-editor.org/info/rfc6976" quoteTitle="true" derivedAnchor="RFC6976">
+           <front>
+             <title>Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach</title>
++            <author fullname="M. Shand" initials="M." surname="Shand"/>
++            <author fullname="S. Bryant" initials="S." surname="Bryant"/>
++            <author fullname="S. Previdi" initials="S." surname="Previdi"/>
++            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
++            <author fullname="P. Francois" initials="P." surname="Francois"/>
++            <author fullname="O. Bonaventure" initials="O." surname="Bonaventure"/>
+             <date year="2013" month="July"/>
+           </front>
+-          <seriesInfo name="RFC">6976</seriesInfo>
+-          <seriesInfo name="DOI">10.17487/RFC6976</seriesInfo>
++          <seriesInfo name="RFC" value="6976"/>
++          <seriesInfo name="DOI" value="10.17487/RFC6976"/>
+         </reference>
+         <reference anchor="RFC8333" target="https://www.rfc-editor.org/info/rfc8333" quoteTitle="true" derivedAnchor="RFC8333">
+           <front>
+             <title>Micro-loop Prevention by Introducing a Local Convergence Delay</title>
++            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
++            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
++            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
++            <author fullname="P. Francois" initials="P." surname="Francois"/>
+             <date year="2018" month="March"/>
+           </front>
+-          <seriesInfo name="RFC">8333</seriesInfo>
+-          <seriesInfo name="DOI">10.17487/RFC8333</seriesInfo>
++          <seriesInfo name="RFC" value="8333"/>
++          <seriesInfo name="DOI" value="10.17487/RFC8333"/>
+         </reference>
+       </references>
+     </references>
+     <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">
+       <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+-        <t indent="0" pn="section-appendix.a-1">The authors would like to thank Mike Shand and Chris Bowers for their
++      <t indent="0" pn="section-appendix.a-1">The authors would like to thank Mike Shand and Chris Bowers for their
+ useful comments.</t>
+-      </section>
++    </section>
++    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
++      <name slugifiedName="name-authors-addresses">Authors' Addresses</name>
++      <author fullname="Stephane Litkowski" initials="S." surname="Litkowski">
++        <organization showOnFrontPage="true">Orange Business Service</organization>
++        <address>
++          <email>stephane.litkowski@orange.com</email>
++        </address>
++      </author>
++      <author fullname="Bruno Decraene" initials="B." surname="Decraene">
++        <organization showOnFrontPage="true">Orange</organization>
++        <address>
++          <email>bruno.decraene@orange.com</email>
++        </address>
++      </author>
++      <author fullname="Martin Horneffer" initials="M." surname="Horneffer">
++        <organization showOnFrontPage="true">Deutsche Telekom</organization>
++        <address>
++          <email>martin.horneffer@telekom.de</email>
++        </address>
++      </author>
++    </section>
+   </back>
+ </rfc>

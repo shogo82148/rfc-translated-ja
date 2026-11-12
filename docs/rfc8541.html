@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8541: 最短経路優先（SPF）のトリガー戦略と遅延戦略がIGPのマイクロループに与える影響（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8541.html">RFC 8541</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8541">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8541">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8541</h1>
+<h1 id="title-en">Impact of Shortest Path First (SPF) Trigger and Delay Strategies on IGP Micro-loops</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8541</h1>
+<h1 id="title-ja">最短経路優先（SPF）のトリガー戦略と遅延戦略がIGPのマイクロループに与える影響</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">A micro-loop is a packet-forwarding loop that may occur transiently
+among two or more routers in a hop-by-hop packet-forwarding paradigm.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">マイクロループ（micro-loop）とは、ホップバイホップのパケット転送パラダイムにおいて、2台以上のルーターの間で一時的に発生する可能性のあるパケット転送ループです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">This document analyzes the impact of using different link state IGP
+implementations in a single network with respect to micro-loops.  The
+analysis is focused on the Shortest Path First (SPF) delay algorithm
+but also mentions the impact of SPF trigger strategies.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">この文書では、1つのネットワーク内で異なるリンクステートIGPの実装を使用することが、マイクロループに関してどのような影響を与えるかを分析します。分析の焦点は最短経路優先（SPF: Shortest Path First）の遅延アルゴリズムですが、SPFトリガー戦略の影響にも言及します。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Not all documents
+approved by the IESG are candidates for any level of Internet
+Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+https://www.rfc-editor.org/info/rfc8541.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、https://www.rfc-editor.org/info/rfc8541 で入手できます。</p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2019 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2019 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(https://trustee.ietf.org/license-info) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-problem-statement-en">Problem Statement</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-spf-trigger-strategies-en">SPF Trigger Strategies</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-spf-delay-strategies-en">SPF Delay Strategies</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-two-step-spf-delay-en">Two-Step SPF Delay</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-en">
+              <p id="section-toc.1-1.4.2.1-en"><a href="#section-4.2-en">4.2</a>.  <a href="#name-exponential-back-off-delay-en">Exponential Back-Off Delay</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-mixing-strategies-en">Mixing Strategies</a></p>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-benefits-of-standardized-spf-delay-behavior-en">Benefits of Standardized SPF Delay Behavior</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.9.1.1-en"><a href="#section-9.1-en">9.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.9.2-en">
+              <p id="section-toc.1-1.9.2.1-en"><a href="#section-9.2-en">9.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-en">
+            <p id="section-toc.1-1.a.1-en"><a href="#section-appendix.a-en"></a><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.b-en">
+            <p id="section-toc.1-1.b.1-en"><a href="#section-appendix.b-en"></a><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-problem-statement-ja">問題の記述</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-spf-trigger-strategies-ja">SPFトリガー戦略</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-spf-delay-strategies-ja">SPF遅延戦略</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-two-step-spf-delay-ja">2段階SPF遅延</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-ja">
+              <p id="section-toc.1-1.4.2.1-ja"><a href="#section-4.2-ja">4.2</a>.  <a href="#name-exponential-back-off-delay-ja">指数バックオフ遅延</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-mixing-strategies-ja">戦略の混在</a></p>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-benefits-of-standardized-spf-delay-behavior-ja">標準化されたSPF遅延動作の利点</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.9.1.1-ja"><a href="#section-9.1-ja">9.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.9.2-ja">
+              <p id="section-toc.1-1.9.2.1-ja"><a href="#section-9.2-ja">9.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-ja">
+            <p id="section-toc.1-1.a.1-ja"><a href="#section-appendix.a-ja"></a><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.b-ja">
+            <p id="section-toc.1-1.b.1-ja"><a href="#section-appendix.b-ja"></a><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">Link state IGP protocols are based on a topology database on which
+the SPF algorithm is run to find a consistent set of non-looping
+routing paths.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">リンクステートIGPプロトコルは、トポロジーデータベースに基づいています。このデータベースに対してSPFアルゴリズムを実行し、ループのない一貫したルーティング経路の集合を求めます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">Specifications like IS-IS <span>[<a href="#RFC1195-en">RFC1195</a>]</span> propose some optimizations of the
+route computation (see Appendix C.1 of <span>[<a href="#RFC1195-en">RFC1195</a>]</span>), but not all
+implementations follow those non-mandatory optimizations.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">IS-IS <span>[<a href="#RFC1195-ja">RFC1195</a>]</span>のような仕様は、経路計算の最適化をいくつか提案しています（<span>[<a href="#RFC1195-ja">RFC1195</a>]</span>の付録C.1を参照）。しかし、必須ではないこれらの最適化にすべての実装が従っているわけではありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">In this document, we refer to the events that lead to a new SPF
+computation based on the topology as "SPF triggers".</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">この文書では、トポロジーに基づく新たなSPF計算につながるイベントを「SPFトリガー（SPF trigger）」と呼びます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">Link state IGP protocols, like OSPF <span>[<a href="#RFC2328-en">RFC2328</a>]</span> and IS-IS <span>[<a href="#RFC1195-en">RFC1195</a>]</span>,
+use multiple timers to control the router behavior in case of churn:
+SPF delay, Partial Route Computation (PRC) delay, Link State Packet
+(LSP) generation delay, LSP flooding delay, and LSP retransmission
+interval.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">OSPF <span>[<a href="#RFC2328-ja">RFC2328</a>]</span>やIS-IS <span>[<a href="#RFC1195-ja">RFC1195</a>]</span>のようなリンクステートIGPプロトコルは、チャーン（churn: 頻繁な状態変化）が発生した場合のルーターの動作を制御するために、複数のタイマーを使用します。SPF遅延、部分経路計算（PRC: Partial Route Computation）遅延、リンクステートパケット（LSP: Link State Packet）生成遅延、LSPフラッディング遅延、LSP再送間隔です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-5-en">Some of the values and behaviors of these timers are standardized in
+protocol specifications, and some are not.  The SPF computation-related
+timers have generally remained unspecified.</p></div>
+<div lang="ja" class="col"><p id="section-1-5-ja">これらのタイマーの値や動作には、プロトコル仕様で標準化されているものもあれば、そうでないものもあります。SPF計算に関連するタイマーは、一般に規定されないままになっています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-6-en">Implementations are free to implement non-standardized timers in any
+way.  For some standardized timers, implementations may offer
+dynamically adjusted timers to help control the churn rather than use
+static configurable values.</p></div>
+<div lang="ja" class="col"><p id="section-1-6-ja">実装は、標準化されていないタイマーを自由に実装できます。標準化されたタイマーの一部については、静的に設定可能な値を使用する代わりに、チャーンの制御に役立つよう動的に調整されるタイマーを提供する実装もあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-7-en">"SPF delay" refers to the timer in most implementations that
+specifies the required delay before running an SPF computation after
+an SPF trigger is received.</p></div>
+<div lang="ja" class="col"><p id="section-1-7-ja">「SPF遅延（SPF delay）」とは、ほとんどの実装において、SPFトリガーを受け取ってからSPF計算を実行するまでに必要な遅延を指定するタイマーを指します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-8-en">A micro-loop is a packet-forwarding loop that may occur transiently
+among two or more routers in a hop-by-hop packet-forwarding paradigm.
+These micro-loops are formed when two routers do not update their
+Forwarding Information Bases (FIBs) for a certain prefix at the same
+time.  The micro-loop phenomenon is described in <span>[<a href="#MICROLOOP-LSRP-en">MICROLOOP-LSRP</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-8-ja">マイクロループとは、ホップバイホップのパケット転送パラダイムにおいて、2台以上のルーターの間で一時的に発生する可能性のあるパケット転送ループです。マイクロループは、2台のルーターがあるプレフィックスについての転送情報ベース（FIB: Forwarding Information Base）を同時に更新しない場合に形成されます。マイクロループの現象は<span>[<a href="#MICROLOOP-LSRP-ja">MICROLOOP-LSRP</a>]</span>で説明されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-9-en">Two micro-loop mitigation techniques have been defined by IETF.  The
+mechanism in <span>[<a href="#RFC6976-en">RFC6976</a>]</span> has not been widely implemented, presumably
+due to the complexity of the technique.  The mechanism in <span>[<a href="#RFC8333-en">RFC8333</a>]</span>
+has been implemented.  However, it does not prevent all micro-loops
+that can occur for a given topology and failure scenario.</p></div>
+<div lang="ja" class="col"><p id="section-1-9-ja">IETFでは2つのマイクロループ緩和手法が定義されています。<span>[<a href="#RFC6976-ja">RFC6976</a>]</span>のメカニズムは、おそらく手法の複雑さのために、広くは実装されていません。<span>[<a href="#RFC8333-ja">RFC8333</a>]</span>のメカニズムは実装されています。しかし、このメカニズムは、あるトポロジーと障害シナリオにおいて発生しうるすべてのマイクロループを防げるわけではありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-10-en">In multi-vendor networks, using different implementations of a link
+state protocol may favor micro-loop creation during the convergence
+process due to discrepancies in timers.  Service providers already
+know to use timers with similar values and behaviors for all of the
+network as a best practice, but this is sometimes not possible due to
+the limitations of implementations.</p></div>
+<div lang="ja" class="col"><p id="section-1-10-ja">マルチベンダーのネットワークでは、リンクステートプロトコルの異なる実装を使用すると、タイマーの食い違いにより、収束（convergence）の過程でマイクロループが生じやすくなる場合があります。サービスプロバイダーは、ネットワーク全体で同様の値と動作のタイマーを使用することをベストプラクティスとしてすでに知っていますが、実装の制限によりそれが不可能な場合もあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-11-en">This document presents reasons for service providers to have
+consistent implementation of link state protocols across vendors.  In
+particular, this document analyzes the impact of using different link
+state IGP implementations in a single network with regard to
+micro-loops.  The analysis focuses on the SPF delay algorithm.</p></div>
+<div lang="ja" class="col"><p id="section-1-11-ja">この文書では、サービスプロバイダーがベンダー間で一貫したリンクステートプロトコルの実装を求める理由を示します。特に、この文書では、1つのネットワーク内で異なるリンクステートIGPの実装を使用することが、マイクロループに関してどのような影響を与えるかを分析します。分析の焦点はSPF遅延アルゴリズムです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-12-en"><span>[<a href="#RFC8405-en">RFC8405</a>]</span> defines a solution that partially addresses this problem
+statement, and this document captures the reasoning of the provided
+solution.</p></div>
+<div lang="ja" class="col"><p id="section-1-12-ja"><span>[<a href="#RFC8405-ja">RFC8405</a>]</span>は、この問題の記述に部分的に対処する解決策を定義しています。この文書は、その解決策の根拠をまとめたものです。</p></div>
+</div></section><section><span id="section-2"></span><span id="problem-statement-en"></span><span id="problem-statement-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-problem-statement-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-problem-statement-en" class="section-name selfRef">Problem Statement</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-problem-statement-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-problem-statement-ja" class="section-name selfRef">問題の記述</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-1-en"><span id="fig-1-en"></span><div lang="" id="section-2-1.1-en"><pre>
+                           S ---- E
+                           |      |
+                        10 |      | 10
+                           |      |
+                           D ---- A
+                           |  2
+                           Px
+</pre></div>
+<figcaption><span>Figure 1</span>:
+<span>Network Topology Experiencing Micro-loops</span>
+        </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-1-ja"><span id="fig-1-ja"></span><div lang="" id="section-2-1.1-ja"><pre>
+                           S ---- E
+                           |      |
+                        10 |      | 10
+                           |      |
+                           D ---- A
+                           |  2
+                           Px
+</pre></div>
+<figcaption><span>Figure 1</span>:
+<span>マイクロループが発生するネットワークトポロジー</span>
+        </figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-2-en"><a href="#fig-1-en">Figure 1</a> represents a small network composed of four routers (S, D,
+E, and A).  Router S primarily uses the SD link to reach the prefixes
+behind router D (named Px).  When the SD link fails, the IGP
+convergence occurs.  If S converges before E, S will forward the
+traffic to Px through E; however, because E has not converged yet, E
+will loop the traffic back to S, leading to a micro-loop.</p></div>
+<div lang="ja" class="col"><p id="section-2-2-ja"><a href="#fig-1-ja">Figure 1</a>は、4台のルーター（S、D、E、A）で構成される小さなネットワークを表しています。ルーターSは、ルーターDの背後にあるプレフィックス（Pxと呼びます）に到達するために、主にSDリンクを使用します。SDリンクに障害が発生すると、IGPの収束が起こります。SがEよりも先に収束すると、SはPx宛てのトラフィックをE経由で転送します。しかし、Eはまだ収束していないため、Eはそのトラフィックをループさせて、Sに送り返します。その結果、マイクロループが発生します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-3-en">The micro-loop appears due to the asynchronous convergence of nodes
+in a network when an event occurs.</p></div>
+<div lang="ja" class="col"><p id="section-2-3-ja">マイクロループは、イベントが発生したときにネットワーク内のノードが非同期に収束することによって発生します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-4-en">Multiple factors (or a combination of factors) may increase the
+probability of a micro-loop appearing:</p></div>
+<div lang="ja" class="col"><p id="section-2-4-ja">複数の要因（または要因の組み合わせ）により、マイクロループが発生する確率が高まる場合があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-2-5-en">
+<li id="section-2-5.1-en">Delay of failure notification: The greater the time gap between E
+and S being advised of the failure, the greater the chance that a
+micro-loop may appear.</li>
+        <li id="section-2-5.2-en">SPF delay: Most implementations support a delay for the SPF
+computation to catch as many events as possible.  If S uses an SPF
+delay timer of x ms, E uses an SPF delay timer of y ms, and x &lt; y,
+E would start converging after S, leading to a potential
+micro-loop.</li>
+        <li id="section-2-5.3-en">SPF computation time: This is mostly a matter of CPU power and
+optimizations like incremental SPF.  If S computes its SPF faster
+than E, there is a chance for a micro-loop to appear.  Today, CPUs
+are fast enough to consider the SPF computation time as negligible
+(on the order of milliseconds in a large network).</li>
+        <li id="section-2-5.4-en">SPF computation ordering: An SPF trigger can be common to multiple
+IGP areas or levels (e.g., IS-IS Level 1 and Level 2) or to
+multiple address families with multi-topologies.  There is no
+specified order for SPF computation today, and it is
+implementation dependent.  In such scenarios, if the order of SPF
+computation done in S and E for each area, level, topology, or SPF
+algorithm is different, there is a possibility for a micro-loop to
+appear.</li>
+        <li id="section-2-5.5-en">RIB and FIB prefix insertion speed or ordering: This is highly
+dependent on the implementation.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-2-5-ja">
+<li id="section-2-5.1-ja">障害通知の遅延: EとSが障害を知らされる時刻の差が大きいほど、マイクロループが発生する可能性が高くなります。</li>
+        <li id="section-2-5.2-ja">SPF遅延: ほとんどの実装は、できるだけ多くのイベントをまとめて捉えるために、SPF計算の遅延をサポートしています。SがSPF遅延タイマーとしてx ms、EがSPF遅延タイマーとしてy msを使用し、x &lt; yである場合、EはSの後に収束を開始することになり、マイクロループが発生する可能性があります。</li>
+        <li id="section-2-5.3-ja">SPF計算時間: これは主にCPU性能と、インクリメンタルSPFなどの最適化の問題です。SがEよりも速くSPFを計算すると、マイクロループが発生する可能性があります。今日では、CPUは十分に高速であり、SPF計算時間は無視できると考えられます（大規模なネットワークでもミリ秒のオーダーです）。</li>
+        <li id="section-2-5.4-ja">SPF計算の順序: 1つのSPFトリガーが、複数のIGPのエリアやレベル（たとえば、IS-ISのレベル1とレベル2）に共通する場合や、マルチトポロジーを使用する複数のアドレスファミリーに共通する場合があります。現在、SPF計算の順序は規定されておらず、実装に依存しています。このようなシナリオにおいて、エリア、レベル、トポロジー、SPFアルゴリズムごとのSPF計算の順序がSとEで異なる場合、マイクロループが発生する可能性があります。</li>
+        <li id="section-2-5.5-ja">RIBおよびFIBへのプレフィックス挿入の速度や順序: これは実装に大きく依存します。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-6-en">Even if all of these factors increase the probability of a micro-loop
+appearing, the SPF delay plays a significant role, especially in case
+of churn.  As the number of IGP events increases, the delta between
+the SPF delay values used by routers becomes significant; in fact, it
+becomes the dominating factor (especially when one router increases
+its timer exponentially while another one increases it in a smoother
+way).  Another important factor is the time to update the FIB.  As of
+today, the total FIB update time is the major factor for IGP
+convergence.  However, for micro-loops, what matters is not the total
+time but the difference in installing the same prefix between nodes.
+The time to update the FIB may be the main part for the first
+iteration but not for subsequent IGP events.  In addition, the time
+to update the FIB is very implementation specific and difficult or
+impossible to standardize, while the SPF delay algorithm may be
+standardized.</p></div>
+<div lang="ja" class="col"><p id="section-2-6-ja">これらの要因はいずれもマイクロループが発生する確率を高めますが、とりわけチャーンが発生した場合には、SPF遅延が重要な役割を果たします。IGPイベントの数が増えるにつれて、ルーターが使用するSPF遅延の値の差が大きくなり、実際にはそれが支配的な要因となります（特に、あるルーターがタイマーを指数関数的に増加させる一方で、別のルーターがより緩やかに増加させる場合）。もう1つの重要な要因は、FIBの更新にかかる時間です。今日では、FIBの更新にかかる合計時間が、IGPの収束における主要な要因です。しかし、マイクロループにとって重要なのは合計時間ではなく、ノード間で同じプレフィックスをインストールする時刻の差です。最初の1回ではFIBの更新時間が主要な部分を占める場合がありますが、それに続くIGPイベントではそうではありません。さらに、FIBの更新時間は実装に強く依存しており、標準化することは困難または不可能です。一方、SPF遅延アルゴリズムは標準化できる可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-7-en">As a consequence, this document will focus on an analysis of SPF
+delay behavior and associated triggers.</p></div>
+<div lang="ja" class="col"><p id="section-2-7-ja">そのため、この文書では、SPF遅延の動作と関連するトリガーの分析に焦点を当てます。</p></div>
+</div></section><section><span id="section-3"></span><span id="spf-trigger-strategies-en"></span><span id="spf-trigger-strategies-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-spf-trigger-strategies-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-spf-trigger-strategies-en" class="section-name selfRef">SPF Trigger Strategies</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-spf-trigger-strategies-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-spf-trigger-strategies-ja" class="section-name selfRef">SPFトリガー戦略</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">Depending on the change advertised in the LSP or LSA (Link State
+Advertisement), the topology may or may not be affected.  An
+implementation may avoid running the SPF computation (and may only
+run an IP reachability computation instead) if the advertised change
+does not affect the topology.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">LSPまたはLSA（Link State Advertisement: リンクステート広告）で広告された変更の内容によって、トポロジーが影響を受ける場合もあれば、受けない場合もあります。広告された変更がトポロジーに影響しない場合、実装はSPF計算の実行を避ける（代わりにIP到達可能性の計算だけを実行する）ことがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">Different strategies can trigger the SPF computation:</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">SPF計算のトリガーには、さまざまな戦略があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3-3-en">
+<li id="section-3-3.1-en">An implementation may always run a full SPF for any type of
+change.</li>
+        <li id="section-3-3.2-en">An implementation may run a full SPF only when required.  For
+example, if a link fails, a local node will run an SPF for its
+local LSP update.  If the LSP from the neighbor (describing the
+same failure) is received after SPF has started, the local node
+can decide that a new full SPF is not required as the topology
+has not changed.</li>
+        <li id="section-3-3.3-en">If the topology does not change, an implementation may only
+recompute the IP reachability.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-3-3-ja">
+<li id="section-3-3.1-ja">実装は、どのような種類の変更に対しても、常にフルSPFを実行することがあります。</li>
+        <li id="section-3-3.2-ja">実装は、必要な場合にのみフルSPFを実行することがあります。たとえば、リンクに障害が発生すると、ローカルノードは自身のローカルLSPの更新に対してSPFを実行します。（同じ障害を記述した）隣接ノードからのLSPをSPFの開始後に受信した場合、トポロジーは変化していないので、ローカルノードは新たなフルSPFは不要だと判断できます。</li>
+        <li id="section-3-3.3-ja">トポロジーが変化しない場合、実装はIP到達可能性だけを再計算することがあります。</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-4-en">As noted in <a href="#section-1-en">Section 1</a>, SPF optimizations are not mandatory in
+specifications.  This has led to the implementation of different
+strategies.</p></div>
+<div lang="ja" class="col"><p id="section-3-4-ja"><a href="#section-1-ja">Section 1</a>で述べたように、SPFの最適化は仕様上必須ではありません。そのため、さまざまな戦略が実装されています。</p></div>
+</div></section><section><span id="section-4"></span><span id="spf-delay-strategies-en"></span><span id="spf-delay-strategies-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-spf-delay-strategies-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-spf-delay-strategies-en" class="section-name selfRef">SPF Delay Strategies</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-spf-delay-strategies-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-spf-delay-strategies-ja" class="section-name selfRef">SPF遅延戦略</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">Implementations of link state routing protocols use different
+strategies to delay SPF computation.  The two most common SPF delay
+behaviors are the following:</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">リンクステートルーティングプロトコルの実装は、SPF計算を遅延させるためにさまざまな戦略を使用しています。最も一般的な2つのSPF遅延の動作は次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-4-2-en">
+<li id="section-4-2.1-en">Two-step SPF delay</li>
+        <li id="section-4-2.2-en">Exponential back-off delay</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-4-2-ja">
+<li id="section-4-2.1-ja">2段階SPF遅延（two-step SPF delay）</li>
+        <li id="section-4-2.2-ja">指数バックオフ遅延（exponential back-off delay）</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-3-en">These behaviors are explained in the following sections.</p></div>
+<div lang="ja" class="col"><p id="section-4-3-ja">これらの動作については、以降のセクションで説明します。</p></div>
+</div>
+<section><span id="section-4.1"></span><span id="two-step-spf-delay-en"></span><span id="two-step-spf-delay-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-two-step-spf-delay-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-two-step-spf-delay-en" class="section-name selfRef">Two-Step SPF Delay</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-two-step-spf-delay-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-two-step-spf-delay-ja" class="section-name selfRef">2段階SPF遅延</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">The SPF delay is managed by four parameters:</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">SPF遅延は、次の4つのパラメーターによって管理されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.1-2-en">
+<li id="section-4.1-2.1-en">rapid delay: the amount of time to wait before running SPF after
+the initial SPF trigger event.</li>
+          <li id="section-4.1-2.2-en">rapid runs: the number of consecutive SPF runs that can use the
+rapid delay.  When the number is exceeded, the delay moves to the
+slow delay value.</li>
+          <li id="section-4.1-2.3-en">slow delay: the amount of time to wait before running an SPF.</li>
+          <li id="section-4.1-2.4-en">wait time: the amount of time to wait without detecting SPF
+trigger events before going back to the rapid delay.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.1-2-ja">
+<li id="section-4.1-2.1-ja">rapid delay: 最初のSPFトリガーイベントの後、SPFを実行するまでに待つ時間です。</li>
+          <li id="section-4.1-2.2-ja">rapid runs: rapid delayを使用できる連続したSPF実行の回数です。この回数を超えると、遅延はslow delayの値に移行します。</li>
+          <li id="section-4.1-2.3-ja">slow delay: SPFを実行するまでに待つ時間です。</li>
+          <li id="section-4.1-2.4-ja">wait time: rapid delayに戻るまでに、SPFトリガーイベントを検出せずに待つ時間です。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-3-en"><a href="#fig-2-en">Figure 2</a> displays the evolution of the SPF delay timer (based on a
+two-step delay algorithm) upon the reception of multiple events.
+<a href="#fig-2-en">Figure 2</a> considers the following parameters for the algorithm: rapid
+delay (RD) = 50 ms, rapid runs = 3, slow delay (SD) = 1 s, wait time
+= 2 s.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-3-ja"><a href="#fig-2-ja">Figure 2</a>は、複数のイベントを受信したときの（2段階遅延アルゴリズムに基づく）SPF遅延タイマーの推移を示しています。<a href="#fig-2-ja">Figure 2</a>では、アルゴリズムのパラメーターとして、rapid delay（RD）= 50 ms、rapid runs = 3、slow delay（SD）= 1 s、wait time = 2 sを想定しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-2-en"><span id="fig-2-en"></span><div lang="" id="section-4.1-4.1-en"><pre>
+SPF delay time
+    ^
+    |
+    |
+SD- |             x xx x
+    |
+    |
+    |
+RD- |   x  x   x                    x
+    |
+    +---------------------------------&gt; Events
+        |  |   |  | || |            |
+                        &lt; wait time &gt;
+</pre></div>
+<figcaption><span>Figure 2</span>:
+<span>Two-Step SPF Delay Algorithm</span>
+          </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-2-ja"><span id="fig-2-ja"></span><div lang="" id="section-4.1-4.1-ja"><pre>
+SPF delay time
+    ^
+    |
+    |
+SD- |             x xx x
+    |
+    |
+    |
+RD- |   x  x   x                    x
+    |
+    +---------------------------------&gt; Events
+        |  |   |  | || |            |
+                        &lt; wait time &gt;
+</pre></div>
+<figcaption><span>Figure 2</span>:
+<span>2段階SPF遅延アルゴリズム</span>
+          </figcaption></figure></div>
+</div></section><section><span id="section-4.2"></span><span id="exponential-back-off-delay-en"></span><span id="exponential-back-off-delay-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-exponential-back-off-delay-en" lang="en">
+<a id="section-4.2-en" href="#section-4.2-en" class="section-number selfRef">4.2.</a> <a href="#name-exponential-back-off-delay-en" class="section-name selfRef">Exponential Back-Off Delay</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-exponential-back-off-delay-ja" lang="ja">
+<a id="section-4.2-ja" href="#section-4.2-ja" class="section-number selfRef">4.2.</a> <a href="#name-exponential-back-off-delay-ja" class="section-name selfRef">指数バックオフ遅延</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-1-en">The algorithm has two modes: fast mode and back-off mode.  In fast
+mode, the SPF delay is usually delayed by a very small amount of time
+(fast reaction).  When an SPF computation is run in fast mode, the
+algorithm automatically moves to back-off mode (a single SPF run is
+authorized in fast mode).  In back-off mode, the SPF delay increases
+exponentially in each run.  When the network becomes stable, the
+algorithm moves back to fast mode.  The SPF delay is managed by four
+parameters:</p></div>
+<div lang="ja" class="col"><p id="section-4.2-1-ja">このアルゴリズムには、ファストモード（fast mode）とバックオフモード（back-off mode）の2つのモードがあります。ファストモードでは、SPF遅延は通常、非常に短い時間に抑えられます（高速な反応）。ファストモードでSPF計算が実行されると、アルゴリズムは自動的にバックオフモードに移行します（ファストモードで許可されるSPFの実行は1回だけです）。バックオフモードでは、SPF遅延は実行のたびに指数関数的に増加します。ネットワークが安定すると、アルゴリズムはファストモードに戻ります。SPF遅延は、次の4つのパラメーターによって管理されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.2-2-en">
+<li id="section-4.2-2.1-en">first delay: amount of time to wait before running SPF.  This
+delay is used only when SPF is in fast mode.</li>
+          <li id="section-4.2-2.2-en">incremental delay: amount of time to wait before running SPF.
+This delay is used only when SPF is in back-off mode and
+increments exponentially at each SPF run.</li>
+          <li id="section-4.2-2.3-en">maximum delay: maximum amount of time to wait before running SPF.</li>
+          <li id="section-4.2-2.4-en">wait time: amount of time to wait without events before going back
+to fast mode.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.2-2-ja">
+<li id="section-4.2-2.1-ja">first delay: SPFを実行するまでに待つ時間です。この遅延は、SPFがファストモードにある場合にのみ使用されます。</li>
+          <li id="section-4.2-2.2-ja">incremental delay: SPFを実行するまでに待つ時間です。この遅延は、SPFがバックオフモードにある場合にのみ使用され、SPFを実行するたびに指数関数的に増加します。</li>
+          <li id="section-4.2-2.3-ja">maximum delay: SPFを実行するまでに待つ時間の最大値です。</li>
+          <li id="section-4.2-2.4-ja">wait time: ファストモードに戻るまでに、イベントが発生しない状態で待つ時間です。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-3-en"><a href="#fig-3-en">Figure 3</a> displays the evolution of the SPF delay timer (based on an
+exponential back-off delay algorithm) upon the reception of multiple
+events.  <a href="#fig-3-en">Figure 3</a> considers the following parameters for the
+algorithm: first delay (FD) = 50 ms, incremental delay (ID) = 50 ms,
+maximum delay (MD) = 1 s, wait time = 2 s</p></div>
+<div lang="ja" class="col"><p id="section-4.2-3-ja"><a href="#fig-3-ja">Figure 3</a>は、複数のイベントを受信したときの（指数バックオフ遅延アルゴリズムに基づく）SPF遅延タイマーの推移を示しています。<a href="#fig-3-ja">Figure 3</a>では、アルゴリズムのパラメーターとして、first delay（FD）= 50 ms、incremental delay（ID）= 50 ms、maximum delay（MD）= 1 s、wait time = 2 sを想定しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-3-en"><span id="fig-3-en"></span><div lang="" id="section-4.2-4.1-en"><pre>
+SPF delay time
+    ^
+MD- |               xx x
+    |
+    |
+    |
+    |
+    |
+    |             x
+    |
+    |
+    |
+    |          x
+    |
+FD- |   x  x                        x
+ID  |
+    +---------------------------------&gt; Events
+        |  |   |  | || |            |
+                        &lt; wait time &gt;
+       FM-&gt;BM --------------------&gt;FM
+</pre></div>
+<figcaption><span>Figure 3</span>:
+<span>Exponential Back-Off Delay Algorithm</span>
+          </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-3-ja"><span id="fig-3-ja"></span><div lang="" id="section-4.2-4.1-ja"><pre>
+SPF delay time
+    ^
+MD- |               xx x
+    |
+    |
+    |
+    |
+    |
+    |             x
+    |
+    |
+    |
+    |          x
+    |
+FD- |   x  x                        x
+ID  |
+    +---------------------------------&gt; Events
+        |  |   |  | || |            |
+                        &lt; wait time &gt;
+       FM-&gt;BM --------------------&gt;FM
+</pre></div>
+<figcaption><span>Figure 3</span>:
+<span>指数バックオフ遅延アルゴリズム</span>
+          </figcaption></figure></div>
+</div></section></section><section><span id="section-5"></span><span id="mixing-strategies-en"></span><span id="mixing-strategies-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-mixing-strategies-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-mixing-strategies-en" class="section-name selfRef">Mixing Strategies</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-mixing-strategies-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-mixing-strategies-ja" class="section-name selfRef">戦略の混在</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en"><a href="#fig-1-en">Figure 1</a> illustrates a flow of packets from S to D.  S uses optimized
+SPF triggering (full SPF is triggered only when necessary) and
+two-step SPF delay (rapid delay = 150 ms, rapid runs = 3, slow delay = 1
+s).  As the implementation of S is optimized, PRC is available.  For
+PRC delay, we consider the same timers as for SPF delay.  E uses an
+SPF trigger strategy that always computes a full SPF for any change
+and uses the exponential back-off strategy for SPF delay (first delay
+= 150 ms, incremental delay = 150 ms, maximum delay = 1 s).</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja"><a href="#fig-1-ja">Figure 1</a>は、SからDへのパケットの流れを示しています。Sは、最適化されたSPFトリガー（フルSPFは必要な場合にのみトリガーされる）と、2段階SPF遅延（rapid delay = 150 ms、rapid runs = 3、slow delay = 1 s）を使用します。Sの実装は最適化されているので、PRCを利用できます。PRC遅延については、SPF遅延と同じタイマーを想定します。Eは、どのような変更に対しても常にフルSPFを計算するSPFトリガー戦略を使用し、SPF遅延には指数バックオフ戦略（first delay = 150 ms、incremental delay = 150 ms、maximum delay = 1 s）を使用します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-2-en">Consider the following sequence of events:</p></div>
+<div lang="ja" class="col"><p id="section-5-2-ja">次の一連のイベントを考えます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5-3-en">
+<li id="section-5-3.1-en">t0=0 ms: A prefix is declared down in the network.  This event
+happens at time=0.</li>
+        <li id="section-5-3.2-en">200 ms: The prefix is declared up.</li>
+        <li id="section-5-3.3-en">400 ms: The prefix is declared down in the network.</li>
+        <li id="section-5-3.4-en">1000 ms: S-D link fails.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-5-3-ja">
+<li id="section-5-3.1-ja">t0=0 ms: ネットワーク内であるプレフィックスがダウンしたと宣言されます。このイベントは時刻0に発生します。</li>
+        <li id="section-5-3.2-ja">200 ms: そのプレフィックスがアップしたと宣言されます。</li>
+        <li id="section-5-3.3-ja">400 ms: ネットワーク内でそのプレフィックスがダウンしたと宣言されます。</li>
+        <li id="section-5-3.4-ja">1000 ms: S-Dリンクに障害が発生します。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<span id="name-route-computation-when-s-an-en"></span><table id="table-1-en">
+<caption>
+<a href="#table-1-en" class="selfRef">Table 1</a>:
+<a href="#name-route-computation-when-s-an-en" class="selfRef">Route Computation When S and E Use Different Behaviors and Multiple Events Appear</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">Time</th>
+            <th class="text-left" colspan="1" rowspan="1">Network Event</th>
+            <th class="text-left" colspan="1" rowspan="1">Router S Events</th>
+            <th class="text-left" colspan="1" rowspan="1">Router E Events</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">164 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">178 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix UP</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">214 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">375 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">376 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">385 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 300 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">711 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">712 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">714 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">S-D link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 600 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop may start from here</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1612 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1615 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1616 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1626 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+</tbody>
+</table>
+</div>
+<div lang="ja" class="col">
+<span id="name-route-computation-when-s-an-ja"></span><table id="table-1-ja">
+<caption>
+<a href="#table-1-ja" class="selfRef">表 1</a>:
+<a href="#name-route-computation-when-s-an-ja" class="selfRef">SとEが異なる動作を使用し、複数のイベントが発生する場合の経路計算</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">時刻</th>
+            <th class="text-left" colspan="1" rowspan="1">ネットワークのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターSのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターEのイベント</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">164 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">178 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがアップ</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">214 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">375 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">376 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">385 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（300 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（300 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">711 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">712 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">714 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">S-Dリンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（600 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">ここからマイクロループが始まる可能性あり</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1612 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1615 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1616 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1626 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">マイクロループが終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-5-en">In <a href="#table-1-en">Table 1</a>, due to discrepancies in the SPF management and after
+multiple events of different types, the values of the SPF delay are
+completely misaligned between node S and node E, leading to the
+creation of micro-loops.</p></div>
+<div lang="ja" class="col"><p id="section-5-5-ja"><a href="#table-1-ja">Table 1</a>では、SPFの管理方法の食い違いにより、種類の異なる複数のイベントの後で、SPF遅延の値がノードSとノードEの間で完全にずれてしまい、マイクロループが生じています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-6-en">The same issue can also appear with only a single type of event as
+shown below:</p></div>
+<div lang="ja" class="col"><p id="section-5-6-ja">次に示すように、同じ問題は1種類のイベントだけでも発生する可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<span id="name-route-computation-upon-mult-en"></span><table id="table-2-en">
+<caption>
+<a href="#table-2-en" class="selfRef">Table 2</a>:
+<a href="#name-route-computation-upon-mult-en" class="selfRef">Route Computation upon Multiple Link Down Events When S and E Use Different Behaviors</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">Time</th>
+            <th class="text-left" colspan="1" rowspan="1">Network Event</th>
+            <th class="text-left" colspan="1" rowspan="1">Router S Events</th>
+            <th class="text-left" colspan="1" rowspan="1">Router E Events</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">Link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">164 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">178 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">214 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">375 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">376 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">385 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 300 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">560 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">561 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">562 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop may start from here</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">568 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">714 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 1 s)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 600 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1612 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1615 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1616 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop may start from here</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1626 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2012 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2014 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2015 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2025 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop ends</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+</tbody>
+</table>
+</div>
+<div lang="ja" class="col">
+<span id="name-route-computation-upon-mult-ja"></span><table id="table-2-ja">
+<caption>
+<a href="#table-2-ja" class="selfRef">表 2</a>:
+<a href="#name-route-computation-upon-mult-ja" class="selfRef">SとEが異なる動作を使用する場合の、複数のリンクダウンイベントに対する経路計算</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">時刻</th>
+            <th class="text-left" colspan="1" rowspan="1">ネットワークのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターSのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターEのイベント</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">リンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">164 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">178 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">リンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">214 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">375 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">376 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">385 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">リンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（300 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">560 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">561 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">562 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">ここからマイクロループが始まる可能性あり</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">568 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">714 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">マイクロループが終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">リンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（1 s後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（600 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1612 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1615 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1616 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">ここからマイクロループが始まる可能性あり</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1626 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2012 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2014 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2015 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">2025 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">マイクロループが終了</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+</tbody>
+</table>
+</div>
+</div></section><section><span id="section-6"></span><span id="benefits-of-standardized-spf-delay-behavior-en"></span><span id="benefits-of-standardized-spf-delay-behavior-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-benefits-of-standardized-spf-delay-behavior-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-benefits-of-standardized-spf-delay-behavior-en" class="section-name selfRef">Benefits of Standardized SPF Delay Behavior</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-benefits-of-standardized-spf-delay-behavior-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-benefits-of-standardized-spf-delay-behavior-ja" class="section-name selfRef">標準化されたSPF遅延動作の利点</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en"><a href="#table-3-en">Table 3</a> uses the same event sequence as <a href="#table-1-en">Table 1</a>.  Fewer and/or
+shorter micro-loops are expected using a standardized SPF delay.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja"><a href="#table-3-ja">Table 3</a>では、<a href="#table-1-ja">Table 1</a>と同じ一連のイベントを使用します。標準化されたSPF遅延を使用すると、マイクロループはより少なく、またはより短くなると期待されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<span id="name-route-computation-when-s-and-en"></span><table id="table-3-en">
+<caption>
+<a href="#table-3-en" class="selfRef">Table 3</a>:
+<a href="#name-route-computation-when-s-and-en" class="selfRef">Route Computation When S and E Use the Same Standardized Behavior</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">Time</th>
+            <th class="text-left" colspan="1" rowspan="1">Network Event</th>
+            <th class="text-left" colspan="1" rowspan="1">Router S Events</th>
+            <th class="text-left" colspan="1" rowspan="1">Router E Events</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">176 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix UP</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">213 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">374 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">384 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Prefix DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule PRC (in 300 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">711 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">712 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">S-D link DOWN</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+            <td class="text-left" colspan="1" rowspan="1">Schedule SPF (in 150 ms)</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop may start from here</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF ends</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB starts</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1177 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">Micro-loop ends</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB ends</td>
+          </tr>
+</tbody>
+</table>
+</div>
+<div lang="ja" class="col">
+<span id="name-route-computation-when-s-and-ja"></span><table id="table-3-ja">
+<caption>
+<a href="#table-3-ja" class="selfRef">表 3</a>:
+<a href="#name-route-computation-when-s-and-ja" class="selfRef">SとEが同じ標準化された動作を使用する場合の経路計算</a>
+        </caption>
+<thead><tr>
+<th class="text-left" colspan="1" rowspan="1">時刻</th>
+            <th class="text-left" colspan="1" rowspan="1">ネットワークのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターSのイベント</th>
+            <th class="text-left" colspan="1" rowspan="1">ルーターEのイベント</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">t0=0</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">10 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">176 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">200 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがアップ</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">212 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">213 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">370 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">372 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">373 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">374 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">383 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">384 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">400 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">プレフィックスがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">410 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（300 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">PRCをスケジュール（300 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">710 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">711 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+            <td class="text-left" colspan="1" rowspan="1">PRC終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">712 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">713 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">716 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1000 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">S-Dリンクがダウン</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1010 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+            <td class="text-left" colspan="1" rowspan="1">SPFをスケジュール（150 ms後）</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1160 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1161 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1162 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">ここからマイクロループが始まる可能性あり</td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+            <td class="text-left" colspan="1" rowspan="1">SPF終了</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1163 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新開始</td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1175 ms</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+          </tr>
+<tr>
+<td class="text-left" colspan="1" rowspan="1">1177 ms</td>
+            <td class="text-left" colspan="1" rowspan="1">マイクロループが終了</td>
+            <td class="text-left" colspan="1" rowspan="1"></td>
+            <td class="text-left" colspan="1" rowspan="1">RIB/FIB更新終了</td>
+          </tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-3-en">As displayed above, there can be other parameters, like router
+computation power and flooding timers, that may also influence
+micro-loops.  In all the examples in this document comparing the SPF timer
+behavior of router S and router E, we have made router E a bit slower
+than router S.  This can lead to micro-loops even when both S and E
+use a common standardized SPF behavior.  However, by aligning
+implementations of the SPF delay, we expect that service providers
+may reduce the number and duration of micro-loops.</p></div>
+<div lang="ja" class="col"><p id="section-6-3-ja">上の表に示すように、ルーターの計算能力やフラッディングタイマーなど、マイクロループに影響を与えうるパラメーターはほかにもあります。ルーターSとルーターEのSPFタイマーの動作を比較するこの文書のすべての例では、ルーターEをルーターSよりも少し遅くしています。このため、SとEの両方が共通の標準化されたSPF動作を使用していても、マイクロループが発生する可能性があります。しかし、SPF遅延の実装をそろえることで、サービスプロバイダーはマイクロループの数と継続時間を削減できると期待されます。</p></div>
+</div></section><section><span id="section-7"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">This document does not introduce any security considerations.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">この文書は、セキュリティーに関する考慮事項を新たに導入するものではありません。</p></div>
+</div></section><section><span id="section-8"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">This document has no actions for IANA.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-9-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-9.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC1195-en">[RFC1195]</dt>
+<dd class="break">
+<span class="refAuthor">Callon, R.</span>, <span></span><span class="refTitle">"Use of OSI IS-IS for routing in TCP/IP and dual environments"</span>, <span class="seriesInfo">RFC 1195</span>, <span class="seriesInfo">DOI 10.17487/RFC1195</span>, <time datetime="1990-12" class="refDate">December 1990</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc1195">https://www.rfc-editor.org/info/rfc1195</a>&gt;</span>
+</dd>
+<dt id="RFC2328-en">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC8405-en">[RFC8405]</dt>
+<dd class="break">
+<span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Gredler, H.</span>, <span class="refAuthor">Lindem, A.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">C. Bowers</span>, <span></span><span class="refTitle">"Shortest Path First (SPF) Back-Off Delay Algorithm for Link-State IGPs"</span>, <span class="seriesInfo">RFC 8405</span>, <span class="seriesInfo">DOI 10.17487/RFC8405</span>, <time datetime="2018-06" class="refDate">June 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8405">https://www.rfc-editor.org/info/rfc8405</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-9.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="MICROLOOP-LSRP-en">[MICROLOOP-LSRP]</dt>
+<dd class="break">
+<span class="refAuthor">Zinin, A.</span>, <span></span><span class="refTitle">"Analysis and Minimization of Microloops in Link-state Routing Protocols"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-microloop-analysis-01</span>, <time datetime="2005-10" class="refDate">October 2005</time>, </dd>
+<dt id="RFC6976-en">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="RFC8333-en">[RFC8333]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Filsfils, C.</span>, and <span class="refAuthor">P. Francois</span>, <span></span><span class="refTitle">"Micro-loop Prevention by Introducing a Local Convergence Delay"</span>, <span class="seriesInfo">RFC 8333</span>, <span class="seriesInfo">DOI 10.17487/RFC8333</span>, <time datetime="2018-03" class="refDate">March 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8333">https://www.rfc-editor.org/info/rfc8333</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-9-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-9.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC1195-ja">[RFC1195]</dt>
+<dd class="break">
+<span class="refAuthor">Callon, R.</span>, <span></span><span class="refTitle">"Use of OSI IS-IS for routing in TCP/IP and dual environments"</span>, <span class="seriesInfo">RFC 1195</span>, <span class="seriesInfo">DOI 10.17487/RFC1195</span>, <time datetime="1990-12" class="refDate">December 1990</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc1195">https://www.rfc-editor.org/info/rfc1195</a>&gt;</span>
+</dd>
+<dt id="RFC2328-ja">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC8405-ja">[RFC8405]</dt>
+<dd class="break">
+<span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Gredler, H.</span>, <span class="refAuthor">Lindem, A.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">C. Bowers</span>, <span></span><span class="refTitle">"Shortest Path First (SPF) Back-Off Delay Algorithm for Link-State IGPs"</span>, <span class="seriesInfo">RFC 8405</span>, <span class="seriesInfo">DOI 10.17487/RFC8405</span>, <time datetime="2018-06" class="refDate">June 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8405">https://www.rfc-editor.org/info/rfc8405</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-9.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="MICROLOOP-LSRP-ja">[MICROLOOP-LSRP]</dt>
+<dd class="break">
+<span class="refAuthor">Zinin, A.</span>, <span></span><span class="refTitle">"Analysis and Minimization of Microloops in Link-state Routing Protocols"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-microloop-analysis-01</span>, <time datetime="2005-10" class="refDate">October 2005</time>, </dd>
+<dt id="RFC6976-ja">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="RFC8333-ja">[RFC8333]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Filsfils, C.</span>, and <span class="refAuthor">P. Francois</span>, <span></span><span class="refTitle">"Micro-loop Prevention by Introducing a Local Convergence Delay"</span>, <span class="seriesInfo">RFC 8333</span>, <span class="seriesInfo">DOI 10.17487/RFC8333</span>, <time datetime="2018-03" class="refDate">March 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8333">https://www.rfc-editor.org/info/rfc8333</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">The authors would like to thank Mike Shand and Chris Bowers for their
+useful comments.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">著者らは、有益なコメントをくださったMike ShandとChris Bowersに感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange Business Service</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange Business Service</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Martin Horneffer</div>
+<div class="author-org">Deutsche Telekom</div>
+<div class="author-email"><a href="mailto:martin.horneffer@telekom.de">martin.horneffer@telekom.de</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Martin Horneffer</div>
+<div class="author-org">Deutsche Telekom</div>
+<div class="author-email"><a href="mailto:martin.horneffer@telekom.de">martin.horneffer@telekom.de</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

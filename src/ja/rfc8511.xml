@@ -1,0 +1,418 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tcpm-alternativebackoff-ecn-12" indexInclude="true" number="8511" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-alternativebackoff-ecn-12" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8511" rel="alternate"/>
+  <front>
+    <title>ECNを用いたTCPの代替バックオフ（ABE）</title>
+    <seriesInfo name="RFC" value="8511" stream="IETF"/>
+    <date year="2018" month="December"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">アクティブキュー管理（Active Queue Management、AQM）メカニズムは、バーストを許容しつつ、短いキューを強制してパケットがボトルネックでキューに入っている時間を最小化します。このため、そのようなボトルネックを通過するTCPコネクションでは、特にフローが少数しかない場合や、それらの帯域幅遅延積（bandwidth-delay product、BDP）が大きい場合に、顕著な性能低下が起こりえます。明示的輻輳通知（Explicit Congestion Notification、ECN）の輻輳経験（Congestion Experienced、CE）マークを受信したことは、ボトルネックでAQMメカニズムが使われていることを示しており、したがってボトルネックのネットワークキューは短い可能性が高いと言えます。このシグナルをフィードバックすることで、輻輳回避中のTCP送信者側のECNへの反応において、推測されたパケット損失に対する輻輳制御アルゴリズムの反応よりも小さい量だけ輻輳ウィンドウ（Congestion Window、cwnd）を減らせるようになります。そこでこの仕様は、RFC 8311で許可されているとおり、RFC 3168で規定されたTCPの反応に対する実験的な変更を定義します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+https://www.rfc-editor.org/info/rfc8511 で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-definitions">定義</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-specification">仕様</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-choice-of-abe-multiplier">ABE乗数の選択</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discussion">議論</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rationale-for-using-ecn-to-vary-the-degree-of-backoff">ECNを使ってバックオフの度合いを変える根拠</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-rtt-based-response-to-indicated-congestion">通知された輻輳に対するRTTベースの応答</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-abe-deployment-requirements">ABEの展開要件</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-abe-experiment-goals">ABE実験の目標</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+            <li pn="section-toc.1-1.9.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.9.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">明示的輻輳通知（Explicit Congestion Notification、ECN）<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>を使うと、アクティブキュー管理（Active Queue Management、AQM）メカニズムは、必ずしもパケット損失を発生させずに、輻輳の始まりの存在を伝えられるようになります。これにより、アプリケーションやトランスポートがECNをサポートしていなければ破棄されていたであろうパケットの一部を、ネットワークがアプリケーションに配送できるようになります。このパケット損失の削減はECNの最もわかりやすい利点ですが、多くの場合その効果は比較的控えめです。ECNを展開することのその他の利点は、<xref target="RFC8087" format="default" sectionFormat="of" derivedContent="RFC8087"/>に文書化されています。</t>
+      <t indent="0" pn="section-1-2">ECNの規則は、もともと非常に保守的に書かれており、ECN対応トランスポート（ECN-Capable Transport、ECT）プロトコルの輻輳制御アルゴリズムに対して、ECNによって通知された輻輳の兆候を、推測されたパケット損失とまったく同じように扱うことを要求していました<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>。損失ベースのTCP輻輳制御と過剰なバッファリングとの相互作用によって引き起こされるネットワーク遅延を削減することの利点は、研究によって実証されています<xref target="BUFFERBLOAT" format="default" sectionFormat="of" derivedContent="BUFFERBLOAT"/>。これを受けて、Proportional Integral Controller Enhanced（PIE）<xref target="RFC8033" format="default" sectionFormat="of" derivedContent="RFC8033"/>やControlling Queue Delay（CoDel）<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>のようなAQMメカニズムが作られました。これらは、インターネット全体に展開されている、管理されていない過度に大きなバッファーによく見られる肥大化したキューを防ぎます<xref target="BUFFERBLOAT" format="default" sectionFormat="of" derivedContent="BUFFERBLOAT"/>。</t>
+      <t indent="0" pn="section-1-3">前述のAQMメカニズムは、一時的な（短期的な）パケットバーストを許容しつつ、持続的なキューを短く保つことを目的としています。しかし、現在使われている損失ベースの輻輳制御メカニズムは、キューが短いボトルネックリンクを常に効果的に利用できるとは限りません。たとえば、Reno輻輳制御を使用するTCP送信者は、損失によって輻輳ウィンドウ（cwnd）が削減されてもパスを完全に利用し続けるためには、少なくともエンドツーエンドの帯域幅遅延積（bandwidth-delay product、BDP）に相当するデータをボトルネックのバッファーに格納できる必要があります<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>。この量のバッファリングにより、送信中にできるデータ量と、TCP送信者が経験する最大往復時間（round-trip time、RTT）は、事実上2倍になります。</t>
+      <t indent="0" pn="section-1-4">最新のAQMメカニズムは、テールドロップキューであればパケットの破棄に頼らざるを得なくなるよりもずっと前に、ECNを使ってキューの蓄積が差し迫っている初期の兆候を伝えることができます。したがって、リモートエンドポイントがECNでCEマークされたパケットを受信した後に、輻輳の早期警告を伴う通知を受け取った場合には、トランスポートプロトコルの輻輳制御アルゴリズムがより穏当な応答をするのが適切です。最新のAQMの運用におけるこうした変化を認識して、ECNのCEシグナルを推測されたパケット損失と同一に扱うという厳格な要件は緩和されました<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/>。そこでこの文書では、「ABE」（Alternative Backoff with ECN、ECNを用いた代替バックオフ）と呼ばれる、送信者側だけの新しい輻輳制御応答を定義します。ABEは、短いキューしか許さないAQM制御のバッファーをルーターが使用している場合に、TCPの平均スループットを改善します。</t>
+    </section>
+    <section anchor="definitions" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-definitions">定義</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+    </section>
+    <section anchor="specification" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-specification">仕様</name>
+      <t indent="0" pn="section-3-1">この仕様は、<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/>で定義されたプロセスに従い、CEマークされたパケットの受信、すなわち（<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で定義された）ECN-Echoフラグが設定されたパケットの受信を示すTCP受信者からのフィードバックに対するTCP送信者の応答を変更することによって、ECN対応のTCPトランスポートプロトコルの輻輳制御アルゴリズムを変更します。</t>
+      <t indent="0" pn="section-3-2">TCP送信者の応答は、現在、ECN仕様<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>のセクション6.1.2で規定されており、<xref target="RFC8311" section="4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8311#section-4.1" derivedContent="RFC8311"/>によって次のように読めるようにわずかに更新されています。</t>
+      <blockquote pn="section-3-3">
+        <t indent="0" pn="section-3-3.1">輻輳の兆候は、ECN非対応のTCPにおける輻輳損失とまったく同じように扱われるべきです。つまり、IETF文書ストリームの実験的（Experimental）RFCによって別途規定されない限り、TCPの送信元は輻輳ウィンドウ「cwnd」を半分にし、スロースタートしきい値「ssthresh」を減らします。</t>
+      </blockquote>
+      <t indent="0" pn="section-3-4">RFC 8311で許可されているとおり、この文書はTCPに対する送信者側の変更を規定します。この変更では、ECN-Echoフラグが設定されたパケットを受信したことを契機として、TCPの送信元がスロースタートしきい値（ssthresh）をFlightSizeの0.8倍に設定し、その結果に2 * SMSSの下限を適用する<bcp14>べきです（SHOULD）</bcp14>（ここでSMSSは送信者最大セグメントサイズ（Sender Maximum Segment Size）を表します）。<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>と同様に、TCP送信者はcwndの値も新しいssthreshの値以下に減らします。2 * SMSS未満のcwndを設定する場合の指針は、RFC 3168のセクション6.1.2に記載されています。</t>
+      <section anchor="choice-of-abe-multiplier" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-choice-of-abe-multiplier">ABE乗数の選択</name>
+        <t indent="0" pn="section-3.1-1">ABEは、輻輳回避フェーズにおいて、推測されたパケット損失に対するTCP送信者の反応を、ECNで通知された輻輳の兆候に対する反応から切り離します。これを実現するために、ABEは<xref target="RFC5681" section="3.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc5681#section-3.1" derivedContent="RFC5681"/>の式4に対して異なるスケーリング係数を使います。以下の説明では、推測されたパケット損失に応じて適用される乗算的減少係数をbeta_{loss}、ECNで通知された輻輳を受信者が示したことに応じて適用される乗算的減少係数をbeta_{ecn}と呼びます。ECNが有効でないTCPコネクションでは、beta_{loss}だけが適用されます。</t>
+        <t indent="0" pn="section-3.1-2">言い換えると、推測されたパケット損失に対しては次のようになります。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-3.1-3"><![CDATA[
+   ssthresh = max (FlightSize * beta_{loss}, 2 * SMSS)
+]]></artwork>
+        <t indent="0" pn="section-3.1-4">そして、ECNで通知された輻輳の兆候に対しては次のようになります。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-3.1-5"><![CDATA[
+   ssthresh = max (FlightSize * beta_{ecn}, 2 * SMSS)
+]]></artwork>
+        <t indent="3" pn="section-3.1-6">および</t>
+        <artwork name="" type="" align="left" alt="" pn="section-3.1-7"><![CDATA[
+   cwnd = ssthresh
+]]></artwork>
+        <t indent="3" pn="section-3.1-8">（ssthresh == 2 * SMSSの場合、2 * SMSSより小さいcwndを設定する場合の指針はRFC 3168のセクション6.1.2に記載されています。）</t>
+        <t indent="0" pn="section-3.1-9">ここで、FlightSizeはネットワーク内の未処理のデータの量であり、送信者のcwndと受信者の広告ウィンドウ（rwnd）のうち小さいほうが上限となります<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>。beta_{loss}とbeta_{ecn}の値が大きいほど、個々のバックオフイベントの応答は穏やかになります。</t>
+        <t indent="0" pn="section-3.1-10">beta_{loss}とbeta_{ecn}の値の適切な選択は、パス利用率とボトルネックキューの排出との間のバランスを取ることです。より積極的なバックオフ（より小さいbeta_*）はパスを十分に利用できなくなるおそれがあり、一方で、より穏やかなバックオフ（より大きいbeta_*）はボトルネックキューの排出を遅くする可能性があります。</t>
+        <t indent="0" pn="section-3.1-11">インターネットはすでに数年間、少なくとも2つの異なるbeta_{loss}の値で運用されています。標準の値は0.5であり<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、CUBIC <xref target="RFC8312" format="default" sectionFormat="of" derivedContent="RFC8312"/>のLinux実装は、2008年にリリースされたカーネルバージョン2.6.25以降、0.7の乗数を使用しています。ABEは、現在のTCP実装で使われているbeta_{loss}の値を変更しません。</t>
+        <t indent="0" pn="section-3.1-12">この文書の推奨では、beta_{ecn}=0.8という値を規定します。この推奨されるbeta_{ecn}の値は、標準のTCP輻輳制御<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>にのみ適用できます。beta_{ecn}を選択することで、浅いAQMマーキングしきい値に対するTCPコネクションの応答を調整できるようになります。beta_{loss}は、パケット損失、すなわち（深さが不明な）バッファーの枯渇に対する輻輳制御アルゴリズムの応答を特徴付けます。TCP輻輳制御アルゴリズムに対しては、beta_{loss}のさまざまな値が提案されてきました。したがって、beta_{ecn}は、アルゴリズムの既存のbeta_{loss}の定数倍ではなく、アルゴリズム固有のパラメーターになる可能性が高いと考えられます。</t>
+        <t indent="0" pn="section-3.1-13">多重度の低いシナリオにおいてCoDelとPIEの上でNewRenoとCUBICを使った一連のテスト（<xref target="ABE2017" format="default" sectionFormat="of" derivedContent="ABE2017"/>のセクションIV）により、このパラメーターの選択が検討されました。これらのテストの結果は、CUBICコネクションは0.85のbeta_{ecn}から恩恵を受け（beta_{loss} = 0.7と比較）、NewRenoコネクションは0.7から0.85の範囲のbeta_{ecn}で改善が見られる（beta_{loss} = 0.5と比較）ことを示しています。</t>
+      </section>
+    </section>
+    <section anchor="discussion" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-discussion">議論</name>
+      <t indent="0" pn="section-4-1">ABEの技術的背景の多くは<xref target="ABE2017" format="default" sectionFormat="of" derivedContent="ABE2017"/>にあります。この文献では、NewReno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>とCUBIC <xref target="RFC8312" format="default" sectionFormat="of" derivedContent="RFC8312"/>を用いた実験、理論、シミュレーションを組み合わせて、その性能を評価しています。ABEは、CoDelやPIEを展開することによる遅延削減の利点を失うことなく、多重度の低い（同時フローが少ない）シナリオで大幅な性能向上をもたらすことが示されました。この性能向上は、輻輳回避中（ssthresh &gt; cwndのとき）にECN-Echoに反応して、cwndとssthreshに[0.7,0.85]の範囲の値を掛けることによって達成されます。cwndがssthresh以下のときにABEを適用することは現時点では推奨されませんが、そのシナリオでの使用については、さらなる注目、実験、仕様化から得られるものがあるかもしれません。</t>
+      <section anchor="rationale-for-using-ecn-to-vary-the-degree-of-backoff" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-rationale-for-using-ecn-to-vary-the-degree-of-backoff">ECNを使ってバックオフの度合いを変える根拠</name>
+        <t indent="0" pn="section-4.1-1">CoDel <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>やPIE <xref target="RFC8033" format="default" sectionFormat="of" derivedContent="RFC8033"/>などのAQMメカニズムは、ルーターに遅延目標を設定し、差し迫った、または実際のボトルネックバッファーの枯渇に応じてではなく、パケットが経験するキューイング遅延を抑えるために輻輳通知を使います。現在のデフォルトの遅延目標では、CoDelとPIEはどちらも、短いトラフィックバーストのキューへの流入を許容しつつ、事実上、短いキューを持つボトルネックをエミュレートします（<xref target="ABE2017" format="default" sectionFormat="of" derivedContent="ABE2017"/>のセクションII）。これは、BDPの小さいパスを通るTCPコネクションや、多重度の高いシナリオ（多数の同時トランスポートフロー）では、許容できる性能をもたらします。しかし、BDPの大きいパスで多重度が低い場合には、従来のTCPのバックオフはパケット送信の途切れとパスの利用不足につながります。</t>
+        <t indent="0" pn="section-4.1-2">AQMメカニズムは、パケットを破棄する代わりに、ECN対応のパケットにECNのCEマークを付けることが許されています。CEマークのフィードバックを受信したことは、ネットワークパス上の輻輳を示すだけでなく、パス上のボトルネックにAQMメカニズムが存在することも示します。したがって、そのCEマークは、短く制御されたキューを持つボトルネックから来た可能性が高いと言えます。そのため、ECNで通知された輻輳に対して、推測されたパケット損失とは異なる反応をすることで、キューが短いときにバックオフを減らすという利点が得られます。ECNの使用は、その他のいくつかの理由でも有利になりえます<xref target="RFC8087" format="default" sectionFormat="of" derivedContent="RFC8087"/>。</t>
+        <t indent="0" pn="section-4.1-3">推測されたパケット損失と、ECNで通知された輻輳の検出とで異なる反応をするという考え方は、この仕様よりも前からあります。たとえば、以前の研究では、ECNのCEマークされたフィードバックを使い、より大きな乗算的減少係数とより小さな加算的増加係数を組み合わせることによって、TCPの輻輳制御の振る舞いを変更することが提案されました<xref target="ICC2002" format="default" sectionFormat="of" derivedContent="ICC2002"/>。この以前の研究の目標は、短いキューをエミュレートするように必ずしも設定されていない（ランダム早期検出（Random Early Detection、RED）を使用する）AQMボトルネックを越えて動作することでした。（インターネットのAQM手法としてのREDの現在の使用は限られています<xref target="RFC7567" format="default" sectionFormat="of" derivedContent="RFC7567"/>。）</t>
+      </section>
+      <section anchor="an-rtt-based-response-to-indicated-congestion" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-an-rtt-based-response-to-indicated-congestion">通知された輻輳に対するRTTベースの応答</name>
+        <t indent="0" pn="section-4.2-1">この仕様は、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で定義されたECNフィードバックの使用に適用されます。その仕様は、通知された輻輳に対する応答を、パスの往復時間あたり最大1回と規定しています。ABEは通知された輻輳に対してRTTごとに1回応答するので、同じRTT内でのそれ以上の損失には応答しません。ABE送信者はすでに輻輳ウィンドウを削減しているからです。そのような削減の後も輻輳が続く場合、ABEは連続する各RTTで輻輳ウィンドウを削減し続けます。この連続した削減により、平均キュー長を小さく保たないAQMアルゴリズムの場合に、長期にわたる不公平からネットワークを保護できます。このメカニズムは、Accurate ECN <xref target="ACC-ECN-FEEDBACK" format="default" sectionFormat="of" derivedContent="ACC-ECN-FEEDBACK"/>に依存しません。</t>
+        <t indent="0" pn="section-4.2-2">これとは対照的に、より頻繁で詳細なECNフィードバック（たとえば、Accurate ECN <xref target="ACC-ECN-FEEDBACK" format="default" sectionFormat="of" derivedContent="ACC-ECN-FEEDBACK"/>）を利用するようにトランスポートプロトコルのメカニズムを設計することもできます。そうすると、送信レートをより頻繁に調整する輻輳制御応答が可能になります。Data Center TCP（DCTCP）<xref target="RFC8257" format="default" sectionFormat="of" derivedContent="RFC8257"/>は、このアプローチの一例です。</t>
+      </section>
+    </section>
+    <section anchor="abe-deployment-requirements" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-abe-deployment-requirements">ABEの展開要件</name>
+      <t indent="0" pn="section-5-1">この更新は送信者側だけの変更です。輻輳制御アルゴリズムに対する他の変更と同様に、TCP受信者やネットワーク機器に対する変更は一切必要ありません。ルーターでのABE固有の変更も、受信者によるAccurate ECNフィードバック<xref target="ACC-ECN-FEEDBACK" format="default" sectionFormat="of" derivedContent="ACC-ECN-FEEDBACK"/>の使用も必要ありません。</t>
+      <t indent="0" pn="section-5-2">この手法が一部の送信者だけに展開され、他の送信者には展開されない場合、それを使う送信者は、この更新された手法を使わない他のフローを犠牲にして、ある程度の優位性を得る可能性があります。この優位性はECNマークされたパケットにのみ適用され、パケット損失の兆候には適用されないので、ABEを使用するTCP送信者が積極的すぎる場合でも、ECN対応のボトルネックは依然としてパケットの破棄にフォールバックします。その結果は、TCP送信者が従来の損失ベースの輻輳制御を使用していた場合と変わりません。</t>
+      <t indent="0" pn="section-5-3">ECNマーキングをサポートしないボトルネックで使用される場合、この仕様はトランスポートプロトコルを変更しません。</t>
+    </section>
+    <section anchor="abe-experiment-goals" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-abe-experiment-goals">ABE実験の目標</name>
+      <t indent="0" pn="section-6-1"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>は、ECNで通知された輻輳の兆候に続く輻輳制御応答は、破棄されたパケットに対する応答と同じであると述べています。<xref target="RFC8311" format="default" sectionFormat="of" derivedContent="RFC8311"/>はこの仕様を更新し、パケット損失ではなくECNで通知された輻輳を経験したときに、システムが異なる振る舞いを提供できるようにしています。本仕様はそのような実験を定義するものであり、実験的（Experimental）RFCです。私たちは、将来これを標準化過程（Standards-Track）の文書として提案することを見込んでいます。</t>
+      <t indent="0" pn="section-6-2">このインターネット実験の目的は、ABEの展開に関する経験を収集し、TCP輻輳制御に対するこの更新を使用する展開済みのネットワークで、許容できる安全性を確認することです。ABEを評価するために、この実験では、ECN対応トランスポートのコードポイントECT(0)<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>を運ぶパケットに対するECNマーキングを、AQMルーターがサポートしている必要があります。</t>
+      <t indent="0" pn="section-6-3">このインターネット実験の結果には、ECN-CEマークを経験した後に同じRTT内で損失が続く場合の影響の調査を含めるべきです。実験の終了時に、これはTCPMワーキンググループまたはIESGに報告されます。</t>
+      <t indent="0" pn="section-6-4">ABEは、LinuxとFreeBSD用のパッチとして実装されています。これは研究と実験を目的としたもので、<eref target="https://heim.ifi.uio.no/michawe/research/abe/" brackets="angle"/>からダウンロードできます。このコードは、<xref target="ABE2017" format="default" sectionFormat="of" derivedContent="ABE2017"/>で報告されているテスト結果を得るために使用されました。FreeBSDのコードは、2018年3月19日にメインラインのカーネルにコミットされました<xref target="ABE-REVISION" format="default" sectionFormat="of" derivedContent="ABE-REVISION"/>。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">この文書にはIANAアクションはありません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">ここで説明した手法は送信者側だけのトランスポートの変更であり、やり取りされるプロトコルメッセージを変更しません。したがって、ECN <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>のセキュリティーに関する考慮事項が引き続き適用されます。</t>
+      <t indent="0" pn="section-8-2">これはECNを伴うTCP輻輳制御に対する変更であり、通常、フローがネットワークのボトルネックを共有するときに達成される容量に変化をもたらします。その結果、一部のフローが公平な取り分を超える容量を受け取る可能性があります。容量の共有のされ方における同様の不公平は、インターネットで長年使われてきた他の輻輳制御メカニズム（たとえば、CUBIC <xref target="RFC8312" format="default" sectionFormat="of" derivedContent="RFC8312"/>）でも見られます。不公平は、フローが経験する往復時間など、他の要因の結果である場合もあります。ABEは、ECNマークされたパケットを受信したときにのみ適用され、パケットが失われたときには適用されません。したがって、ABEの使用が輻輳崩壊につながることはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date year="2009" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC7567" target="https://www.rfc-editor.org/info/rfc7567" quoteTitle="true" derivedAnchor="RFC7567">
+          <front>
+            <title>IETF Recommendations Regarding Active Queue Management</title>
+            <author fullname="F. Baker" initials="F." surname="Baker" role="editor"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst" role="editor"/>
+            <date year="2015" month="July"/>
+          </front>
+          <seriesInfo name="BCP" value="197"/>
+          <seriesInfo name="RFC" value="7567"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7567"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8257" target="https://www.rfc-editor.org/info/rfc8257" quoteTitle="true" derivedAnchor="RFC8257">
+          <front>
+            <title>Data Center TCP (DCTCP): TCP Congestion Control for Data Centers</title>
+            <author fullname="S. Bensley" initials="S." surname="Bensley"/>
+            <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+            <author fullname="P. Balasubramanian" initials="P." surname="Balasubramanian"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date year="2017" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="8257"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8257"/>
+        </reference>
+        <reference anchor="RFC8311" target="https://www.rfc-editor.org/info/rfc8311" quoteTitle="true" derivedAnchor="RFC8311">
+          <front>
+            <title>Relaxing Restrictions on Explicit Congestion Notification (ECN) Experimentation</title>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2018" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="8311"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8311"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="ABE-REVISION" target="https://svnweb.freebsd.org/base?view=revision&amp;revision=331214" quoteTitle="true" derivedAnchor="ABE-REVISION">
+          <front>
+            <title>ABE patch review in FreeBSD</title>
+            <author fullname="L. Stewart" initials="L." surname="Stewart"/>
+            <date year="2018" month="March"/>
+          </front>
+          <refcontent>Revision 331214</refcontent>
+        </reference>
+        <reference anchor="ABE2017" quoteTitle="true" derivedAnchor="ABE2017">
+          <front>
+            <title>Alternative backoff: Achieving low latency and high throughput with ECN and AQM</title>
+            <author fullname="N. Khademi" initials="N." surname="Khademi"/>
+            <author fullname="G. Armitage" initials="G." surname="Armitage"/>
+            <author fullname="M. Welzl" initials="M." surname="Welzl"/>
+            <author fullname="S. Zander" initials="S." surname="Zander"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst"/>
+            <author fullname="D. Ros" initials="D." surname="Ros"/>
+            <date year="2017" month="June"/>
+          </front>
+          <refcontent>IFIP Networking Conference and Workshops Stockholm, Sweden</refcontent>
+          <seriesInfo name="DOI" value="10.23919/IFIPNetworking.2017.8264863"/>
+        </reference>
+        <reference anchor="ACC-ECN-FEEDBACK" quoteTitle="true" derivedAnchor="ACC-ECN-FEEDBACK">
+          <front>
+            <title>More Accurate ECN Feedback in TCP</title>
+            <author fullname="B. Briscoe" initials="B." surname="Briscoe"/>
+            <author fullname="M. Kuehlewind" initials="M." surname="Kuehlewind"/>
+            <author fullname="R. Scheffenegger" initials="R." surname="Scheffenegger"/>
+            <date year="2018" month="July"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tcpm-accurate-ecn-07"/>
+        </reference>
+        <reference anchor="BUFFERBLOAT" target="https://queue.acm.org/detail.cfm?id=2071893" quoteTitle="true" derivedAnchor="BUFFERBLOAT">
+          <front>
+            <title>Bufferbloat: Dark Buffers in the Internet</title>
+            <author fullname="J. Gettys" initials="J." surname="Gettys"/>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <date year="2011" month="November"/>
+          </front>
+          <refcontent>ACM Queue, Volume 9, Issue 11</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2063166.2071893"/>
+        </reference>
+        <reference anchor="ICC2002" target="http://dx.doi.org/10.1109/ICC.2002.997262" quoteTitle="true" derivedAnchor="ICC2002">
+          <front>
+            <title>TCP increase/decrease behavior with explicit congestion notification (ECN)</title>
+            <author fullname="M. Kwon" initials="M." surname="Kwon"/>
+            <author fullname="S. Fahmy" initials="S." surname="Fahmy"/>
+            <date year="2002" month="May"/>
+          </front>
+          <refcontent>2002 IEEE International Conference on Communications Conference Proceedings, ICC 2002, Cat. No.02CH37333</refcontent>
+          <seriesInfo name="DOI" value="10.1109/ICC.2002.997262"/>
+        </reference>
+        <reference anchor="RFC8033" target="https://www.rfc-editor.org/info/rfc8033" quoteTitle="true" derivedAnchor="RFC8033">
+          <front>
+            <title>Proportional Integral Controller Enhanced (PIE): A Lightweight Control Scheme to Address the Bufferbloat Problem</title>
+            <author fullname="R. Pan" initials="R." surname="Pan"/>
+            <author fullname="P. Natarajan" initials="P." surname="Natarajan"/>
+            <author fullname="F. Baker" initials="F." surname="Baker"/>
+            <author fullname="G. White" initials="G." surname="White"/>
+            <date year="2017" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="8033"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8033"/>
+        </reference>
+        <reference anchor="RFC8087" target="https://www.rfc-editor.org/info/rfc8087" quoteTitle="true" derivedAnchor="RFC8087">
+          <front>
+            <title>The Benefits of Using Explicit Congestion Notification (ECN)</title>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst"/>
+            <author fullname="M. Welzl" initials="M." surname="Welzl"/>
+            <date year="2017" month="March"/>
+          </front>
+          <seriesInfo name="RFC" value="8087"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8087"/>
+        </reference>
+        <reference anchor="RFC8289" target="https://www.rfc-editor.org/info/rfc8289" quoteTitle="true" derivedAnchor="RFC8289">
+          <front>
+            <title>Controlled Delay Active Queue Management</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <author fullname="A. McGregor" initials="A." surname="McGregor" role="editor"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar" role="editor"/>
+            <date year="2018" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="8289"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8289"/>
+        </reference>
+        <reference anchor="RFC8312" target="https://www.rfc-editor.org/info/rfc8312" quoteTitle="true" derivedAnchor="RFC8312">
+          <front>
+            <title>CUBIC for Fast Long-Distance Networks</title>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="A. Zimmermann" initials="A." surname="Zimmermann"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="R. Scheffenegger" initials="R." surname="Scheffenegger"/>
+            <date year="2018" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="8312"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8312"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+        <t indent="0" pn="section-appendix.a-1">著者のN. Khademi、M. Welzl、G. Fairhurstは、欧州共同体の第7次研究枠組み計画（Seventh Framework Programme）のもと、Reducing Internet Transport Latency（RITE）プロジェクト（ICT-317700）を通じて部分的に資金提供を受けました。ここで述べられている見解は、もっぱら著者らのものです。</t>
+        <t indent="0" pn="section-appendix.a-2">著者のG. Armitageは、この文書に関する作業の大部分を、オーストラリアのメルボルンにあるスウィンバーン工科大学（Swinburne University of Technology）に在籍中に行いました。</t>
+        <t indent="0" pn="section-appendix.a-3">著者らは、この文書の改訂にあたって多くの提案をしてくれたStuart Cheshireに感謝します。また、<xref target="ABE2017" format="default" sectionFormat="of" derivedContent="ABE2017"/>に貢献してくれた次の人々、Chamil Kulatunga、David Ros、Stein Gjessing、Sebastian Zanderにも感謝します。さらに、この文書に対して貴重なフィードバックを提供してくれた（アルファベット順に）David Black、Roland Bless、Bob Briscoe、Markku Kojo、John Leslie、Lawrence Stewart、およびTCPMワーキンググループにも感謝します。</t>
+        <t indent="0" pn="section-appendix.a-4">最後に、著者らは、IRTFのインターネット輻輳制御研究グループ（Internet Congestion Control Research Group、ICCRG）から寄せられた、この文書で規定する輻輳制御の振る舞いに関するフィードバックを提供してくれたすべての人に感謝します。</t>
+      </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Naeem Khademi" initials="N." surname="Khademi">
+        <organization showOnFrontPage="true">University of Oslo</organization>
+        <address>
+          <postal>
+            <postalLine>PO Box 1080 Blindern</postalLine>
+            <postalLine>Oslo  N-0316</postalLine>
+            <postalLine>Norway</postalLine>
+          </postal>
+          <email>naeemk@ifi.uio.no</email>
+        </address>
+      </author>
+      <author fullname="Michael Welzl" initials="M." surname="Welzl">
+        <organization showOnFrontPage="true">University of Oslo</organization>
+        <address>
+          <postal>
+            <postalLine>PO Box 1080 Blindern</postalLine>
+            <postalLine>Oslo  N-0316</postalLine>
+            <postalLine>Norway</postalLine>
+          </postal>
+          <email>michawe@ifi.uio.no</email>
+        </address>
+      </author>
+      <author fullname="Grenville Armitage" initials="G." surname="Armitage">
+        <organization showOnFrontPage="true">Netflix Inc.</organization>
+        <address>
+          <email>garmitage@netflix.com</email>
+        </address>
+      </author>
+      <author fullname="Godred Fairhurst" initials="G." surname="Fairhurst">
+        <organization showOnFrontPage="true">University of Aberdeen</organization>
+        <address>
+          <postal>
+            <postalLine>School of Engineering, Fraser Noble Building</postalLine>
+            <postalLine>Aberdeen  AB24 3UE</postalLine>
+            <postalLine>United Kingdom</postalLine>
+          </postal>
+          <email>gorry@erg.abdn.ac.uk</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

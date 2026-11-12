@@ -1,0 +1,484 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-filsfils-spring-large-scale-interconnect-13" indexInclude="true" number="8604" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-filsfils-spring-large-scale-interconnect-13" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8604" rel="alternate"/>
+  <front>
+    <title>セグメントルーティングによる数百万のエンドポイントの相互接続</title>
+    <seriesInfo name="RFC" value="8604" stream="independent"/>
+    <date year="2019" month="June"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、数十万のネットワークノードと数千万の物理的なアンダーレイのエンドポイントをサポートできるようにネットワークを拡張するための、セグメントルーティングの応用について説明します。このユースケースは、超大規模なデータセンター（DC）の相互接続や大規模な集約ネットワークに適用できます。中間ノードとリーフノードの転送テーブルに必要なエントリーは、数万個だけです。これは、セグメントルーティングが本質的に備えるスケーラビリティーと、この文書で提案する設計によって実現できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">これは、他のいかなるRFCストリームからも独立した、RFCシリーズへの寄稿です。RFCエディターは自らの裁量でこの文書の公開を選択しており、実装や展開における価値については何ら表明していません。RFCエディターによって公開が承認された文書は、いずれのレベルのインターネット標準の候補にもなりません。RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、https://www.rfc-editor.org/info/rfc8604 で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2019 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reference-design">参照設計</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-control-plane">コントロールプレーン</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-illustration-of-the-scale">規模の例示</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-options">設計オプション</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+            <li pn="section-toc.1-1.6.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-segment-routing-global-block-(srgb)-size">セグメントルーティンググローバルブロック（SRGB）のサイズ</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-redistribution-of-routes-for-agg-nodes">Aggノードの経路の再配布</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sizing-and-hierarchy">サイジングと階層</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.4.1"><xref derivedContent="6.4" format="counter" sectionFormat="of" target="section-6.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-segments-to-hosts/servers">ホスト／サーバーへのローカルセグメント</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.5.1"><xref derivedContent="6.5" format="counter" sectionFormat="of" target="section-6.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-compressed-srte-policies">圧縮されたSRTEポリシー</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-model">展開モデル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-benefits">利点</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+            <li pn="section-toc.1-1.8.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-simplified-operations">運用の簡素化</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-inter-domain-slas">ドメイン間SLA</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.3.1"><xref derivedContent="8.3" format="counter" sectionFormat="of" target="section-8.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-scale">規模</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.4.1"><xref derivedContent="8.4" format="counter" sectionFormat="of" target="section-8.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ecmp">ECMP</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-manageability-considerations">管理性に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" pn="section-toc.1-1.13.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t indent="0" pn="section-toc.1-1.15.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">この文書は、セグメントルーティング（SR）を使用して数百万のエンドポイントを相互接続する方法を説明します。</t>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">この文書では、次の用語と略語を使用します。</t>
+      <table align="left" pn="table-1">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">用語</th>
+            <th align="left" colspan="1" rowspan="1">定義</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">Agg</td>
+            <td align="left" colspan="1" rowspan="1">集約（Aggregation）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">BGP</td>
+            <td align="left" colspan="1" rowspan="1">ボーダーゲートウェイプロトコル（Border Gateway Protocol）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">DC</td>
+            <td align="left" colspan="1" rowspan="1">データセンター（Data Center）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">DCI</td>
+            <td align="left" colspan="1" rowspan="1">データセンター相互接続（Data Center Interconnect）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">ECMP</td>
+            <td align="left" colspan="1" rowspan="1">等コストマルチパス（Equal-Cost Multipath）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">FIB</td>
+            <td align="left" colspan="1" rowspan="1">転送情報ベース（Forwarding Information Base）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">LDP</td>
+            <td align="left" colspan="1" rowspan="1">ラベル配布プロトコル（Label Distribution Protocol）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">LFIB</td>
+            <td align="left" colspan="1" rowspan="1">ラベル転送情報ベース（Label Forwarding Information Base）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">MPLS</td>
+            <td align="left" colspan="1" rowspan="1">マルチプロトコルラベルスイッチング（Multiprotocol Label Switching）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">PCE</td>
+            <td align="left" colspan="1" rowspan="1">経路計算要素（Path Computation Element）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">PCEP</td>
+            <td align="left" colspan="1" rowspan="1">経路計算要素通信プロトコル（Path Computation Element Communication Protocol）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">PW</td>
+            <td align="left" colspan="1" rowspan="1">疑似回線（Pseudowire）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">SLA</td>
+            <td align="left" colspan="1" rowspan="1">サービスレベル合意（Service Level Agreement）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">SR</td>
+            <td align="left" colspan="1" rowspan="1">セグメントルーティング（Segment Routing）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">SRTEポリシー</td>
+            <td align="left" colspan="1" rowspan="1">セグメントルーティングトラフィックエンジニアリングポリシー（Segment Routing Traffic Engineering Policy）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">TE</td>
+            <td align="left" colspan="1" rowspan="1">トラフィックエンジニアリング（Traffic Engineering）</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">TI-LFA</td>
+            <td align="left" colspan="1" rowspan="1">トポロジー非依存ループフリー代替経路（Topology Independent Loop-Free Alternate）</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section anchor="reference-design" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-reference-design">参照設計</name>
+      <t indent="0" pn="section-3-1">次のネットワーク図は、この文書で使用する参照ネットワークトポロジーを示しています。</t>
+      <figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-reference-topology">参照トポロジー</name>
+        <artwork name="" type="" align="left" alt="" pn="section-3-2.1"><![CDATA[
+        +-------+ +--------+ +--------+ +-------+ +-------+
+        A       DCI1       Agg1       Agg3      DCI3      Z
+        |  DC1  | |   M1   | |   C    | |   M2  | |  DC2  |
+        |       DCI2       Agg2       Agg4      DCI4      |
+        +-------+ +--------+ +--------+ +-------+ +-------+
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-3-3">上記の参照トポロジーには、次のことが当てはまります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-4">
+        <li pn="section-3-4.1">コア（C）領域には、独立したISIS-OSPF/SRインスタンスがあります。</li>
+        <li pn="section-3-4.2">Metro1（M1）領域には、独立したISIS-OSPF/SRインスタンスがあります。</li>
+        <li pn="section-3-4.3">Metro2（M2）領域には、独立したISIS-OSPF/SRインスタンスがあります。</li>
+        <li pn="section-3-4.4">DC1ではBGP/SRを使用します。</li>
+        <li pn="section-3-4.5">DC2ではBGP/SRを使用します。</li>
+        <li pn="section-3-4.6">Aggの経路（Agg1、Agg2、Agg3、Agg4）は、CからM（M1とM2）へ、そしてMからDCドメインへ再配布されます。</li>
+        <li pn="section-3-4.7">領域間では、ほかの経路は広告も再配布もされません。</li>
+        <li pn="section-3-4.8">すべてのドメインで、同一の均質なセグメントルーティンググローバルブロック（SRGB）を使用します（例: 16000-23999）。</li>
+        <li pn="section-3-4.9">
+          <t indent="0" pn="section-3-4.9.1">各メトロ（M）ドメインとコア（C）ドメインには、一意のSRGBのサブ範囲を割り当てます。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-4.9.2">
+            <li pn="section-3-4.9.2.1">16000-16999の範囲は、コア（C）ドメイン／領域に割り当てます。</li>
+            <li pn="section-3-4.9.2.2">17000-17999の範囲は、M1ドメイン／領域に割り当てます。</li>
+            <li pn="section-3-4.9.2.3">18000-18999の範囲は、M2ドメイン／領域に割り当てます。</li>
+            <li pn="section-3-4.9.2.4">具体的には、Agg1ルーターにはセグメント識別子（SID）16001を割り当て、Agg2ルーターにはSID 16002を割り当てます。</li>
+            <li pn="section-3-4.9.2.5">具体的には、Agg3ルーターにはSID 16003を割り当て、Agg3とAgg4のエニーキャストSIDは16006とします。</li>
+            <li pn="section-3-4.9.2.6">具体的には、DCI3ルーターにはSID 18003を割り当て、DCI3とDCI4のエニーキャストSIDは18006とします。</li>
+            <li pn="section-3-4.9.2.7">具体的には、Agg1ルーターでは、バインディングSID 4001は特定の低遅延パス{16002, 16003, 18006}を経由してDCIペア（DCI3、DCI4）に至ります。</li>
+          </ul>
+        </li>
+        <li pn="section-3-4.10">各DC（DC1とDC2）の領域内では、DCごとに同じSRGBのサブ範囲を再利用します（例: 20000-23999）。具体的には、ノードAとノードZの両方にSID 20001を割り当てます。</li>
+      </ul>
+    </section>
+    <section anchor="control-plane" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-control-plane">コントロールプレーン</name>
+      <t indent="0" pn="section-4-1">このセクションでは、ほかのRFCですでに定義されているプロトコルコンポーネントを使用してコントロールプレーンをどのように実装できるかについて、概要を説明します。</t>
+      <t indent="0" pn="section-4-2">SRTEポリシーを定義、計算し、送信元ノードにプログラムする仕組みは、この文書の範囲外です。</t>
+      <t indent="0" pn="section-4-3">通常、コントローラーやサービスオーケストレーションシステムは、所定のSLA契約（例: 低遅延パス、特定のコアプレーンとの非共有性、別のPWサービスとの非共有性）を伴う、リモートのネクストホップノードZへのPWを、ノードAにプログラムします。</t>
+      <t indent="0" pn="section-4-4">ノードAは、ノードZに到達できないことを自動的に検出します。そしてノードAは、要求されたSLAでノードZへの到達可能性情報を提供するSRTEポリシーを求めるPCEPリクエストを、SR PCEに自動的に送信します。</t>
+      <t indent="0" pn="section-4-5">SR PCE<xref target="RFC4655" format="default" sectionFormat="of" derivedContent="RFC4655"/>は、マルチドメイントポロジーと計算エンジンという2つのコンポーネントで構成されます。マルチドメイントポロジーは、各ドメインからのBGPリンクステート（BGP-LS）フィード<xref target="RFC7752" format="default" sectionFormat="of" derivedContent="RFC7752"/>によって継続的に更新されます。計算エンジンは、TEアルゴリズムを実装し、SRパス形式で出力を提供するように設計されています。PCEPリクエスト<xref target="RFC5440" format="default" sectionFormat="of" derivedContent="RFC5440"/>を受信すると、SR PCEは要求されたパスを計算します。パスはセグメントのリスト（例: {16003, 18006, 20001}）として表現され、ノードAに提供されます。</t>
+      <t indent="0" pn="section-4-6">SR PCEはリクエストをステートフルなクエリーとして記録するため、ネットワークトポロジーが変化するたびにパスを再計算できます。</t>
+      <t indent="0" pn="section-4-7">ノードAは、パス（セグメントリストとして表現されたもの）を含むPCEP応答を受信します。ノードAは、受信したSRTEポリシーをデータプレーンにインストールします。続いてノードAは、PWをそのSRTEポリシーに自動的に誘導します。</t>
+    </section>
+    <section anchor="illustration-of-the-scale" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-illustration-of-the-scale">規模の例示</name>
+      <t indent="0" pn="section-5-1"><xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示す参照トポロジーに基づき、次のことを仮定します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-2">
+        <li pn="section-5-2.1">コアドメインが1つあり、リーフ（メトロ）ドメインが100個あります。</li>
+        <li pn="section-5-2.2">コアドメインには200個のノードが含まれます。</li>
+        <li pn="section-5-2.3">各リーフ（メトロ）ドメインは2つのノードで接続されます。リーフドメインを接続する各ノードにはSIDが割り当てられています。リーフドメインを接続するノードの各ペアには、共通のエニーキャストSIDもあります。これにより、プレフィックスセグメントは合計で最大300個になります。</li>
+        <li pn="section-5-2.4">コアノードは1つのリーフドメインだけに接続します。</li>
+        <li pn="section-5-2.5">各リーフドメインには6,000個のリーフノードセグメントがあります。各リーフノードには500個のエンドポイントが接続されているため、隣接セグメントも500個あります。これにより、1つのリーフドメインのエンドポイントは合計で300万個になります。</li>
+      </ul>
+      <t indent="0" pn="section-5-3">以上に基づくと、ネットワークの規模を示す数値は次のとおりです。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-4">
+        <li pn="section-5-4.1">6,000個のリーフノードセグメント×100個のリーフドメイン: 600,000ノード。</li>
+        <li pn="section-5-4.2">600,000ノード×500エンドポイント: 3億エンドポイント。</li>
+      </ul>
+      <t indent="0" pn="section-5-5">ノードの規模を示す数値は次のとおりです。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-6">
+        <li pn="section-5-6.1">リーフノードのセグメント規模: 6,000個のリーフノードセグメント + 300個のコアノードセグメント + 500個の隣接セグメント = 6,800セグメント。</li>
+        <li pn="section-5-6.2">コアノードのセグメント規模: 6,000個のリーフドメインセグメント + 300個のコアドメインセグメント = 6,300セグメント。</li>
+      </ul>
+      <t indent="0" pn="section-5-7">上記の計算では、リンク隣接セグメントは考慮していません。これらはローカルセグメントであり、通常はノードあたり100個未満です。</t>
+      <t indent="0" pn="section-5-8">リーフノードのFIBの能力によっては、リーフドメインを複数のより小さなドメインに分割できることに注意が必要です。上記の例では、リーフドメインを6つの小さなドメインに分割することで、各リーフノードが学習する必要があるのは1,000個のリーフノードセグメント + 300個のコアノードセグメント + 500個の隣接セグメントだけとなり、合計1,800セグメントになります。</t>
+    </section>
+    <section anchor="design-options" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-design-options">設計オプション</name>
+      <t indent="0" pn="section-6-1">このセクションでは、前のセクションで説明した規模を例示するための複数の設計オプションについて説明します。</t>
+      <section anchor="segment-routing-global-block-(srgb)-size" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-segment-routing-global-block-(srgb)-size">セグメントルーティンググローバルブロック（SRGB）のサイズ</name>
+        <t indent="0" pn="section-6.1-1">この文書の簡略化した例示では、16000-23999という小さな均質のSRGBの範囲を選びました。実際には、大規模な設計では、16000-80000やそれ以上の、より大きな範囲を使用するでしょう。範囲を大きくすると、特定のドメイン内でさまざまなTEアプリケーションに割り当てを提供できます。</t>
+      </section>
+      <section anchor="redistribution-of-routes-for-agg-nodes" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-redistribution-of-routes-for-agg-nodes">Aggノードの経路の再配布</name>
+        <t indent="0" pn="section-6.2-1">オペレーターは、Aggノードの経路をメトロ／DCドメインに再配布しないことを選択する場合があります。その場合、ドメイン間のパスを表現するために、より多くのセグメントが必要になります。</t>
+        <t indent="0" pn="section-6.2-2">たとえば、ノードAは、Zに到達するために、参照設計における{Agg3, DCI3, Z}の代わりにSRTEポリシー{DCI1, Agg1, Agg3, DCI3, Z}を使用することになります。</t>
+      </section>
+      <section anchor="sizing-and-hierarchy" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-sizing-and-hierarchy">サイジングと階層</name>
+        <t indent="0" pn="section-6.3-1">オペレーターは、少数の大きなリーフドメイン、多数の小さなリーフドメイン、または小規模と大規模のコア／リーフドメインの組み合わせのいずれかを自由に選択できます。</t>
+        <t indent="0" pn="section-6.3-2">オペレーターは、2階層（コア／メトロ）または3階層（コア／メトロ／DC）の設計を自由に使用できます。</t>
+      </section>
+      <section anchor="local-segments-to-hosts/servers" numbered="true" removeInRFC="false" toc="include" pn="section-6.4">
+        <name slugifiedName="name-local-segments-to-hosts/servers">ホスト／サーバーへのローカルセグメント</name>
+        <t indent="0" pn="section-6.4-1">ローカルに接続されたホスト（または仮想マシン（VM））を識別するために、任意のリーフノード（例: ノードZ）でローカルセグメントをプログラムできます。たとえば、ノードZがローカルセグメント40001をローカルホストZH1にバインドしている場合、ノードAはそのホストに到達するために次のSRTEポリシーを使用します: {16006, 18006, 20001, 40001}。このようなローカルセグメントは、サービスプロバイダーのアクセスネットワークの文脈ではNID（Network Interface Device）を表し、DCネットワークの文脈ではVMを表すことができます。</t>
+      </section>
+      <section anchor="compressed-srte-policies" numbered="true" removeInRFC="false" toc="include" pn="section-6.5">
+        <name slugifiedName="name-compressed-srte-policies">圧縮されたSRTEポリシー</name>
+        <t indent="0" pn="section-6.5-1">例として、<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>に従い、ノードAが、Agg1、Agg2、Agg3、DCI3/4（エニーキャスト）、Zというパスで構成されるSRTEポリシーを経由して（例: 低遅延のSLA契約で）ノードZに到達できると仮定します。このパスはセグメントリスト{16001, 16002, 16003, 18006, 20001}で表現されます。</t>
+        <t indent="0" pn="section-6.5-2">コントロールプレーンのソリューションが、Agg1にSRTEポリシー{16002, 16003, 18006}をインストールし、Agg1がそのポリシーに割り当てたバインディングSID（例: 4001）を収集し、それによって圧縮されたSRTEポリシー{16001, 4001, 20001}をノードAにプログラムできることは明らかです。</t>
+        <t indent="0" pn="section-6.5-3">ノードAから見ると、16001はAgg1に至ります。Agg1に到達すると、4001は特定の低遅延パス{16002, 16003, 18006}を経由してDCIペア（DCI3、DCI4）に至ります。そのDCIペアに到達すると、20001はZに至ります。</t>
+        <t indent="0" pn="section-6.5-4">「中間」のSRTEポリシーに割り当てられたバインディングSIDによって、エンドツーエンドのSRTEポリシーを圧縮できます。</t>
+        <t indent="0" pn="section-6.5-5">セグメントリスト{16001, 4001, 20001}は、{16001, 16002, 16003, 18006, 20001}と同じパスを、2つ少ないセグメントで表現します。</t>
+        <t indent="0" pn="section-6.5-6">バインディングSIDは、本質的にチャーン（頻繁な変動）からの保護にもなります。</t>
+        <t indent="0" pn="section-6.5-7">コアトポロジーが変化した場合、コントロールプレーンは、AからZへのSRTEポリシーを更新することなく、Agg1からDCIペアを経てDC2に至る低遅延のSRTEポリシーを更新できます。</t>
+      </section>
+    </section>
+    <section anchor="deployment-model" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-deployment-model">展開モデル</name>
+      <t indent="0" pn="section-7-1">この設計は、「グリーンフィールド」の展開だけでなく、複数のドメインにまたがるMPLS設計と相互運用する（「ブラウンフィールド」の）展開でも使用されることが期待されます。</t>
+    </section>
+    <section anchor="benefits" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-benefits">利点</name>
+      <t indent="0" pn="section-8-1">この文書で例示した設計オプションにより、非常に大規模な相互接続が可能になります。異なるドメインにまたがる数百万のエンドポイントを相互接続できます。</t>
+      <section anchor="simplified-operations" numbered="true" removeInRFC="false" toc="include" pn="section-8.1">
+        <name slugifiedName="name-simplified-operations">運用の簡素化</name>
+        <t indent="0" pn="section-8.1-1">この設計では、LDPとRSVP-TEという2つのコントロールプレーンプロトコルが不要です。新しいプロトコルは導入していません。この設計は、コアIPプロトコルであるISIS、OSPF、BGP、PCEPを、単純なSR拡張とともに活用します。</t>
+      </section>
+      <section anchor="inter-domain-slas" numbered="true" removeInRFC="false" toc="include" pn="section-8.2">
+        <name slugifiedName="name-inter-domain-slas">ドメイン間SLA</name>
+        <t indent="0" pn="section-8.2-1">高速リルートと回復力は、TI-LFAによって提供されます。TI-LFAは、リンク、ノード、または共有リスクリンクグループ（SRLG）の障害時に、50ミリ秒未満で高速リルートを行います。TI-LFAは<xref target="SR-TI-LFA" format="default" sectionFormat="of" derivedContent="SR-TI-LFA"/>で説明されています。</t>
+        <t indent="0" pn="section-8.2-2">エニーキャストSIDを使用することで、可用性と回復力も向上します。</t>
+        <t indent="0" pn="section-8.2-3">ドメイン間SLAを提供できます（例: 遅延を最適化したパスとコストを最適化したパス、バックボーンプレーンとの非共有性、ほかのサービスとの非共有性、プライマリーパスとバックアップパスの間の非共有性）。</t>
+        <t indent="0" pn="section-8.2-4">既存のドメイン間ソリューションは、SLA契約をまったくサポートしていません。ドメイン間でベストエフォートの到達可能性を提供するだけです。</t>
+      </section>
+      <section anchor="scale" numbered="true" removeInRFC="false" toc="include" pn="section-8.3">
+        <name slugifiedName="name-scale">規模</name>
+        <t indent="0" pn="section-8.3-1">LDPとRSVP-TEが不要になったことに加えて、サービスごとの中間ノードの状態もネットワークから取り除かれました。</t>
+      </section>
+      <section anchor="ecmp" numbered="true" removeInRFC="false" toc="include" pn="section-8.4">
+        <name slugifiedName="name-ecmp">ECMP</name>
+        <t indent="0" pn="section-8.4-1">各ポリシー（ドメイン内かドメイン間か、TEの有無を問わない）は、セグメントのリストとして表現されます。各セグメントはECMPに最適化されているため、ポリシー全体がECMPに最適化されます。ECMPに最適化されたエニーキャストプレフィックスセグメントの利点も考慮する価値があります（例: 16001はM1リーフドメインからコアへの任意のゲートウェイにわたって負荷分散し、16002はコアからM1リーフドメインへの任意のゲートウェイにわたって負荷分散します）。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">この文書にはIANAアクションはありません。</t>
+    </section>
+    <section anchor="manageability-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-manageability-considerations">管理性に関する考慮事項</name>
+      <t indent="0" pn="section-10-1">この文書は、MPLSデータプレーン上でのSRの応用について説明します。SRは、MPLSデータプレーンに変更を加えません。<xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>で説明されている管理性に関する考慮事項は、SRとともに使用されるMPLSデータプレーンに適用されます。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-11-1">この文書は、<xref target="RFC8402" format="default" sectionFormat="of" derivedContent="RFC8402"/>で説明されているもの以外に、追加のセキュリティー要件や仕組みを導入しません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-12">
+      <name slugifiedName="name-informative-references">参考文献</name>
+      <reference anchor="RFC4655" target="https://www.rfc-editor.org/info/rfc4655" quoteTitle="true" derivedAnchor="RFC4655">
+        <front>
+          <title>A Path Computation Element (PCE)-Based Architecture</title>
+          <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+          <author fullname="J.-P. Vasseur" initials="J.-P." surname="Vasseur"/>
+          <author fullname="J. Ash" initials="J." surname="Ash"/>
+          <date year="2006" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="4655"/>
+        <seriesInfo name="DOI" value="10.17487/RFC4655"/>
+      </reference>
+      <reference anchor="RFC5440" target="https://www.rfc-editor.org/info/rfc5440" quoteTitle="true" derivedAnchor="RFC5440">
+        <front>
+          <title>Path Computation Element (PCE) Communication Protocol (PCEP)</title>
+          <author fullname="JP. Vasseur" initials="JP." surname="Vasseur" role="editor"/>
+          <author fullname="JL. Le Roux" initials="JL." surname="Le Roux" role="editor"/>
+          <date year="2009" month="March"/>
+        </front>
+        <seriesInfo name="RFC" value="5440"/>
+        <seriesInfo name="DOI" value="10.17487/RFC5440"/>
+      </reference>
+      <reference anchor="RFC7752" target="https://www.rfc-editor.org/info/rfc7752" quoteTitle="true" derivedAnchor="RFC7752">
+        <front>
+          <title>North-Bound Distribution of Link-State and Traffic Engineering (TE) Information Using BGP</title>
+          <author fullname="H. Gredler" initials="H." surname="Gredler" role="editor"/>
+          <author fullname="J. Medved" initials="J." surname="Medved"/>
+          <author fullname="S. Previdi" initials="S." surname="Previdi"/>
+          <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+          <author fullname="S. Ray" initials="S." surname="Ray"/>
+          <date year="2016" month="March"/>
+        </front>
+        <seriesInfo name="RFC" value="7752"/>
+        <seriesInfo name="DOI" value="10.17487/RFC7752"/>
+      </reference>
+      <reference anchor="RFC8402" target="https://www.rfc-editor.org/info/rfc8402" quoteTitle="true" derivedAnchor="RFC8402">
+        <front>
+          <title>Segment Routing Architecture</title>
+          <author fullname="C. Filsfils" initials="C." surname="Filsfils" role="editor"/>
+          <author fullname="S. Previdi" initials="S." surname="Previdi" role="editor"/>
+          <author fullname="L. Ginsberg" initials="L." surname="Ginsberg"/>
+          <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+          <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+          <author fullname="R. Shakir" initials="R." surname="Shakir"/>
+          <date year="2018" month="July"/>
+        </front>
+        <seriesInfo name="RFC" value="8402"/>
+        <seriesInfo name="DOI" value="10.17487/RFC8402"/>
+      </reference>
+      <reference anchor="SR-TI-LFA" quoteTitle="true" derivedAnchor="SR-TI-LFA">
+        <front>
+          <title>Topology Independent Fast Reroute using Segment Routing</title>
+          <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+          <author fullname="A. Bashandy" initials="A." surname="Bashandy"/>
+          <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
+          <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+          <author fullname="P. Francois" initials="P." surname="Francois"/>
+          <author fullname="D. Voyer" initials="D." surname="Voyer"/>
+          <author fullname="F. Clad" initials="F." surname="Clad"/>
+          <author fullname="P. Camarillo" initials="P." surname="Camarillo"/>
+          <date year="2019" month="March"/>
+        </front>
+        <refcontent>Work in Progress</refcontent>
+        <seriesInfo name="Internet-Draft" value="draft-ietf-rtgwg-segment-routing-ti-lfa-01"/>
+      </reference>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書の内容に貢献してくれたGiles Heron、Alexander Preusche、Steve Braaten、Francis Fergusonに感謝します。</t>
+    </section>
+    <section anchor="contributors" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <t indent="0" pn="section-appendix.b-1">次の人々は、この文書の編集に大きく貢献しました。</t>
+      <author fullname="Dennis Cai" initials="D." surname="Cai">
+        <organization showOnFrontPage="true">Individual</organization>
+      </author>
+      <author fullname="Tim Laberge" initials="T." surname="Laberge">
+        <organization showOnFrontPage="true">Individual</organization>
+      </author>
+      <author fullname="Steven Lin" initials="S." surname="Lin">
+        <organization showOnFrontPage="true">Google Inc.</organization>
+      </author>
+      <author fullname="Bruno Decraene" initials="B." surname="Decraene">
+        <organization showOnFrontPage="true">Orange</organization>
+      </author>
+      <author fullname="Luay Jalil" initials="L." surname="Jalil">
+        <organization showOnFrontPage="true">Verizon</organization>
+      </author>
+      <author fullname="Jeff Tantsura" initials="J." surname="Tantsura">
+        <organization showOnFrontPage="true">Individual</organization>
+      </author>
+      <author fullname="Rob Shakir" initials="R." surname="Shakir">
+        <organization showOnFrontPage="true">Google Inc.</organization>
+      </author>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Clarence Filsfils" initials="C." surname="Filsfils" role="editor">
+        <organization showOnFrontPage="true">Cisco Systems, Inc.</organization>
+        <address>
+          <postal>
+            <city>Brussels</city>
+            <country>Belgium</country>
+          </postal>
+          <email>cfilsfil@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Stefano Previdi" initials="S." surname="Previdi">
+        <organization showOnFrontPage="true">Huawei Technologies</organization>
+        <address>
+          <email>stefano@previdi.net</email>
+        </address>
+      </author>
+      <author fullname="Gaurav Dawra" initials="G." surname="Dawra" role="editor">
+        <organization showOnFrontPage="true">LinkedIn</organization>
+        <address>
+          <postal>
+            <country>United States of America</country>
+          </postal>
+          <email>gdawra.ietf@gmail.com</email>
+        </address>
+      </author>
+      <author fullname="Wim Henderickx" initials="W." surname="Henderickx">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>Copernicuslaan 50</street>
+            <city>Antwerp</city>
+            <code>2018</code>
+            <country>Belgium</country>
+          </postal>
+          <email>wim.henderickx@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Dave Cooper" initials="D." surname="Cooper">
+        <organization showOnFrontPage="true">CenturyLink</organization>
+        <address>
+          <email>Dave.Cooper@centurylink.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

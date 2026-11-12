@@ -24,10 +24,10 @@ argument-hint: <rfc-number>
 1. パッチを当てない素の出力を生成します。
 
    ```bash
-   RFC_NO_PATCH=1 scripts/txt2xml.pl N > src/en/rfcN.xml
+   scripts/txt2xml.pl --no-patch -o src/en/rfcN.xml N
    ```
 
-   `src/en/` は gitignore されています。比較用に同じ出力をスクラッチパッドにも `rfcN.raw.xml` として保存しておきます。
+   `src/en/` は gitignore されています。CI では許可されたコマンドしか実行できないため、環境変数 `RFC_NO_PATCH=1` やリダイレクト（`>`）は使わず、この形のまま実行してください。
 2. **生成結果を原文 TXT と必ず突き合わせてください。** `txt2xml.pl` は TXT を完全には再現できません。過去に見つかった崩れの例は次のとおりです。
    - 本文の欠落: 行頭から始まるラベル（例: `Time:`）以降のブロックが丸ごと抜ける
    - 見出しの取りこぼし: 付録の見出しが直前のコードブロックに混ざり、節が消える（目次の項目も欠ける）
@@ -45,11 +45,10 @@ argument-hint: <rfc-number>
 4. パッチを作成し、`Makefile` と同じ手順で英語 XML が再現できることを確認します。
 
    ```bash
-   diff -u --label '' --label '' <scratchpad>/rfcN.raw.xml src/en/rfcN.xml > src/patches/rfcN.patch
-   scripts/txt2xml.pl N | cmp - src/en/rfcN.xml
+   scripts/make-txt-patch.pl N
    ```
 
-   `scripts/update-patch.pl` は全 RFC のパッチを再生成するので、ここでは使わないでください。
+   素の出力と `src/en/rfcN.xml` の差分を `src/patches/rfcN.patch` に保存し、パッチを当てた `txt2xml.pl` の出力が `src/en/rfcN.xml` と一致するかを確認します。一致しない場合はエラーになるので、`src/en/rfcN.xml` を直してから再実行してください。`scripts/update-patch.pl` は全 RFC のパッチを再生成するので、ここでは使わないでください。
 5. `cp src/en/rfcN.xml src/ja/rfcN.xml` でコピーし、翻訳前に一度 `scripts/xml2html.py N` で HTML を生成して、英語側が正しく描画されることを確認します。英語 XML の構造を後から変えると、日本語訳もやり直しになります。
 
 古い RFC の「このメモのステータス」は現在の定型文と内容が異なるため、`src/ja/rfc9457.xml` から写さずに原文どおりに訳してください（例: 「この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、…」）。`Copyright (C) The Internet Society (...)` の行は英語のまま残します。末尾の Full Copyright Statement も削除せずに残し、見出しは「著作権表示全文」、本文は `Copyright (C) ...` の行を除いて訳してください（例: `src/ja/rfc3339.xml`）。`txt2xml.pl` は Full Copyright Statement を `<back>` 末尾の番号なしセクション（`anchor="full-copyright-statement"`）と目次項目として出力します。その後ろに続く RFC Editor の資金提供に関する「Acknowledgement」（単数形）も、目次に載らない番号なしセクション（`anchor="acknowledgement"`）として出力されるので、削除せずに「謝辞」として訳してください。どちらも原文どおり Authors' Addresses の後ろに来るよう、英語 XML を直すときは順序と `pn` の採番を確認してください。
@@ -147,7 +146,7 @@ Python のコマンドは `venv` があれば `venv/bin/python` を使ってく�
 2. `scripts/update-toc.pl` — 目次の `<xref>` のテキストを翻訳済みの見出しに合わせます。
 3. `npx textlint src/ja/rfcN.xml` — lint エラーを修正します。
 4. `scripts/register-rfc.py N` — `Makefile` と `docs/index.html` に登録します。TXT 形式の RFC では、`txt2xml.pl` のビルドルールと `update-english` ターゲットへの追加も行います。
-5. `make docs/rfcN.html` — HTML を生成します。TXT 形式の RFC では、`src/en/rfcN.xml` を削除してから実行し、TXT → パッチ → HTML の経路で生成できることを確認してください。
+5. `make docs/rfcN.html` — HTML を生成します。TXT 形式の RFC では、`make -W src/rfcs/rfcN.txt docs/rfcN.html` として `src/en/rfcN.xml` も作り直し、TXT → パッチ → HTML の経路で生成できることを確認してください。
 
 最後に、生成した HTML でページ内リンクの切れや、表・定義リスト・引用の描画漏れがないことを確認してください。
 

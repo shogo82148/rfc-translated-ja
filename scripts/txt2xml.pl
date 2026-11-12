@@ -5,11 +5,22 @@ use utf8;
 use JSON::PP qw(decode_json);
 use Encode qw(encode_utf8 decode_utf8);
 use Carp qw(croak);
+use Getopt::Long qw(GetOptions);
 
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
 
+# usage: scripts/txt2xml.pl [--no-patch] [-o OUTPUT] <rfc-number>
+#   --no-patch  src/patches/rfcN.patch を当てない（環境変数 RFC_NO_PATCH=1 と同じ）
+#   -o OUTPUT   標準出力の代わりに OUTPUT へ書き出す
+my $no_patch = $ENV{RFC_NO_PATCH};
+my $output_file;
+GetOptions(
+    "no-patch" => \$no_patch,
+    "o|output=s" => \$output_file,
+) or die "usage: $0 [--no-patch] [-o OUTPUT] <rfc-number>\n";
 my $number = $ARGV[0];
+die "usage: $0 [--no-patch] [-o OUTPUT] <rfc-number>\n" unless defined $number && $number =~ /\A[0-9]+\z/;
 
 open my $buf, ">", \my $output or die "failed to open: $!";
 
@@ -841,11 +852,17 @@ say $buf "</rfc>";
 
 close $buf;
 
-unless ($ENV{RFC_NO_PATCH}) {
+unless ($no_patch) {
     my $patch_file = "src/patches/rfc$number.patch";
     if (-f $patch_file) {
         $output = patch($output, $patch_file)
     }
 }
 
-print $output;
+if (defined $output_file) {
+    open my $out, ">:utf8", $output_file or die "failed to open $output_file: $!";
+    print $out $output;
+    close $out or die "failed to close $output_file: $!";
+} else {
+    print $output;
+}

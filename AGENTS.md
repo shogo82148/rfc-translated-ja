@@ -25,6 +25,8 @@
 - 日本語 XML を lint: `npm run textlint`
 - 日本語 XML 内の TOC メタデータを更新: `scripts/update-toc.pl`
 - JA と EN-raw のパッチを再生成: `scripts/update-patch.pl`
+- TXT 原本から英語 XML を生成（パッチなし）: `scripts/txt2xml.pl --no-patch -o src/en/rfc<number>.xml <rfc-number>`
+- TXT 原本の RFC 1 件のパッチを作成・検証: `scripts/make-txt-patch.pl <rfc-number>`
 - 未翻訳の RFC を一覧: `scripts/list-untranslated.py [--order size|asc|desc] [--max-bytes N] [--format all|xml|txt]`
 - 翻訳の XML 構造チェック: `scripts/check-translation.py [--strict] <rfc-number>`
 - 翻訳済み RFC を `Makefile` と `docs/index.html` に登録: `scripts/register-rfc.py <rfc-number>`

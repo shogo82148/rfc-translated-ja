@@ -109,6 +109,7 @@ RFC 2119 の BCP14 キーワード（MUST, SHOULD, MAY など）は、以下の�
 
 - `scripts/xml2html.py` では対訳出力時の HTML ID 重複を避ける必要があります。anchor/id ロジックを変更する場合は、EN/JA の ID を必ず区別してください（例: 言語サフィックスを付与）。
 - `src/en/rfc*.xml` は、XML 原本からコピーされるものと `scripts/txt2xml.pl` により TXT から生成されるものが混在します（規則は `Makefile` を参照）。すべて同一の生成経路だと仮定しないでください。
+- TXT から生成した `src/en/rfc*.xml` で直すのは `txt2xml.pl` の変換の崩れだけです。原文 TXT の誤記（URL の typo を含む）は直さず、そのまま反映してください。
 - `src/ja/rfc*.xml` を変更した場合は、完了前に lint を実行してください: `npm run textlint`。
 - 日本語訳の修正時は、以下を確認してください：
   - **文体の統一**: 全文が「ですます調」で統一されているか

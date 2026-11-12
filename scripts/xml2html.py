@@ -145,6 +145,57 @@ def id_for_pn(pn):
     # not an appendix
     return pn
 
+# <ol> の type 属性のうち、書式文字列でないもの
+OL_SIMPLE_TYPES = {'1': '%d.', 'a': '%c.', 'A': '%C.', 'i': '%i.', 'I': '%I.'}
+
+def to_alpha(n):
+    s = ''
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(ord('a') + r) + s
+    return s
+
+def to_roman(n):
+    s = ''
+    for value, numeral in ((1000, 'm'), (900, 'cm'), (500, 'd'), (400, 'cd'), (100, 'c'), (90, 'xc'),
+                           (50, 'l'), (40, 'xl'), (10, 'x'), (9, 'ix'), (5, 'v'), (4, 'iv'), (1, 'i')):
+        while n >= value:
+            s += numeral
+            n -= value
+    return s
+
+def format_ol_counter(fmt, n, parent=''):
+    """RFC 7991 の <ol type> の書式文字列 (%d, %c, %C, %i, %I, %p, %%) で番号を作る"""
+    conv = {'d': str(n), 'c': to_alpha(n), 'C': to_alpha(n).upper(),
+            'i': to_roman(n), 'I': to_roman(n).upper(), 'p': parent, '%': '%'}
+    return re.sub(r'%([dcCiIp%])', lambda m: conv[m.group(1)], fmt)
+
+def ol_html_type(labels, prefer=None):
+    """番号の列が HTML の <ol type> で表せるなら (type, start) を、表せないなら (None, None) を返す
+
+    "i." のように英字とローマ数字のどちらとも読める場合は、prefer (<ol> の type 属性) を優先する。
+    """
+    if not labels:
+        return '1', 1
+    m = re.fullmatch(r'([0-9a-zA-Z]+)\.', labels[0])
+    if not m:
+        return None, None
+    candidates = [('1', str), ('a', to_alpha), ('A', lambda n: to_alpha(n).upper()),
+                  ('i', to_roman), ('I', lambda n: to_roman(n).upper())]
+    candidates.sort(key=lambda c: c[0] != prefer)
+    for html_type, conv in candidates:
+        for start in range(1, 200):
+            if conv(start) == m.group(1):
+                break
+        else:
+            continue
+        if all(label == conv(start + i) + '.' for i, label in enumerate(labels)):
+            return html_type, start
+    return None, None
+
+def css_string(s):
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA, metadata):
         self.root_en = xmlrfcEN.getroot()
@@ -153,6 +204,8 @@ class HtmlWriter:
         self.refname_mapping = self.get_refname_mapping()
         self.id_counts = {}
         self.pn_ids = set()
+        self.ol_groups = {}
+        self.li_marker = None
 
     def unique_id(self, value):
         if value is None:
@@ -1281,12 +1334,58 @@ class HtmlWriter:
     def render1_ol(self, h, x):
         ul = build('ol')
         h.append(ul)
+        items = [c for c in x if c.tag == 'li']
+        labels = self.ol_labels(x, items)
+        html_type, start = ol_html_type(labels, x.get('type'))
+        li_labels = {}
+        if html_type is None:
+            # "(a)" や "Step 1:" のような独自書式は、項目ごとに文字列のマーカーを指定する
+            for c, label in zip(items, labels):
+                li_labels[c] = label
+        else:
+            if html_type != '1':
+                ul.set('type', html_type)
+            if start != 1:
+                ul.set('start', str(start))
         for c in x:
+            if c in li_labels:
+                self.li_marker = li_labels[c]
             self.render1(ul, c)
         return ul
 
+    def ol_labels(self, x, items):
+        """<ol> の各 <li> に表示する番号の文字列を返す"""
+        # xml2rfc の prep 済み XML には derivedCounter があるので、それを優先する
+        derived = [c.get('derivedCounter') for c in items]
+        if items and all(derived):
+            return derived
+
+        fmt = x.get('type') or '1'
+        fmt = OL_SIMPLE_TYPES.get(fmt, fmt)
+        if '%' not in fmt:
+            fmt = '%d.'
+        start = x.get('start')
+        group = x.get('group')
+        key = (self.lang, group)
+        if start is not None:
+            n = int(start)
+        elif group and key in self.ol_groups:
+            n = self.ol_groups[key] + 1
+        else:
+            n = 1
+        labels = []
+        for i, c in enumerate(items):
+            labels.append(derived[i] or format_ol_counter(fmt, n + i))
+        if group:
+            self.ol_groups[key] = n + len(items) - 1
+        return labels
+
     def render1_li(self, h, x):
         li = build('li')
+        marker = self.li_marker
+        self.li_marker = None
+        if marker is not None:
+            li.set('style', 'list-style-type: "%s "' % css_string(marker))
         h.append(li)
         anchor = x.get('anchor')
         if anchor:

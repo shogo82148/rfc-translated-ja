@@ -94,7 +94,8 @@ body {
     </head>
     <body>
     <h1>RFC日本語訳</h1>
-    <p>Copyright (c) <a href="https://github.com/shogo82148">ICHINOSE Shogo(\@shogo82148)</a> Licensed by CC BY-SA 3.0</p>
+    <p>日本語訳: Copyright (c) <a href="https://github.com/shogo82148">ICHINOSE Shogo(\@shogo82148)</a> Licensed by <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ja">CC BY-SA 3.0</a></p>
+    <p>CC BY-SA 3.0 が適用されるのは日本語訳の部分だけです。原文の RFC の著作権は、各文書に記載された著作権者（IETF Trust、Internet Society、または著者）に帰属します。日本語訳は <a href="https://trustee.ietf.org/documents/trust-legal-provisions/">IETF Trust Legal Provisions</a> などの原文のライセンス条件にもとづいて公開しており、各ページに残した原文の著作権表示とライセンス条件が引き続き適用されます。この日本語訳は非公式なもので、正式な文書は英語の原文です。</p>
     <ul>
 __EOF__
 

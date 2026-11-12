@@ -8,7 +8,9 @@ It verifies that:
   - the Japanese XML is well-formed,
   - both trees have the same element structure (scripts/xml2html.py zips them),
   - each element has the same BCP 14 key words as the English source,
-  - no paragraph-like element outside the references is left in English.
+  - no paragraph-like element outside the references is left in English,
+  - no standard section heading (Introduction, Security Considerations, ...)
+    is left in English, however short it is.
 
 Exits with non-zero status on structure errors.
 With --strict, elements that look untranslated are also treated as errors.
@@ -31,6 +33,22 @@ INLINE_TAGS = {'bcp14', 'xref', 'eref', 'em', 'strong', 'tt', 'sub', 'sup', 'cre
                'br', 'u', 'relref', 'spanx', 'vspace', '#comment', '#pi'}
 JAPANESE =re.compile(r'[぀-ヿ㐀-鿿＀-￯]')
 WORD = re.compile(r'[A-Za-z]{3,}')
+# Common section headings that always have a Japanese translation
+# (see 定番の見出し in .claude/skills/translate-rfc/SKILL.md).
+# They are too short for the generic check above, so <name> is matched against this list.
+# Other short English headings are not reported because many are protocol element
+# names that are kept in English (e.g. REGISTER, 404 Not Found).
+STANDARD_HEADINGS = {h.lower() for h in [
+    'Abstract', 'Status of This Memo', 'Copyright Notice', 'Table of Contents',
+    'Introduction', 'Overview', 'Terminology', 'Notational Conventions',
+    'Conventions Used in This Document', 'Requirements Language',
+    'IANA Considerations', 'Security Considerations', 'Privacy Considerations',
+    'Operational Considerations', 'Implementation Status',
+    'References', 'Normative References', 'Informative References',
+    'Acknowledgements', 'Acknowledgments', 'Acknowledgement', 'Acknowledgment',
+    'Contributors', "Author's Address", "Authors' Addresses", 'Examples',
+    'Full Copyright Statement',
+]}
 # the English key word in a translated BCP 14 phrase, e.g. しなければなりません（MUST）
 BCP14_KEYWORD = re.compile(r'[（(]\s*([A-Z][A-Z ]*[A-Z])\s*[）)]\s*$')
 
@@ -88,13 +106,25 @@ def compare(en, ja, path, errors):
 
 
 def untranslated(ja, path, warnings):
-    if not isinstance(ja.tag, str) or ja.tag in SKIP_TAGS:
+    if not isinstance(ja.tag, str):
+        return
+    if ja.tag == 'references':
+        # the entries are kept in English, but the heading and nested sections are translated
+        for i, c in enumerate(ja):
+            if c.tag in ('name', 'references'):
+                untranslated(c, '%s/%s[%d]' % (path, tag_of(c), i), warnings)
+        return
+    if ja.tag in SKIP_TAGS:
         return
     if ja.tag in TEXT_TAGS:
         text = ''.join(ja.itertext()).strip()
         # skip text that has nothing to translate (numbers, identifiers, short tokens)
         # the copyright line is kept in English (see boilerplate.md)
         if text.startswith('Copyright (c)'):
+            return
+        if ja.tag == 'name' and ' '.join(text.split()).lower() in STANDARD_HEADINGS:
+            pn = ja.get('slugifiedName') or ja.getparent().get('pn') or path
+            warnings.append('%s: standard heading left in English: %s' % (pn, text))
             return
         if text and WORD.search(text) and not JAPANESE.search(text) and len(text.split()) >= 4:
             pn = ja.get('pn') or ja.get('slugifiedName') or path

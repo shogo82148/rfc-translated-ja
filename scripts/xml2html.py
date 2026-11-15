@@ -483,6 +483,10 @@ class HtmlWriter:
         return h
 
     def render_abstract(self, h, en, ja):
+        # 原文に概要がない場合（TXT から生成した空の <abstract> など）は省略する
+        if not any(isinstance(c.tag, str) for c in en):
+            return h
+
         # 概要の見出しをレンダリング
         parent = build('div')
         h.append(parent)

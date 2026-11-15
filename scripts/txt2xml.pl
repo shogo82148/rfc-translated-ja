@@ -41,7 +41,19 @@ sub patch($input, $patch_file) {
     print $fh encode_utf8($input);
     close($fh);
 
-    system("patch -i $patch_file $filename > /dev/null 2>&1");
+    # -f: 対話的な問い合わせをせず、当たらない hunk は失敗として扱う
+    open my $ph, "-|", "patch", "-f", "-i", $patch_file, $filename
+        or die "failed to run patch: $!\n";
+    my $log = do { local $/; <$ph> } // "";
+    close $ph;
+    if ($? != 0) {
+        my $reason = $? == -1 ? "failed to execute patch: $!"
+            : $? & 127 ? sprintf("patch died with signal %d", $? & 127)
+            : sprintf("patch exited with status %d", $? >> 8);
+        # 一時ディレクトリは終了時に消えるので、reject の内容もここで出しておく
+        my $rej = -f "$filename.rej" ? "rejected hunks:\n" . slurp("$filename.rej") : "";
+        die "failed to apply $patch_file: $reason\n" . decode_utf8($log) . $rej;
+    }
     return slurp($filename);
 }
 

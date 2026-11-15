@@ -24,6 +24,9 @@ die "usage: $0 [--no-patch] [-o OUTPUT] <rfc-number>\n" unless defined $number &
 
 open my $buf, ">", \my $output or die "failed to open: $!";
 
+# "---- Begin code block ----" で囲まれたコード
+my @code_blocks = ();
+
 sub slurp($file) {
     open my $fh, "<", $file or die "failed to open: $!";
     my $content = do { local $/; <$fh> };
@@ -165,6 +168,13 @@ sub parse_reference($s) {
 }
 
 sub parse_content($s) {
+    if ($s =~ /^\@\@CODEBLOCK:(\d+)\@\@$/) {
+        # "---- Begin code block ----" で囲まれたコード
+        return {
+            type => "sourcecode",
+            content => $code_blocks[$1],
+        };
+    }
     if ($s =~ /^o /) {
         # リスト
         my @items = split m/^o /m, $s;
@@ -361,6 +371,12 @@ sub handle_section($section) {
             print $buf '<t indent="0" pn="' . escape("$title->{pn}-$index") . '">';
             print $buf $content->{content};
             print $buf "</t>\n";
+        } elsif ($content->{type} eq "sourcecode") {
+            $index++;
+            print $buf '  ' x ($level+2);
+            print $buf '<sourcecode type="c" markers="false" pn="' . escape("$title->{pn}-$index") . '"><![CDATA[' . "\n";
+            print $buf $content->{content};
+            print $buf "\n]]></sourcecode>\n";
         } elsif ($content->{type} eq "section" || $content->{type} eq "appendix") {
             handle_section($content);
         } elsif ($content->{type} eq "ul") {
@@ -458,6 +474,20 @@ sub handle_references($references) {
 my $content = slurp("src/rfcs/rfc$number.txt");
 my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 
+# "---- Begin code block ----" と "---- End code block ----" で囲まれたコード（例: RFC 6386）は
+# 空行やページ区切りで分割されないように、先に取り出してプレースホルダーに置き換える
+$content =~ s{^[ ]*-{4} Begin code block -+\n(.*?)^[ ]*-{4} End code block -+$}{
+    my $code = $1;
+    # ページ区切り（フッター・改ページ・ヘッダー）を取り除く
+    $code =~ s/\n*[^\n]*\[Page \d+\]\n\f\n[^\n]*\n\n*/\n/g;
+    $code =~ s/^   //mg;
+    $code =~ s/[ \t]+$//mg;
+    $code =~ s/\A\n+//;
+    $code =~ s/\n+\z//;
+    push @code_blocks, $code;
+    "\n   \@\@CODEBLOCK:$#code_blocks\@\@\n";
+}gems;
+
 # ページ毎に分割
 my @contents = split /\n\f\n/, $content;
 
@@ -489,6 +519,8 @@ for my $c(@contents) {
 $content = join "\n", @contents;
 $content =~ s/^(\s*\n)*//; # 先頭の空行を削除
 $content =~ s/(\s*\n)*$//; # 末尾の空行を削除
+# コードのプレースホルダーは前後の段落と分ける
+$content =~ s/\n*^([ ]*\@\@CODEBLOCK:\d+\@\@)\n*/\n\n$1\n\n/mg;
 $content =~ s/\n\s*\n(\s*\n)*/\n\n/g; # 連続する空行を1行にまとめる
 
 # 二ページに連続する表を結合

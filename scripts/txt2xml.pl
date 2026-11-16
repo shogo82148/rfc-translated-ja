@@ -626,7 +626,7 @@ for my $content(@contents) {
                 $new_references->{parent} = $parent;
             }
             $current_references = $new_references;
-        } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
+        } elsif ($context =~ /^(?:Appendix )?[A-Z][.](?:\d+[.]?)*:?\s/) {
             my $title = parse_appendix_name($context);
             my $new_appendix = +{
                 type => "appendix",
@@ -710,7 +710,7 @@ for my $content(@contents) {
     } elsif ($context =~ /^(?:\d+(?:[.]\d+)*[.]?\s+)?(?:(?:Normative|Informative)\s+)?References$/) {
         $content =~ s/\s+/ /g;
         push @{$current_references->{contents}}, parse_reference($content);
-    } elsif ($context =~ /^(?:Appendix )?[A-Z][.]/) {
+    } elsif ($context =~ /^(?:Appendix )?[A-Z][.](?:\d+[.]?)*:?\s/) {
         push @{$current_appendix->{contents}}, parse_content($content);
     } elsif ($context =~ /^\d+(?:[.]|\s)/) {
         push @{$current_section->{contents}}, parse_content($content);

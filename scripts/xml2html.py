@@ -515,6 +515,10 @@ class HtmlWriter:
             self.render(abstract, c0, c1)
         return abstract
 
+    # IESG Note などの <note>。見出しと本文を <section> と同様に対訳表示する
+    def render_note(self, h, en, ja):
+        return self.render_section(h, en, ja)
+
     def render_middle(self, h, en, ja):
         for (c0, c1) in zip(en, ja):
             self.render(h, c0, c1)

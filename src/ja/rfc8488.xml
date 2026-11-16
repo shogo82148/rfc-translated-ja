@@ -1,0 +1,634 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-sidrops-rpki-tree-validation-03" indexInclude="true" number="8488" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-sidrops-rpki-tree-validation-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8488" rel="alternate"/>
+  <front>
+    <title>RIPE NCCによるリソース公開鍵基盤（RPKI）証明書ツリー検証の実装</title>
+    <seriesInfo name="RFC" value="8488" stream="IETF"/>
+    <date year="2018" month="December"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書では、RIPE NCC RPKI Validatorで実装されている、リソース公開鍵基盤（Resource Public Key Infrastructure、RPKI）の証明書ツリーの内容を検証するためのアプローチを説明します。
+このアプローチは特定のオブジェクト取得メカニズムに依存しないため、rsyncプロトコルで利用可能なリポジトリー、RPKIリポジトリーデルタプロトコル（RPKI Repository Delta Protocol、RRDP）で利用可能なリポジトリー、およびその両方を組み合わせて使用するリポジトリーで使用できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<eref target="https://www.rfc-editor.org/info/rfc8488" brackets="none"/> で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-general-considerations">一般的な考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+            <li pn="section-toc.1-1.2.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-hash-comparisons">ハッシュの比較</xref></t>
+            </li>
+            <li pn="section-toc.1-1.2.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discovery-of-rpki-objects-issued-by-a-ca">CAが発行したRPKIオブジェクトの発見</xref></t>
+            </li>
+            <li pn="section-toc.1-1.2.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-manifest-entries-versus-repository-content">マニフェストのエントリーとリポジトリーの内容</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-top-down-validation-of-a-single-trust-anchor-certificate-tree">単一のトラストアンカー証明書ツリーのトップダウン検証</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator">トラストアンカーロケーターを使用したトラストアンカー証明書の取得</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ca-certificate-validation">CA証明書の検証</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.2.1" format="counter" sectionFormat="of" target="section-3.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-finding-the-most-recent-valid-manifest-and-crl">最新の有効なマニフェストとCRLの発見</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2.2" format="counter" sectionFormat="of" target="section-3.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-validating-manifest-entries">マニフェストのエントリーの検証</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.3.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-object-store-cleanup">オブジェクトストアのクリーンアップ</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-remote-objects-fetcher">リモートオブジェクトフェッチャー</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fetcher-operations">フェッチャーの操作</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.1.2">
+              <li pn="section-toc.1-1.4.1.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fetch-repository-objects">リポジトリーオブジェクトの取得</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.1.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.2.1"><xref derivedContent="4.1.2" format="counter" sectionFormat="of" target="section-4.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fetch-single-repository-object">単一のリポジトリーオブジェクトの取得</xref></t>
+              </li>
+              </ul>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-object-store">ローカルオブジェクトストア</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-store-operations">ストアの操作</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.1.2">
+              <li pn="section-toc.1-1.5.1.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1.1"><xref derivedContent="5.1.1" format="counter" sectionFormat="of" target="section-5.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-store-repository-object">リポジトリーオブジェクトの格納</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.2.1"><xref derivedContent="5.1.2" format="counter" sectionFormat="of" target="section-5.1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-get-objects-by-hash">ハッシュによるオブジェクトの取得</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.3.1"><xref derivedContent="5.1.3" format="counter" sectionFormat="of" target="section-5.1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-get-certificate-objects-by-uri">URIによる証明書オブジェクトの取得</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.4.1"><xref derivedContent="5.1.4" format="counter" sectionFormat="of" target="section-5.1.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-get-manifest-objects-by-aki">AKIによるマニフェストオブジェクトの取得</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.5">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.5.1"><xref derivedContent="5.1.5" format="counter" sectionFormat="of" target="section-5.1.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-delete-objects-for-a-uri">URIに対するオブジェクトの削除</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.6">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.6.1"><xref derivedContent="5.1.6" format="counter" sectionFormat="of" target="section-5.1.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-delete-outdated-objects">古くなったオブジェクトの削除</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.1.7">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.7.1"><xref derivedContent="5.1.7" format="counter" sectionFormat="of" target="section-5.1.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-update-objects-validation-time">オブジェクトの検証時刻の更新</xref></t>
+              </li>
+              </ul>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+            <li pn="section-toc.1-1.7.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-hash-collisions">ハッシュ衝突</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-algorithm-agility">アルゴリズムの俊敏性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository">リポジトリー内のオブジェクトの期待される場所と実際の場所の不一致</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.4.1"><xref derivedContent="7.4" format="counter" sectionFormat="of" target="section-7.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-manifest-content-versus-publication-point-content">マニフェストの内容と公開ポイントの内容</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.5.1"><xref derivedContent="7.5" format="counter" sectionFormat="of" target="section-7.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-possible-denial-of-service">サービス拒否の可能性</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+            <li pn="section-toc.1-1.8.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">この文書は、RIPE NCC RPKI Validatorのバージョン2.25がどのように実装されているかを説明します。
+このソフトウェアのソースコードは<xref target="rpki-validator" format="default" sectionFormat="of" derivedContent="rpki-validator"/>にあります。
+この文書の目的は、このソフトウェアツールのユーザー（および貢献者）に対して透明性を提供することです。</t>
+      <t indent="0" pn="section-1-2">RPKIリポジトリーで公開された情報を使用するために、依拠当事者（Relying Party、RP）は、証明書、証明書失効リスト（CRL）、その他のRPKI署名付きオブジェクトの内容を取得して検証する必要があります。
+特定のオブジェクトを検証するには、トラストアンカー（TA）までの証明書チェーン内のすべての証明書が有効であることを確認しなければなりません。
+したがって、証明書ツリーの検証はトップダウンで行われます。
+つまり、TA証明書から始めて証明書チェーンをたどり、出会ったすべての証明書とその生成物を検証します。
+この処理の結果は、出会ったすべてのRPKIオブジェクトの一覧であり、それぞれに有効性のステータスが付与されています。
+これらの結果は、後でRPがルーティングの決定などを行う際に使用できます。</t>
+      <t indent="0" pn="section-1-3">従来、RPKIデータは、rsyncプロトコル<xref target="rsync" format="default" sectionFormat="of" derivedContent="rsync"/>でアクセスできるリポジトリー<xref target="RFC6481" format="default" sectionFormat="of" derivedContent="RFC6481"/>を通じてRPに提供されています。
+RPは、リポジトリーデータのローカルコピーを保持し、リポジトリーからこのコピーを定期的に更新することが推奨されています（<xref target="RFC6481" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6481#section-5" derivedContent="RFC6481"/>を参照）。
+RRDP<xref target="RFC8182" format="default" sectionFormat="of" derivedContent="RFC8182"/>は、リポジトリーデータを取得し、ローカルコピーをリポジトリーと同期させておくための別の方法を導入しています。</t>
+      <t indent="0" pn="section-1-4">この文書では、使用されるリポジトリーアクセスプロトコルとは独立に、RIPE NCC RPKI ValidatorがダウンロードするRPKIオブジェクトをどのように発見し、証明書パスを構築し、RPKIオブジェクトを検証するかを説明します。
+これを実現するために、RIPE NCC RPKI Validatorは、ダウンロードしたRPKIオブジェクトをオブジェクトストアに格納します。
+オブジェクトストアでは、各RPKIオブジェクトを、そのURI、その内容のハッシュ、その認証局鍵識別子（Authority Key Identifier、AKI）拡張の値、またはこれらの組み合わせによって見つけることができます。
+また、ローカルに格納されたオブジェクトのうち、RPKIツリーの検証に使用されておらず削除できるものを判断するために、すべてのオブジェクトについてダウンロード時刻と検証時刻を記録します。</t>
+    </section>
+    <section anchor="general-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-general-considerations">一般的な考慮事項</name>
+      <section anchor="hash-comparisons" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-hash-comparisons">ハッシュの比較</name>
+        <t indent="0" pn="section-2.1-1">このアルゴリズムは、リポジトリーオブジェクトのハッシュを計算するために、（<xref target="RFC7935" format="default" sectionFormat="of" derivedContent="RFC7935"/>で定義されている）ハッシュアルゴリズムの衝突耐性に依存しています。
+このアルゴリズムは、ハッシュ値が同じである任意の2つのオブジェクトは同一であると仮定します。</t>
+        <t indent="0" pn="section-2.1-2">ハッシュの比較は、リポジトリー内のオブジェクトをマニフェストのエントリーと照合するとき（<xref target="section-3.2.2" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>）と、オブジェクトストア内のオブジェクトを検索するとき（<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>）に使用されます。</t>
+      </section>
+      <section anchor="discovery-of-rpki-objects-issued-by-a-ca" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-discovery-of-rpki-objects-issued-by-a-ca">CAが発行したRPKIオブジェクトの発見</name>
+        <t indent="0" pn="section-2.2-1">認証局（Certification Authority、CA）証明書の生成物となりうるものを発見する方法はいくつか考えられます。
+1) CAの公開ポイントとして指定されたリポジトリーディレクトリーにあるすべてのオブジェクトを使用する、2) その公開ポイントにあるマニフェストに記載されたオブジェクトだけを使用する（<xref target="RFC6486" section="6" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-6" derivedContent="RFC6486"/>を参照）、3) AKI拡張がCA証明書のサブジェクト鍵識別子（Subject Key Identifier、SKI）拡張（<xref target="RFC5280" section="4.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1" derivedContent="RFC5280"/>）と一致する、既知のすべてのリポジトリーオブジェクトを使用する、のいずれかです。</t>
+        <t indent="0" pn="section-2.2-2">内容がマニフェストおよび発行証明書と整合している公開ポイントについては、これらのアプローチはすべて同じ結果を生成するはずです。
+整合していない公開ポイントについては、結果が異なる可能性があります。
+<xref target="RFC6486" section="6" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-6" derivedContent="RFC6486"/>は、不整合をどのように扱うかの決定をローカルポリシーに委ねています。</t>
+        <t indent="0" pn="section-2.2-3">ここで説明する実装は、リポジトリーディレクトリーの内容には依存せず、マニフェストとCRLの認証局鍵識別子（AKI）拡張を使用して、特定のCAが発行したマニフェストとCRLをオブジェクトストア（<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>）から見つけます（<xref target="section-3.2.1" format="default" sectionFormat="of" derivedContent="Section 3.2.1"/>を参照）。
+さらに、<xref target="section-3.2.2" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>で説明するように、マニフェストのfileListエントリー（<xref target="RFC6486" section="4.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1" derivedContent="RFC6486"/>）のハッシュを使用して、そのCAが発行した他のオブジェクトを見つけます。</t>
+      </section>
+      <section anchor="manifest-entries-versus-repository-content" numbered="true" removeInRFC="false" toc="include" pn="section-2.3">
+        <name slugifiedName="name-manifest-entries-versus-repository-content">マニフェストのエントリーとリポジトリーの内容</name>
+        <t indent="0" pn="section-2.3-1">現在のRPKI標準一式（<xref target="RFC6481" format="default" sectionFormat="of" derivedContent="RFC6481"/>、<xref target="RFC6486" format="default" sectionFormat="of" derivedContent="RFC6486"/>、<xref target="RFC6487" format="default" sectionFormat="of" derivedContent="RFC6487"/>を参照）は、公開ポイントの内容を記述するためにマニフェスト<xref target="RFC6486" format="default" sectionFormat="of" derivedContent="RFC6486"/>を使用することを要求しているので、この実装は、公開ポイントの内容とマニフェストの内容が厳密に整合していることを要求します。
+（これは<xref target="RFC6486" format="default" sectionFormat="of" derivedContent="RFC6486"/>で定められているよりも厳しい要件です。）
+したがって、公開ポイントで見つかったものの、その公開ポイントのマニフェストのどのエントリーとも一致しないオブジェクトは処理しません（<xref target="section-3.2.2" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>を参照）。
+また、見つかったすべての不一致について警告を出し、責任を持つ運用者が不整合に気づいて修正できるようにします。</t>
+      </section>
+    </section>
+    <section anchor="top-down-validation-of-a-single-trust-anchor-certificate-tree" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-top-down-validation-of-a-single-trust-anchor-certificate-tree">単一のトラストアンカー証明書ツリーのトップダウン検証</name>
+      <t indent="0" pn="section-3-1">複数のトラストアンカーが設定されている場合、それぞれに対応する証明書ツリーの検証は、互いに独立して並行に実行されます。
+設定されたトラストアンカーごとに、次の手順が実行されます。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3-2">
+        <li pn="section-3-2.1" derivedCounter="1.">TA証明書ツリーの検証は、そのTA証明書から始まります。
+TA証明書を取得するには、<xref target="section-3.1" format="default" sectionFormat="of" derivedContent="Section 3.1"/>で説明するように、トラストアンカーロケーター（Trust Anchor Locator、TAL）オブジェクトを使用します。</li>
+        <li pn="section-3-2.2" derivedCounter="2.">TA証明書が取得できた場合、<xref target="RFC6487" section="7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-7" derivedContent="RFC6487"/>と<xref target="RFC7730" section="2.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7730#section-2.2" derivedContent="RFC7730"/>に従ってそれを検証します。
+そうでない場合は、証明書ツリーの検証を中止し、エラーを出します。</li>
+        <li pn="section-3-2.3" derivedCounter="3.">TA証明書が有効であれば、<xref target="section-3.2" format="default" sectionFormat="of" derivedContent="Section 3.2"/>で説明するように、その配下のすべてのオブジェクトを検証します。
+そうでない場合は、証明書ツリーの検証を中止し、エラーを出します。</li>
+        <li pn="section-3-2.4" derivedCounter="4.">この検証の実行中に検証された各リポジトリーオブジェクトについて、オブジェクトストア内の検証タイムスタンプを更新します（<xref target="section-5.1.7" format="default" sectionFormat="of" derivedContent="Section 5.1.7"/>を参照）。</li>
+        <li pn="section-3-2.5" derivedCounter="5."><xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>で説明するように、古くなったオブジェクトをストアから削除します。
+これでTA証明書ツリーの検証は完了です。</li>
+      </ol>
+      <section anchor="fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator">トラストアンカーロケーターを使用したトラストアンカー証明書の取得</name>
+        <t indent="0" pn="section-3.1-1">トラストアンカー証明書を取得するために、次の手順が実行されます。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.1-2">
+          <li pn="section-3.1-2.1" derivedCounter="1.">（任意）TALにprefetch.urisフィールドが含まれている場合、そのフィールドに含まれるURIをフェッチャーに渡します（<xref target="section-4.1.1" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照）。
+（このフィールドは、TALの形式に対する非標準の追加です。
+これは、階層的でないrsyncリポジトリーをより効率的に取得するのに役立ちます。）</li>
+          <li pn="section-3.1-2.2" derivedCounter="2.">TALのURIセクション（<xref target="RFC7730" section="2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7730#section-2.1" derivedContent="RFC7730"/>を参照）から最初のTA証明書URIを取り出し、それをオブジェクトフェッチャー（<xref target="section-4.1.2" format="default" sectionFormat="of" derivedContent="Section 4.1.2"/>）に渡します。
+フェッチャーがエラーを返した場合、エラーが発生しなくなるか、URIが残っていなくなるまで、URIセクション内のすべてのURIについてこの手順を繰り返します。</li>
+          <li pn="section-3.1-2.3" derivedCounter="3.">オブジェクトストア（<xref target="section-5.1.3" format="default" sectionFormat="of" derivedContent="Section 5.1.3"/>を参照）から、URIが前の手順でTALから取り出したURIと一致し、かつ公開鍵がTALのsubjectPublicKeyInfo拡張（<xref target="RFC7730" section="2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7730#section-2.1" derivedContent="RFC7730"/>を参照）と一致する、すべての証明書オブジェクトを取り出します。</li>
+          <li pn="section-3.1-2.4" derivedCounter="4.">そのようなオブジェクトが見つからない場合、またはそのようなオブジェクトが複数見つかった場合は、エラーを出し、エラーとして証明書ツリーの検証処理を中止します。
+そうでない場合は、見つかった1つのオブジェクトをTA証明書として使用します。</li>
+        </ol>
+      </section>
+      <section anchor="ca-certificate-validation" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-ca-certificate-validation">CA証明書の検証</name>
+        <t indent="0" pn="section-3.2-1">次の手順は、単一のCAリソース証明書の検証を説明します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2-2">
+          <li pn="section-3.2-2.1" derivedCounter="1.">CA証明書のSubject Information Access拡張に、accessMethodのcaRepository（<xref target="RFC6487" section="4.8.8.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1" derivedContent="RFC6487"/>）とid-ad-rpkiNotify（<xref target="RFC8182" section="3.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8182#section-3.2" derivedContent="RFC8182"/>）の両方のインスタンスが存在する場合は、ローカルポリシーを使用してどちらのポインターを使用するかを決定します。
+選択したポインターからURIを取り出し、それをオブジェクトフェッチャーに渡します（フェッチャーはそのリポジトリーから利用可能なすべてのオブジェクトを取得します。<xref target="section-4.1.1" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照）。</li>
+          <li pn="section-3.2-2.2" derivedCounter="2.">そのCA証明書について、<xref target="section-3.2.1" format="default" sectionFormat="of" derivedContent="Section 3.2.1"/>で説明する手順を使用して、現在のマニフェストと証明書失効リスト（CRL）を見つけます。
+そのようなマニフェストとCRLが見つからなかった場合は、この証明書の検証を停止し、それを無効とみなして、エラーを出します。</li>
+          <li pn="section-3.2-2.3" derivedCounter="3.">証明書のSIA拡張のid-ad-rpkiManifestフィールド（<xref target="RFC6487" section="4.8.8.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1" derivedContent="RFC6487"/>）にあるURIを、前の手順で見つかったマニフェストのURIと比較します。
+両者が異なる場合は、警告を出しますが、前の手順で見つかったマニフェストを使用して検証処理を続けます。
+（この警告は、リポジトリー内のオブジェクトの期待される場所と実際の場所が一致しないことを示します。
+この不一致の説明と、行った判断については<xref target="section-7.3" format="default" sectionFormat="of" derivedContent="Section 7.3"/>を参照してください。）</li>
+          <li pn="section-3.2-2.4" derivedCounter="4."><xref target="section-3.2.2" format="default" sectionFormat="of" derivedContent="Section 3.2.2"/>で説明するように、マニフェストのエントリーの発見と検証を行います。</li>
+          <li pn="section-3.2-2.5" derivedCounter="5.">
+            <t indent="0" pn="section-3.2-2.5.1">マニフェストで見つかったすべてのリソース証明書オブジェクトを、CRLオブジェクトを使用して検証します。</t>
+            <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2-2.5.2">
+              <li pn="section-3.2-2.5.2.1">運用者によって厳密な検証のオプションが有効にされている場合、検証は<xref target="RFC6487" section="7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-7" derivedContent="RFC6487"/>に従って行われます。</li>
+              <li pn="section-3.2-2.5.2.2">そうでない場合、検証は<xref target="RFC6487" section="7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-7" derivedContent="RFC6487"/>に従って行われますが、リソース証明書パスの検証だけは例外として<xref target="RFC8360" section="4.2.4.4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8360#section-4.2.4.4" derivedContent="RFC8360"/>に従って行われます。</li>
+            </ul>
+            <t indent="0" pn="section-3.2-2.5.3">（この実装は、パス検証にどのアルゴリズムを使用するかを決めるために運用者の設定を使用することに注意してください。
+<xref target="RFC8360" format="default" sectionFormat="of" derivedContent="RFC8360"/>で規定されているように、各リソース証明書に含まれる証明書ポリシーのオブジェクト識別子（OID）に基づいてリソース証明書ごとに適切なアルゴリズムを適用するのではなく、選択したアルゴリズムをすべてのリソース証明書に適用します。）</t>
+          </li>
+          <li pn="section-3.2-2.6" derivedCounter="6.">マニフェストで見つかったすべての経路生成元認可（Route Origin Authorization、ROA）オブジェクトを、マニフェストで見つかったCRLオブジェクトを使用して、<xref target="RFC6482" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6482#section-4" derivedContent="RFC6482"/>に従って検証します。</li>
+          <li pn="section-3.2-2.7" derivedCounter="7.">マニフェストで見つかったすべてのGhostbustersレコードオブジェクトを、マニフェストで見つかったCRLオブジェクトを使用して、<xref target="RFC6493" section="7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6493#section-7" derivedContent="RFC6493"/>に従って検証します。</li>
+          <li pn="section-3.2-2.8" derivedCounter="8.">マニフェストで見つかった有効なCA証明書オブジェクトのそれぞれについて、このセクションで説明する手順を再帰的に適用します。
+ただし、そのCA証明書（SKIで識別されます）が現在のツリー検証の実行中にまだ検証されていない場合に限ります。</li>
+        </ol>
+        <section anchor="finding-the-most-recent-valid-manifest-and-crl" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.1">
+          <name slugifiedName="name-finding-the-most-recent-valid-manifest-and-crl">最新の有効なマニフェストとCRLの発見</name>
+          <t indent="0" pn="section-3.2.1-1">特定のCA証明書の、最も新しく発行されたマニフェストとCRLのオブジェクトを見つけるために、次の手順が実行されます。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2.1-2">
+            <li pn="section-3.2.1-2.1" derivedCounter="1.">ストアから（<xref target="section-5.1.4" format="default" sectionFormat="of" derivedContent="Section 5.1.4"/>を参照）、証明書のAKI拡張が現在のCA証明書のSKIと一致する、マニフェスト型のすべてのオブジェクトを取得します。
+そのようなオブジェクトが見つからない場合は、現在のCA証明書の処理を停止し、エラーを出します。</li>
+            <li pn="section-3.2.1-2.2" derivedCounter="2.">
+              <t indent="0" pn="section-3.2.1-2.2.1">見つかったオブジェクトの中から、次のすべての条件を満たすもののうち、manifestNumberフィールド（<xref target="RFC6486" section="4.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1" derivedContent="RFC6486"/>）が最も大きいマニフェストオブジェクトを見つけます。</t>
+              <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2.1-2.2.2">
+                <li pn="section-3.2.1-2.2.2.1">マニフェスト内に、ストアがCRL型のオブジェクトをちょうど1つ含み、そのハッシュがエントリーのハッシュと一致するようなエントリーが、1つだけ存在する。</li>
+                <li pn="section-3.2.1-2.2.2.2">マニフェストの証明書のAKIが、上記のCRLのAKIと等しい。</li>
+                <li pn="section-3.2.1-2.2.2.3">上記のCRLが、<xref target="RFC5280" section="6.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc5280#section-6.3" derivedContent="RFC5280"/>に従って有効なオブジェクトである。</li>
+                <li pn="section-3.2.1-2.2.2.4">マニフェストが<xref target="RFC6486" section="4.4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-4.4" derivedContent="RFC6486"/>に従って有効なオブジェクトであり、かつそのEE証明書が上記で見つかったCRLに含まれていない。</li>
+              </ul>
+            </li>
+            <li pn="section-3.2.1-2.3" derivedCounter="3.">上記の基準を満たすオブジェクトがある場合は、このオブジェクトを有効なマニフェストとみなし、前の手順で見つかったCRLを、現在のCA証明書の公開ポイントの有効なCRLとみなします。</li>
+            <li pn="section-3.2.1-2.4" derivedCounter="4.">有効なマニフェストの番号より大きい番号を持つ他のすべてのマニフェストについて、エラーを報告します。</li>
+          </ol>
+        </section>
+        <section anchor="validating-manifest-entries" numbered="true" removeInRFC="false" toc="include" pn="section-3.2.2">
+          <name slugifiedName="name-validating-manifest-entries">マニフェストのエントリーの検証</name>
+          <t indent="0" pn="section-3.2.2-1">マニフェストオブジェクト内のすべてのエントリーについて、次の手順を実行します。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2.2-2">
+            <li pn="section-3.2.2-2.1" derivedCounter="1.">現在のCAの公開ポイントのURIにエントリー名を付け足して、エントリーのURIを構築します。</li>
+            <li pn="section-3.2.2-2.2" derivedCounter="2.">ハッシュ属性がエントリーのハッシュと等しいすべてのオブジェクトをストアから取得します（<xref target="section-5.1.2" format="default" sectionFormat="of" derivedContent="Section 5.1.2"/>を参照）。</li>
+            <li pn="section-3.2.2-2.3" derivedCounter="3.">そのようなオブジェクトが見つからない場合は、このマニフェストのエントリーについてエラーを出し、次のエントリーに進みます。
+このケースは、マニフェストに記載された場所にリポジトリーがオブジェクトを持っていないか、オブジェクトのハッシュがマニフェストに記載されたハッシュと一致しないことを示します。</li>
+            <li pn="section-3.2.2-2.4" derivedCounter="4.">
+              <t indent="0" pn="section-3.2.2-2.4.1">見つかったすべてのオブジェクトについて、そのURIをマニフェストのエントリーのURIと比較します。</t>
+              <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-3.2.2-2.4.2">
+                <li pn="section-3.2.2-2.4.2.1">URIが一致しないオブジェクトのそれぞれについて、警告を出します。
+このケースは、マニフェストのエントリーのオブジェクトが、（場合によっては別の）リポジトリー内の別の場所に（も）見つかったことを示します。</li>
+                <li pn="section-3.2.2-2.4.2.2">URIが一致するオブジェクトが見つからない場合は、警告を出します。
+このケースは、マニフェストのエントリーに記載された場所にはリポジトリー内でオブジェクトが見つからない（が、別の場所で一致するオブジェクトが少なくとも1つ見つかった）ことを示します。</li>
+              </ul>
+            </li>
+            <li pn="section-3.2.2-2.5" derivedCounter="5."><xref target="section-3.2" format="default" sectionFormat="of" derivedContent="Section 3.2"/>に従って、見つかったすべてのオブジェクトをさらなる検証に使用します。</li>
+          </ol>
+          <t indent="0" pn="section-3.2.2-3">上記の手順では、ハッシュはマニフェストに記載されたハッシュと一致するものの、URIは一致しないオブジェクトを拒否しないことに注意してください。
+詳細は<xref target="section-7.3" format="default" sectionFormat="of" derivedContent="Section 7.3"/>を参照してください。</t>
+        </section>
+      </section>
+      <section anchor="object-store-cleanup" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-object-store-cleanup">オブジェクトストアのクリーンアップ</name>
+        <t indent="0" pn="section-3.3-1">TAツリーの検証が終わるたびに、次の規則を使用して一部のオブジェクトをストアから削除します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.3-2">
+          <li pn="section-3.3-2.1" derivedCounter="1.">現在の検証の実行中に出会ったすべてのオブジェクトを対象として、URI属性が出会ったオブジェクトのいずれかのURIと一致するものの、内容のハッシュが出会ったオブジェクトのどのハッシュとも一致しないすべてのオブジェクトを、ストアから削除します（<xref target="section-5.1.6" format="default" sectionFormat="of" derivedContent="Section 5.1.6"/>）。
+これにより、リポジトリー内で同じURIを持つ新しいバージョンに置き換えられたオブジェクトがストアから削除されます。</li>
+          <li pn="section-3.3-2.2" derivedCounter="2.">検証中に最後に出会ったのが（ローカルポリシーで指定される）長い時間前であるすべてのオブジェクトを、ストアから削除します。
+これにより、どの有効なマニフェストにももはや現れない（が、リポジトリーではまだ公開されている可能性のある）オブジェクトが削除されます。</li>
+          <li pn="section-3.3-2.3" derivedCounter="3.">（ローカルポリシーで指定される）最近ダウンロードされたものの、検証処理で一度も使用されていないすべてのオブジェクトを、ストアから削除します。
+これにより、どの有効なマニフェストにも一度も現れたことのないオブジェクトが削除されます。</li>
+        </ol>
+        <t indent="0" pn="section-3.3-3">手順2で使用する時間間隔を短くすると、ストアが使用するディスク領域をより多く解放できますが、その代わりに、削除したオブジェクトがリポジトリーでまだ公開されている場合には、それを再びダウンロードすることになります。</t>
+        <t indent="0" pn="section-3.3-4">手順3で使用する時間間隔を長くすると、使用されないリポジトリーオブジェクトの繰り返しのダウンロードを防げます。
+しかし、使用されないオブジェクトが削除されるまでの間隔も長くなります。
+このため、そのようなオブジェクトが（誤って、または悪意を持って）リポジトリーで十分に大量に公開された場合、そのようなオブジェクトが利用可能なディスク領域をすべて埋め尽くしてしまうリスクが生じます。</t>
+      </section>
+    </section>
+    <section anchor="remote-objects-fetcher" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-remote-objects-fetcher">リモートオブジェクトフェッチャー</name>
+      <t indent="0" pn="section-4-1">フェッチャーは、rsyncプロトコル<xref target="rsync" format="default" sectionFormat="of" derivedContent="rsync"/>またはRRDP<xref target="RFC8182" format="default" sectionFormat="of" derivedContent="RFC8182"/>を使用して、（<xref target="RFC6481" section="3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6481#section-3" derivedContent="RFC6481"/>で説明されている）リモートリポジトリーからオブジェクトをダウンロードする役割を担います。</t>
+      <section anchor="fetcher-operations" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-fetcher-operations">フェッチャーの操作</name>
+        <t indent="0" pn="section-4.1-1">フェッチャーは、訪れたすべてのURIについて、最後に取得が成功した時刻を記録します。</t>
+        <section anchor="fetch-repository-objects" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.1">
+          <name slugifiedName="name-fetch-repository-objects">リポジトリーオブジェクトの取得</name>
+          <t indent="0" pn="section-4.1.1-1">この操作は、1つのパラメーター、つまりURIを受け取ります。
+rsyncリポジトリーの場合、このURIはディレクトリーを指します。
+RRDPリポジトリーの場合、このURIはリポジトリーの通知ファイルを指します。</t>
+          <t indent="0" pn="section-4.1.1-2">フェッチャーは次の手順に従います。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.1.1-3">
+            <li pn="section-4.1.1-3.1" derivedCounter="1.">URIに関連付けられたデータが（ローカルポリシーで指定される）最近ダウンロードされている場合は、以降の手順をスキップします。</li>
+            <li pn="section-4.1.1-3.2" derivedCounter="2.">指定されたURIを使用してリモートオブジェクトをダウンロードします（rsyncリポジトリーの場合は再帰モードを使用します）。
+URIが&quot;https&quot;スキーマを含み、ダウンロードが失敗した場合は、警告を出し、URI内の&quot;https&quot;スキーマを&quot;http&quot;に置き換え、その結果のURIを使用してオブジェクトのダウンロードを再度試みます。</li>
+            <li pn="section-4.1.1-3.3" derivedCounter="3.">リモートオブジェクトをダウンロードできない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li pn="section-4.1.1-3.4" derivedCounter="4.">取得したオブジェクトの構文検証を行います。
+すべてのオブジェクトの種類（証明書、マニフェスト、CRL、ROA、Ghostbustersレコード）は、オブジェクトのファイル名の拡張子（それぞれ.cer、.mft、.crl、.roa、.gbr）に基づいて決定されます。
+オブジェクトの構文は、リソース証明書については<xref target="RFC6487" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4" derivedContent="RFC6487"/>、署名付きオブジェクトについては<xref target="RFC6488" section="3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6488#section-3" derivedContent="RFC6488"/>の手順1、マニフェストについては<xref target="RFC6486" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-4" derivedContent="RFC6486"/>、CRLについては<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>、ROAについては<xref target="RFC6482" section="3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6482#section-3" derivedContent="RFC6482"/>、Ghostbustersレコードについては<xref target="RFC6493" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6493#section-5" derivedContent="RFC6493"/>で説明されています。</li>
+            <li pn="section-4.1.1-3.5" derivedCounter="5.">ダウンロードされ、構文的に正しいすべてのオブジェクトを、オブジェクトストアに格納します（<xref target="section-5.1.1" format="default" sectionFormat="of" derivedContent="Section 5.1.1"/>）。</li>
+          </ol>
+          <t indent="0" pn="section-4.1.1-4">手順1で使用する時間間隔は、リポジトリーの更新を受け取る際に許容できる遅延に基づいて選ぶべきです。</t>
+        </section>
+        <section anchor="fetch-single-repository-object" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.2">
+          <name slugifiedName="name-fetch-single-repository-object">単一のリポジトリーオブジェクトの取得</name>
+          <t indent="0" pn="section-4.1.2-1">この操作は、1つのパラメーター、つまりリポジトリー内のオブジェクトを指すURIを受け取ります。</t>
+          <t indent="0" pn="section-4.1.2-2">フェッチャーは次の手順に従います。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.1.2-3">
+            <li pn="section-4.1.2-3.1" derivedCounter="1.">指定されたURIを使用してリモートオブジェクトをダウンロードします。
+URIが&quot;https&quot;スキーマを含み、ダウンロードが失敗した場合は、警告を出し、URI内の&quot;https&quot;スキーマを&quot;http&quot;に置き換え、その結果のURIを使用してオブジェクトのダウンロードを試みます。</li>
+            <li pn="section-4.1.2-3.2" derivedCounter="2.">リモートオブジェクトをダウンロードできない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li pn="section-4.1.2-3.3" derivedCounter="3.">取得したオブジェクトの構文検証を行います。
+オブジェクトの種類（証明書、マニフェスト、CRL、ROA、Ghostbustersレコード）は、オブジェクトのファイル名の拡張子（それぞれ.cer、.mft、.crl、.roa、.gbr）に基づいて決定されます。
+オブジェクトの構文は、リソース証明書については<xref target="RFC6487" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4" derivedContent="RFC6487"/>、署名付きオブジェクトについては<xref target="RFC6488" section="3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6488#section-3" derivedContent="RFC6488"/>の手順1、マニフェストについては<xref target="RFC6486" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6486#section-4" derivedContent="RFC6486"/>、CRLについては<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>、ROAについては<xref target="RFC6482" section="3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6482#section-3" derivedContent="RFC6482"/>、Ghostbustersレコードについては<xref target="RFC6493" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6493#section-5" derivedContent="RFC6493"/>で説明されています。</li>
+            <li pn="section-4.1.2-3.4" derivedCounter="4.">ダウンロードしたオブジェクトが構文的に正しくない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li pn="section-4.1.2-3.5" derivedCounter="5.">URIが指定されたURIと一致するすべてのオブジェクトを、オブジェクトストアから削除します（<xref target="section-5.1.5" format="default" sectionFormat="of" derivedContent="Section 5.1.5"/>）。</li>
+            <li pn="section-4.1.2-3.6" derivedCounter="6.">ダウンロードしたオブジェクトをオブジェクトストアに格納します（<xref target="section-5.1.1" format="default" sectionFormat="of" derivedContent="Section 5.1.1"/>）。</li>
+          </ol>
+        </section>
+      </section>
+    </section>
+    <section anchor="local-object-store" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-local-object-store">ローカルオブジェクトストア</name>
+      <section anchor="store-operations" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-store-operations">ストアの操作</name>
+        <section anchor="store-repository-object" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.1">
+          <name slugifiedName="name-store-repository-object">リポジトリーオブジェクトの格納</name>
+          <t indent="0" pn="section-5.1.1-1">同じハッシュフィールドとURIフィールドを持つレコードがない場合に、与えられたオブジェクトをストアに格納します。
+（可能性は低いものの）ハッシュ衝突が起きた場合には、与えられたオブジェクトはストア内のオブジェクトを置き換えないことに注意してください。</t>
+        </section>
+        <section anchor="get-objects-by-hash" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.2">
+          <name slugifiedName="name-get-objects-by-hash">ハッシュによるオブジェクトの取得</name>
+          <t indent="0" pn="section-5.1.2-1">ハッシュ属性が与えられたハッシュと一致するすべてのオブジェクトをストアから取り出します。</t>
+        </section>
+        <section anchor="get-certificate-objects-by-uri" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.3">
+          <name slugifiedName="name-get-certificate-objects-by-uri">URIによる証明書オブジェクトの取得</name>
+          <t indent="0" pn="section-5.1.3-1">URI属性が与えられたURIと一致する、証明書型のすべてのオブジェクトをストアから取り出します。</t>
+        </section>
+        <section anchor="get-manifest-objects-by-aki" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.4">
+          <name slugifiedName="name-get-manifest-objects-by-aki">AKIによるマニフェストオブジェクトの取得</name>
+          <t indent="0" pn="section-5.1.4-1">AKI属性が与えられたAKIと一致する、マニフェスト型のすべてのオブジェクトをストアから取り出します。</t>
+        </section>
+        <section anchor="delete-objects-for-a-uri" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.5">
+          <name slugifiedName="name-delete-objects-for-a-uri">URIに対するオブジェクトの削除</name>
+          <t indent="0" pn="section-5.1.5-1">与えられたURIについて、URI属性が一致するストア内のすべてのオブジェクトを削除します。</t>
+        </section>
+        <section anchor="delete-outdated-objects" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.6">
+          <name slugifiedName="name-delete-outdated-objects">古くなったオブジェクトの削除</name>
+          <t indent="0" pn="section-5.1.6-1">与えられたURIとハッシュのリストについて、URIが一致し、かつハッシュ属性が与えられたハッシュのリストに含まれない、ストア内のすべてのオブジェクトを削除します。</t>
+        </section>
+        <section anchor="update-objects-validation-time" numbered="true" removeInRFC="false" toc="include" pn="section-5.1.7">
+          <name slugifiedName="name-update-objects-validation-time">オブジェクトの検証時刻の更新</name>
+          <t indent="0" pn="section-5.1.7-1">ハッシュ属性が与えられたハッシュと一致するストア内のすべてのオブジェクトについて、最終検証時刻の属性を与えられたタイムスタンプに設定します。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この文書にはIANAアクションはありません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <section anchor="hash-collisions" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-hash-collisions">ハッシュ衝突</name>
+        <t indent="0" pn="section-7.1-1">この実装は、（<xref target="RFC7935" format="default" sectionFormat="of" derivedContent="RFC7935"/>で規定されたファイルハッシュアルゴリズムを使用して計算された）リポジトリーオブジェクトのハッシュにおいて起こりうるハッシュ衝突を検出しません。
+この実装は、同じハッシュ値を持つオブジェクトを同一とみなします。</t>
+      </section>
+      <section anchor="algorithm-agility" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-algorithm-agility">アルゴリズムの俊敏性</name>
+        <t indent="0" pn="section-7.2-1">この実装は、<xref target="RFC7935" format="default" sectionFormat="of" derivedContent="RFC7935"/>で規定されたハッシュアルゴリズムと鍵長だけをサポートします。
+<xref target="RFC6916" format="default" sectionFormat="of" derivedContent="RFC6916"/>で説明されているアルゴリズムの俊敏性はサポートしていません。</t>
+      </section>
+      <section anchor="mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository" numbered="true" removeInRFC="false" toc="include" pn="section-7.3">
+        <name slugifiedName="name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository">リポジトリー内のオブジェクトの期待される場所と実際の場所の不一致</name>
+        <t indent="0" pn="section-7.3-1"><xref target="RFC6481" section="2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6481#section-2" derivedContent="RFC6481"/>によると、特定のCA証明書が発行したすべてのオブジェクトは、そのCA証明書のSIA拡張で指定された1つのリポジトリー公開ポイントに置かれることが期待されています。
+そのCA証明書が発行したマニフェストオブジェクトは、発行された他のすべてのオブジェクトを列挙し、そのファイル名と内容のハッシュを記載します。</t>
+        <t indent="0" pn="section-7.3-2">しかし、内容のハッシュがマニフェストに記載されたハッシュと一致するオブジェクトが、異なるファイル名を持っていたり、リポジトリー内の異なる公開ポイントに置かれていたりする可能性があります。</t>
+        <t indent="0" pn="section-7.3-3">一方、すべてのRPKIオブジェクトは、明示的に、または埋め込まれたEE証明書の中に、発行元のCA証明書の鍵識別子を含むAKI拡張を持っています。
+したがって、問題のオブジェクトのAKIと一致する証明書を検証を行うシステムが知っていれば、期待される場所が実際の場所と一致しないオブジェクトであっても、常にRPKI検証を行うことができます。</t>
+        <t indent="0" pn="section-7.3-4">上記のような不一致がある場合、この実装は、オブジェクトの実際の場所やファイル名が期待される場所やファイル名と一致しないというだけで、そのオブジェクトをさらなる検証から除外することはしません。
+この判断をしたのは、リポジトリー内のファイルの実際の場所はリポジトリーの取得メカニズムから得られるものであり、そのメカニズムは、rsyncリポジトリーの場合は暗号学的なセキュリティーを何も提供せず、RRDPリポジトリーの場合も、保護されていないトランスポートへのフォールバックを伴うトランスポート層のセキュリティーしか提供しないからです。
+一方、マニフェストはRPKI署名付きオブジェクトであり、その内容はRPKI検証の文脈で検証できます。</t>
+      </section>
+      <section anchor="manifest-content-versus-publication-point-content" numbered="true" removeInRFC="false" toc="include" pn="section-7.4">
+        <name slugifiedName="name-manifest-content-versus-publication-point-content">マニフェストの内容と公開ポイントの内容</name>
+        <t indent="0" pn="section-7.4-1">このアルゴリズムは、マニフェストオブジェクトの内容を使用して、CA証明書が発行した他のオブジェクトを決定します。
+このアルゴリズムは、マニフェストがCA証明書のSIA拡張で指定された公開ポイントに置かれていることを検証します。
+しかし、同じ公開ポイントのディレクトリーに（マニフェストに記載されていない）他のオブジェクトが置かれている場合、それらは、たとえ有効でマニフェストと同じCAによって発行されたものであっても無視されます。
+（このRPの振る舞いは、<xref target="RFC6486" format="default" sectionFormat="of" derivedContent="RFC6486"/>によって許可されていますが、要求はされていません。）</t>
+      </section>
+      <section anchor="possible-denial-of-service" numbered="true" removeInRFC="false" toc="include" pn="section-7.5">
+        <name slugifiedName="name-possible-denial-of-service">サービス拒否の可能性</name>
+        <t indent="0" pn="section-7.5-1"><xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>で説明したストアのクリーンアップ手順は、リポジトリーで公開されているものの検証では使用されないオブジェクトについて、削除とその後の再取得を最小限に抑えようとします。
+そのようなオブジェクトは、リモートリポジトリーから削除されると、ローカルポリシーで指定された期間の後に、ローカルのオブジェクトストアから破棄されます。
+検証ツールとリポジトリーの間の中間者攻撃は、構文的に有効なRPKIオブジェクトを過剰な量生成することで、それらのオブジェクトが検証されて破棄される前に、実装にそれらを取得させてオブジェクトストアに格納させることができます（<xref target="section-4.1.1" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照）。
+その結果、メモリー不足やディスク領域不足の状態に陥り、ひいてはサービス拒否につながります。</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC5280" target="https://www.rfc-editor.org/info/rfc5280" quoteTitle="true" derivedAnchor="RFC5280">
+          <front>
+            <title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
+            <author fullname="D. Cooper" initials="D." surname="Cooper"/>
+            <author fullname="S. Santesson" initials="S." surname="Santesson"/>
+            <author fullname="S. Farrell" initials="S." surname="Farrell"/>
+            <author fullname="S. Boeyen" initials="S." surname="Boeyen"/>
+            <author fullname="R. Housley" initials="R." surname="Housley"/>
+            <author fullname="W. Polk" initials="W." surname="Polk"/>
+            <date year="2008" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="5280"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5280"/>
+        </reference>
+        <reference anchor="RFC6481" target="https://www.rfc-editor.org/info/rfc6481" quoteTitle="true" derivedAnchor="RFC6481">
+          <front>
+            <title>A Profile for Resource Certificate Repository Structure</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="R. Loomans" initials="R." surname="Loomans"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6481"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6481"/>
+        </reference>
+        <reference anchor="RFC6482" target="https://www.rfc-editor.org/info/rfc6482" quoteTitle="true" derivedAnchor="RFC6482">
+          <front>
+            <title>A Profile for Route Origin Authorizations (ROAs)</title>
+            <author fullname="M. Lepinski" initials="M." surname="Lepinski"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="D. Kong" initials="D." surname="Kong"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6482"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6482"/>
+        </reference>
+        <reference anchor="RFC6486" target="https://www.rfc-editor.org/info/rfc6486" quoteTitle="true" derivedAnchor="RFC6486">
+          <front>
+            <title>Manifests for the Resource Public Key Infrastructure (RPKI)</title>
+            <author fullname="R. Austein" initials="R." surname="Austein"/>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="M. Lepinski" initials="M." surname="Lepinski"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6486"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6486"/>
+        </reference>
+        <reference anchor="RFC6487" target="https://www.rfc-editor.org/info/rfc6487" quoteTitle="true" derivedAnchor="RFC6487">
+          <front>
+            <title>A Profile for X.509 PKIX Resource Certificates</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson"/>
+            <author fullname="R. Loomans" initials="R." surname="Loomans"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6487"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6487"/>
+        </reference>
+        <reference anchor="RFC6488" target="https://www.rfc-editor.org/info/rfc6488" quoteTitle="true" derivedAnchor="RFC6488">
+          <front>
+            <title>Signed Object Template for the Resource Public Key Infrastructure (RPKI)</title>
+            <author fullname="M. Lepinski" initials="M." surname="Lepinski"/>
+            <author fullname="A. Chi" initials="A." surname="Chi"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6488"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6488"/>
+        </reference>
+        <reference anchor="RFC6493" target="https://www.rfc-editor.org/info/rfc6493" quoteTitle="true" derivedAnchor="RFC6493">
+          <front>
+            <title>The Resource Public Key Infrastructure (RPKI) Ghostbusters Record</title>
+            <author fullname="R. Bush" initials="R." surname="Bush"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6493"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6493"/>
+        </reference>
+        <reference anchor="RFC6916" target="https://www.rfc-editor.org/info/rfc6916" quoteTitle="true" derivedAnchor="RFC6916">
+          <front>
+            <title>Algorithm Agility Procedure for the Resource Public Key Infrastructure (RPKI)</title>
+            <author fullname="R. Gagliano" initials="R." surname="Gagliano"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="S. Turner" initials="S." surname="Turner"/>
+            <date year="2013" month="April"/>
+          </front>
+          <seriesInfo name="BCP" value="182"/>
+          <seriesInfo name="RFC" value="6916"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6916"/>
+        </reference>
+        <reference anchor="RFC7730" target="https://www.rfc-editor.org/info/rfc7730" quoteTitle="true" derivedAnchor="RFC7730">
+          <front>
+            <title>Resource Public Key Infrastructure (RPKI) Trust Anchor Locator</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="S. Weiler" initials="S." surname="Weiler"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <date year="2016" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="7730"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7730"/>
+        </reference>
+        <reference anchor="RFC7935" target="https://www.rfc-editor.org/info/rfc7935" quoteTitle="true" derivedAnchor="RFC7935">
+          <front>
+            <title>The Profile for Algorithms and Key Sizes for Use in the Resource Public Key Infrastructure</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson" role="editor"/>
+            <date year="2016" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="7935"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7935"/>
+        </reference>
+        <reference anchor="RFC8182" target="https://www.rfc-editor.org/info/rfc8182" quoteTitle="true" derivedAnchor="RFC8182">
+          <front>
+            <title>The RPKI Repository Delta Protocol (RRDP)</title>
+            <author fullname="T. Bruijnzeels" initials="T." surname="Bruijnzeels"/>
+            <author fullname="O. Muravskiy" initials="O." surname="Muravskiy"/>
+            <author fullname="B. Weber" initials="B." surname="Weber"/>
+            <author fullname="R. Austein" initials="R." surname="Austein"/>
+            <date year="2017" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="8182"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8182"/>
+        </reference>
+        <reference anchor="RFC8360" target="https://www.rfc-editor.org/info/rfc8360" quoteTitle="true" derivedAnchor="RFC8360">
+          <front>
+            <title>Resource Public Key Infrastructure (RPKI) Validation Reconsidered</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson"/>
+            <author fullname="C. Martinez" initials="C." surname="Martinez"/>
+            <author fullname="T. Bruijnzeels" initials="T." surname="Bruijnzeels"/>
+            <author fullname="A. Newton" initials="A." surname="Newton"/>
+            <author fullname="D. Shaw" initials="D." surname="Shaw"/>
+            <date year="2018" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="8360"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8360"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="rpki-validator" target="https://github.com/RIPE-NCC/rpki-validator" quoteTitle="true" derivedAnchor="rpki-validator">
+          <front>
+            <title>RIPE-NCC/rpki-validator source code</title>
+            <author/>
+          </front>
+        </reference>
+        <reference anchor="rsync" target="https://rsync.samba.org" quoteTitle="true" derivedAnchor="rsync">
+          <front>
+            <title>rsync</title>
+            <author/>
+            <date year="2018" month="October"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書は、RIPE NCCのソフトウェア開発チームによって実装されているとおりのアルゴリズムを説明しています。
+このチームには、これまでにMikhail Puzanov、Erik Rozendaal、Miklos Juhasz、Misja Alma、Thiago da Cruz Pereira、Yannis Gonianakis、Andrew Snare、Varesh Tapadia、Paolo Milani、Thies Edeling、Hans Westerbeek、Rudi Angela、Constantijn Visinescuが参加してきました。
+著者らは、Carlos Martinez、Andy Newton、Rob Austein、Stephen Kentの貢献にも感謝します。</t>
+
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Oleg Muravskiy" initials="O." surname="Muravskiy">
+        <organization showOnFrontPage="true">RIPE NCC</organization>
+        <address>
+          <email>oleg@ripe.net</email>
+          <uri>https://www.ripe.net/</uri>
+        </address>
+      </author>
+      <author fullname="Tim Bruijnzeels" initials="T." surname="Bruijnzeels">
+        <organization showOnFrontPage="true">NLnet Labs</organization>
+        <address>
+          <email>tim@nlnetlabs.nl</email>
+          <uri>https://www.nlnetlabs.nl/</uri>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

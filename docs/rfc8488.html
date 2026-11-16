@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8488: RIPE NCCによるリソース公開鍵基盤（RPKI）証明書ツリー検証の実装（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8488.html">RFC 8488</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8488">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8488">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8488</h1>
+<h1 id="title-en">RIPE NCC's Implementation of Resource Public Key Infrastructure (RPKI) Certificate Tree Validation</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8488</h1>
+<h1 id="title-ja">RIPE NCCによるリソース公開鍵基盤（RPKI）証明書ツリー検証の実装</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document describes an approach to validating the content of the
+Resource Public Key Infrastructure (RPKI) certificate tree, as it is
+implemented in the RIPE NCC RPKI Validator.  This approach is
+independent of a particular object retrieval mechanism, which allows
+it to be used with repositories available over the rsync protocol,
+the RPKI Repository Delta Protocol (RRDP), and repositories that use
+a mix of both.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書では、RIPE NCC RPKI Validatorで実装されている、リソース公開鍵基盤（Resource Public Key Infrastructure、RPKI）の証明書ツリーの内容を検証するためのアプローチを説明します。
+このアプローチは特定のオブジェクト取得メカニズムに依存しないため、rsyncプロトコルで利用可能なリポジトリー、RPKIリポジトリーデルタプロトコル（RPKI Repository Delta Protocol、RRDP）で利用可能なリポジトリー、およびその両方を組み合わせて使用するリポジトリーで使用できます。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Not all documents
+approved by the IESG are candidates for any level of Internet
+Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8488" class="eref">https://www.rfc-editor.org/info/rfc8488</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="https://www.rfc-editor.org/info/rfc8488" class="eref">https://www.rfc-editor.org/info/rfc8488</a> で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-general-considerations-en">General Considerations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.2.1.1-en"><a href="#section-2.1-en">2.1</a>.  <a href="#name-hash-comparisons-en">Hash Comparisons</a></p>
+</li>
+            <li id="section-toc.1-1.2.2-en">
+              <p id="section-toc.1-1.2.2.1-en"><a href="#section-2.2-en">2.2</a>.  <a href="#name-discovery-of-rpki-objects-issued-by-a-ca-en">Discovery of RPKI Objects Issued by a CA</a></p>
+</li>
+            <li id="section-toc.1-1.2.3-en">
+              <p id="section-toc.1-1.2.3.1-en"><a href="#section-2.3-en">2.3</a>.  <a href="#name-manifest-entries-versus-repository-content-en">Manifest Entries versus Repository Content</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-top-down-validation-of-a-single-trust-anchor-certificate-tree-en">Top-Down Validation of a Single Trust Anchor Certificate Tree</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.3.1.1-en"><a href="#section-3.1-en">3.1</a>.  <a href="#name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-en">Fetching the Trust Anchor Certificate Using the Trust Anchor Locator</a></p>
+</li>
+            <li id="section-toc.1-1.3.2-en">
+              <p id="section-toc.1-1.3.2.1-en"><a href="#section-3.2-en">3.2</a>.  <a href="#name-ca-certificate-validation-en">CA Certificate Validation</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.3.2.1.1-en"><a href="#section-3.2.1-en">3.2.1</a>.  <a href="#name-finding-the-most-recent-valid-manifest-and-crl-en">Finding the Most Recent Valid Manifest and CRL</a></p>
+</li>
+              <li id="section-toc.1-1.3.2.2-en">
+                <p id="section-toc.1-1.3.2.2.1-en"><a href="#section-3.2.2-en">3.2.2</a>.  <a href="#name-validating-manifest-entries-en">Validating Manifest Entries</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.3.3-en">
+              <p id="section-toc.1-1.3.3.1-en"><a href="#section-3.3-en">3.3</a>.  <a href="#name-object-store-cleanup-en">Object Store Cleanup</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-remote-objects-fetcher-en">Remote Objects Fetcher</a></p>
+<ul id="section-toc.1-1.4.2-en">
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-fetcher-operations-en">Fetcher Operations</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.4.1.1.1-en"><a href="#section-4.1.1-en">4.1.1</a>.  <a href="#name-fetch-repository-objects-en">Fetch Repository Objects</a></p>
+</li>
+              <li id="section-toc.1-1.4.1.2-en">
+                <p id="section-toc.1-1.4.1.2.1-en"><a href="#section-4.1.2-en">4.1.2</a>.  <a href="#name-fetch-single-repository-object-en">Fetch Single Repository Object</a></p>
+</li>
+              </ul>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-local-object-store-en">Local Object Store</a></p>
+<ul id="section-toc.1-1.5.2-en">
+<li>
+              <p id="section-toc.1-1.5.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-store-operations-en">Store Operations</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.5.1.1.1-en"><a href="#section-5.1.1-en">5.1.1</a>.  <a href="#name-store-repository-object-en">Store Repository Object</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.2-en">
+                <p id="section-toc.1-1.5.1.2.1-en"><a href="#section-5.1.2-en">5.1.2</a>.  <a href="#name-get-objects-by-hash-en">Get Objects by Hash</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.3-en">
+                <p id="section-toc.1-1.5.1.3.1-en"><a href="#section-5.1.3-en">5.1.3</a>.  <a href="#name-get-certificate-objects-by-uri-en">Get Certificate Objects by URI</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.4-en">
+                <p id="section-toc.1-1.5.1.4.1-en"><a href="#section-5.1.4-en">5.1.4</a>.  <a href="#name-get-manifest-objects-by-aki-en">Get Manifest Objects by AKI</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.5-en">
+                <p id="section-toc.1-1.5.1.5.1-en"><a href="#section-5.1.5-en">5.1.5</a>.  <a href="#name-delete-objects-for-a-uri-en">Delete Objects for a URI</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.6-en">
+                <p id="section-toc.1-1.5.1.6.1-en"><a href="#section-5.1.6-en">5.1.6</a>.  <a href="#name-delete-outdated-objects-en">Delete Outdated Objects</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.7-en">
+                <p id="section-toc.1-1.5.1.7.1-en"><a href="#section-5.1.7-en">5.1.7</a>.  <a href="#name-update-objects-validation-time-en">Update Object's Validation Time</a></p>
+</li>
+              </ul>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-en"><a href="#section-7.1-en">7.1</a>.  <a href="#name-hash-collisions-en">Hash Collisions</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-en">
+              <p id="section-toc.1-1.7.2.1-en"><a href="#section-7.2-en">7.2</a>.  <a href="#name-algorithm-agility-en">Algorithm Agility</a></p>
+</li>
+            <li id="section-toc.1-1.7.3-en">
+              <p id="section-toc.1-1.7.3.1-en"><a href="#section-7.3-en">7.3</a>.  <a href="#name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-en">Mismatch between the Expected and Actual Location of an Object in the Repository</a></p>
+</li>
+            <li id="section-toc.1-1.7.4-en">
+              <p id="section-toc.1-1.7.4.1-en"><a href="#section-7.4-en">7.4</a>.  <a href="#name-manifest-content-versus-publication-point-content-en">Manifest Content versus Publication Point Content</a></p>
+</li>
+            <li id="section-toc.1-1.7.5-en">
+              <p id="section-toc.1-1.7.5.1-en"><a href="#section-7.5-en">7.5</a>.  <a href="#name-possible-denial-of-service-en">Possible Denial of Service</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.8.1.1-en"><a href="#section-8.1-en">8.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.8.2-en">
+              <p id="section-toc.1-1.8.2.1-en"><a href="#section-8.2-en">8.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-appendix.a-en"></a><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-appendix.b-en"></a><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-general-considerations-ja">一般的な考慮事項</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.2.1.1-ja"><a href="#section-2.1-ja">2.1</a>.  <a href="#name-hash-comparisons-ja">ハッシュの比較</a></p>
+</li>
+            <li id="section-toc.1-1.2.2-ja">
+              <p id="section-toc.1-1.2.2.1-ja"><a href="#section-2.2-ja">2.2</a>.  <a href="#name-discovery-of-rpki-objects-issued-by-a-ca-ja">CAが発行したRPKIオブジェクトの発見</a></p>
+</li>
+            <li id="section-toc.1-1.2.3-ja">
+              <p id="section-toc.1-1.2.3.1-ja"><a href="#section-2.3-ja">2.3</a>.  <a href="#name-manifest-entries-versus-repository-content-ja">マニフェストのエントリーとリポジトリーの内容</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-top-down-validation-of-a-single-trust-anchor-certificate-tree-ja">単一のトラストアンカー証明書ツリーのトップダウン検証</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.3.1.1-ja"><a href="#section-3.1-ja">3.1</a>.  <a href="#name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-ja">トラストアンカーロケーターを使用したトラストアンカー証明書の取得</a></p>
+</li>
+            <li id="section-toc.1-1.3.2-ja">
+              <p id="section-toc.1-1.3.2.1-ja"><a href="#section-3.2-ja">3.2</a>.  <a href="#name-ca-certificate-validation-ja">CA証明書の検証</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.3.2.1.1-ja"><a href="#section-3.2.1-ja">3.2.1</a>.  <a href="#name-finding-the-most-recent-valid-manifest-and-crl-ja">最新の有効なマニフェストとCRLの発見</a></p>
+</li>
+              <li id="section-toc.1-1.3.2.2-ja">
+                <p id="section-toc.1-1.3.2.2.1-ja"><a href="#section-3.2.2-ja">3.2.2</a>.  <a href="#name-validating-manifest-entries-ja">マニフェストのエントリーの検証</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.3.3-ja">
+              <p id="section-toc.1-1.3.3.1-ja"><a href="#section-3.3-ja">3.3</a>.  <a href="#name-object-store-cleanup-ja">オブジェクトストアのクリーンアップ</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-remote-objects-fetcher-ja">リモートオブジェクトフェッチャー</a></p>
+<ul id="section-toc.1-1.4.2-ja">
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-fetcher-operations-ja">フェッチャーの操作</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.4.1.1.1-ja"><a href="#section-4.1.1-ja">4.1.1</a>.  <a href="#name-fetch-repository-objects-ja">リポジトリーオブジェクトの取得</a></p>
+</li>
+              <li id="section-toc.1-1.4.1.2-ja">
+                <p id="section-toc.1-1.4.1.2.1-ja"><a href="#section-4.1.2-ja">4.1.2</a>.  <a href="#name-fetch-single-repository-object-ja">単一のリポジトリーオブジェクトの取得</a></p>
+</li>
+              </ul>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-local-object-store-ja">ローカルオブジェクトストア</a></p>
+<ul id="section-toc.1-1.5.2-ja">
+<li>
+              <p id="section-toc.1-1.5.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-store-operations-ja">ストアの操作</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.5.1.1.1-ja"><a href="#section-5.1.1-ja">5.1.1</a>.  <a href="#name-store-repository-object-ja">リポジトリーオブジェクトの格納</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.2-ja">
+                <p id="section-toc.1-1.5.1.2.1-ja"><a href="#section-5.1.2-ja">5.1.2</a>.  <a href="#name-get-objects-by-hash-ja">ハッシュによるオブジェクトの取得</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.3-ja">
+                <p id="section-toc.1-1.5.1.3.1-ja"><a href="#section-5.1.3-ja">5.1.3</a>.  <a href="#name-get-certificate-objects-by-uri-ja">URIによる証明書オブジェクトの取得</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.4-ja">
+                <p id="section-toc.1-1.5.1.4.1-ja"><a href="#section-5.1.4-ja">5.1.4</a>.  <a href="#name-get-manifest-objects-by-aki-ja">AKIによるマニフェストオブジェクトの取得</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.5-ja">
+                <p id="section-toc.1-1.5.1.5.1-ja"><a href="#section-5.1.5-ja">5.1.5</a>.  <a href="#name-delete-objects-for-a-uri-ja">URIに対するオブジェクトの削除</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.6-ja">
+                <p id="section-toc.1-1.5.1.6.1-ja"><a href="#section-5.1.6-ja">5.1.6</a>.  <a href="#name-delete-outdated-objects-ja">古くなったオブジェクトの削除</a></p>
+</li>
+              <li id="section-toc.1-1.5.1.7-ja">
+                <p id="section-toc.1-1.5.1.7.1-ja"><a href="#section-5.1.7-ja">5.1.7</a>.  <a href="#name-update-objects-validation-time-ja">オブジェクトの検証時刻の更新</a></p>
+</li>
+              </ul>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-ja"><a href="#section-7.1-ja">7.1</a>.  <a href="#name-hash-collisions-ja">ハッシュ衝突</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-ja">
+              <p id="section-toc.1-1.7.2.1-ja"><a href="#section-7.2-ja">7.2</a>.  <a href="#name-algorithm-agility-ja">アルゴリズムの俊敏性</a></p>
+</li>
+            <li id="section-toc.1-1.7.3-ja">
+              <p id="section-toc.1-1.7.3.1-ja"><a href="#section-7.3-ja">7.3</a>.  <a href="#name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-ja">リポジトリー内のオブジェクトの期待される場所と実際の場所の不一致</a></p>
+</li>
+            <li id="section-toc.1-1.7.4-ja">
+              <p id="section-toc.1-1.7.4.1-ja"><a href="#section-7.4-ja">7.4</a>.  <a href="#name-manifest-content-versus-publication-point-content-ja">マニフェストの内容と公開ポイントの内容</a></p>
+</li>
+            <li id="section-toc.1-1.7.5-ja">
+              <p id="section-toc.1-1.7.5.1-ja"><a href="#section-7.5-ja">7.5</a>.  <a href="#name-possible-denial-of-service-ja">サービス拒否の可能性</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.8.1.1-ja"><a href="#section-8.1-ja">8.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.8.2-ja">
+              <p id="section-toc.1-1.8.2.1-ja"><a href="#section-8.2-ja">8.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-appendix.a-ja"></a><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-appendix.b-ja"></a><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">This document describes how the RIPE NCC RPKI Validator version 2.25
+has been implemented.  Source code for this software can be found at
+<span>[<a href="#rpki-validator-en">rpki-validator</a>]</span>.  The purpose of this document is to provide
+transparency to users of (and contributors to) this software tool.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">この文書は、RIPE NCC RPKI Validatorのバージョン2.25がどのように実装されているかを説明します。
+このソフトウェアのソースコードは<span>[<a href="#rpki-validator-ja">rpki-validator</a>]</span>にあります。
+この文書の目的は、このソフトウェアツールのユーザー（および貢献者）に対して透明性を提供することです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">In order to use information published in RPKI repositories, Relying
+Parties (RPs) need to retrieve and validate the content of
+certificates, Certificate Revocation Lists (CRLs), and other RPKI
+signed objects.  To validate a particular object, one must ensure
+that all certificates in the certificate chain up to the Trust Anchor
+(TA) are valid.  Therefore, the validation of a certificate tree is
+performed top-down, starting from the TA certificate and descending
+the certificate chain, validating every encountered certificate and
+its products.  The result of this process is a list of all
+encountered RPKI objects with a validity status attached to each of
+them.  These results may later be used by an RP in making routing
+decisions, etc.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">RPKIリポジトリーで公開された情報を使用するために、依拠当事者（Relying Party、RP）は、証明書、証明書失効リスト（CRL）、その他のRPKI署名付きオブジェクトの内容を取得して検証する必要があります。
+特定のオブジェクトを検証するには、トラストアンカー（TA）までの証明書チェーン内のすべての証明書が有効であることを確認しなければなりません。
+したがって、証明書ツリーの検証はトップダウンで行われます。
+つまり、TA証明書から始めて証明書チェーンをたどり、出会ったすべての証明書とその生成物を検証します。
+この処理の結果は、出会ったすべてのRPKIオブジェクトの一覧であり、それぞれに有効性のステータスが付与されています。
+これらの結果は、後でRPがルーティングの決定などを行う際に使用できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">Traditionally, RPKI data is made available to RPs through the
+repositories <span>[<a href="#RFC6481-en">RFC6481</a>]</span> accessible over the rsync protocol <span>[<a href="#rsync-en">rsync</a>]</span>.
+RPs are advised to keep a local copy of repository data and perform
+regular updates of this copy from the repository (see <span><a href="https://www.rfc-editor.org/rfc/rfc6481#section-5">Section 5</a> of [<a href="#RFC6481-en">RFC6481</a>]</span>).  The RRDP <span>[<a href="#RFC8182-en">RFC8182</a>]</span> introduces another method to fetch
+repository data and keep the local copy up to date with the
+repository.</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">従来、RPKIデータは、rsyncプロトコル<span>[<a href="#rsync-ja">rsync</a>]</span>でアクセスできるリポジトリー<span>[<a href="#RFC6481-ja">RFC6481</a>]</span>を通じてRPに提供されています。
+RPは、リポジトリーデータのローカルコピーを保持し、リポジトリーからこのコピーを定期的に更新することが推奨されています（<span>[<a href="#RFC6481-ja">RFC6481</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6481#section-5">Section 5</a></span>を参照）。
+RRDP<span>[<a href="#RFC8182-ja">RFC8182</a>]</span>は、リポジトリーデータを取得し、ローカルコピーをリポジトリーと同期させておくための別の方法を導入しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">This document describes how the RIPE NCC RPKI Validator discovers
+RPKI objects to download, builds certificate paths, and validates
+RPKI objects, independently of what repository access protocol is
+used.  To achieve this, it puts downloaded RPKI objects in an object
+store, where each RPKI object can be found by its URI, the hash of
+its content, the value of its Authority Key Identifier (AKI)
+extension, or a combination of these.  It also keeps track of the
+download and validation time for every object, to decide which
+locally stored objects are not used in the RPKI tree validation and
+could be removed.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">この文書では、使用されるリポジトリーアクセスプロトコルとは独立に、RIPE NCC RPKI ValidatorがダウンロードするRPKIオブジェクトをどのように発見し、証明書パスを構築し、RPKIオブジェクトを検証するかを説明します。
+これを実現するために、RIPE NCC RPKI Validatorは、ダウンロードしたRPKIオブジェクトをオブジェクトストアに格納します。
+オブジェクトストアでは、各RPKIオブジェクトを、そのURI、その内容のハッシュ、その認証局鍵識別子（Authority Key Identifier、AKI）拡張の値、またはこれらの組み合わせによって見つけることができます。
+また、ローカルに格納されたオブジェクトのうち、RPKIツリーの検証に使用されておらず削除できるものを判断するために、すべてのオブジェクトについてダウンロード時刻と検証時刻を記録します。</p></div>
+</div></section><section><span id="section-2"></span><span id="general-considerations-en"></span><span id="general-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-general-considerations-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-general-considerations-en" class="section-name selfRef">General Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-general-considerations-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-general-considerations-ja" class="section-name selfRef">一般的な考慮事項</a>
+      </h2></div>
+</div>
+<section><span id="section-2.1"></span><span id="hash-comparisons-en"></span><span id="hash-comparisons-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-hash-comparisons-en" lang="en">
+<a id="section-2.1-en" href="#section-2.1-en" class="section-number selfRef">2.1.</a> <a href="#name-hash-comparisons-en" class="section-name selfRef">Hash Comparisons</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-hash-comparisons-ja" lang="ja">
+<a id="section-2.1-ja" href="#section-2.1-ja" class="section-number selfRef">2.1.</a> <a href="#name-hash-comparisons-ja" class="section-name selfRef">ハッシュの比較</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-1-en">This algorithm relies on the collision resistance properties of the
+hash algorithm (defined in <span>[<a href="#RFC7935-en">RFC7935</a>]</span>) to compute the hash of
+repository objects.  It assumes that any two objects for which the
+hash value is the same are identical.</p></div>
+<div lang="ja" class="col"><p id="section-2.1-1-ja">このアルゴリズムは、リポジトリーオブジェクトのハッシュを計算するために、（<span>[<a href="#RFC7935-ja">RFC7935</a>]</span>で定義されている）ハッシュアルゴリズムの衝突耐性に依存しています。
+このアルゴリズムは、ハッシュ値が同じである任意の2つのオブジェクトは同一であると仮定します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-2-en">The hash comparison is used when matching objects in the repository
+with entries on the manifest (<a href="#section-3.2.2-en">Section 3.2.2</a>) and when looking up
+objects in the object store (<a href="#section-5-en">Section 5</a>).</p></div>
+<div lang="ja" class="col"><p id="section-2.1-2-ja">ハッシュの比較は、リポジトリー内のオブジェクトをマニフェストのエントリーと照合するとき（<a href="#section-3.2.2-ja">Section 3.2.2</a>）と、オブジェクトストア内のオブジェクトを検索するとき（<a href="#section-5-ja">Section 5</a>）に使用されます。</p></div>
+</div></section><section><span id="section-2.2"></span><span id="discovery-of-rpki-objects-issued-by-a-ca-en"></span><span id="discovery-of-rpki-objects-issued-by-a-ca-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-discovery-of-rpki-objects-issued-by-a-ca-en" lang="en">
+<a id="section-2.2-en" href="#section-2.2-en" class="section-number selfRef">2.2.</a> <a href="#name-discovery-of-rpki-objects-issued-by-a-ca-en" class="section-name selfRef">Discovery of RPKI Objects Issued by a CA</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-discovery-of-rpki-objects-issued-by-a-ca-ja" lang="ja">
+<a id="section-2.2-ja" href="#section-2.2-ja" class="section-number selfRef">2.2.</a> <a href="#name-discovery-of-rpki-objects-issued-by-a-ca-ja" class="section-name selfRef">CAが発行したRPKIオブジェクトの発見</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.2-1-en">There are several possible ways of discovering potential products of
+a Certification Authority (CA) certificate: one could 1) use all
+objects located in a repository directory designated as a publication
+point for a CA, 2) only use objects mentioned on the manifest located
+at that publication point (see <span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-6">Section 6</a> of [<a href="#RFC6486-en">RFC6486</a>]</span>), or 3) use all
+known repository objects whose AKI extension matches the Subject Key
+Identifier (SKI) extension (<span><a href="https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1">Section 4.2.1</a> of [<a href="#RFC5280-en">RFC5280</a>]</span>) of a CA
+certificate.</p></div>
+<div lang="ja" class="col"><p id="section-2.2-1-ja">認証局（Certification Authority、CA）証明書の生成物となりうるものを発見する方法はいくつか考えられます。
+1) CAの公開ポイントとして指定されたリポジトリーディレクトリーにあるすべてのオブジェクトを使用する、2) その公開ポイントにあるマニフェストに記載されたオブジェクトだけを使用する（<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-6">Section 6</a></span>を参照）、3) AKI拡張がCA証明書のサブジェクト鍵識別子（Subject Key Identifier、SKI）拡張（<span>[<a href="#RFC5280-ja">RFC5280</a>]の<a href="https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1">Section 4.2.1</a></span>）と一致する、既知のすべてのリポジトリーオブジェクトを使用する、のいずれかです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.2-2-en">For publication points whose content is consistent with the manifest
+and issuing certificate, all of these approaches should produce the
+same result.  For inconsistent publication points, the results might
+be different.  <span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-6">Section 6</a> of [<a href="#RFC6486-en">RFC6486</a>]</span> leaves the decision on how to
+deal with inconsistencies to a local policy.</p></div>
+<div lang="ja" class="col"><p id="section-2.2-2-ja">内容がマニフェストおよび発行証明書と整合している公開ポイントについては、これらのアプローチはすべて同じ結果を生成するはずです。
+整合していない公開ポイントについては、結果が異なる可能性があります。
+<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-6">Section 6</a></span>は、不整合をどのように扱うかの決定をローカルポリシーに委ねています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.2-3-en">The implementation described here does not rely on content of
+repository directories but uses the Authority Key Identifier (AKI)
+extension of a manifest and a CRL to find in an object store
+(<a href="#section-5-en">Section 5</a>) a manifest and a CRL issued by a particular CA (see
+<a href="#section-3.2.1-en">Section 3.2.1</a>).  It further uses the hashes of the manifest's
+fileList entries (<span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1">Section 4.2.1</a> of [<a href="#RFC6486-en">RFC6486</a>]</span>) to find other objects
+issued by the CA, as described in <a href="#section-3.2.2-en">Section 3.2.2</a>.</p></div>
+<div lang="ja" class="col"><p id="section-2.2-3-ja">ここで説明する実装は、リポジトリーディレクトリーの内容には依存せず、マニフェストとCRLの認証局鍵識別子（AKI）拡張を使用して、特定のCAが発行したマニフェストとCRLをオブジェクトストア（<a href="#section-5-ja">Section 5</a>）から見つけます（<a href="#section-3.2.1-ja">Section 3.2.1</a>を参照）。
+さらに、<a href="#section-3.2.2-ja">Section 3.2.2</a>で説明するように、マニフェストのfileListエントリー（<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1">Section 4.2.1</a></span>）のハッシュを使用して、そのCAが発行した他のオブジェクトを見つけます。</p></div>
+</div></section><section><span id="section-2.3"></span><span id="manifest-entries-versus-repository-content-en"></span><span id="manifest-entries-versus-repository-content-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-manifest-entries-versus-repository-content-en" lang="en">
+<a id="section-2.3-en" href="#section-2.3-en" class="section-number selfRef">2.3.</a> <a href="#name-manifest-entries-versus-repository-content-en" class="section-name selfRef">Manifest Entries versus Repository Content</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-manifest-entries-versus-repository-content-ja" lang="ja">
+<a id="section-2.3-ja" href="#section-2.3-ja" class="section-number selfRef">2.3.</a> <a href="#name-manifest-entries-versus-repository-content-ja" class="section-name selfRef">マニフェストのエントリーとリポジトリーの内容</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.3-1-en">Since the current set of RPKI standards (see <span>[<a href="#RFC6481-en">RFC6481</a>]</span>, <span>[<a href="#RFC6486-en">RFC6486</a>]</span>,
+and <span>[<a href="#RFC6487-en">RFC6487</a>]</span>) requires use of the manifest <span>[<a href="#RFC6486-en">RFC6486</a>]</span> to describe the
+content of a publication point, this implementation requires strict
+consistency between the publication point content and manifest
+content.  (This is a more stringent requirement than established in
+<span>[<a href="#RFC6486-en">RFC6486</a>]</span>.)  Therefore, it will not process objects that are found in
+the publication point but do not match any of the entries of that
+publication point's manifest (see <a href="#section-3.2.2-en">Section 3.2.2</a>).  It will also issue
+warnings for all found mismatches, so that the responsible operators
+could be made aware of inconsistencies and fix them.</p></div>
+<div lang="ja" class="col"><p id="section-2.3-1-ja">現在のRPKI標準一式（<span>[<a href="#RFC6481-ja">RFC6481</a>]</span>、<span>[<a href="#RFC6486-ja">RFC6486</a>]</span>、<span>[<a href="#RFC6487-ja">RFC6487</a>]</span>を参照）は、公開ポイントの内容を記述するためにマニフェスト<span>[<a href="#RFC6486-ja">RFC6486</a>]</span>を使用することを要求しているので、この実装は、公開ポイントの内容とマニフェストの内容が厳密に整合していることを要求します。
+（これは<span>[<a href="#RFC6486-ja">RFC6486</a>]</span>で定められているよりも厳しい要件です。）
+したがって、公開ポイントで見つかったものの、その公開ポイントのマニフェストのどのエントリーとも一致しないオブジェクトは処理しません（<a href="#section-3.2.2-ja">Section 3.2.2</a>を参照）。
+また、見つかったすべての不一致について警告を出し、責任を持つ運用者が不整合に気づいて修正できるようにします。</p></div>
+</div></section></section><section><span id="section-3"></span><span id="top-down-validation-of-a-single-trust-anchor-certificate-tree-en"></span><span id="top-down-validation-of-a-single-trust-anchor-certificate-tree-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-top-down-validation-of-a-single-trust-anchor-certificate-tree-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-top-down-validation-of-a-single-trust-anchor-certificate-tree-en" class="section-name selfRef">Top-Down Validation of a Single Trust Anchor Certificate Tree</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-top-down-validation-of-a-single-trust-anchor-certificate-tree-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-top-down-validation-of-a-single-trust-anchor-certificate-tree-ja" class="section-name selfRef">単一のトラストアンカー証明書ツリーのトップダウン検証</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">When several Trust Anchors are configured, validation of their
+corresponding certificate trees is performed concurrently and
+independently from each other.  For every configured Trust Anchor,
+the following steps are performed:</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">複数のトラストアンカーが設定されている場合、それぞれに対応する証明書ツリーの検証は、互いに独立して並行に実行されます。
+設定されたトラストアンカーごとに、次の手順が実行されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3-2-en">
+<li id="section-3-2.1-en">The validation of a TA certificate tree starts from its TA
+certificate.  To retrieve the TA certificate, a Trust Anchor
+Locator (TAL) object is used, as described in <a href="#section-3.1-en">Section 3.1</a>.</li>
+        <li id="section-3-2.2-en">If the TA certificate is retrieved, it is validated according to
+<span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a> of [<a href="#RFC6487-en">RFC6487</a>]</span> and <span><a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.2">Section 2.2</a> of [<a href="#RFC7730-en">RFC7730</a>]</span>.  Otherwise,
+the validation of the certificate tree is aborted and an error is
+issued.</li>
+        <li id="section-3-2.3-en">If the TA certificate is valid, then all its subordinate objects
+are validated as described in <a href="#section-3.2-en">Section 3.2</a>.  Otherwise, the
+validation of the certificate tree is aborted and an error is
+issued.</li>
+        <li id="section-3-2.4-en">For each repository object that was validated during this
+validation run, the validation timestamp is updated in the object
+store (see <a href="#section-5.1.7-en">Section 5.1.7</a>).</li>
+        <li id="section-3-2.5-en">Outdated objects are removed from the store as described in
+<a href="#section-3.3-en">Section 3.3</a>.  This completes the validation of the TA certificate
+tree.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-3-2-ja">
+<li id="section-3-2.1-ja">TA証明書ツリーの検証は、そのTA証明書から始まります。
+TA証明書を取得するには、<a href="#section-3.1-ja">Section 3.1</a>で説明するように、トラストアンカーロケーター（Trust Anchor Locator、TAL）オブジェクトを使用します。</li>
+        <li id="section-3-2.2-ja">TA証明書が取得できた場合、<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a></span>と<span>[<a href="#RFC7730-ja">RFC7730</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.2">Section 2.2</a></span>に従ってそれを検証します。
+そうでない場合は、証明書ツリーの検証を中止し、エラーを出します。</li>
+        <li id="section-3-2.3-ja">TA証明書が有効であれば、<a href="#section-3.2-ja">Section 3.2</a>で説明するように、その配下のすべてのオブジェクトを検証します。
+そうでない場合は、証明書ツリーの検証を中止し、エラーを出します。</li>
+        <li id="section-3-2.4-ja">この検証の実行中に検証された各リポジトリーオブジェクトについて、オブジェクトストア内の検証タイムスタンプを更新します（<a href="#section-5.1.7-ja">Section 5.1.7</a>を参照）。</li>
+        <li id="section-3-2.5-ja">
+<a href="#section-3.3-ja">Section 3.3</a>で説明するように、古くなったオブジェクトをストアから削除します。
+これでTA証明書ツリーの検証は完了です。</li>
+      </ol></div>
+</div>
+<section><span id="section-3.1"></span><span id="fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-en"></span><span id="fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-en" lang="en">
+<a id="section-3.1-en" href="#section-3.1-en" class="section-number selfRef">3.1.</a> <a href="#name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-en" class="section-name selfRef">Fetching the Trust Anchor Certificate Using the Trust Anchor Locator</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-ja" lang="ja">
+<a id="section-3.1-ja" href="#section-3.1-ja" class="section-number selfRef">3.1.</a> <a href="#name-fetching-the-trust-anchor-certificate-using-the-trust-anchor-locator-ja" class="section-name selfRef">トラストアンカーロケーターを使用したトラストアンカー証明書の取得</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-1-en">The following steps are performed in order to fetch a Trust Anchor
+certificate:</p></div>
+<div lang="ja" class="col"><p id="section-3.1-1-ja">トラストアンカー証明書を取得するために、次の手順が実行されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.1-2-en">
+<li id="section-3.1-2.1-en">(Optional) If the TAL contains a prefetch.uris field, pass the
+URIs contained in that field to the fetcher (see <a href="#section-4.1.1-en">Section 4.1.1</a>).
+(This field is a non-standard addition to the TAL format.  It
+helps with fetching non-hierarchical rsync repositories more
+efficiently.)</li>
+          <li id="section-3.1-2.2-en">Extract the first TA certificate URI from the TAL's URI section
+(see <span><a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.1">Section 2.1</a> of [<a href="#RFC7730-en">RFC7730</a>]</span>) and pass it to the object fetcher
+(<a href="#section-4.1.2-en">Section 4.1.2</a>).  If the fetcher returns an error, repeat this
+step for every URI in the URI section until no error is
+encountered or no more URIs are left.</li>
+          <li id="section-3.1-2.3-en">From the object store (see <a href="#section-5.1.3-en">Section 5.1.3</a>), retrieve all
+certificate objects for which the URI matches the URI extracted
+from the TAL in the previous step and the public key matches the
+subjectPublicKeyInfo extension of the TAL (see <span><a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.1">Section 2.1</a> of [<a href="#RFC7730-en">RFC7730</a>]</span>).</li>
+          <li id="section-3.1-2.4-en">If no such objects are found or if more than one such objects are
+found, issue an error and abort the certificate tree validation
+process with an error.  Otherwise, use the single found object as
+the TA certificate.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-3.1-2-ja">
+<li id="section-3.1-2.1-ja">（任意）TALにprefetch.urisフィールドが含まれている場合、そのフィールドに含まれるURIをフェッチャーに渡します（<a href="#section-4.1.1-ja">Section 4.1.1</a>を参照）。
+（このフィールドは、TALの形式に対する非標準の追加です。
+これは、階層的でないrsyncリポジトリーをより効率的に取得するのに役立ちます。）</li>
+          <li id="section-3.1-2.2-ja">TALのURIセクション（<span>[<a href="#RFC7730-ja">RFC7730</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.1">Section 2.1</a></span>を参照）から最初のTA証明書URIを取り出し、それをオブジェクトフェッチャー（<a href="#section-4.1.2-ja">Section 4.1.2</a>）に渡します。
+フェッチャーがエラーを返した場合、エラーが発生しなくなるか、URIが残っていなくなるまで、URIセクション内のすべてのURIについてこの手順を繰り返します。</li>
+          <li id="section-3.1-2.3-ja">オブジェクトストア（<a href="#section-5.1.3-ja">Section 5.1.3</a>を参照）から、URIが前の手順でTALから取り出したURIと一致し、かつ公開鍵がTALのsubjectPublicKeyInfo拡張（<span>[<a href="#RFC7730-ja">RFC7730</a>]の<a href="https://www.rfc-editor.org/rfc/rfc7730#section-2.1">Section 2.1</a></span>を参照）と一致する、すべての証明書オブジェクトを取り出します。</li>
+          <li id="section-3.1-2.4-ja">そのようなオブジェクトが見つからない場合、またはそのようなオブジェクトが複数見つかった場合は、エラーを出し、エラーとして証明書ツリーの検証処理を中止します。
+そうでない場合は、見つかった1つのオブジェクトをTA証明書として使用します。</li>
+        </ol></div>
+</div></section><section><span id="section-3.2"></span><span id="ca-certificate-validation-en"></span><span id="ca-certificate-validation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-ca-certificate-validation-en" lang="en">
+<a id="section-3.2-en" href="#section-3.2-en" class="section-number selfRef">3.2.</a> <a href="#name-ca-certificate-validation-en" class="section-name selfRef">CA Certificate Validation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-ca-certificate-validation-ja" lang="ja">
+<a id="section-3.2-ja" href="#section-3.2-ja" class="section-number selfRef">3.2.</a> <a href="#name-ca-certificate-validation-ja" class="section-name selfRef">CA証明書の検証</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-1-en">The following steps describe the validation of a single CA resource
+certificate:</p></div>
+<div lang="ja" class="col"><p id="section-3.2-1-ja">次の手順は、単一のCAリソース証明書の検証を説明します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.2-2-en">
+<li id="section-3.2-2.1-en">If both the caRepository (<span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1">Section 4.8.8.1</a> of [<a href="#RFC6487-en">RFC6487</a>]</span>) and the
+id-ad-rpkiNotify (<span><a href="https://www.rfc-editor.org/rfc/rfc8182#section-3.2">Section 3.2</a> of [<a href="#RFC8182-en">RFC8182</a>]</span>) instances of an
+accessMethod are present in the Subject Information Access
+extension of the CA certificate, use a local policy to determine
+which pointer to use.  Extract the URI from the selected pointer
+and pass it to the object fetcher (that will then fetch all
+objects available from that repository; see <a href="#section-4.1.1-en">Section 4.1.1</a>).</li>
+          <li id="section-3.2-2.2-en">For the CA certificate, find the current manifest and certificate
+revocation list (CRL) using the procedure described in
+<a href="#section-3.2.1-en">Section 3.2.1</a>.  If no such manifest and CRL could be found, stop
+validation of this certificate, consider it invalid, and issue an
+error.</li>
+          <li id="section-3.2-2.3-en">Compare the URI found in the id-ad-rpkiManifest field
+(<span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1">Section 4.8.8.1</a> of [<a href="#RFC6487-en">RFC6487</a>]</span>) of the SIA extension of the
+certificate with the URI of the manifest found in the previous
+step.  If they are different, issue a warning but continue the
+validation process using the manifest found in the previous step.
+(This warning indicates that there is a mismatch between the
+expected and the actual location of an object in a repository.
+See <a href="#section-7.3-en">Section 7.3</a> for the explanation of this mismatch and the
+decision made.)</li>
+          <li id="section-3.2-2.4-en">Perform discovery and validation of manifest entries as described
+in <a href="#section-3.2.2-en">Section 3.2.2</a>.</li>
+          <li id="section-3.2-2.5-en">
+            <p id="section-3.2-2.5.1-en">Validate all resource certificate objects found on the manifest
+using the CRL object:</p>
+<ul id="section-3.2-2.5.2-en">
+<li id="section-3.2-2.5.2.1-en">If the strict validation option is enabled by the operator,
+the validation is performed according to <span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a> of [<a href="#RFC6487-en">RFC6487</a>]</span>.</li>
+              <li id="section-3.2-2.5.2.2-en">Otherwise, the validation is performed according to <span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a> of [<a href="#RFC6487-en">RFC6487</a>]</span> but with the exception of the resource
+certification path validation, which is performed according to
+<span><a href="https://www.rfc-editor.org/rfc/rfc8360#section-4.2.4.4">Section 4.2.4.4</a> of [<a href="#RFC8360-en">RFC8360</a>]</span>.</li>
+            </ul>
+<p id="section-3.2-2.5.3-en">(Note that this implementation uses the operator configuration to
+decide which algorithm to use for path validation.  It applies
+the selected algorithm to all resource certificates, rather than
+applying an appropriate algorithm per resource certificate based
+on the object identifier (OID) for the Certificate Policy found
+in that certificate, as specified in <span>[<a href="#RFC8360-en">RFC8360</a>]</span>.)</p>
+</li>
+          <li id="section-3.2-2.6-en">Validate all Route Origin Authorization (ROA) objects found on
+the manifest using the CRL object found on the manifest,
+according to <span><a href="https://www.rfc-editor.org/rfc/rfc6482#section-4">Section 4</a> of [<a href="#RFC6482-en">RFC6482</a>]</span>.</li>
+          <li id="section-3.2-2.7-en">Validate all Ghostbusters Record objects found on the manifest
+using the CRL object found on the manifest, according to
+<span><a href="https://www.rfc-editor.org/rfc/rfc6493#section-7">Section 7</a> of [<a href="#RFC6493-en">RFC6493</a>]</span>.</li>
+          <li id="section-3.2-2.8-en">For every valid CA certificate object found on the manifest,
+apply the procedure described in this section, recursively,
+provided that this CA certificate (identified by its SKI) has not
+yet been validated during current tree validation run.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-3.2-2-ja">
+<li id="section-3.2-2.1-ja">CA証明書のSubject Information Access拡張に、accessMethodのcaRepository（<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1">Section 4.8.8.1</a></span>）とid-ad-rpkiNotify（<span>[<a href="#RFC8182-ja">RFC8182</a>]の<a href="https://www.rfc-editor.org/rfc/rfc8182#section-3.2">Section 3.2</a></span>）の両方のインスタンスが存在する場合は、ローカルポリシーを使用してどちらのポインターを使用するかを決定します。
+選択したポインターからURIを取り出し、それをオブジェクトフェッチャーに渡します（フェッチャーはそのリポジトリーから利用可能なすべてのオブジェクトを取得します。<a href="#section-4.1.1-ja">Section 4.1.1</a>を参照）。</li>
+          <li id="section-3.2-2.2-ja">そのCA証明書について、<a href="#section-3.2.1-ja">Section 3.2.1</a>で説明する手順を使用して、現在のマニフェストと証明書失効リスト（CRL）を見つけます。
+そのようなマニフェストとCRLが見つからなかった場合は、この証明書の検証を停止し、それを無効とみなして、エラーを出します。</li>
+          <li id="section-3.2-2.3-ja">証明書のSIA拡張のid-ad-rpkiManifestフィールド（<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.8.1">Section 4.8.8.1</a></span>）にあるURIを、前の手順で見つかったマニフェストのURIと比較します。
+両者が異なる場合は、警告を出しますが、前の手順で見つかったマニフェストを使用して検証処理を続けます。
+（この警告は、リポジトリー内のオブジェクトの期待される場所と実際の場所が一致しないことを示します。
+この不一致の説明と、行った判断については<a href="#section-7.3-ja">Section 7.3</a>を参照してください。）</li>
+          <li id="section-3.2-2.4-ja">
+<a href="#section-3.2.2-ja">Section 3.2.2</a>で説明するように、マニフェストのエントリーの発見と検証を行います。</li>
+          <li id="section-3.2-2.5-ja">
+            <p id="section-3.2-2.5.1-ja">マニフェストで見つかったすべてのリソース証明書オブジェクトを、CRLオブジェクトを使用して検証します。</p>
+<ul id="section-3.2-2.5.2-ja">
+<li id="section-3.2-2.5.2.1-ja">運用者によって厳密な検証のオプションが有効にされている場合、検証は<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a></span>に従って行われます。</li>
+              <li id="section-3.2-2.5.2.2-ja">そうでない場合、検証は<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-7">Section 7</a></span>に従って行われますが、リソース証明書パスの検証だけは例外として<span>[<a href="#RFC8360-ja">RFC8360</a>]の<a href="https://www.rfc-editor.org/rfc/rfc8360#section-4.2.4.4">Section 4.2.4.4</a></span>に従って行われます。</li>
+            </ul>
+<p id="section-3.2-2.5.3-ja">（この実装は、パス検証にどのアルゴリズムを使用するかを決めるために運用者の設定を使用することに注意してください。
+<span>[<a href="#RFC8360-ja">RFC8360</a>]</span>で規定されているように、各リソース証明書に含まれる証明書ポリシーのオブジェクト識別子（OID）に基づいてリソース証明書ごとに適切なアルゴリズムを適用するのではなく、選択したアルゴリズムをすべてのリソース証明書に適用します。）</p>
+</li>
+          <li id="section-3.2-2.6-ja">マニフェストで見つかったすべての経路生成元認可（Route Origin Authorization、ROA）オブジェクトを、マニフェストで見つかったCRLオブジェクトを使用して、<span>[<a href="#RFC6482-ja">RFC6482</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6482#section-4">Section 4</a></span>に従って検証します。</li>
+          <li id="section-3.2-2.7-ja">マニフェストで見つかったすべてのGhostbustersレコードオブジェクトを、マニフェストで見つかったCRLオブジェクトを使用して、<span>[<a href="#RFC6493-ja">RFC6493</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6493#section-7">Section 7</a></span>に従って検証します。</li>
+          <li id="section-3.2-2.8-ja">マニフェストで見つかった有効なCA証明書オブジェクトのそれぞれについて、このセクションで説明する手順を再帰的に適用します。
+ただし、そのCA証明書（SKIで識別されます）が現在のツリー検証の実行中にまだ検証されていない場合に限ります。</li>
+        </ol></div>
+</div>
+<section><span id="section-3.2.1"></span><span id="finding-the-most-recent-valid-manifest-and-crl-en"></span><span id="finding-the-most-recent-valid-manifest-and-crl-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-finding-the-most-recent-valid-manifest-and-crl-en" lang="en">
+<a id="section-3.2.1-en" href="#section-3.2.1-en" class="section-number selfRef">3.2.1.</a> <a href="#name-finding-the-most-recent-valid-manifest-and-crl-en" class="section-name selfRef">Finding the Most Recent Valid Manifest and CRL</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-finding-the-most-recent-valid-manifest-and-crl-ja" lang="ja">
+<a id="section-3.2.1-ja" href="#section-3.2.1-ja" class="section-number selfRef">3.2.1.</a> <a href="#name-finding-the-most-recent-valid-manifest-and-crl-ja" class="section-name selfRef">最新の有効なマニフェストとCRLの発見</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2.1-1-en">To find the most recent issued manifest and CRL objects of a
+particular CA certificate, the following steps are performed:</p></div>
+<div lang="ja" class="col"><p id="section-3.2.1-1-ja">特定のCA証明書の、最も新しく発行されたマニフェストとCRLのオブジェクトを見つけるために、次の手順が実行されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.2.1-2-en">
+<li id="section-3.2.1-2.1-en">From the store (see <a href="#section-5.1.4-en">Section 5.1.4</a>), fetch all objects of type
+manifest whose certificate's AKI extension matches the SKI of the
+current CA certificate.  If no such objects are found, stop
+processing the current CA certificate and issue an error.</li>
+            <li id="section-3.2.1-2.2-en">
+              <p id="section-3.2.1-2.2.1-en">Among found objects, find the manifest object with the highest
+manifestNumber field (<span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1">Section 4.2.1</a> of [<a href="#RFC6486-en">RFC6486</a>]</span>) for which all
+following conditions are met:</p>
+<ul id="section-3.2.1-2.2.2-en">
+<li id="section-3.2.1-2.2.2.1-en">There is only one entry in the manifest for which the store
+contains exactly one object of type CRL, the hash of which
+matches the hash of the entry.</li>
+                <li id="section-3.2.1-2.2.2.2-en">The manifest's certificate AKI equals the above CRL's AKI.</li>
+                <li id="section-3.2.1-2.2.2.3-en">The above CRL is a valid object according to <span><a href="https://www.rfc-editor.org/rfc/rfc5280#section-6.3">Section 6.3</a> of [<a href="#RFC5280-en">RFC5280</a>]</span>.</li>
+                <li id="section-3.2.1-2.2.2.4-en">The manifest is a valid object according to <span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.4">Section 4.4</a> of [<a href="#RFC6486-en">RFC6486</a>]</span>, and its EE certificate is not in the CRL found
+above.</li>
+              </ul>
+</li>
+            <li id="section-3.2.1-2.3-en">If there is an object that matches the above criteria, consider
+this object to be the valid manifest, and consider the CRL found
+at the previous step to be the valid CRL for the current CA
+certificate's publication point.</li>
+            <li id="section-3.2.1-2.4-en">Report an error for every other manifest with a number higher
+than the number of the valid manifest.</li>
+          </ol></div>
+<div lang="ja" class="col"><ol id="section-3.2.1-2-ja">
+<li id="section-3.2.1-2.1-ja">ストアから（<a href="#section-5.1.4-ja">Section 5.1.4</a>を参照）、証明書のAKI拡張が現在のCA証明書のSKIと一致する、マニフェスト型のすべてのオブジェクトを取得します。
+そのようなオブジェクトが見つからない場合は、現在のCA証明書の処理を停止し、エラーを出します。</li>
+            <li id="section-3.2.1-2.2-ja">
+              <p id="section-3.2.1-2.2.1-ja">見つかったオブジェクトの中から、次のすべての条件を満たすもののうち、manifestNumberフィールド（<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.2.1">Section 4.2.1</a></span>）が最も大きいマニフェストオブジェクトを見つけます。</p>
+<ul id="section-3.2.1-2.2.2-ja">
+<li id="section-3.2.1-2.2.2.1-ja">マニフェスト内に、ストアがCRL型のオブジェクトをちょうど1つ含み、そのハッシュがエントリーのハッシュと一致するようなエントリーが、1つだけ存在する。</li>
+                <li id="section-3.2.1-2.2.2.2-ja">マニフェストの証明書のAKIが、上記のCRLのAKIと等しい。</li>
+                <li id="section-3.2.1-2.2.2.3-ja">上記のCRLが、<span>[<a href="#RFC5280-ja">RFC5280</a>]の<a href="https://www.rfc-editor.org/rfc/rfc5280#section-6.3">Section 6.3</a></span>に従って有効なオブジェクトである。</li>
+                <li id="section-3.2.1-2.2.2.4-ja">マニフェストが<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-4.4">Section 4.4</a></span>に従って有効なオブジェクトであり、かつそのEE証明書が上記で見つかったCRLに含まれていない。</li>
+              </ul>
+</li>
+            <li id="section-3.2.1-2.3-ja">上記の基準を満たすオブジェクトがある場合は、このオブジェクトを有効なマニフェストとみなし、前の手順で見つかったCRLを、現在のCA証明書の公開ポイントの有効なCRLとみなします。</li>
+            <li id="section-3.2.1-2.4-ja">有効なマニフェストの番号より大きい番号を持つ他のすべてのマニフェストについて、エラーを報告します。</li>
+          </ol></div>
+</div></section><section><span id="section-3.2.2"></span><span id="validating-manifest-entries-en"></span><span id="validating-manifest-entries-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-validating-manifest-entries-en" lang="en">
+<a id="section-3.2.2-en" href="#section-3.2.2-en" class="section-number selfRef">3.2.2.</a> <a href="#name-validating-manifest-entries-en" class="section-name selfRef">Validating Manifest Entries</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-validating-manifest-entries-ja" lang="ja">
+<a id="section-3.2.2-ja" href="#section-3.2.2-ja" class="section-number selfRef">3.2.2.</a> <a href="#name-validating-manifest-entries-ja" class="section-name selfRef">マニフェストのエントリーの検証</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2.2-1-en">For every entry in the manifest object:</p></div>
+<div lang="ja" class="col"><p id="section-3.2.2-1-ja">マニフェストオブジェクト内のすべてのエントリーについて、次の手順を実行します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.2.2-2-en">
+<li id="section-3.2.2-2.1-en">Construct an entry's URI by appending the entry name to the
+current CA's publication point URI.</li>
+            <li id="section-3.2.2-2.2-en">Get all objects from the store whose hash attribute equals the
+entry's hash (see <a href="#section-5.1.2-en">Section 5.1.2</a>).</li>
+            <li id="section-3.2.2-2.3-en">If no such objects are found, issue an error for this manifest
+entry and progress to the next entry.  This case indicates that
+the repository does not have an object at the location listed in
+the manifest or that the object's hash does not match the hash
+listed in the manifest.</li>
+            <li id="section-3.2.2-2.4-en">
+              <p id="section-3.2.2-2.4.1-en">For every found object, compare its URI with the URI of the
+manifest entry.</p>
+<ul id="section-3.2.2-2.4.2-en">
+<li id="section-3.2.2-2.4.2.1-en">For every object with a non-matching URI, issue a warning.
+This case indicates that the object from the manifest entry is
+(also) found at a different location in a (possibly different)
+repository.</li>
+                <li id="section-3.2.2-2.4.2.2-en">If no objects with a matching URI are found, issue a warning.
+This case indicates that there is no object found in the
+repository at the location listed in the manifest entry (but
+there is at least one matching object found at a different
+location).</li>
+              </ul>
+</li>
+            <li id="section-3.2.2-2.5-en">Use all found objects for further validation as per <a href="#section-3.2-en">Section 3.2</a>.</li>
+          </ol></div>
+<div lang="ja" class="col"><ol id="section-3.2.2-2-ja">
+<li id="section-3.2.2-2.1-ja">現在のCAの公開ポイントのURIにエントリー名を付け足して、エントリーのURIを構築します。</li>
+            <li id="section-3.2.2-2.2-ja">ハッシュ属性がエントリーのハッシュと等しいすべてのオブジェクトをストアから取得します（<a href="#section-5.1.2-ja">Section 5.1.2</a>を参照）。</li>
+            <li id="section-3.2.2-2.3-ja">そのようなオブジェクトが見つからない場合は、このマニフェストのエントリーについてエラーを出し、次のエントリーに進みます。
+このケースは、マニフェストに記載された場所にリポジトリーがオブジェクトを持っていないか、オブジェクトのハッシュがマニフェストに記載されたハッシュと一致しないことを示します。</li>
+            <li id="section-3.2.2-2.4-ja">
+              <p id="section-3.2.2-2.4.1-ja">見つかったすべてのオブジェクトについて、そのURIをマニフェストのエントリーのURIと比較します。</p>
+<ul id="section-3.2.2-2.4.2-ja">
+<li id="section-3.2.2-2.4.2.1-ja">URIが一致しないオブジェクトのそれぞれについて、警告を出します。
+このケースは、マニフェストのエントリーのオブジェクトが、（場合によっては別の）リポジトリー内の別の場所に（も）見つかったことを示します。</li>
+                <li id="section-3.2.2-2.4.2.2-ja">URIが一致するオブジェクトが見つからない場合は、警告を出します。
+このケースは、マニフェストのエントリーに記載された場所にはリポジトリー内でオブジェクトが見つからない（が、別の場所で一致するオブジェクトが少なくとも1つ見つかった）ことを示します。</li>
+              </ul>
+</li>
+            <li id="section-3.2.2-2.5-ja">
+<a href="#section-3.2-ja">Section 3.2</a>に従って、見つかったすべてのオブジェクトをさらなる検証に使用します。</li>
+          </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2.2-3-en">Please note that the above steps will not reject objects whose hash
+matches the hash listed in the manifest but whose URI does not.  See
+<a href="#section-7.3-en">Section 7.3</a> for additional information.</p></div>
+<div lang="ja" class="col"><p id="section-3.2.2-3-ja">上記の手順では、ハッシュはマニフェストに記載されたハッシュと一致するものの、URIは一致しないオブジェクトを拒否しないことに注意してください。
+詳細は<a href="#section-7.3-ja">Section 7.3</a>を参照してください。</p></div>
+</div></section></section><section><span id="section-3.3"></span><span id="object-store-cleanup-en"></span><span id="object-store-cleanup-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-object-store-cleanup-en" lang="en">
+<a id="section-3.3-en" href="#section-3.3-en" class="section-number selfRef">3.3.</a> <a href="#name-object-store-cleanup-en" class="section-name selfRef">Object Store Cleanup</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-object-store-cleanup-ja" lang="ja">
+<a id="section-3.3-ja" href="#section-3.3-ja" class="section-number selfRef">3.3.</a> <a href="#name-object-store-cleanup-ja" class="section-name selfRef">オブジェクトストアのクリーンアップ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-1-en">At the end of every TA tree validation, some objects are removed from
+the store using the following rules:</p></div>
+<div lang="ja" class="col"><p id="section-3.3-1-ja">TAツリーの検証が終わるたびに、次の規則を使用して一部のオブジェクトをストアから削除します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.3-2-en">
+<li id="section-3.3-2.1-en">Given all objects that were encountered during the current
+validation run, remove from the store (<a href="#section-5.1.6-en">Section 5.1.6</a>) all objects
+whose URI attribute matches the URI of one of the encountered
+objects but whose content's hash does not match the hash of any
+of the encountered objects.  This removes from the store objects
+that were replaced in the repository by their newer versions with
+the same URIs.</li>
+          <li id="section-3.3-2.2-en">Remove from the store all objects that were last encountered
+during validation a long time ago (as specified by the local
+policy).  This removes objects that do not appear on any valid
+manifest anymore (but possibly are still published in a
+repository).</li>
+          <li id="section-3.3-2.3-en">Remove from the store all objects that were downloaded recently
+(as specified by the local policy) but that have never been used
+in the validation process.  This removes objects that have never
+appeared on any valid manifest.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-3.3-2-ja">
+<li id="section-3.3-2.1-ja">現在の検証の実行中に出会ったすべてのオブジェクトを対象として、URI属性が出会ったオブジェクトのいずれかのURIと一致するものの、内容のハッシュが出会ったオブジェクトのどのハッシュとも一致しないすべてのオブジェクトを、ストアから削除します（<a href="#section-5.1.6-ja">Section 5.1.6</a>）。
+これにより、リポジトリー内で同じURIを持つ新しいバージョンに置き換えられたオブジェクトがストアから削除されます。</li>
+          <li id="section-3.3-2.2-ja">検証中に最後に出会ったのが（ローカルポリシーで指定される）長い時間前であるすべてのオブジェクトを、ストアから削除します。
+これにより、どの有効なマニフェストにももはや現れない（が、リポジトリーではまだ公開されている可能性のある）オブジェクトが削除されます。</li>
+          <li id="section-3.3-2.3-ja">（ローカルポリシーで指定される）最近ダウンロードされたものの、検証処理で一度も使用されていないすべてのオブジェクトを、ストアから削除します。
+これにより、どの有効なマニフェストにも一度も現れたことのないオブジェクトが削除されます。</li>
+        </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-3-en">Shortening the time interval used in step 2 will free more disk space
+used by the store, at the expense of downloading removed objects
+again if they are still published in the repository.</p></div>
+<div lang="ja" class="col"><p id="section-3.3-3-ja">手順2で使用する時間間隔を短くすると、ストアが使用するディスク領域をより多く解放できますが、その代わりに、削除したオブジェクトがリポジトリーでまだ公開されている場合には、それを再びダウンロードすることになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-4-en">Extending the time interval used in step 3 will prevent repeated
+downloads of unused repository objects.  However, it will also extend
+the interval at which unused objects are removed.  This creates a
+risk that such objects will fill up all available disk space if a
+large enough amount of such objects is published in the repository
+(either by mistake or with a malicious intent).</p></div>
+<div lang="ja" class="col"><p id="section-3.3-4-ja">手順3で使用する時間間隔を長くすると、使用されないリポジトリーオブジェクトの繰り返しのダウンロードを防げます。
+しかし、使用されないオブジェクトが削除されるまでの間隔も長くなります。
+このため、そのようなオブジェクトが（誤って、または悪意を持って）リポジトリーで十分に大量に公開された場合、そのようなオブジェクトが利用可能なディスク領域をすべて埋め尽くしてしまうリスクが生じます。</p></div>
+</div></section></section><section><span id="section-4"></span><span id="remote-objects-fetcher-en"></span><span id="remote-objects-fetcher-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-remote-objects-fetcher-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-remote-objects-fetcher-en" class="section-name selfRef">Remote Objects Fetcher</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-remote-objects-fetcher-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-remote-objects-fetcher-ja" class="section-name selfRef">リモートオブジェクトフェッチャー</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">The fetcher is responsible for downloading objects from remote
+repositories (described in <span><a href="https://www.rfc-editor.org/rfc/rfc6481#section-3">Section 3</a> of [<a href="#RFC6481-en">RFC6481</a>]</span>) using the rsync
+protocol <span>[<a href="#rsync-en">rsync</a>]</span> or RRDP <span>[<a href="#RFC8182-en">RFC8182</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">フェッチャーは、rsyncプロトコル<span>[<a href="#rsync-ja">rsync</a>]</span>またはRRDP<span>[<a href="#RFC8182-ja">RFC8182</a>]</span>を使用して、（<span>[<a href="#RFC6481-ja">RFC6481</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6481#section-3">Section 3</a></span>で説明されている）リモートリポジトリーからオブジェクトをダウンロードする役割を担います。</p></div>
+</div>
+<section><span id="section-4.1"></span><span id="fetcher-operations-en"></span><span id="fetcher-operations-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-fetcher-operations-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-fetcher-operations-en" class="section-name selfRef">Fetcher Operations</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-fetcher-operations-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-fetcher-operations-ja" class="section-name selfRef">フェッチャーの操作</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">For every visited URI, the fetcher keeps track of the last time a
+successful fetch occurred.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">フェッチャーは、訪れたすべてのURIについて、最後に取得が成功した時刻を記録します。</p></div>
+</div>
+<section><span id="section-4.1.1"></span><span id="fetch-repository-objects-en"></span><span id="fetch-repository-objects-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-fetch-repository-objects-en" lang="en">
+<a id="section-4.1.1-en" href="#section-4.1.1-en" class="section-number selfRef">4.1.1.</a> <a href="#name-fetch-repository-objects-en" class="section-name selfRef">Fetch Repository Objects</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-fetch-repository-objects-ja" lang="ja">
+<a id="section-4.1.1-ja" href="#section-4.1.1-ja" class="section-number selfRef">4.1.1.</a> <a href="#name-fetch-repository-objects-ja" class="section-name selfRef">リポジトリーオブジェクトの取得</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-1-en">This operation receives one parameter -- a URI.  For an rsync
+repository, this URI points to a directory.  For an RRDP repository,
+it points to the repository's notification file.</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-1-ja">この操作は、1つのパラメーター、つまりURIを受け取ります。
+rsyncリポジトリーの場合、このURIはディレクトリーを指します。
+RRDPリポジトリーの場合、このURIはリポジトリーの通知ファイルを指します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-2-en">The fetcher follows these steps:</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-2-ja">フェッチャーは次の手順に従います。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-4.1.1-3-en">
+<li id="section-4.1.1-3.1-en">If data associated with the URI has been downloaded recently (as
+specified by the local policy), skip the following steps.</li>
+            <li id="section-4.1.1-3.2-en">Download remote objects using the URI provided (for an rsync
+repository, use recursive mode).  If the URI contains the "https"
+schema and download has failed, issue a warning, replace the
+"https" schema in the URI with "http", and try to download
+objects again using the resulting URI.</li>
+            <li id="section-4.1.1-3.3-en">If remote objects cannot be downloaded, issue an error and skip
+the following steps.</li>
+            <li id="section-4.1.1-3.4-en">Perform syntactic verification of fetched objects.  The type of
+every object (certificate, manifest, CRL, ROA, or Ghostbusters
+Record) is determined based on the object's filename extension
+(.cer, .mft, .crl, .roa, and .gbr, respectively).  The syntax of
+the object is described in <span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-4">Section 4</a> of [<a href="#RFC6487-en">RFC6487</a>]</span> for resource
+certificates, step 1 of <span><a href="https://www.rfc-editor.org/rfc/rfc6488#section-3">Section 3</a> of [<a href="#RFC6488-en">RFC6488</a>]</span> for signed
+objects, <span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-4">Section 4</a> of [<a href="#RFC6486-en">RFC6486</a>]</span> for manifests, <span>[<a href="#RFC5280-en">RFC5280</a>]</span> for
+CRLs, <span><a href="https://www.rfc-editor.org/rfc/rfc6482#section-3">Section 3</a> of [<a href="#RFC6482-en">RFC6482</a>]</span> for ROAs, and <span><a href="https://www.rfc-editor.org/rfc/rfc6493#section-5">Section 5</a> of [<a href="#RFC6493-en">RFC6493</a>]</span>
+for Ghostbusters Records.</li>
+            <li id="section-4.1.1-3.5-en">Put every downloaded and syntactically correct object in the
+object store (<a href="#section-5.1.1-en">Section 5.1.1</a>).</li>
+          </ol></div>
+<div lang="ja" class="col"><ol id="section-4.1.1-3-ja">
+<li id="section-4.1.1-3.1-ja">URIに関連付けられたデータが（ローカルポリシーで指定される）最近ダウンロードされている場合は、以降の手順をスキップします。</li>
+            <li id="section-4.1.1-3.2-ja">指定されたURIを使用してリモートオブジェクトをダウンロードします（rsyncリポジトリーの場合は再帰モードを使用します）。
+URIが"https"スキーマを含み、ダウンロードが失敗した場合は、警告を出し、URI内の"https"スキーマを"http"に置き換え、その結果のURIを使用してオブジェクトのダウンロードを再度試みます。</li>
+            <li id="section-4.1.1-3.3-ja">リモートオブジェクトをダウンロードできない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li id="section-4.1.1-3.4-ja">取得したオブジェクトの構文検証を行います。
+すべてのオブジェクトの種類（証明書、マニフェスト、CRL、ROA、Ghostbustersレコード）は、オブジェクトのファイル名の拡張子（それぞれ.cer、.mft、.crl、.roa、.gbr）に基づいて決定されます。
+オブジェクトの構文は、リソース証明書については<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-4">Section 4</a></span>、署名付きオブジェクトについては<span>[<a href="#RFC6488-ja">RFC6488</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6488#section-3">Section 3</a></span>の手順1、マニフェストについては<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-4">Section 4</a></span>、CRLについては<span>[<a href="#RFC5280-ja">RFC5280</a>]</span>、ROAについては<span>[<a href="#RFC6482-ja">RFC6482</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6482#section-3">Section 3</a></span>、Ghostbustersレコードについては<span>[<a href="#RFC6493-ja">RFC6493</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6493#section-5">Section 5</a></span>で説明されています。</li>
+            <li id="section-4.1.1-3.5-ja">ダウンロードされ、構文的に正しいすべてのオブジェクトを、オブジェクトストアに格納します（<a href="#section-5.1.1-ja">Section 5.1.1</a>）。</li>
+          </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-4-en">The time interval used in step 1 should be chosen based on the
+acceptable delay in receiving repository updates.</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-4-ja">手順1で使用する時間間隔は、リポジトリーの更新を受け取る際に許容できる遅延に基づいて選ぶべきです。</p></div>
+</div></section><section><span id="section-4.1.2"></span><span id="fetch-single-repository-object-en"></span><span id="fetch-single-repository-object-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-fetch-single-repository-object-en" lang="en">
+<a id="section-4.1.2-en" href="#section-4.1.2-en" class="section-number selfRef">4.1.2.</a> <a href="#name-fetch-single-repository-object-en" class="section-name selfRef">Fetch Single Repository Object</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-fetch-single-repository-object-ja" lang="ja">
+<a id="section-4.1.2-ja" href="#section-4.1.2-ja" class="section-number selfRef">4.1.2.</a> <a href="#name-fetch-single-repository-object-ja" class="section-name selfRef">単一のリポジトリーオブジェクトの取得</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.2-1-en">This operation receives one parameter -- a URI that points to an
+object in a repository.</p></div>
+<div lang="ja" class="col"><p id="section-4.1.2-1-ja">この操作は、1つのパラメーター、つまりリポジトリー内のオブジェクトを指すURIを受け取ります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.2-2-en">The fetcher follows these steps:</p></div>
+<div lang="ja" class="col"><p id="section-4.1.2-2-ja">フェッチャーは次の手順に従います。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-4.1.2-3-en">
+<li id="section-4.1.2-3.1-en">Download a remote object using the URI provided.  If the URI
+contains the "https" schema and download failed, issue a warning,
+replace the "https" schema in the URI with "http", and try to
+download the object using the resulting URI.</li>
+            <li id="section-4.1.2-3.2-en">If the remote object cannot be downloaded, issue an error and
+skip the following steps.</li>
+            <li id="section-4.1.2-3.3-en">Perform syntactic verification of the fetched object.  The type
+of object (certificate, manifest, CRL, ROA, or Ghostbusters
+Record) is determined based on the object's filename extension
+(.cer, .mft, .crl, .roa, and .gbr, respectively).  The syntax of
+the object is described in <span><a href="https://www.rfc-editor.org/rfc/rfc6487#section-4">Section 4</a> of [<a href="#RFC6487-en">RFC6487</a>]</span> for resource
+certificates, step 1 of <span><a href="https://www.rfc-editor.org/rfc/rfc6488#section-3">Section 3</a> of [<a href="#RFC6488-en">RFC6488</a>]</span> for signed
+objects, <span><a href="https://www.rfc-editor.org/rfc/rfc6486#section-4">Section 4</a> of [<a href="#RFC6486-en">RFC6486</a>]</span> for manifests, <span>[<a href="#RFC5280-en">RFC5280</a>]</span> for
+CRLs, <span><a href="https://www.rfc-editor.org/rfc/rfc6482#section-3">Section 3</a> of [<a href="#RFC6482-en">RFC6482</a>]</span> for ROAs, and <span><a href="https://www.rfc-editor.org/rfc/rfc6493#section-5">Section 5</a> of [<a href="#RFC6493-en">RFC6493</a>]</span>
+for Ghostbusters Records.</li>
+            <li id="section-4.1.2-3.4-en">If the downloaded object is not syntactically correct, issue an
+error and skip further steps.</li>
+            <li id="section-4.1.2-3.5-en">Delete all objects from the object store (<a href="#section-5.1.5-en">Section 5.1.5</a>) whose
+URI matches the URI given.</li>
+            <li id="section-4.1.2-3.6-en">Put the downloaded object in the object store (<a href="#section-5.1.1-en">Section 5.1.1</a>).</li>
+          </ol></div>
+<div lang="ja" class="col"><ol id="section-4.1.2-3-ja">
+<li id="section-4.1.2-3.1-ja">指定されたURIを使用してリモートオブジェクトをダウンロードします。
+URIが"https"スキーマを含み、ダウンロードが失敗した場合は、警告を出し、URI内の"https"スキーマを"http"に置き換え、その結果のURIを使用してオブジェクトのダウンロードを試みます。</li>
+            <li id="section-4.1.2-3.2-ja">リモートオブジェクトをダウンロードできない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li id="section-4.1.2-3.3-ja">取得したオブジェクトの構文検証を行います。
+オブジェクトの種類（証明書、マニフェスト、CRL、ROA、Ghostbustersレコード）は、オブジェクトのファイル名の拡張子（それぞれ.cer、.mft、.crl、.roa、.gbr）に基づいて決定されます。
+オブジェクトの構文は、リソース証明書については<span>[<a href="#RFC6487-ja">RFC6487</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6487#section-4">Section 4</a></span>、署名付きオブジェクトについては<span>[<a href="#RFC6488-ja">RFC6488</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6488#section-3">Section 3</a></span>の手順1、マニフェストについては<span>[<a href="#RFC6486-ja">RFC6486</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6486#section-4">Section 4</a></span>、CRLについては<span>[<a href="#RFC5280-ja">RFC5280</a>]</span>、ROAについては<span>[<a href="#RFC6482-ja">RFC6482</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6482#section-3">Section 3</a></span>、Ghostbustersレコードについては<span>[<a href="#RFC6493-ja">RFC6493</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6493#section-5">Section 5</a></span>で説明されています。</li>
+            <li id="section-4.1.2-3.4-ja">ダウンロードしたオブジェクトが構文的に正しくない場合は、エラーを出し、以降の手順をスキップします。</li>
+            <li id="section-4.1.2-3.5-ja">URIが指定されたURIと一致するすべてのオブジェクトを、オブジェクトストアから削除します（<a href="#section-5.1.5-ja">Section 5.1.5</a>）。</li>
+            <li id="section-4.1.2-3.6-ja">ダウンロードしたオブジェクトをオブジェクトストアに格納します（<a href="#section-5.1.1-ja">Section 5.1.1</a>）。</li>
+          </ol></div>
+</div></section></section></section><section><span id="section-5"></span><span id="local-object-store-en"></span><span id="local-object-store-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-local-object-store-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-local-object-store-en" class="section-name selfRef">Local Object Store</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-local-object-store-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-local-object-store-ja" class="section-name selfRef">ローカルオブジェクトストア</a>
+      </h2></div>
+</div>
+<section><span id="section-5.1"></span><span id="store-operations-en"></span><span id="store-operations-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-store-operations-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-store-operations-en" class="section-name selfRef">Store Operations</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-store-operations-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-store-operations-ja" class="section-name selfRef">ストアの操作</a>
+        </h3></div>
+</div>
+<section><span id="section-5.1.1"></span><span id="store-repository-object-en"></span><span id="store-repository-object-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-store-repository-object-en" lang="en">
+<a id="section-5.1.1-en" href="#section-5.1.1-en" class="section-number selfRef">5.1.1.</a> <a href="#name-store-repository-object-en" class="section-name selfRef">Store Repository Object</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-store-repository-object-ja" lang="ja">
+<a id="section-5.1.1-ja" href="#section-5.1.1-ja" class="section-number selfRef">5.1.1.</a> <a href="#name-store-repository-object-ja" class="section-name selfRef">リポジトリーオブジェクトの格納</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.1-1-en">Put the given object in the store if there is no record with the same
+hash and URI fields.  Note that in the (unlikely) event of hash
+collision, the given object will not replace the object in the store.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.1-1-ja">同じハッシュフィールドとURIフィールドを持つレコードがない場合に、与えられたオブジェクトをストアに格納します。
+（可能性は低いものの）ハッシュ衝突が起きた場合には、与えられたオブジェクトはストア内のオブジェクトを置き換えないことに注意してください。</p></div>
+</div></section><section><span id="section-5.1.2"></span><span id="get-objects-by-hash-en"></span><span id="get-objects-by-hash-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-get-objects-by-hash-en" lang="en">
+<a id="section-5.1.2-en" href="#section-5.1.2-en" class="section-number selfRef">5.1.2.</a> <a href="#name-get-objects-by-hash-en" class="section-name selfRef">Get Objects by Hash</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-get-objects-by-hash-ja" lang="ja">
+<a id="section-5.1.2-ja" href="#section-5.1.2-ja" class="section-number selfRef">5.1.2.</a> <a href="#name-get-objects-by-hash-ja" class="section-name selfRef">ハッシュによるオブジェクトの取得</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.2-1-en">Retrieve all objects from the store whose hash attribute matches the
+given hash.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.2-1-ja">ハッシュ属性が与えられたハッシュと一致するすべてのオブジェクトをストアから取り出します。</p></div>
+</div></section><section><span id="section-5.1.3"></span><span id="get-certificate-objects-by-uri-en"></span><span id="get-certificate-objects-by-uri-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-get-certificate-objects-by-uri-en" lang="en">
+<a id="section-5.1.3-en" href="#section-5.1.3-en" class="section-number selfRef">5.1.3.</a> <a href="#name-get-certificate-objects-by-uri-en" class="section-name selfRef">Get Certificate Objects by URI</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-get-certificate-objects-by-uri-ja" lang="ja">
+<a id="section-5.1.3-ja" href="#section-5.1.3-ja" class="section-number selfRef">5.1.3.</a> <a href="#name-get-certificate-objects-by-uri-ja" class="section-name selfRef">URIによる証明書オブジェクトの取得</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.3-1-en">Retrieve from the store all objects of type certificate whose URI
+attribute matches the given URI.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.3-1-ja">URI属性が与えられたURIと一致する、証明書型のすべてのオブジェクトをストアから取り出します。</p></div>
+</div></section><section><span id="section-5.1.4"></span><span id="get-manifest-objects-by-aki-en"></span><span id="get-manifest-objects-by-aki-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-get-manifest-objects-by-aki-en" lang="en">
+<a id="section-5.1.4-en" href="#section-5.1.4-en" class="section-number selfRef">5.1.4.</a> <a href="#name-get-manifest-objects-by-aki-en" class="section-name selfRef">Get Manifest Objects by AKI</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-get-manifest-objects-by-aki-ja" lang="ja">
+<a id="section-5.1.4-ja" href="#section-5.1.4-ja" class="section-number selfRef">5.1.4.</a> <a href="#name-get-manifest-objects-by-aki-ja" class="section-name selfRef">AKIによるマニフェストオブジェクトの取得</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.4-1-en">Retrieve from the store all objects of type manifest whose AKI
+attribute matches the given AKI.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.4-1-ja">AKI属性が与えられたAKIと一致する、マニフェスト型のすべてのオブジェクトをストアから取り出します。</p></div>
+</div></section><section><span id="section-5.1.5"></span><span id="delete-objects-for-a-uri-en"></span><span id="delete-objects-for-a-uri-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-delete-objects-for-a-uri-en" lang="en">
+<a id="section-5.1.5-en" href="#section-5.1.5-en" class="section-number selfRef">5.1.5.</a> <a href="#name-delete-objects-for-a-uri-en" class="section-name selfRef">Delete Objects for a URI</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-delete-objects-for-a-uri-ja" lang="ja">
+<a id="section-5.1.5-ja" href="#section-5.1.5-ja" class="section-number selfRef">5.1.5.</a> <a href="#name-delete-objects-for-a-uri-ja" class="section-name selfRef">URIに対するオブジェクトの削除</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.5-1-en">For a given URI, delete all objects in the store with a matching URI
+attribute.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.5-1-ja">与えられたURIについて、URI属性が一致するストア内のすべてのオブジェクトを削除します。</p></div>
+</div></section><section><span id="section-5.1.6"></span><span id="delete-outdated-objects-en"></span><span id="delete-outdated-objects-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-delete-outdated-objects-en" lang="en">
+<a id="section-5.1.6-en" href="#section-5.1.6-en" class="section-number selfRef">5.1.6.</a> <a href="#name-delete-outdated-objects-en" class="section-name selfRef">Delete Outdated Objects</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-delete-outdated-objects-ja" lang="ja">
+<a id="section-5.1.6-ja" href="#section-5.1.6-ja" class="section-number selfRef">5.1.6.</a> <a href="#name-delete-outdated-objects-ja" class="section-name selfRef">古くなったオブジェクトの削除</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.6-1-en">For a given URI and a list of hashes, delete all objects in the store
+with a matching URI whose hash attribute is not in the given list of
+hashes.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.6-1-ja">与えられたURIとハッシュのリストについて、URIが一致し、かつハッシュ属性が与えられたハッシュのリストに含まれない、ストア内のすべてのオブジェクトを削除します。</p></div>
+</div></section><section><span id="section-5.1.7"></span><span id="update-objects-validation-time-en"></span><span id="update-objects-validation-time-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-update-objects-validation-time-en" lang="en">
+<a id="section-5.1.7-en" href="#section-5.1.7-en" class="section-number selfRef">5.1.7.</a> <a href="#name-update-objects-validation-time-en" class="section-name selfRef">Update Object's Validation Time</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-update-objects-validation-time-ja" lang="ja">
+<a id="section-5.1.7-ja" href="#section-5.1.7-ja" class="section-number selfRef">5.1.7.</a> <a href="#name-update-objects-validation-time-ja" class="section-name selfRef">オブジェクトの検証時刻の更新</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1.7-1-en">For all objects in the store whose hash attribute matches the given
+hash, set the last validation time attribute to the given timestamp.</p></div>
+<div lang="ja" class="col"><p id="section-5.1.7-1-ja">ハッシュ属性が与えられたハッシュと一致するストア内のすべてのオブジェクトについて、最終検証時刻の属性を与えられたタイムスタンプに設定します。</p></div>
+</div></section></section></section><section><span id="section-6"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">This document has no IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><section><span id="section-7"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<section><span id="section-7.1"></span><span id="hash-collisions-en"></span><span id="hash-collisions-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-hash-collisions-en" lang="en">
+<a id="section-7.1-en" href="#section-7.1-en" class="section-number selfRef">7.1.</a> <a href="#name-hash-collisions-en" class="section-name selfRef">Hash Collisions</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-hash-collisions-ja" lang="ja">
+<a id="section-7.1-ja" href="#section-7.1-ja" class="section-number selfRef">7.1.</a> <a href="#name-hash-collisions-ja" class="section-name selfRef">ハッシュ衝突</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-1-en">This implementation will not detect possible hash collisions in the
+hashes of repository objects (calculated using the file hash
+algorithm specified in <span>[<a href="#RFC7935-en">RFC7935</a>]</span>).  It considers objects with same
+hash values to be identical.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-1-ja">この実装は、（<span>[<a href="#RFC7935-ja">RFC7935</a>]</span>で規定されたファイルハッシュアルゴリズムを使用して計算された）リポジトリーオブジェクトのハッシュにおいて起こりうるハッシュ衝突を検出しません。
+この実装は、同じハッシュ値を持つオブジェクトを同一とみなします。</p></div>
+</div></section><section><span id="section-7.2"></span><span id="algorithm-agility-en"></span><span id="algorithm-agility-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-algorithm-agility-en" lang="en">
+<a id="section-7.2-en" href="#section-7.2-en" class="section-number selfRef">7.2.</a> <a href="#name-algorithm-agility-en" class="section-name selfRef">Algorithm Agility</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-algorithm-agility-ja" lang="ja">
+<a id="section-7.2-ja" href="#section-7.2-ja" class="section-number selfRef">7.2.</a> <a href="#name-algorithm-agility-ja" class="section-name selfRef">アルゴリズムの俊敏性</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.2-1-en">This implementation only supports hash algorithms and key sizes
+specified in <span>[<a href="#RFC7935-en">RFC7935</a>]</span>.  Algorithm agility described in <span>[<a href="#RFC6916-en">RFC6916</a>]</span> is
+not supported.</p></div>
+<div lang="ja" class="col"><p id="section-7.2-1-ja">この実装は、<span>[<a href="#RFC7935-ja">RFC7935</a>]</span>で規定されたハッシュアルゴリズムと鍵長だけをサポートします。
+<span>[<a href="#RFC6916-ja">RFC6916</a>]</span>で説明されているアルゴリズムの俊敏性はサポートしていません。</p></div>
+</div></section><section><span id="section-7.3"></span><span id="mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-en"></span><span id="mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-en" lang="en">
+<a id="section-7.3-en" href="#section-7.3-en" class="section-number selfRef">7.3.</a> <a href="#name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-en" class="section-name selfRef">Mismatch between the Expected and Actual Location of an Object in the Repository</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-ja" lang="ja">
+<a id="section-7.3-ja" href="#section-7.3-ja" class="section-number selfRef">7.3.</a> <a href="#name-mismatch-between-the-expected-and-actual-location-of-an-object-in-the-repository-ja" class="section-name selfRef">リポジトリー内のオブジェクトの期待される場所と実際の場所の不一致</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-1-en">According to <span><a href="https://www.rfc-editor.org/rfc/rfc6481#section-2">Section 2</a> of [<a href="#RFC6481-en">RFC6481</a>]</span>, all objects issued by a
+particular CA certificate are expected to be located in one
+repository publication point, specified in the SIA extension of that
+CA certificate.  The manifest object issued by that CA certificate
+enumerates all other issued objects, listing their filenames and
+content hashes.</p></div>
+<div lang="ja" class="col"><p id="section-7.3-1-ja"><span>[<a href="#RFC6481-ja">RFC6481</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6481#section-2">Section 2</a></span>によると、特定のCA証明書が発行したすべてのオブジェクトは、そのCA証明書のSIA拡張で指定された1つのリポジトリー公開ポイントに置かれることが期待されています。
+そのCA証明書が発行したマニフェストオブジェクトは、発行された他のすべてのオブジェクトを列挙し、そのファイル名と内容のハッシュを記載します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-2-en">However, it is possible that an object whose content hash matches the
+hash listed in the manifest either has a different filename or is
+located at a different publication point in a repository.</p></div>
+<div lang="ja" class="col"><p id="section-7.3-2-ja">しかし、内容のハッシュがマニフェストに記載されたハッシュと一致するオブジェクトが、異なるファイル名を持っていたり、リポジトリー内の異なる公開ポイントに置かれていたりする可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-3-en">On the other hand, all RPKI objects, either explicitly or within
+their embedded EE certificate, have an AKI extension that contains
+the key identifier of their issuing CA certificate.  Therefore, it is
+always possible to perform an RPKI validation of the object whose
+expected location does not match its actual location, provided that
+the certificate that matches the AKI of the object in question is
+known to the system that performs validation.</p></div>
+<div lang="ja" class="col"><p id="section-7.3-3-ja">一方、すべてのRPKIオブジェクトは、明示的に、または埋め込まれたEE証明書の中に、発行元のCA証明書の鍵識別子を含むAKI拡張を持っています。
+したがって、問題のオブジェクトのAKIと一致する証明書を検証を行うシステムが知っていれば、期待される場所が実際の場所と一致しないオブジェクトであっても、常にRPKI検証を行うことができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-4-en">In the case of a mismatch as described above, this implementation
+will not exclude an object from further validation merely because its
+actual location or filename does not match the expected location or
+filename.  This decision was made because the actual location of a
+file in a repository is taken from the repository retrieval
+mechanism, which, in the case of an rsync repository, does not
+provide any cryptographic security, and in the case of an RRDP
+repository, provides only a transport-layer security with the
+fallback to unsecured transport.  On the other hand, the manifest is
+an RPKI signed object, and its content could be verified in the
+context of the RPKI validation.</p></div>
+<div lang="ja" class="col"><p id="section-7.3-4-ja">上記のような不一致がある場合、この実装は、オブジェクトの実際の場所やファイル名が期待される場所やファイル名と一致しないというだけで、そのオブジェクトをさらなる検証から除外することはしません。
+この判断をしたのは、リポジトリー内のファイルの実際の場所はリポジトリーの取得メカニズムから得られるものであり、そのメカニズムは、rsyncリポジトリーの場合は暗号学的なセキュリティーを何も提供せず、RRDPリポジトリーの場合も、保護されていないトランスポートへのフォールバックを伴うトランスポート層のセキュリティーしか提供しないからです。
+一方、マニフェストはRPKI署名付きオブジェクトであり、その内容はRPKI検証の文脈で検証できます。</p></div>
+</div></section><section><span id="section-7.4"></span><span id="manifest-content-versus-publication-point-content-en"></span><span id="manifest-content-versus-publication-point-content-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-manifest-content-versus-publication-point-content-en" lang="en">
+<a id="section-7.4-en" href="#section-7.4-en" class="section-number selfRef">7.4.</a> <a href="#name-manifest-content-versus-publication-point-content-en" class="section-name selfRef">Manifest Content versus Publication Point Content</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-manifest-content-versus-publication-point-content-ja" lang="ja">
+<a id="section-7.4-ja" href="#section-7.4-ja" class="section-number selfRef">7.4.</a> <a href="#name-manifest-content-versus-publication-point-content-ja" class="section-name selfRef">マニフェストの内容と公開ポイントの内容</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.4-1-en">This algorithm uses the content of a manifest object to determine
+other objects issued by a CA certificate.  It verifies that the
+manifest is located in the publication point designated in the CA
+certificate's SIA extension.  However, if there are other (not listed
+in the manifest) objects located in the same publication point
+directory, they are ignored even if they might be valid and issued by
+the same CA as the manifest.  (This RP behavior is allowed, but not
+required, by <span>[<a href="#RFC6486-en">RFC6486</a>]</span>.)</p></div>
+<div lang="ja" class="col"><p id="section-7.4-1-ja">このアルゴリズムは、マニフェストオブジェクトの内容を使用して、CA証明書が発行した他のオブジェクトを決定します。
+このアルゴリズムは、マニフェストがCA証明書のSIA拡張で指定された公開ポイントに置かれていることを検証します。
+しかし、同じ公開ポイントのディレクトリーに（マニフェストに記載されていない）他のオブジェクトが置かれている場合、それらは、たとえ有効でマニフェストと同じCAによって発行されたものであっても無視されます。
+（このRPの振る舞いは、<span>[<a href="#RFC6486-ja">RFC6486</a>]</span>によって許可されていますが、要求はされていません。）</p></div>
+</div></section><section><span id="section-7.5"></span><span id="possible-denial-of-service-en"></span><span id="possible-denial-of-service-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-possible-denial-of-service-en" lang="en">
+<a id="section-7.5-en" href="#section-7.5-en" class="section-number selfRef">7.5.</a> <a href="#name-possible-denial-of-service-en" class="section-name selfRef">Possible Denial of Service</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-possible-denial-of-service-ja" lang="ja">
+<a id="section-7.5-ja" href="#section-7.5-ja" class="section-number selfRef">7.5.</a> <a href="#name-possible-denial-of-service-ja" class="section-name selfRef">サービス拒否の可能性</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.5-1-en">The store cleanup procedure described in <a href="#section-3.3-en">Section 3.3</a> tries to
+minimize removal and subsequent re-fetch of objects that are
+published in a repository but not used in the validation.  Once such
+objects are removed from the remote repository, they will be
+discarded from the local object store after a period of time
+specified by a local policy.  By generating an excessive amount of
+syntactically valid RPKI objects, a man-in-the-middle attack between
+a validating tool and a repository could force an implementation to
+fetch and store those objects in the object store (see <a href="#section-4.1.1-en">Section 4.1.1</a>)
+before they are validated and discarded, leading to out-of-memory or
+out-of-disk-space conditions and, subsequently, a denial of service.</p></div>
+<div lang="ja" class="col"><p id="section-7.5-1-ja"><a href="#section-3.3-ja">Section 3.3</a>で説明したストアのクリーンアップ手順は、リポジトリーで公開されているものの検証では使用されないオブジェクトについて、削除とその後の再取得を最小限に抑えようとします。
+そのようなオブジェクトは、リモートリポジトリーから削除されると、ローカルポリシーで指定された期間の後に、ローカルのオブジェクトストアから破棄されます。
+検証ツールとリポジトリーの間の中間者攻撃は、構文的に有効なRPKIオブジェクトを過剰な量生成することで、それらのオブジェクトが検証されて破棄される前に、実装にそれらを取得させてオブジェクトストアに格納させることができます（<a href="#section-4.1.1-ja">Section 4.1.1</a>を参照）。
+その結果、メモリー不足やディスク領域不足の状態に陥り、ひいてはサービス拒否につながります。</p></div>
+</div></section></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-8-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-8.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC5280-en">[RFC5280]</dt>
+<dd class="break">
+<span class="refAuthor">Cooper, D.</span>, <span class="refAuthor">Santesson, S.</span>, <span class="refAuthor">Farrell, S.</span>, <span class="refAuthor">Boeyen, S.</span>, <span class="refAuthor">Housley, R.</span>, and <span class="refAuthor">W. Polk</span>, <span></span><span class="refTitle">"Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile"</span>, <span class="seriesInfo">RFC 5280</span>, <span class="seriesInfo">DOI 10.17487/RFC5280</span>, <time datetime="2008-05" class="refDate">May 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5280">https://www.rfc-editor.org/info/rfc5280</a>&gt;</span>
+</dd>
+<dt id="RFC6481-en">[RFC6481]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Loomans, R.</span>, and <span class="refAuthor">G. Michaelson</span>, <span></span><span class="refTitle">"A Profile for Resource Certificate Repository Structure"</span>, <span class="seriesInfo">RFC 6481</span>, <span class="seriesInfo">DOI 10.17487/RFC6481</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6481">https://www.rfc-editor.org/info/rfc6481</a>&gt;</span>
+</dd>
+<dt id="RFC6482-en">[RFC6482]</dt>
+<dd class="break">
+<span class="refAuthor">Lepinski, M.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">D. Kong</span>, <span></span><span class="refTitle">"A Profile for Route Origin Authorizations (ROAs)"</span>, <span class="seriesInfo">RFC 6482</span>, <span class="seriesInfo">DOI 10.17487/RFC6482</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6482">https://www.rfc-editor.org/info/rfc6482</a>&gt;</span>
+</dd>
+<dt id="RFC6486-en">[RFC6486]</dt>
+<dd class="break">
+<span class="refAuthor">Austein, R.</span>, <span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">M. Lepinski</span>, <span></span><span class="refTitle">"Manifests for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">RFC 6486</span>, <span class="seriesInfo">DOI 10.17487/RFC6486</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6486">https://www.rfc-editor.org/info/rfc6486</a>&gt;</span>
+</dd>
+<dt id="RFC6487-en">[RFC6487]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Michaelson, G.</span>, and <span class="refAuthor">R. Loomans</span>, <span></span><span class="refTitle">"A Profile for X.509 PKIX Resource Certificates"</span>, <span class="seriesInfo">RFC 6487</span>, <span class="seriesInfo">DOI 10.17487/RFC6487</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6487">https://www.rfc-editor.org/info/rfc6487</a>&gt;</span>
+</dd>
+<dt id="RFC6488-en">[RFC6488]</dt>
+<dd class="break">
+<span class="refAuthor">Lepinski, M.</span>, <span class="refAuthor">Chi, A.</span>, and <span class="refAuthor">S. Kent</span>, <span></span><span class="refTitle">"Signed Object Template for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">RFC 6488</span>, <span class="seriesInfo">DOI 10.17487/RFC6488</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6488">https://www.rfc-editor.org/info/rfc6488</a>&gt;</span>
+</dd>
+<dt id="RFC6493-en">[RFC6493]</dt>
+<dd class="break">
+<span class="refAuthor">Bush, R.</span>, <span></span><span class="refTitle">"The Resource Public Key Infrastructure (RPKI) Ghostbusters Record"</span>, <span class="seriesInfo">RFC 6493</span>, <span class="seriesInfo">DOI 10.17487/RFC6493</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6493">https://www.rfc-editor.org/info/rfc6493</a>&gt;</span>
+</dd>
+<dt id="RFC6916-en">[RFC6916]</dt>
+<dd class="break">
+<span class="refAuthor">Gagliano, R.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">S. Turner</span>, <span></span><span class="refTitle">"Algorithm Agility Procedure for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">BCP 182</span>, <span class="seriesInfo">RFC 6916</span>, <span class="seriesInfo">DOI 10.17487/RFC6916</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6916">https://www.rfc-editor.org/info/rfc6916</a>&gt;</span>
+</dd>
+<dt id="RFC7730-en">[RFC7730]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Weiler, S.</span>, <span class="refAuthor">Michaelson, G.</span>, and <span class="refAuthor">S. Kent</span>, <span></span><span class="refTitle">"Resource Public Key Infrastructure (RPKI) Trust Anchor Locator"</span>, <span class="seriesInfo">RFC 7730</span>, <span class="seriesInfo">DOI 10.17487/RFC7730</span>, <time datetime="2016-01" class="refDate">January 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7730">https://www.rfc-editor.org/info/rfc7730</a>&gt;</span>
+</dd>
+<dt id="RFC7935-en">[RFC7935]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span> and <span class="refAuthor">G. Michaelson</span>, <span></span><span class="refTitle">"The Profile for Algorithms and Key Sizes for Use in the Resource Public Key Infrastructure"</span>, <span class="seriesInfo">RFC 7935</span>, <span class="seriesInfo">DOI 10.17487/RFC7935</span>, <time datetime="2016-08" class="refDate">August 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7935">https://www.rfc-editor.org/info/rfc7935</a>&gt;</span>
+</dd>
+<dt id="RFC8182-en">[RFC8182]</dt>
+<dd class="break">
+<span class="refAuthor">Bruijnzeels, T.</span>, <span class="refAuthor">Muravskiy, O.</span>, <span class="refAuthor">Weber, B.</span>, and <span class="refAuthor">R. Austein</span>, <span></span><span class="refTitle">"The RPKI Repository Delta Protocol (RRDP)"</span>, <span class="seriesInfo">RFC 8182</span>, <span class="seriesInfo">DOI 10.17487/RFC8182</span>, <time datetime="2017-07" class="refDate">July 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8182">https://www.rfc-editor.org/info/rfc8182</a>&gt;</span>
+</dd>
+<dt id="RFC8360-en">[RFC8360]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Michaelson, G.</span>, <span class="refAuthor">Martinez, C.</span>, <span class="refAuthor">Bruijnzeels, T.</span>, <span class="refAuthor">Newton, A.</span>, and <span class="refAuthor">D. Shaw</span>, <span></span><span class="refTitle">"Resource Public Key Infrastructure (RPKI) Validation Reconsidered"</span>, <span class="seriesInfo">RFC 8360</span>, <span class="seriesInfo">DOI 10.17487/RFC8360</span>, <time datetime="2018-04" class="refDate">April 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8360">https://www.rfc-editor.org/info/rfc8360</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-8.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="rpki-validator-en">[rpki-validator]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"RIPE-NCC/rpki-validator source code"</span>, <span>&lt;<a href="https://github.com/RIPE-NCC/rpki-validator">https://github.com/RIPE-NCC/rpki-validator</a>&gt;</span>
+</dd>
+<dt id="rsync-en">[rsync]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"rsync"</span>, <time datetime="2018-10" class="refDate">October 2018</time>, <span>&lt;<a href="https://rsync.samba.org">https://rsync.samba.org</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-8-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-8.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC5280-ja">[RFC5280]</dt>
+<dd class="break">
+<span class="refAuthor">Cooper, D.</span>, <span class="refAuthor">Santesson, S.</span>, <span class="refAuthor">Farrell, S.</span>, <span class="refAuthor">Boeyen, S.</span>, <span class="refAuthor">Housley, R.</span>, and <span class="refAuthor">W. Polk</span>, <span></span><span class="refTitle">"Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile"</span>, <span class="seriesInfo">RFC 5280</span>, <span class="seriesInfo">DOI 10.17487/RFC5280</span>, <time datetime="2008-05" class="refDate">May 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5280">https://www.rfc-editor.org/info/rfc5280</a>&gt;</span>
+</dd>
+<dt id="RFC6481-ja">[RFC6481]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Loomans, R.</span>, and <span class="refAuthor">G. Michaelson</span>, <span></span><span class="refTitle">"A Profile for Resource Certificate Repository Structure"</span>, <span class="seriesInfo">RFC 6481</span>, <span class="seriesInfo">DOI 10.17487/RFC6481</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6481">https://www.rfc-editor.org/info/rfc6481</a>&gt;</span>
+</dd>
+<dt id="RFC6482-ja">[RFC6482]</dt>
+<dd class="break">
+<span class="refAuthor">Lepinski, M.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">D. Kong</span>, <span></span><span class="refTitle">"A Profile for Route Origin Authorizations (ROAs)"</span>, <span class="seriesInfo">RFC 6482</span>, <span class="seriesInfo">DOI 10.17487/RFC6482</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6482">https://www.rfc-editor.org/info/rfc6482</a>&gt;</span>
+</dd>
+<dt id="RFC6486-ja">[RFC6486]</dt>
+<dd class="break">
+<span class="refAuthor">Austein, R.</span>, <span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">M. Lepinski</span>, <span></span><span class="refTitle">"Manifests for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">RFC 6486</span>, <span class="seriesInfo">DOI 10.17487/RFC6486</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6486">https://www.rfc-editor.org/info/rfc6486</a>&gt;</span>
+</dd>
+<dt id="RFC6487-ja">[RFC6487]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Michaelson, G.</span>, and <span class="refAuthor">R. Loomans</span>, <span></span><span class="refTitle">"A Profile for X.509 PKIX Resource Certificates"</span>, <span class="seriesInfo">RFC 6487</span>, <span class="seriesInfo">DOI 10.17487/RFC6487</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6487">https://www.rfc-editor.org/info/rfc6487</a>&gt;</span>
+</dd>
+<dt id="RFC6488-ja">[RFC6488]</dt>
+<dd class="break">
+<span class="refAuthor">Lepinski, M.</span>, <span class="refAuthor">Chi, A.</span>, and <span class="refAuthor">S. Kent</span>, <span></span><span class="refTitle">"Signed Object Template for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">RFC 6488</span>, <span class="seriesInfo">DOI 10.17487/RFC6488</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6488">https://www.rfc-editor.org/info/rfc6488</a>&gt;</span>
+</dd>
+<dt id="RFC6493-ja">[RFC6493]</dt>
+<dd class="break">
+<span class="refAuthor">Bush, R.</span>, <span></span><span class="refTitle">"The Resource Public Key Infrastructure (RPKI) Ghostbusters Record"</span>, <span class="seriesInfo">RFC 6493</span>, <span class="seriesInfo">DOI 10.17487/RFC6493</span>, <time datetime="2012-02" class="refDate">February 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6493">https://www.rfc-editor.org/info/rfc6493</a>&gt;</span>
+</dd>
+<dt id="RFC6916-ja">[RFC6916]</dt>
+<dd class="break">
+<span class="refAuthor">Gagliano, R.</span>, <span class="refAuthor">Kent, S.</span>, and <span class="refAuthor">S. Turner</span>, <span></span><span class="refTitle">"Algorithm Agility Procedure for the Resource Public Key Infrastructure (RPKI)"</span>, <span class="seriesInfo">BCP 182</span>, <span class="seriesInfo">RFC 6916</span>, <span class="seriesInfo">DOI 10.17487/RFC6916</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6916">https://www.rfc-editor.org/info/rfc6916</a>&gt;</span>
+</dd>
+<dt id="RFC7730-ja">[RFC7730]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Weiler, S.</span>, <span class="refAuthor">Michaelson, G.</span>, and <span class="refAuthor">S. Kent</span>, <span></span><span class="refTitle">"Resource Public Key Infrastructure (RPKI) Trust Anchor Locator"</span>, <span class="seriesInfo">RFC 7730</span>, <span class="seriesInfo">DOI 10.17487/RFC7730</span>, <time datetime="2016-01" class="refDate">January 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7730">https://www.rfc-editor.org/info/rfc7730</a>&gt;</span>
+</dd>
+<dt id="RFC7935-ja">[RFC7935]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span> and <span class="refAuthor">G. Michaelson</span>, <span></span><span class="refTitle">"The Profile for Algorithms and Key Sizes for Use in the Resource Public Key Infrastructure"</span>, <span class="seriesInfo">RFC 7935</span>, <span class="seriesInfo">DOI 10.17487/RFC7935</span>, <time datetime="2016-08" class="refDate">August 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7935">https://www.rfc-editor.org/info/rfc7935</a>&gt;</span>
+</dd>
+<dt id="RFC8182-ja">[RFC8182]</dt>
+<dd class="break">
+<span class="refAuthor">Bruijnzeels, T.</span>, <span class="refAuthor">Muravskiy, O.</span>, <span class="refAuthor">Weber, B.</span>, and <span class="refAuthor">R. Austein</span>, <span></span><span class="refTitle">"The RPKI Repository Delta Protocol (RRDP)"</span>, <span class="seriesInfo">RFC 8182</span>, <span class="seriesInfo">DOI 10.17487/RFC8182</span>, <time datetime="2017-07" class="refDate">July 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8182">https://www.rfc-editor.org/info/rfc8182</a>&gt;</span>
+</dd>
+<dt id="RFC8360-ja">[RFC8360]</dt>
+<dd class="break">
+<span class="refAuthor">Huston, G.</span>, <span class="refAuthor">Michaelson, G.</span>, <span class="refAuthor">Martinez, C.</span>, <span class="refAuthor">Bruijnzeels, T.</span>, <span class="refAuthor">Newton, A.</span>, and <span class="refAuthor">D. Shaw</span>, <span></span><span class="refTitle">"Resource Public Key Infrastructure (RPKI) Validation Reconsidered"</span>, <span class="seriesInfo">RFC 8360</span>, <span class="seriesInfo">DOI 10.17487/RFC8360</span>, <time datetime="2018-04" class="refDate">April 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8360">https://www.rfc-editor.org/info/rfc8360</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-8.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="rpki-validator-ja">[rpki-validator]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"RIPE-NCC/rpki-validator source code"</span>, <span>&lt;<a href="https://github.com/RIPE-NCC/rpki-validator">https://github.com/RIPE-NCC/rpki-validator</a>&gt;</span>
+</dd>
+<dt id="rsync-ja">[rsync]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"rsync"</span>, <time datetime="2018-10" class="refDate">October 2018</time>, <span>&lt;<a href="https://rsync.samba.org">https://rsync.samba.org</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">This document describes the algorithm as it is implemented by the
+software development team at the RIPE NCC, which, over time, included
+Mikhail Puzanov, Erik Rozendaal, Miklos Juhasz, Misja Alma, Thiago da
+Cruz Pereira, Yannis Gonianakis, Andrew Snare, Varesh Tapadia, Paolo
+Milani, Thies Edeling, Hans Westerbeek, Rudi Angela, and Constantijn
+Visinescu.  The authors would also like to acknowledge contributions
+by Carlos Martinez, Andy Newton, Rob Austein, and Stephen Kent.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">この文書は、RIPE NCCのソフトウェア開発チームによって実装されているとおりのアルゴリズムを説明しています。
+このチームには、これまでにMikhail Puzanov、Erik Rozendaal、Miklos Juhasz、Misja Alma、Thiago da Cruz Pereira、Yannis Gonianakis、Andrew Snare、Varesh Tapadia、Paolo Milani、Thies Edeling、Hans Westerbeek、Rudi Angela、Constantijn Visinescuが参加してきました。
+著者らは、Carlos Martinez、Andy Newton、Rob Austein、Stephen Kentの貢献にも感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Oleg Muravskiy</div>
+<div class="author-org">RIPE NCC</div>
+<div class="author-email"><a href="mailto:oleg@ripe.net">oleg@ripe.net</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Oleg Muravskiy</div>
+<div class="author-org">RIPE NCC</div>
+<div class="author-email"><a href="mailto:oleg@ripe.net">oleg@ripe.net</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Tim Bruijnzeels</div>
+<div class="author-org">NLnet Labs</div>
+<div class="author-email"><a href="mailto:tim@nlnetlabs.nl">tim@nlnetlabs.nl</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Tim Bruijnzeels</div>
+<div class="author-org">NLnet Labs</div>
+<div class="author-email"><a href="mailto:tim@nlnetlabs.nl">tim@nlnetlabs.nl</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

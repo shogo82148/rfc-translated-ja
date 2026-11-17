@@ -1,0 +1,759 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tokbind-https-18" indexInclude="true" number="8473" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tokbind-https-18" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8473" rel="alternate"/>
+  <front>
+    <title>HTTP上のトークンバインディング</title>
+    <seriesInfo name="RFC" value="8473" stream="IETF"/>
+    <date year="2018" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、HTTPサーバーがセキュリティートークン（クッキーやOAuthトークンなど）をTLSコネクションに暗号学的にバインドできるようにする一連のメカニズムについて説明します。</t>
+      <t indent="0" pn="section-abstract-2">この文書では、ファーストパーティーのシナリオとフェデレーションのシナリオの両方を説明します。ファーストパーティーのシナリオでは、HTTPサーバーは、クライアントに発行し、その後クライアントがサーバーに返すセキュリティートークンを、クライアントとサーバーの間のTLSコネクションに暗号学的にバインドできます。このようにバインドされたセキュリティートークンは、たとえば他のTLSコネクション上で不適切にリプレイされた場合に、一般にサーバーがそれを検出できるため、悪用から保護されます。</t>
+      <t indent="0" pn="section-abstract-3">一方、フェデレーテッドトークンバインディングでは、サーバーは、トークンを発行するサーバーとは異なるサーバーとクライアントとの間のTLSコネクションに、セキュリティートークンを暗号学的にバインドできます。</t>
+      <t indent="0" pn="section-abstract-4">この文書は、「The Token Binding Protocol Version 1.0」（RFC 8471）の関連文書です。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="https://www.rfc-editor.org/info/rfc8473" brackets="none"/> で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+            <li pn="section-toc.1-1.1.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">要件言語</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-sec-token-binding-http-request-header-field">Sec-Token-Binding HTTPリクエストヘッダーフィールド</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+            <li pn="section-toc.1-1.2.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-https-token-binding-key-pair-scoping">HTTPSのトークンバインディング鍵ペアのスコープ設定</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tls-renegotiation">TLS再ネゴシエーション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-first-party-use-cases">ファーストパーティーのユースケース</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-federation-use-cases">フェデレーションのユースケース</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction-2">はじめに</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-redirects">HTTPリダイレクト</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-negotiated-key-parameters">ネゴシエートされた鍵パラメーター</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-federation-example">フェデレーションの例</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-considerations">実装に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+            <li pn="section-toc.1-1.7.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-token-replay">セキュリティートークンのリプレイ</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sensitivity-of-the-sec-token-binding-header">Sec-Token-Bindingヘッダーの機密性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-securing-federated-sign-on-protocols">フェデレーテッドサインオンプロトコルの保護</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-privacy-considerations">プライバシーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+            <li pn="section-toc.1-1.8.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-scoping-of-token-binding-key-pairs">トークンバインディング鍵ペアのスコープ設定</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-lifetime-of-token-binding-key-pairs">トークンバインディング鍵ペアの有効期間</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.3.1"><xref derivedContent="8.3" format="counter" sectionFormat="of" target="section-8.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-correlation">相関</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">トークンバインディングプロトコル<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>は、クライアントとサーバーの間のTLSコネクションに対するトークンバインディングIDを定義します。TLSコネクションのトークンバインディングIDは、秘密鍵と公開鍵の鍵ペアの公開鍵を使用して構築されます。クライアントは、対応する秘密鍵の所有を証明します。このトークンバインディング鍵ペアは長期間有効です。つまり、たとえばユーザーによって明示的にリセットされない限り、同じクライアントとサーバーの間の後続のTLSコネクションは同じトークンバインディングIDを持ちます。サーバーは、クライアントにセキュリティートークン（たとえば、HTTPクッキーやOAuthトークン<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>）を発行する際、トークンにトークンバインディングIDを含めることができます。これにより、トークンはその特定のクライアントとサーバーの間のTLSコネクションに暗号学的にバインドされ、攻撃者による悪用（再利用、なりすましの試みなど）からトークンを守ることができます。</t>
+      <t indent="0" pn="section-1-2">トークンバインディングプロトコル<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>は、トークンバインディングIDを確立するためのメッセージフォーマットを定義していますが、このメッセージを上位のプロトコルにどのように埋め込むかは規定していません。この仕様の目的は、TokenBindingMessageをHTTP（バージョン1.1<xref target="RFC7230" format="default" sectionFormat="of" derivedContent="RFC7230"/>と2<xref target="RFC7540" format="default" sectionFormat="of" derivedContent="RFC7540"/>の両方）にどのように埋め込むかを定義することです。TokenBindingMessageは、下位のトランスポートがTLSを使用する場合にのみ定義されることに注意してください。つまり、Token Binding over HTTPは、HTTPがTLSの上に階層化されている場合（一般にHTTPS<xref target="RFC2818" format="default" sectionFormat="of" derivedContent="RFC2818"/>と呼ばれます）にのみ定義されます。</t>
+      <t indent="0" pn="section-1-3">HTTPクライアントは、HTTPリクエストに特別なHTTPヘッダーフィールドを含めることで、サーバーとの間でトークンバインディングIDを確立します。このHTTPヘッダーフィールドの値は、base64urlエンコードされたTokenBindingMessageです。</t>
+      <t indent="0" pn="section-1-4">TokenBindingMessageに複数のTokenBinding構造体を含めることで、クライアントはサーバーとの間で複数のトークンバインディングIDを確立できます。デフォルトでは、クライアントはサーバーとの間で提供されたトークンバインディングID（Provided Token Binding ID）を確立します。これは、クライアントがそのサーバーとの間で永続的に使用するトークンバインディングIDを示します。特定の条件下では、クライアントはTokenBindingMessageに参照されたトークンバインディングID（Referred Token Binding ID）を含めることもできます。これは、TokenBindingMessageの送信先とは異なるサーバーとの間でクライアントが使用しているトークンバインディングIDを示します。これはフェデレーションのシナリオで役立ちます。</t>
+      <section anchor="requirements-language" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-requirements-language">要件言語</name>
+        <t indent="0" pn="section-1.1-1">この文書のキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、ここに示すようにすべて大文字で表示されている場合に限り、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>で説明されているように解釈されます。</t>
+      </section>
+    </section>
+    <section anchor="the-sec-token-binding-http-request-header-field" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-the-sec-token-binding-http-request-header-field">Sec-Token-Binding HTTPリクエストヘッダーフィールド</name>
+      <t indent="0" pn="section-2-1">クライアントとサーバーがHTTP/1.1またはHTTP/2でトークンバインディングプロトコルをネゴシエートしたら（<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>と<xref target="RFC8472" format="default" sectionFormat="of" derivedContent="RFC8472"/>を参照）、クライアントはHTTPリクエストにSec-Token-Bindingヘッダーフィールドを含め<bcp14>なければなりません（MUST）</bcp14>。また、HTTPリクエストごとにそのようなヘッダーフィールドを1つだけ含め<bcp14>なければなりません（MUST）</bcp14>。また、Sec-Token-BindingヘッダーフィールドをHTTPレスポンスに含めては<bcp14>なりません（MUST NOT）</bcp14>。Sec-Token-BindingヘッダーフィールドのABNFは次のとおりです（<xref target="RFC7230" format="default" sectionFormat="of" derivedContent="RFC7230"/>のスタイルに従います。<xref target="RFC7231" section="8.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7231#section-8.3" derivedContent="RFC7231"/>も参照してください）。</t>
+      <sourcecode type="abnf" markers="false" pn="section-2-2"><![CDATA[
+   Sec-Token-Binding = EncodedTokenBindingMessage
+]]></sourcecode>
+      <t indent="0" pn="section-2-3">ヘッダーフィールド名はSec-Token-Bindingであり、その単一の値であるEncodedTokenBindingMessageは、<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>で定義されている単一のTokenBindingMessageのbase64urlエンコーディングです。base64urlエンコーディングでは、<xref target="RFC4648" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4648#section-5" derivedContent="RFC4648"/>で説明されているURLおよびファイル名に安全な文字セットを使用し、末尾のパディング文字（つまり「=」）はすべて省略し、改行、空白、その他の追加の文字は一切含めません。</t>
+      <t indent="0" pn="section-2-4">例を次に示します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-5"><![CDATA[
+Sec-Token-Binding: AIkAAgBBQFzK4_bhAqLDwRQxqJWte33d7hZ0hZWHwk-miKPg4E\
+                   9fcgs7gBPoz-9RfuDfN9WCw6keHEw1ZPQMGs9CxpuHm-YAQM_j\
+                   aOwwej6a-cQBGU7CJpUHOvXG4VvjNq8jDsvta9Y8_bPEPj25Gg\
+                   mKiPjhJEtZA6mJ_9SNifLvVBTi7fR9wSAAAA
+]]></artwork>
+      <t indent="0" pn="section-2-6">（バックスラッシュと改行は読みやすくするためのものであり、実際のエンコードされたメッセージの一部ではないことに注意してください。）</t>
+      <t indent="0" pn="section-2-7">サーバーは、HTTPリクエストで複数のSec-Token-Bindingヘッダーフィールドを受信した場合、400（Bad Request）HTTPステータスコードでそのメッセージを拒否<bcp14>しなければなりません（MUST）</bcp14>。さらに、Sec-Token-Bindingヘッダーフィールドについては、次のとおりです。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-8">
+        <li pn="section-2-8.1">オリジンサーバーは、PUTリクエストでこれを保存<bcp14>すべきではありません（SHOULD NOT）</bcp14>。</li>
+        <li pn="section-2-8.2">サーバーは、これをVaryレスポンスヘッダーフィールドに列挙<bcp14>してもよいです（MAY）</bcp14>。</li>
+        <li pn="section-2-8.3">これをHTTPトレーラーで使用しては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+      </ul>
+      <t indent="0" pn="section-2-9">TokenBindingMessageには、TokenBindingTypeの値がprovided_token_bindingであるTokenBinding構造体をちょうど1つ含め<bcp14>なければなりません（MUST）</bcp14>。この構造体は、クライアントが自身とHTTPリクエストの送信先サーバーとの間のコネクションに使用するトークンバインディング秘密鍵で署名<bcp14>しなければなりません（MUST）</bcp14>（クライアントはサーバーごとに異なるトークンバインディング鍵ペアを使用します。後述の<xref target="section-2.1" format="default" sectionFormat="of" derivedContent="Section 2.1"/>を参照してください）。このTokenBindingによって確立されるトークンバインディングIDを「提供されたトークンバインディングID（Provided Token Binding ID）」と呼びます。</t>
+      <t indent="0" pn="section-2-10">TokenBindingMessageには、<xref target="section-5.3" format="default" sectionFormat="of" derivedContent="Section 5.3"/>で規定されているように、TokenBindingTypeの値がreferred_token_bindingであるTokenBinding構造体をちょうど1つ含めても<bcp14>よいです（MAY）</bcp14>。後者に加えて、または後者の代わりに、TokenBindingMessageには他のTokenBinding構造体を含めても<bcp14>よいです（MAY）</bcp14>。これは対象となるユースケースに固有のものであり、そのようなユースケースはこの仕様の範囲外です。</t>
+      <t indent="0" pn="section-2-11">TokenBindingMessageは、<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>のセクション4.2（「Server Processing Rules」）で説明されているように、サーバーによって検証されます。検証が失敗してトークンバインディングが拒否された場合、関連するバインドされたトークンもすべて、サーバーによって拒否され<bcp14>なければなりません（MUST）</bcp14>。無効なトークンを含むHTTPリクエストは拒否され<bcp14>なければなりません（MUST）</bcp14>。この場合、サーバーアプリケーションは、HTTPステータスコード400（Bad Request）を返すか、アプリケーション固有の「無効なトークン」レスポンス（たとえば、クライアントに再認証して別のトークンを提示するよう指示するもの）で処理を進めるか、コネクションを終了<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-2-12">HTTP/2では、後続のHTTPリクエストで同じヘッダーフィールドを繰り返すオーバーヘッドを避けるため、クライアントはヘッダー圧縮<xref target="RFC7541" format="default" sectionFormat="of" derivedContent="RFC7541"/>を使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <section anchor="https-token-binding-key-pair-scoping" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-https-token-binding-key-pair-scoping">HTTPSのトークンバインディング鍵ペアのスコープ設定</name>
+        <t indent="0" pn="section-2.1-1">HTTPSは、さまざまなアプリケーションプロトコルやアプリケーションコンテキストと組み合わせて、さまざまな方法で使用されます。たとえば、汎用的なウェブブラウジングは、そのようなHTTPベースのアプリケーションコンテキストの1つです。このコンテキストでは、一般にHTTPクッキー<xref target="RFC6265" format="default" sectionFormat="of" derivedContent="RFC6265"/>が、クライアント認証を含む状態管理に利用されます。関連はするものの別個の、他のHTTPベースのアプリケーションコンテキストの例として、リソースへのサードパーティーアプリケーションのアクセスに対する認可を管理するためにOAuthトークン<xref target="RFC6749" format="default" sectionFormat="of" derivedContent="RFC6749"/>が利用される場合があります。これら2つの例では、トークンのスコープ設定ルールが異なる場合があります。クッキーのスコープ設定ルールは<xref target="RFC6265" format="default" sectionFormat="of" derivedContent="RFC6265"/>で簡潔に規定されていますが、OAuthはフレームワークであり、さまざまなスコープ設定を持つさまざまなトークンタイプを定義しており、その一部はそれを包含するアプリケーションによって決定されます。</t>
+        <t indent="0" pn="section-2.1-2">HTTPクッキーをバインドする目的でウェブブラウザーが生成するトークンバインディング鍵ペアのスコープは、「登録ドメイン（registered domain）」（「有効トップレベルドメイン + 1（effective top-level domain + 1）」または「eTLD+1」とも呼ばれます）の粒度より広くないもので<bcp14>なければなりません（MUST）</bcp14>。オリジンの「登録ドメイン」は、オリジンのホストのパブリックサフィックスに、その左側のラベルを加えたものです（「パブリックサフィックス（public suffix）」という用語は、<xref target="RFC6265" section="5.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6265#section-5.3" derivedContent="RFC6265"/>の「NOTE:」の段落で「a domain that is controlled by a public registry」と定義されています）。たとえば、「https://www.example.com」の場合、パブリックサフィックス（eTLD）は「com」であり、登録ドメイン（eTLD+1）は「example.com」です。ユーザーエージェントは、Mozillaが管理しているもの<xref target="PSL" format="default" sectionFormat="of" derivedContent="PSL"/>などの、最新のパブリックサフィックスリストを使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-3">これは、実際には、トークンバインディング鍵ペアのスコープが、ウェブブラウザーが許可するクッキーのスコープより大きくならないことを意味します。ウェブブラウザーがクッキーを登録ドメインより狭いスコープに制限する場合、トークンバインディング鍵ペアのスコープも狭く<bcp14>してもよいです（MAY）</bcp14>。これは、ファーストパーティーのユースケースでのトークンバインディング鍵ペアの使用に加えて、この仕様で定義するフェデレーションのユースケース（<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>）での使用にも適用されます。</t>
+        <t indent="0" pn="section-2.1-4">OAuthトークンや「OpenID Connect」のIDトークン<xref target="OpenID.Core" format="default" sectionFormat="of" derivedContent="OpenID.Core"/>などの、他のアプリケーショントークンをバインドするために使用される鍵ペアは、ファーストパーティーまたはフェデレーションのシナリオで使用されるそれらのトークンについて、上記のeTLD+1のスコープ設定要件に従う<bcp14>べきです（SHOULD）</bcp14>。ウェブブラウザー以外のアプリケーションは、異なる鍵ペアのスコープ設定ルールを使用<bcp14>してもよいです（MAY）</bcp14>。後述の<xref target="section-8.1" format="default" sectionFormat="of" derivedContent="Section 8.1"/>も参照してください。</t>
+        <t indent="0" pn="section-2.1-5">他のHTTPベースのアプリケーションコンテキストのスコープ設定ルールは、この仕様の範囲外です。</t>
+      </section>
+    </section>
+    <section anchor="tls-renegotiation" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-tls-renegotiation">TLS再ネゴシエーション</name>
+      <t indent="0" pn="section-3-1">HTTP/1.1<xref target="RFC7230" format="default" sectionFormat="of" derivedContent="RFC7230"/>上のトークンバインディングは、TLS再ネゴシエーションと組み合わせて実行できます。この場合、再ネゴシエーションはクライアントのHTTPリクエストとサーバーのレスポンスの間でのみ発生<bcp14>しなければなりません（MUST）</bcp14>。クライアントはパイプライン化されたリクエストを送信しては<bcp14>なりません（MUST NOT）</bcp14>。また、クライアントは再ネゴシエーションを開始しては<bcp14>なりません（MUST NOT）</bcp14>。（つまり、クライアントは、サーバーのHelloRequestへの応答としてのみ、再ネゴシエーションのClientHelloを送信できます。）これらの条件により、TokenBindingMessageを生成または検証する際にどのTLSのエクスポートされた鍵素材の値<xref target="RFC5705" format="default" sectionFormat="of" derivedContent="RFC5705"/>を使用すべきかを、クライアントとサーバーの両方が明確に識別できるようになります。また、これにより、TLSメッセージの断片化によってTokenBindingMessageがTLS再ネゴシエーションの境界をまたいで分割されることも防げます。<xref target="RFC5246" section="6.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc5246#section-6.2.1" derivedContent="RFC5246"/>を参照してください。</t>
+      <t indent="0" pn="section-3-2">（注：この文書はTLS 1.2を扱っているため、RFC 5246（RFC 8446により廃止されています）を参照しています。TLS 1.3におけるトークンバインディングは<xref target="TOKENBIND-TLS13" format="default" sectionFormat="of" derivedContent="TOKENBIND-TLS13"/>で扱っています。）</t>
+    </section>
+    <section anchor="first-party-use-cases" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-first-party-use-cases">ファーストパーティーのユースケース</name>
+      <t indent="0" pn="section-4-1">ファーストパーティーのユースケース（「同一サイト（same-site）」のユースケースとも呼ばれます）では、HTTPサーバーはクッキー（または類似のもの）などのセキュリティートークンをクライアントに発行し、たとえば認証のために、クライアントが後でそのセキュリティートークンを返すことを期待します。セキュリティートークンをクライアントとサーバーの間のTLSコネクションにバインドすると、たとえば他のTLSコネクション上でセキュリティートークンが不適切にリプレイされた場合にサーバーがそれを検出できるため、セキュリティートークンが悪用から保護されます。</t>
+      <t indent="0" pn="section-4-2">セキュリティートークンのバインディングと、その後の検証に関する一般的なガイダンスについては、<xref target="RFC8471" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8471#section-5" derivedContent="RFC8471"/>を参照してください。</t>
+    </section>
+    <section anchor="federation-use-cases" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-federation-use-cases">フェデレーションのユースケース</name>
+      <section anchor="introduction-1" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-introduction-2">はじめに</name>
+        <t indent="0" pn="section-5.1-1">プライバシー上の理由から、クライアントは異なるサーバーとの間で提供されたトークンバインディングIDを確立するために、異なるトークンバインディング鍵ペアを使用します。その結果、サーバーは、セキュリティートークン（OAuthトークンやOpenID ConnectのIDトークン<xref target="OpenID.Core" format="default" sectionFormat="of" derivedContent="OpenID.Core"/>など）を、クライアントが別のサーバーとの間で持つTLSコネクションにバインドできません。しかし、これはフェデレーションのシナリオでは一般的な要件です。たとえば、アイデンティティープロバイダーは、クライアントにアイデンティティートークンを発行し、そのトークンをクライアントと依拠当事者の間のTLSコネクションに暗号学的にバインドしたい場合があります。</t>
+        <t indent="0" pn="section-5.1-2">このセクションでは、これを実現するためのメカニズムについて説明します。これらのメカニズムに共通する考え方は、あるサーバー（この文書では「トークンコンシューマー（Token Consumer）」と呼びます）が、クライアントと自身の間で使用されている提供されたトークンバインディングIDを別のサーバー（この文書では「トークンプロバイダー（Token Provider）」と呼びます）に開示すべきであることを、クライアントに通知するというものです。また、トークンバインディングIDをトークンプロバイダーに開示する方法も、これらのメカニズムに共通しています。クライアントはトークンバインディングプロトコル<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>を使用し、上で定義したSec-Token-Binding HTTPヘッダーフィールドにTokenBinding構造体を含めます。各メカニズムで異なるのは、トークンバインディングIDをトークンプロバイダーに開示すべきであることを、トークンコンシューマーがクライアントにどのように通知するかです。以下では、そのようなメカニズムの1つを規定します。これは、トークンコンシューマーとトークンプロバイダーの間のリダイレクトベースのやり取りに適しています。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-3"><![CDATA[
+Client                        Token Consumer         Token Provider
++--------+                        +----+                +-----+
+| Client |                        | TC |                | TP  |
++--------+                        +----+                +-----+
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | Client interacts w/TC         |                      |
+    | using TokenBindingID TBID1:   |                      |
+    | TBMSG[[provided_token_binding,|                      |
+    |        TBID1, signature]]     |                      |
+    |------------------------------>|                      |
+    |                               |                      |
+    | Client interacts w/TP                                |
+    | using TokenBindingID TBID2:                          |
+    | TBMSG[[provided_token_binding,                       |
+    |        TBID2, signature]]                            |
+    |----------------------------------------------------->|
+    |                                                      |
+    |                               |                      |
+    | TC signals permission to      |                      |
+    | reveal TBID1 to TP            |                      |
+    |<------------------------------|                      |
+    |                               |                      |
+    |                                                      |
+    | Client interacts w/TP                                |
+    | using TokenBindingID TBID1 and TBID2:                |
+    | TBMSG[[provided_token_binding,                       |
+    |        TBID2, signature],                            |
+    |       [referred_token_binding,                       |
+    |        TBID1, signature]]                            |
+    |----------------------------------------------------->|
+    |                                                      |
+    |                               |                      |
+    |                               |                      |
+]]></artwork>
+      </section>
+      <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-overview">概要</name>
+        <t indent="0" pn="section-5.2-1">フェデレーテッドサインオンプロトコルでは、アイデンティティープロバイダーがクライアントにアイデンティティートークンを発行し、クライアントは自身を認証するためにそのアイデンティティートークンを依拠当事者に送信します。この例には、OpenID Connect（アイデンティティートークンは「IDトークン」と呼ばれます）やSecurity Assertion Markup Language（SAML）<xref target="OASIS.saml-core-2.0-os" format="default" sectionFormat="of" derivedContent="OASIS.saml-core-2.0-os"/>（アイデンティティートークンはSAMLアサーションです）があります。</t>
+        <t indent="0" pn="section-5.2-2">アイデンティティートークンのセキュリティーをより良く保護するため、アイデンティティープロバイダーは、アイデンティティートークンをクライアントと依拠当事者の間のTLSコネクションにバインドし、そのクライアントだけがアイデンティティートークンを使用できるようにしたい場合があります。依拠当事者は、アイデンティティートークン内のトークンバインディングID（またはその暗号学的ハッシュ）を、その依拠当事者とクライアントの間のTLSコネクションのトークンバインディングID（またはそのハッシュ）と比較します。</t>
+        <t indent="0" pn="section-5.2-3">これはフェデレーションのシナリオの一例であり、より一般的には次のように説明できます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5.2-4">
+          <li pn="section-5.2-4.1">トークンコンシューマーは、クライアントにトークンプロバイダーへトークンリクエストを発行させます。目的は、クライアントがトークンを取得し、それをトークンコンシューマーとの間で使用することです。</li>
+          <li pn="section-5.2-4.2">クライアントは、トークンリクエストをトークンプロバイダーに配送します。</li>
+          <li pn="section-5.2-4.3">トークンプロバイダーはトークンを発行します。トークンは、それをリクエストした特定のトークンコンシューマー向けに発行されます（これにより、悪意のあるトークンコンシューマーが他のトークンコンシューマーとの間でトークンを使用することを防ぎます）。しかし、トークンは通常Bearerトークンです。つまり、トークンの発行先のクライアントだけでなく、どのクライアントでもトークンコンシューマーとの間でそのトークンを使用できます。</li>
+          <li pn="section-5.2-4.4">そのため、前のステップで、トークンプロバイダーは、クライアントがトークンコンシューマーとの通信時に使用するトークンバインディングID（またはその暗号学的ハッシュ）をトークンに含め、それによってトークンをクライアントのトークンバインディング鍵ペアにバインドしたい場合があります。クライアントは、トークンバインディングプロトコル<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>を通じてトークンコンシューマーと通信する際に秘密鍵の所有を証明し、この鍵ペアの対応する公開鍵をトークンバインディングIDの構成要素として使用します。トークン内のトークンバインディングIDを、クライアントとの間で確立されたトークンバインディングIDと比較することで、トークンコンシューマーは、トークンが正当なクライアントによって送信されたことを検証できます。</li>
+          <li pn="section-5.2-4.5">したがって、トークンプロバイダーがトークンにトークンバインディングIDを含められるようにするには、クライアントとトークンコンシューマーの間のトークンバインディングIDを、トークンリクエストとともにトークンプロバイダーに伝達する必要があります。トークンバインディングIDの伝達には秘密鍵の所有の証明が含まれ、これはトークンバインディングプロトコル<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>で説明されています。</li>
+        </ul>
+        <t indent="0" pn="section-5.2-5">クライアントは、トークンコンシューマーが要求した場合にのみ、この最後の操作を実行します。</t>
+        <t indent="0" pn="section-5.2-6">以下では、リダイレクトベースのフェデレーションプロトコルにおいて、トークンコンシューマーがこの要求をどのように通知できるかを規定します。これは、フェデレーテッドサインオンのフローがトークンコンシューマーから開始されるか、少なくともトークンコンシューマーからトークンプロバイダーへのリダイレクトを含むことを前提としていることに注意してください。そのようなリダイレクトを含まないフローに対する同様のメカニズムを規定することは、この文書の範囲外です。</t>
+      </section>
+      <section anchor="http-redirects" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-http-redirects">HTTPリダイレクト</name>
+        <t indent="0" pn="section-5.3-1">トークンリクエストを配送する手段としてトークンコンシューマーがクライアントをトークンプロバイダーにリダイレクトする場合、トークンコンシューマーはHTTPレスポンスにInclude-Referred-Token-Binding-ID HTTPレスポンスヘッダーフィールドを含める<bcp14>べきです（SHOULD）</bcp14>。Include-Referred-Token-Binding-IDヘッダーのABNFは次のとおりです（<xref target="RFC7230" format="default" sectionFormat="of" derivedContent="RFC7230"/>のスタイルに従います。<xref target="RFC7231" section="8.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7231#section-8.3" derivedContent="RFC7231"/>も参照してください）。</t>
+        <sourcecode type="abnf" markers="false" pn="section-5.3-2"><![CDATA[
+   Include-Referred-Token-Binding-ID = "true"
+]]></sourcecode>
+        <t indent="0" pn="section-5.3-3">ここで、ヘッダーフィールド名は「Include-Referred-Token-Binding-ID」であり、フィールド値「true」は大文字と小文字を区別しません。例を次に示します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-4"><![CDATA[
+   Include-Referred-Token-Binding-ID: true
+]]></artwork>
+        <t indent="0" pn="section-5.3-5">このレスポンスヘッダーフィールドを含めることで、クライアントは、自身とトークンコンシューマーの間で使用されているトークンバインディングIDをトークンプロバイダーに開示すべきであると通知されます。このレスポンスヘッダーフィールドがない場合、クライアントは、クライアントとトークンコンシューマーの間で使用されているトークンバインディングに関するいかなる情報も、トークンプロバイダーに開示しません。</t>
+        <t indent="0" pn="section-5.3-6"><xref target="section-5.5" format="default" sectionFormat="of" derivedContent="Section 5.5"/>で示すように、クライアントはこのヘッダーフィールドを受信すると、参照元から提供されたTokenBindingのTokenBindingID<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>を取得し、それを使用して、リダイレクトリクエストのTokenBindingMessageに含める参照されたTokenBindingを作成すべきです。言い換えると、トークンプロバイダーへのリダイレクトリクエストのトークンバインディングメッセージには、提供されたバインディング1つと参照されたバインディング1つが含まれるようになり、後者はクライアントとトークンコンシューマーの間のバインディングから構築されます。</t>
+        <t indent="0" pn="section-5.3-7">クライアントは、Include-Referred-Token-Binding-IDヘッダーを受信すると、トークンプロバイダーとトークンコンシューマーの両方が同じeTLD+1に属し、提供されたトークンバインディングIDと参照されたトークンバインディングIDが同じであっても、参照されたトークンバインディングを含めます。</t>
+        <t indent="0" pn="section-5.3-8">参照されたトークンバインディングは、Include-Referred-Token-Binding-IDヘッダーを含んでいたHTTPレスポンスから生じる最初のリクエストでのみ送信されます。その最初のリクエストに対するレスポンスがさらなるリダイレクトである場合、元の参照されたトークンバインディングは後続のリクエストには含まれなくなります。（リダイレクトを行うエンドポイント自体がInclude-Referred-Token-Binding-IDレスポンスヘッダーで応答した場合は、新しい参照されたトークンバインディングが含まれる可能性があります。）</t>
+        <t indent="0" pn="section-5.3-9">Sec-Token-Bindingヘッダーフィールドを含まないリクエストに対するレスポンスでInclude-Referred-Token-Binding-IDヘッダーフィールドを受信した場合、クライアントはInclude-Referred-Token-Binding-IDヘッダーフィールドを無視<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-10">このヘッダーフィールドは、HTTPステータスコードがリダイレクションコード（300～399）である場合にのみ意味を持ちます。その他のステータスコードの場合、クライアントはこのヘッダーフィールドを無視<bcp14>しなければなりません（MUST）</bcp14>。<xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/>で説明したように、クライアントがトークンバインディングプロトコルをサポートし、トークンコンシューマーとトークンプロバイダーの両方とトークンバインディングプロトコルをネゴシエートしている場合、クライアントは各HTTPリクエストでSec-Token-Bindingヘッダーフィールドをトークンプロバイダーに送信します。</t>
+        <t indent="0" pn="section-5.3-11">トークンプロバイダーへのリダイレクトリクエストに含まれるTokenBindingMessageには、TokenBindingTypeの値がreferred_token_bindingであるTokenBindingを含める<bcp14>べきです（SHOULD）</bcp14>。含める場合、このTokenBindingは、クライアントが自身とトークンコンシューマー（より具体的には、Include-Referred-Token-Binding-IDレスポンスヘッダーフィールドを発行したサーバー）の間のコネクションに使用するトークンバインディング秘密鍵で署名され<bcp14>なければなりません（MUST）</bcp14>。このTokenBindingによって確立されるトークンバインディングIDを「参照されたトークンバインディングID（Referred Token Binding ID）」と呼びます。</t>
+        <t indent="0" pn="section-5.3-12">上で説明したように、TokenBindingMessageには、提供されたトークンバインディングID、つまりTokenBindingTypeの値がprovided_token_bindingであるTokenBinding構造体も含め<bcp14>なければなりません（MUST）</bcp14>。この構造体は、クライアントが自身とトークンプロバイダー（より具体的には、トークンリクエストの送信先のサーバー）の間のコネクションに使用するトークンバインディング秘密鍵で署名され<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-13">展開固有の何らかの理由により、最初のトークンプロバイダー（「TP1」）が、クライアントをトークンコンシューマーに直接戻すのではなく、別のトークンプロバイダー（「TP2」）にリダイレクトする必要がある場合は、この仕様で定義したヘッダーフィールドを使用して次の方法（「リダイレクトチェーンアプローチ」）で対応できます。</t>
+        <ul bare="false" empty="true" indent="3" spacing="normal" pn="section-5.3-14">
+          <li pn="section-5.3-14.1">最初に、上で説明したように、クライアントはトークンコンシューマー（「TC」）によってTP1にリダイレクトされます。提供されたTokenBindingと参照されたTokenBinding（それぞれTP1とTC用）の両方を含むTokenBindingMessageを含むクライアントのリクエストを受信すると、TP1は、(1)Include-Referred-Token-Binding-IDヘッダーフィールドを含み、(2)クライアントにTP2へリクエストを送信するよう指示するリダイレクトレスポンスで、クライアントに応答します。これにより、クライアントは同じパターンに従い、提供されたTokenBindingと参照されたTokenBinding（それぞれTP2とTP1用）の両方を含むTokenBindingMessageを含むリクエストをTP2に送信します。このパターンは、さらに別のトークンプロバイダーへと続けられることに注意してください。この場合、TP2は、クライアントのTP1とのTokenBindingにバインドされたセキュリティートークンを発行し、TP1を指すリダイレクトレスポンスをクライアントに送信します。次に、TP1は、先に伝達されたTCの参照されたTokenBindingにバインドされた、トークンコンシューマー向けのセキュリティートークンを構築し、バインドされたセキュリティートークンを含む、TCを指すリダイレクトレスポンスをクライアントに送信します。</li>
+        </ul>
+        <t indent="0" pn="section-5.3-15">上記は、規範的ではない例としてのみ意図されています。詳細は展開のコンテキストに固有です。他のアプローチも可能ですが、この仕様の範囲外です。</t>
+      </section>
+      <section anchor="negotiated-key-parameters" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-negotiated-key-parameters">ネゴシエートされた鍵パラメーター</name>
+        <t indent="0" pn="section-5.4-1">トークンバインディングプロトコルのネゴシエーションのためのTLS拡張<xref target="RFC8472" format="default" sectionFormat="of" derivedContent="RFC8472"/>により、サーバーとクライアントはトークンバインディング鍵ペアのパラメーター（署名アルゴリズム、長さ）をネゴシエートできます。クライアントとトークンコンシューマーの間で使用されるトークンバインディングIDと、クライアントとトークンプロバイダーの間で使用されるトークンバインディングIDが、異なる鍵パラメーターを使用する可能性があります。クライアントは、TokenBindingMessageのreferred_token_bindingのTokenBindingでは、トークンコンシューマーとネゴシエートした鍵パラメーターを使用<bcp14>しなければなりません（MUST）</bcp14>。これは、それらの鍵パラメーターがヘッダーフィールドの送信先サーバーとネゴシエートしたものと異なる場合でも同様です。</t>
+        <t indent="0" pn="section-5.4-2">トークンプロバイダーは、<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>で規定されているすべてのトークンバインディング鍵パラメーターをサポート<bcp14>すべきです（SHOULD）</bcp14>。トークンプロバイダーは、TokenBindingMessage内のreferred_token_bindingのTokenBindingで指定された鍵パラメーターをサポートしていない場合、バインドされたトークンを発行しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+      <section anchor="federation-example" numbered="true" removeInRFC="false" toc="include" pn="section-5.5">
+        <name slugifiedName="name-federation-example">フェデレーションの例</name>
+        <t indent="0" pn="section-5.5-1">以下の図は、典型的なHTTPリダイレクトベースのウェブブラウザーシングルサインオン（SSO）プロファイル（<xref target="OASIS.saml-prof-2.0-os" format="default" sectionFormat="of" derivedContent="OASIS.saml-prof-2.0-os"/>のセクション4.1）（アーティファクトなし、コールバックなし）を示しており、例としてTLSのトークンバインディングIDをOpenID ConnectのIDトークンにバインドすることを取り上げています。</t>
+        <t indent="0" pn="section-5.5-2">凡例：</t>
+        <table align="center" pn="table-1">
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">EKM:</td>
+              <td align="left" colspan="1" rowspan="1">TLSのエクスポートされた鍵素材<xref target="RFC5705" format="default" sectionFormat="of" derivedContent="RFC5705"/></td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">{EKMn}Ksm:</td>
+              <td align="left" colspan="1" rowspan="1">サーバー「n」のEKMを、TBID「m」の秘密鍵で署名したもの。ここで「n」は、ETBMSGを受信するサーバーを表す必要があります。伝達されるTBのタイプがprovided_token_bindingの場合はm = nであり、TBのタイプがreferred_token_bindingの場合はm != nです。例については、下の図のステップ1bを参照してください。</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">ETBMSG:</td>
+              <td align="left" colspan="1" rowspan="1">EncodedTokenBindingMessageを伝達する「Sec-Token-Binding」HTTPヘッダーフィールド。EncodedTokenBindingMessageは、さらにTokenBinding（TB）構造体を伝達します。例：ETBMSG[[TB]]、ETBMSG[[TB1],[TB2]]</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">ID Token:</td>
+              <td align="left" colspan="1" rowspan="1">OpenID ConnectにおけるIDトークン。SAMLの「認証アサーション（authentication assertion）」と意味的に同等です。「ID Token w/TBIDn」は、TBIDnを含む「トークンバインドされた（token bound）」IDトークンを表します。</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">Ks and Kp:</td>
+              <td align="left" colspan="1" rowspan="1">クライアント側のトークンバインディング鍵ペアの、それぞれ秘密鍵（private key、secret keyとも呼ばれます）と公開鍵</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">OIDC:</td>
+              <td align="left" colspan="1" rowspan="1">OpenID Connect</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">TB:</td>
+              <td align="left" colspan="1" rowspan="1">署名されたEKM、TBID、TBタイプを含むTokenBinding構造体。例：[{EKM1}Ks1,TBID1,provided_token_binding]</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">TBIDn:</td>
+              <td align="left" colspan="1" rowspan="1">クライアントとサーバーnの間の、トークンバインドされたTLSの関連付けに対するトークンバインディングID。TBIDnにはKpnが含まれます。</td>
+            </tr>
+          </tbody>
+        </table>
+        <artwork name="" type="" align="left" alt="" pn="section-5.5-4"><![CDATA[
+Client, aka                Token Consumer, aka    Token Provider, aka
+User Agent                 OpenID Client,         OpenID Provider,
+                           OIDC Relying Party,    OIDC Provider,
+                           SAML Relying Party     SAML Identity Provider
+                           [ server "1" ]         [ server "2" ]
++--------+                       +----+                 +-----+
+| Client |                       | TC |                 | TP  |
++--------+                       +----+                 +-----+
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | 0. Client interacts w/TC      |                      |
+    | over HTTPS, establishes Ks1 and Kp1, TBID1           |
+    | ETBMSG[[{EKM1}Ks1,TBID1,provided_token_binding]]     |
+    |------------------------------>|                      |
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | 1a. OIDC ID Token request, aka|                      |
+    | "Authentication Request", conveyed with              |
+    | an HTTP response header field of                     |
+    | Include-Referred-Token-Binding-ID:true.              |
+    | Any security-relevant cookies |                      |
+    | should contain TBID1.         |                      |
+  +<- - - - - - - - - - - - - - - - |                      |
+  . | (redirect to TP via 301, 302, |                      |
+  . |  303, 307, or 308)            |                      |
+  . |                               |                      |
+  +------------------------------------------------------->|
+    | 1b. opens HTTPS w/TP,                                |
+    | establishes Ks2, Kp2, TBID2;                         |
+    | sends a GET or POST with                             |
+    | ETBMSG[[{EKM2}Ks2,TBID2,provided_token_binding],     |
+    |        [{EKM2}Ks1,TBID1,referred_token_binding]]     |
+    | as well as the ID Token request                      |
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | 2. user authentication (if applicable;               |
+    |    methods vary; particulars are out of scope)       |
+    |<====================================================>|
+    | (TP generates ID Token for TC containing TBID1; may  |
+    |  also set cookie(s) containing TBID2 and/or TBID1;   |
+    |  details vary; particulars are out of scope)         |
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | 3a. ID Token containing Kp1, issued for TC,          |
+    |    conveyed via OIDC "Authentication Response"       |
+  +<- - - - - - - - - - - - - - - - - - - - - - - - - - - -|
+  . |   (redirect to TC)            |                      |
+  . |                               |                      |
+  . |                               |                      |
+  +-------------------------------->|                      |
+    | 3b. HTTPS GET or POST with                           |
+    | ETBMSG[[{EKM1}Ks1,TBID1,provided_token_binding]]     |
+    | conveying an Authentication Response containing      |
+    | an ID Token w/TBID1, issued for TC                   |
+    |                               |                      |
+    |                               |                      |
+    |                               |                      |
+    | 4. user is signed on; any security-relevant cookie(s)|
+    | that is set SHOULD contain TBID1                     |
+    |<------------------------------|                      |
+    |                               |                      |
+    |                               |                      |
+]]></artwork>
+      </section>
+    </section>
+    <section anchor="implementation-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-implementation-considerations">実装に関する考慮事項</name>
+      <t indent="0" pn="section-6-1">HTTPSベースのアプリケーションには、上の<xref target="section-5.3" format="default" sectionFormat="of" derivedContent="Section 5.3"/>で示したHTTPリダイレクトベースのシグナリングと参照されたトークンバインディングの伝達以外の、またはそれに加えて、複数の当事者が関与するユースケースが存在する場合があります。</t>
+      <t indent="0" pn="section-6-2">そのため、トークンバインディングの実装は、そのようなアプリケーションが、アプリケーションが指定するさまざまなトークンバインディングタイプのトークンバインディングIDを含み、Sec-Token-Bindingヘッダーフィールドによって伝達されるトークンバインディングメッセージを生成するためのAPIを提供すべきです。</t>
+      <t indent="0" pn="section-6-3">ただし、トークンバインディングの実装は、アプリケーションから通知された場合にのみ、トークンバインディングIDをサーバーに伝達<bcp14>しなければなりません（MUST）</bcp14>。Include-Referred-Token-Binding-ID HTTPレスポンスヘッダーフィールド以外の通知メカニズムも考えられますが、それらのメカニズムはこの仕様の範囲外です。</t>
+      <t indent="0" pn="section-6-4">注：この機能の使用に関するプライバシーのガイダンスについては、<xref target="section-8" format="default" sectionFormat="of" derivedContent="Section 8"/>（「プライバシーに関する考慮事項」）を参照してください。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <section anchor="security-token-replay" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-security-token-replay">セキュリティートークンのリプレイ</name>
+        <t indent="0" pn="section-7.1-1">フェデレーテッドトークンバインディングのメカニズムの目的は、クライアントとトークンコンシューマーの間のプロトコルで使用されるトークンを攻撃者がエクスポートしてリプレイし、それによって正当なユーザーになりすまして保護されたリソースにアクセスすることを防ぐことです。バインドされたトークンは、依然としてクライアントに存在するマルウェア（サーバーからは検出できない場合があります）によってリプレイされる可能性がありますが、バインドされたトークンを他のマシンにエクスポートしてリプレイを成功させるには、攻撃者は対応するトークンバインディング秘密鍵もエクスポートする必要があります。したがって、トークンバインディング秘密鍵は価値の高い資産であり、強力に保護<bcp14>すべきです（SHOULD）</bcp14>。理想的には、鍵のエクスポートを防ぐハードウェアセキュリティーモジュール内で生成することで保護します。</t>
+        <t indent="0" pn="section-7.1-2">この考慮事項は、<xref target="RFC8471" format="default" sectionFormat="of" derivedContent="RFC8471"/>のセクション7.1（「Security Token Replay」）で説明されているシナリオの特殊なケースです。</t>
+      </section>
+      <section anchor="sensitivity-of-the-sec-token-binding-header" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-sensitivity-of-the-sec-token-binding-header">Sec-Token-Bindingヘッダーの機密性</name>
+        <t indent="0" pn="section-7.2-1">トークンバインディングプロトコルの目的は、TLSコネクションを開始したクライアントが特定の鍵ペアを制御していることをサーバーに確信させることです。サーバーがSec-Token-Bindingヘッダーフィールドを処理した後にこの結論を正しく導き出すためには、特定の秘匿性と完全性の要件が満たされている必要があります。</t>
+        <t indent="0" pn="section-7.2-2">たとえば、クライアントはトークンバインディング秘密鍵を秘密に保たなければなりません。秘密鍵が秘密でない場合、システム内の別の主体が有効なトークンバインディングヘッダーフィールドを作成し、それによってクライアントになりすますことができてしまいます。これにより、プロトコルの主な目的、つまりBearerトークンを特定のクライアントにバインドするという目的が無意味になりかねません。たとえば、クライアントが特定のサーバーとの間で使用する認証クッキーを（おそらくネットワーク侵入によって）取得した攻撃者を考えてみます。さらに、サーバーが、まさにそのクッキーの悪用を阻止するために、クッキーをクライアントのトークンバインディングIDにバインドしていたとします。攻撃者がクライアントの秘密鍵を入手した場合、攻撃者はサーバーとのTLSコネクションを確立し、クッキーに存在するバインディングと一致するSec-Token-Bindingヘッダーフィールドを作成できます。これにより、クライアントとして認証に成功し、サーバー上のクライアントのデータにアクセスできてしまいます。この場合、トークンバインディングプロトコルは、クッキーをクライアントにバインドすることに成功しなかったことになります。</t>
+        <t indent="0" pn="section-7.2-3">同様に、Sec-Token-Bindingヘッダーフィールドの完全性保護も必要です。クライアントが、自身が制御していないトークンバインディング鍵で署名されたトークンバインディングを含むSec-Token-Bindingヘッダーフィールドを、だまされてサーバーに送信することがあってはなりません。</t>
+        <t indent="0" pn="section-7.2-4">何らかの方法で、クライアントCとサーバーSの間のTLSコネクションのエクスポートされた鍵素材（EKM）を知っている攻撃者Aを考えてみます。（これはやや考えにくいことですが、まったくあり得ないことでもありません。というのも、クライアントはEKMを秘密として扱わない可能性があるからです。結局のところ、TLSマスターシークレットには原像計算困難なハッシュ関数が適用されており、EKMを知っている者がTLSマスターシークレットを復元することは不可能です。このような考慮から、一部のクライアントはEKMを秘密として扱わない可能性があります。）このような攻撃者Aは、CのEKMに対してAの鍵ペアを使ってSec-Token-Bindingヘッダーフィールドを作成できます。ここで攻撃者が、CをだましてそのようなヘッダーフィールドをSに送信させることができれば、Sからは、実際にはそうでないにもかかわらず（鍵ペアを制御しているのは攻撃者Aです）、Cが特定の鍵ペアを制御しているように見えてしまいます。</t>
+        <t indent="0" pn="section-7.2-5">AがSとの間に既存の関係を持っている場合（たとえば、S上にアカウントを持っている場合）、実際にはCであるにもかかわらず、サーバーSからはAが接続してきているように見えるようになります。（サーバーSがクライアントの識別にトークンバインディングIDを単純に使用するのではなく、バインドされた認証クッキーも使用している場合、AはさらにCをだましてAのクッキーの1つをSに送信させる必要があります。これは、JavaScript APIを通じたクッキーの挿入、関連ドメイン攻撃によるクッキーの設定など、さまざまな手段で実行できます。）言い換えると、このシナリオでは、AはCをだましてS上のAのアカウントにログインさせることができます。Aはおそらくそのアカウントにアクセスする他の方法も持っており、それによってCの行動を間接的に観察できるため（たとえば、Sがアカウント所有者にS上のアクティビティー履歴を表示する機能を持っている場合）、これはCのプライバシーの喪失につながる可能性があります。</t>
+        <t indent="0" pn="section-7.2-6">したがって、Sec-Token-Bindingヘッダーフィールドの完全性を保護する必要があります。あるeTLD+1が、ユーザーエージェントが別のeTLD+1との間で使用するSec-Token-Bindingヘッダーフィールドを（Document Object Model（DOM）API<xref target="W3C.REC-DOM-Level-3-Core-20040407" format="default" sectionFormat="of" derivedContent="W3C.REC-DOM-Level-3-Core-20040407"/>を通じて、またはその他の方法で）設定できてはなりません。「Sec-」というヘッダーフィールドのプレフィックスを使用すると、そのヘッダーフィールド名が「forbidden header name」であることを示すため、この要件を満たすのに役立ちます。<xref target="fetch-spec" format="default" sectionFormat="of" derivedContent="fetch-spec"/>を参照してください。</t>
+      </section>
+      <section anchor="securing-federated-sign-on-protocols" numbered="true" removeInRFC="false" toc="include" pn="section-7.3">
+        <name slugifiedName="name-securing-federated-sign-on-protocols">フェデレーテッドサインオンプロトコルの保護</name>
+        <t indent="0" pn="section-7.3-1">上で説明したように、フェデレーテッドサインオンのシナリオでは、クライアントは2つの異なるトークンバインディング秘密鍵の所有をトークンプロバイダーに証明します。1つの秘密鍵は「提供された」トークンバインディングID（クライアントが通常トークンプロバイダーとの間で使用するもの）に対応し、もう1つは「参照された」トークンバインディングID（クライアントが通常トークンコンシューマーとの間で使用するもの）に対応するトークンバインディング秘密鍵です。トークンプロバイダーは、参照されたトークンバインディングIDにバインドされたトークンを発行することが期待されます。</t>
+        <t indent="0" pn="section-7.3-2">両方の証明（提供されたトークンバインディング秘密鍵の証明と、参照されたトークンバインディング秘密鍵の証明）が必要です。これを示すために、次のシナリオを考えてみます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7.3-3">
+          <li pn="section-7.3-3.1">クライアントは、トークンプロバイダーとの間で使用するクライアントのトークンバインディングIDにバインドされた、トークンプロバイダーとの認証トークンを持っています。</li>
+          <li pn="section-7.3-3.2">クライアントは、トークンコンシューマーとの間で安全な（つまり、中間者が存在しない）認証済みセッションを確立したいと考えていますが、まだ確立していません（言い換えると、これからフェデレーテッドサインオンプロトコルを実行しようとしています）。</li>
+          <li pn="section-7.3-3.3">中間者は、クライアントとトークンコンシューマーの間、またはクライアントとトークンプロバイダーの間（あるいはその両方）のコネクションを傍受できるものとします。</li>
+        </ul>
+        <t indent="0" pn="section-7.3-4">目的は、これらのシナリオで中間者の存在を検出することです。</t>
+        <t indent="0" pn="section-7.3-5">まず、クライアントとトークンプロバイダーの間の中間者を考えてみます。クライアントは、トークンプロバイダー用のバインドされた認証トークン（たとえばクッキー）を所持していると仮定していることを思い出してください。中間者は、クライアントからトークンプロバイダーに送信されるすべてのメッセージと、トークンプロバイダーからクライアントに送信されるすべてのメッセージを傍受し、改ざんできます。（これは、とりわけ、中間者が、トークンプロバイダーのオリジンでクライアント上で実行されるJavaScriptを制御することを意味します。）しかし、中間者はクライアントのトークンバインディング秘密鍵を所持していません。したがって、中間者は、(1)クライアントからトークンプロバイダーへのリクエスト内のトークンバインディングIDを置き換え、中間者とトークンプロバイダーの間のTLSコネクションに一致するSec-Token-Bindingヘッダーフィールドを作成するか、(2)Sec-Token-Bindingヘッダーフィールドを変更せずにそのままにするかを選択できます。後者を選択した場合、トークンバインディングメッセージ内の署名（元のクライアントがクライアントと中間者の間のコネクションのEKMに対して作成したもの）は、中間者とトークンプロバイダーの間のEKMに対する署名と一致しません。前者を選択した場合（そして、自身のトークンバインディング秘密鍵を使用して、自身、つまり中間者とトークンプロバイダーの間のコネクションのEKMに対して独自の署名を作成した場合）、トークンバインディングメッセージは中間者とトークンプロバイダーの間のコネクションと一致しますが、メッセージ内のトークンバインディングIDは、クライアントの認証トークンがバインドされているトークンバインディングIDと一致しません。いずれの場合も、中間者はトークンプロバイダーによって検出されますが、それは（上で行っているように）提供されたトークンバインディング秘密鍵の所有証明がプロトコルで要求されている場合に限られます。</t>
+        <t indent="0" pn="section-7.3-6">次に、クライアントとトークンコンシューマーの間に中間者が存在する場合を考えてみます。その中間者は、クライアントからトークンコンシューマーに送信されるすべてのメッセージと、トークンコンシューマーからクライアントに送信されるすべてのメッセージを傍受し、改ざんできます。トークンコンシューマーは、クライアントをトークンプロバイダーにリダイレクトする当事者です。この場合、中間者はリダイレクトURLを制御しており、トークンコンシューマーが発行するすべてのリダイレクトURL（およびトークンコンシューマーのオリジンで実行されるすべてのJavaScript）を改ざんできます。中間者の目的は、トークンプロバイダーをだまして、正当なクライアントのトークンバインディングIDではなく、中間者のトークンバインディングIDにバインドされたトークンを発行させることです。中間者のこの目的を阻止するには、クライアントの参照されたトークンバインディングIDを、中間者（前述のとおり、クライアントにおいてリダイレクトURLとJavaScriptを改ざんできます）の影響を受けない方法でトークンプロバイダーに伝達する必要があります。参照されたTokenBinding構造体をSec-Token-Bindingヘッダーフィールドに含めること（たとえば、参照されたトークンバインディングIDをリダイレクトURLの一部としてアプリケーションレベルのメッセージに含めるのとは対照的に）は、クライアントとトークンコンシューマーの間の中間者が、トークンプロバイダーへの参照されたトークンバインディングIDの伝達に影響を与えられないようにする方法の1つです。</t>
+        <t indent="0" pn="section-7.3-7">したがって、フェデレーテッドサインオンのユースケースにおけるSec-Token-Bindingヘッダーフィールドには、提供されたトークンバインディング鍵の所有証明と、参照されたトークンバインディング鍵の所有証明の両方が含まれます。</t>
+        <t indent="0" pn="section-7.3-8">トークンバインディングが存在しても、トークンプロバイダーとトークンコンシューマーは、フェデレーテッドサインオンプロトコルの使用中にクライアントのセキュリティーを確保するためのさまざまなチェックの実行を免除されるわけではないことに注意してください。これには次のものが含まれます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7.3-9">
+          <li pn="section-7.3-9.1">トークンプロバイダーは、悪意のある振る舞いをすることが判明しているトークンコンシューマーにトークンを発行すべきではありません。これを支援するため、フェデレーションプロトコルは（たとえば、OAuthのクライアントIDや類似のメカニズムを通じて）トークンコンシューマーをトークンプロバイダーに対して識別すべきです。また、トークンプロバイダーは、トークンがトークンリクエストで識別されたトークンコンシューマーに実際に発行されることを（たとえば、リダイレクトURIがOAuthのクライアントIDに関連付けられていることを検証することによって）確認すべきです。</li>
+          <li pn="section-7.3-9.2">トークンコンシューマーは、トークンが他のトークンコンシューマー向けではなく、自身向けに発行されたことを検証すべきです。これを支援するため、フェデレーションプロトコルは、トークンレスポンスにaudienceパラメーターを含めるか、同等のメカニズムを適用すべきです（OAuthのインプリシットフローでは、トークンコンシューマーがOAuthの認可コードをOAuthのリフレッシュトークンと交換する際に自身を識別することが要求され、OAuthの認可が正しいトークンコンシューマーに配送されたことの検証はトークンプロバイダーに委ねられます）。</li>
+        </ul>
+      </section>
+    </section>
+    <section anchor="privacy-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-privacy-considerations">プライバシーに関する考慮事項</name>
+      <section anchor="scoping-of-token-binding-key-pairs" numbered="true" removeInRFC="false" toc="include" pn="section-8.1">
+        <name slugifiedName="name-scoping-of-token-binding-key-pairs">トークンバインディング鍵ペアのスコープ設定</name>
+        <t indent="0" pn="section-8.1-1">クライアントは、トークンバインディングが異なるサーバー間での追跡ツールになることを許さないように、サーバーごとに異なるトークンバインディング鍵ペアを使用します。ただし、サーバーに対するトークンバインディング鍵ペアのスコープ設定は、アプリケーションプロトコルのスコープ設定ルール（<xref target="RFC8471" section="4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8471#section-4.1" derivedContent="RFC8471"/>）に応じて異なります。</t>
+        <t indent="0" pn="section-8.1-2">HTTPクッキーの場合、サーバーはトークンバインディングを使用してクッキーを保護できます。これらのクッキーは有効トップレベルドメイン（eTLD）の任意のサブドメインに付与できるため、クライアントはそのようなサブドメイン間で同じトークンバインディング鍵ペアを使用すべきです。これにより、クッキーを受信できるすべてのサーバーが、クライアントから同じトークンバインディングIDを受け取り、クッキーのトークンバインディングを検証できるようになります。上の<xref target="section-2.1" format="default" sectionFormat="of" derivedContent="Section 2.1"/>を参照してください。</t>
+        <t indent="0" pn="section-8.1-3">クライアントアプリケーションがウェブブラウザーでない場合、異なるサーバー間の関係について追加の知識を持っている可能性があります。たとえば、クライアントアプリケーションは、2つのサーバーがフェデレーテッドサインオンプロトコルにおいてそれぞれ依拠当事者とアイデンティティープロバイダーの役割を果たしており、したがってユーザーのアイデンティティーを共有していることを認識している可能性があります。そのような場合は、依拠当事者とアイデンティティープロバイダーの両方に同じトークンバインディング鍵ペアを使用するなど、異なるトークンバインディング鍵ペアのスコープ設定ルールを使用することが許容されます。そのような特別な知識がない場合は、保守的な鍵ペアのスコープ設定ルールを使用し、クライアントが異なるサーバーには異なるトークンバインディング鍵ペアを使用するようにすべきです。</t>
+      </section>
+      <section anchor="lifetime-of-token-binding-key-pairs" numbered="true" removeInRFC="false" toc="include" pn="section-8.2">
+        <name slugifiedName="name-lifetime-of-token-binding-key-pairs">トークンバインディング鍵ペアの有効期間</name>
+        <t indent="0" pn="section-8.2-1">トークンバインディング鍵ペアには有効期限がありません。つまり、サーバーはトークンバインディング鍵ペアを使用して、（長期間有効なクッキーと同様に）長期間にわたってユーザーを追跡できる可能性があります。したがって、ウェブのユーザーエージェントなどのHTTPSクライアントは、（クッキーを削除するために提供されるコントロールと同様に）トークンバインディング鍵ペアを破棄するためのユーザーインターフェイスを提供<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-8.2-2">ユーザーエージェントが、セッション終了後にクッキーなどのブラウジング状態が破棄されることをユーザーに約束するプライベートブラウジングモードなどのモードを提供している場合、ユーザーエージェントは、セッション終了後にそのようなモードのトークンバインディング鍵ペアも破棄<bcp14>しなければなりません（MUST）</bcp14>。一般に、ユーザーには、クッキーやその他の潜在的な追跡メカニズムに対して持っているのと同じレベルの制御を、トークンバインディング鍵ペアの有効期間に対しても与えるべきです。</t>
+      </section>
+      <section anchor="correlation" numbered="true" removeInRFC="false" toc="include" pn="section-8.3">
+        <name slugifiedName="name-correlation">相関</name>
+        <t indent="0" pn="section-8.3-1">アプリケーションの通信を行うさまざまなエンドポイントのうち、自身のもの以外のTLSコネクションのトークンバインディングIDを受信するエンドポイントは、そのアプリケーションの他のTLSコネクションに関する情報を得ます。（このコンテキストにおいて、「アプリケーション」とは、HTTPS上で通信するクライアント側とサーバー側のコンポーネントの組み合わせであり、クライアント側はウェブブラウザーベース、ネイティブアプリケーションベース、またはその両方の場合があります。）これらの他のトークンバインディングIDは、他のコネクションのエンドポイントに対する相関ハンドルとして機能する可能性があります。受信側のエンドポイントがこれらの他のコネクションを別の手段で認識している場合、追加の情報は公開されません。たとえば、リダイレクトベースのフェデレーションプロトコルにおいて、アイデンティティープロバイダーと依拠当事者がすでに互いのURLを所持している場合、これらのコネクションのトークンバインディングIDも持つことで、追加の相関情報が提供されることはありません。そうでない場合、他のトークンバインディングIDを提供することで、他のエンドポイントの相関に使用できる追加の情報が公開されます。そのような場合は、トークンバインディングをどのように利用するか、また利用するかどうかに関するアプリケーション設計上の決定の一環として、可能になる相関とその潜在的なプライバシーへの影響についてのプライバシー分析を実施すべきです。</t>
+        <t indent="0" pn="section-8.3-2">また、トークンバインディングの実装は、トークンバインディングIDに関連付けられたアプリケーションから通知された場合にのみ、トークンバインディングIDを他のエンドポイントに開示するよう注意しなければなりません。<xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>（「実装に関する考慮事項」）を参照してください。</t>
+        <t indent="0" pn="section-8.3-3">最後に、無関係なアプリケーションが互いのトークンバインディングに関する情報を取得しないように注意すべきです。たとえば、あるシステム上の複数のアプリケーション間で共有されるトークンバインディングの実装は、無関係なアプリケーションが互いのトークンバインディング情報を取得することを防ぐべきです。これは、システムの機能に応じて、アプリケーションの分離や鍵の分離などの技法を使用することで実現できる場合があります。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">以下は、<xref target="RFC3864" format="default" sectionFormat="of" derivedContent="RFC3864"/>に基づく、Internet Assigned Numbers Authority（IANA）の「Permanent Message Header Field Names」の登録情報です。</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-9-2">
+        <dt pn="section-9-2.1">ヘッダーフィールド名：</dt>
+        <dd pn="section-9-2.2">Sec-Token-Binding</dd>
+        <dt pn="section-9-2.3">プロトコル：</dt>
+        <dd pn="section-9-2.4">HTTP</dd>
+        <dt pn="section-9-2.5">ステータス：</dt>
+        <dd pn="section-9-2.6">standard</dd>
+        <dt pn="section-9-2.7">参照：</dt>
+        <dd pn="section-9-2.8">この文書</dd>
+      </dl>
+      <dl newline="false" spacing="compact" indent="3" pn="section-9-3">
+        <dt pn="section-9-3.1">ヘッダーフィールド名：</dt>
+        <dd pn="section-9-3.2">Include-Referred-Token-Binding-ID</dd>
+        <dt pn="section-9-3.3">プロトコル：</dt>
+        <dd pn="section-9-3.4">HTTP</dd>
+        <dt pn="section-9-3.5">ステータス：</dt>
+        <dd pn="section-9-3.6">standard</dd>
+        <dt pn="section-9-3.7">参照：</dt>
+        <dd pn="section-9-3.8">この文書</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="PSL" target="https://publicsuffix.org/" quoteTitle="true" derivedAnchor="PSL">
+          <front>
+            <title>Public Suffix List</title>
+            <author><organization showOnFrontPage="true">Mozilla</organization></author>
+          </front>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC2818" target="https://www.rfc-editor.org/info/rfc2818" quoteTitle="true" derivedAnchor="RFC2818">
+          <front>
+            <title>HTTP Over TLS</title>
+            <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+            <date year="2000" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="2818"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2818"/>
+        </reference>
+        <reference anchor="RFC3864" target="https://www.rfc-editor.org/info/rfc3864" quoteTitle="true" derivedAnchor="RFC3864">
+          <front>
+            <title>Registration Procedures for Message Header Fields</title>
+            <author fullname="G. Klyne" initials="G." surname="Klyne"/>
+            <author fullname="M. Nottingham" initials="M." surname="Nottingham"/>
+            <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+            <date year="2004" month="September"/>
+          </front>
+          <seriesInfo name="BCP" value="90"/>
+          <seriesInfo name="RFC" value="3864"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3864"/>
+        </reference>
+        <reference anchor="RFC4648" target="https://www.rfc-editor.org/info/rfc4648" quoteTitle="true" derivedAnchor="RFC4648">
+          <front>
+            <title>The Base16, Base32, and Base64 Data Encodings</title>
+            <author fullname="S. Josefsson" initials="S." surname="Josefsson"/>
+            <date year="2006" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="4648"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4648"/>
+        </reference>
+        <reference anchor="RFC5246" target="https://www.rfc-editor.org/info/rfc5246" quoteTitle="true" derivedAnchor="RFC5246">
+          <front>
+            <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+            <author fullname="T. Dierks" initials="T." surname="Dierks"/>
+            <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+            <date year="2008" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="5246"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5246"/>
+        </reference>
+        <reference anchor="RFC5705" target="https://www.rfc-editor.org/info/rfc5705" quoteTitle="true" derivedAnchor="RFC5705">
+          <front>
+            <title>Keying Material Exporters for Transport Layer Security (TLS)</title>
+            <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+            <date year="2010" month="March"/>
+          </front>
+          <seriesInfo name="RFC" value="5705"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5705"/>
+        </reference>
+        <reference anchor="RFC6265" target="https://www.rfc-editor.org/info/rfc6265" quoteTitle="true" derivedAnchor="RFC6265">
+          <front>
+            <title>HTTP State Management Mechanism</title>
+            <author fullname="A. Barth" initials="A." surname="Barth"/>
+            <date year="2011" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="6265"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6265"/>
+        </reference>
+        <reference anchor="RFC7230" target="https://www.rfc-editor.org/info/rfc7230" quoteTitle="true" derivedAnchor="RFC7230">
+          <front>
+            <title>Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing</title>
+            <author fullname="R. Fielding" initials="R." surname="Fielding" role="editor"/>
+            <author fullname="J. Reschke" initials="J." surname="Reschke" role="editor"/>
+            <date year="2014" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="7230"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7230"/>
+        </reference>
+        <reference anchor="RFC7231" target="https://www.rfc-editor.org/info/rfc7231" quoteTitle="true" derivedAnchor="RFC7231">
+          <front>
+            <title>Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content</title>
+            <author fullname="R. Fielding" initials="R." surname="Fielding" role="editor"/>
+            <author fullname="J. Reschke" initials="J." surname="Reschke" role="editor"/>
+            <date year="2014" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="7231"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7231"/>
+        </reference>
+        <reference anchor="RFC7541" target="https://www.rfc-editor.org/info/rfc7541" quoteTitle="true" derivedAnchor="RFC7541">
+          <front>
+            <title>HPACK: Header Compression for HTTP/2</title>
+            <author fullname="R. Peon" initials="R." surname="Peon"/>
+            <author fullname="H. Ruellan" initials="H." surname="Ruellan"/>
+            <date year="2015" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="7541"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7541"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8471" target="https://www.rfc-editor.org/info/rfc8471" quoteTitle="true" derivedAnchor="RFC8471">
+          <front>
+            <title>The Token Binding Protocol Version 1.0</title>
+            <author fullname="A. Popov" initials="A." surname="Popov" role="editor"/>
+            <author fullname="M. Nystroem" initials="M." surname="Nystroem"/>
+            <author fullname="D. Balfanz" initials="D." surname="Balfanz"/>
+            <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+            <date year="2018" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="8471"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8471"/>
+        </reference>
+        <reference anchor="RFC8472" target="https://www.rfc-editor.org/info/rfc8472" quoteTitle="true" derivedAnchor="RFC8472">
+          <front>
+            <title>Transport Layer Security (TLS) Extension for Token Binding Protocol Negotiation</title>
+            <author fullname="A. Popov" initials="A." surname="Popov" role="editor"/>
+            <author fullname="M. Nystroem" initials="M." surname="Nystroem"/>
+            <author fullname="D. Balfanz" initials="D." surname="Balfanz"/>
+            <date year="2018" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="8472"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8472"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="fetch-spec" target="https://fetch.spec.whatwg.org/" quoteTitle="true" derivedAnchor="fetch-spec">
+          <front>
+            <title>Fetch</title>
+            <author><organization showOnFrontPage="true">WhatWG</organization></author>
+          </front>
+          <refcontent>Living Standard</refcontent>
+        </reference>
+        <reference anchor="OASIS.saml-core-2.0-os" target="http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf" quoteTitle="true" derivedAnchor="OASIS.saml-core-2.0-os">
+          <front>
+            <title>Assertions and Protocols for the OASIS Security Assertion Markup Language (SAML) V2.0</title>
+            <author fullname="S. Cantor" initials="S." surname="Cantor"/>
+            <author fullname="J. Kemp" initials="J." surname="Kemp"/>
+            <author fullname="R. Philpott" initials="R." surname="Philpott"/>
+            <author fullname="E. Maler" initials="E." surname="Maler"/>
+            <date year="2005" month="March"/>
+          </front>
+          <seriesInfo name="OASIS Standard" value="saml-core-2.0-os"/>
+        </reference>
+        <reference anchor="OASIS.saml-prof-2.0-os" target="http://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf" quoteTitle="true" derivedAnchor="OASIS.saml-prof-2.0-os">
+          <front>
+            <title>Profiles for the OASIS Security Assertion Markup Language (SAML) V2.0</title>
+            <author fullname="J. Hughes" initials="J." surname="Hughes" role="editor"/>
+            <author fullname="S. Cantor" initials="S." surname="Cantor" role="editor"/>
+            <author fullname="J. Hodges" initials="J." surname="Hodges" role="editor"/>
+            <author fullname="F. Hirsch" initials="F." surname="Hirsch" role="editor"/>
+            <author fullname="P. Mishra" initials="P." surname="Mishra" role="editor"/>
+            <author fullname="R. Philpott" initials="R." surname="Philpott" role="editor"/>
+            <author fullname="E. Maler" initials="E." surname="Maler" role="editor"/>
+            <date year="2005" month="March"/>
+          </front>
+          <seriesInfo name="OASIS Standard" value="OASIS.saml-profiles-2.0-os"/>
+        </reference>
+        <reference anchor="OpenID.Core" target="http://openid.net/specs/openid-connect-core-1_0.html" quoteTitle="true" derivedAnchor="OpenID.Core">
+          <front>
+            <title>OpenID Connect Core 1.0 incorporating errata set 1</title>
+            <author fullname="N. Sakimura" initials="N." surname="Sakimura"/>
+            <author fullname="J. Bradley" initials="J." surname="Bradley"/>
+            <author fullname="M. Jones" initials="M." surname="Jones"/>
+            <author fullname="B. de Medeiros" initials="B." surname="de Medeiros"/>
+            <author fullname="C. Mortimore" initials="C." surname="Mortimore"/>
+            <date year="2014" month="November"/>
+          </front>
+        </reference>
+        <reference anchor="RFC6749" target="https://www.rfc-editor.org/info/rfc6749" quoteTitle="true" derivedAnchor="RFC6749">
+          <front>
+            <title>The OAuth 2.0 Authorization Framework</title>
+            <author fullname="D. Hardt" initials="D." surname="Hardt" role="editor"/>
+            <date year="2012" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="6749"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6749"/>
+        </reference>
+        <reference anchor="RFC7540" target="https://www.rfc-editor.org/info/rfc7540" quoteTitle="true" derivedAnchor="RFC7540">
+          <front>
+            <title>Hypertext Transfer Protocol Version 2 (HTTP/2)</title>
+            <author fullname="M. Belshe" initials="M." surname="Belshe"/>
+            <author fullname="R. Peon" initials="R." surname="Peon"/>
+            <author fullname="M. Thomson" initials="M." surname="Thomson" role="editor"/>
+            <date year="2015" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="7540"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7540"/>
+        </reference>
+        <reference anchor="TOKENBIND-TLS13" quoteTitle="true" derivedAnchor="TOKENBIND-TLS13">
+          <front>
+            <title>Token Binding for Transport Layer Security (TLS) Version 1.3 Connections</title>
+            <author fullname="N. Harper" initials="N." surname="Harper"/>
+            <date year="2018" month="May"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tokbind-tls13-01"/>
+        </reference>
+        <reference anchor="W3C.REC-DOM-Level-3-Core-20040407" target="https://www.w3.org/TR/2004/REC-DOM-Level-3-Core-20040407" quoteTitle="true" derivedAnchor="W3C.REC-DOM-Level-3-Core-20040407">
+          <front>
+            <title>Document Object Model (DOM) Level 3 Core Specification</title>
+            <author fullname="A. Le Hors" initials="A." surname="Le Hors" role="editor"/>
+            <author fullname="P. Le Hegaret" initials="P." surname="Le Hegaret" role="editor"/>
+            <author fullname="L. Wood" initials="L." surname="Wood" role="editor"/>
+            <author fullname="G. Nicol" initials="G." surname="Nicol" role="editor"/>
+            <author fullname="J. Robie" initials="J." surname="Robie" role="editor"/>
+            <author fullname="M. Champion" initials="M." surname="Champion" role="editor"/>
+            <author fullname="S. Byrne" initials="S." surname="Byrne" role="editor"/>
+            <date year="2004" month="April"/>
+          </front>
+          <refcontent>World Wide Web Consortium Recommendation REC-DOM-Level-3-Core-20040407</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+        <t indent="0" pn="section-appendix.a-1">この文書には、Eric Rescorla、Gabriel Montenegro、Martin Thomson、Vinod Anupam、Anthony Nadalin、Michael B. Jones、Bill Cox、Brian Campbell、その他の方々から寄せられたコメントと提案が取り入れられています。</t>
+        <t indent="0" pn="section-appendix.a-2">この文書は、John BradleyとLeif Johanssonが議長を務める中で作成されました。エリアディレクターには、Eric Rescorla、Kathleen Moriarty、Stephen Farrellが含まれていました。</t>
+      </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Andrei Popov" initials="A." surname="Popov">
+        <organization showOnFrontPage="true">Microsoft Corp.</organization>
+        <address>
+          <postal>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>andreipo@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Magnus Nystroem" initials="M." surname="Nystroem">
+        <organization showOnFrontPage="true">Microsoft Corp.</organization>
+        <address>
+          <postal>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>mnystrom@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Dirk Balfanz" initials="D." surname="Balfanz" role="editor">
+        <organization showOnFrontPage="true">Google Inc.</organization>
+        <address>
+          <postal>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>balfanz@google.com</email>
+        </address>
+      </author>
+      <author fullname="Nick Harper" initials="N." surname="Harper">
+        <organization showOnFrontPage="true">Google Inc.</organization>
+        <address>
+          <postal>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>nharper@google.com</email>
+        </address>
+      </author>
+      <author fullname="Jeff Hodges" initials="J." surname="Hodges">
+        <organization showOnFrontPage="true">Kings Mountain Systems</organization>
+        <address>
+          <postal>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>Jeff.Hodges@KingsMountain.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

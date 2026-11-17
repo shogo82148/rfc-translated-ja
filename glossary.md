@@ -59,6 +59,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 | Table of Contents | 目次 | |
 | Introduction | はじめに | 導入、序論 |
 | Overview / Background / Motivation | 概要 / 背景 / 動機 | |
+| Fundamentals | 基本事項 | 基本、基礎（「Stream Fundamentals」は「ストリームの基本事項」） |
 | Terminology / Definitions | 用語 / 定義 | |
 | Conventions and Definitions | 表記規則と定義 | 規約と定義 |
 | Conventions and Terminology | 表記規則と用語 | |

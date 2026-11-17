@@ -2,6 +2,7 @@
 
 .PHONY: all
 all: \
+	docs/rfc10087.html \
 	docs/rfc10082.html \
 	docs/rfc10080.html \
 	docs/rfc10078.html \
@@ -2004,6 +2005,10 @@ all: \
 	docs/rfc13.html \
 	docs/rfc6.html
 
+docs/rfc10087.html: src/en/rfc10087.xml src/rfcs/rfc10087.json src/ja/rfc10087.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 10087
+src/en/rfc10087.xml: src/rfcs/rfc10087.xml
+	cp $< $@
 docs/rfc10082.html: src/en/rfc10082.xml src/rfcs/rfc10082.json src/ja/rfc10082.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 10082
 src/en/rfc10082.xml: src/rfcs/rfc10082.xml

@@ -272,7 +272,9 @@ class HtmlWriter:
             for u in updates:
                 a = build('span')
                 a.text = u
+                a.tail = ', '
                 dd.append(a)
+            a.tail = None
             external_updates.append(dd)
 
         # 廃止
@@ -285,7 +287,9 @@ class HtmlWriter:
             for o in obsoletes:
                 a = build('span')
                 a.text = o
+                a.tail = ', '
                 dd.append(a)
+            a.tail = None
             external_updates.append(dd)
 
         # 原文へのリンク
@@ -408,6 +412,7 @@ class HtmlWriter:
 
         # Root Element
         html = h if h != None else build('html')
+        html.set('lang', 'ja')
         self.html_root = html
 
         # <head> Element
@@ -987,6 +992,14 @@ class HtmlWriter:
                     # <xref>見出し<tt>...</tt></xref> のように子要素を含む場合
                     for c in x:
                         self.render1(a, c)
+                if not ''.join(a.itertext()).strip() and len(a) == 0:
+                    # 本文も生成ラベルもない参照（目次の format="none" など）は空のリンクを出さず、後続テキストだけを残す
+                    tail = x.tail or ''
+                    if len(h):
+                        h[-1].tail = (h[-1].tail or '') + tail
+                    else:
+                        h.text = (h.text or '') + tail
+                    return None
                 a.tail = x.tail
                 h.append(a)
                 return a
@@ -1186,6 +1199,17 @@ class HtmlWriter:
                 aa.set('class', 'selfRef')
                 caption.append(aa)
                 self.inline_text_renderer(aa, name)
+        elif name != None:
+            # pn がない（番号のない）表は表題だけをキャプションに出す
+            caption = build('caption')
+            table.append(caption)
+            if name_slug:
+                aa = build('a', href='#%s-%s'%(name_slug,self.lang))
+                aa.set('class', 'selfRef')
+                caption.append(aa)
+                self.inline_text_renderer(aa, name)
+            else:
+                self.inline_text_renderer(caption, name)
         for c in x:
             self.render1(table, c)
         return wrapper
@@ -1462,6 +1486,7 @@ class HtmlWriter:
             div.append(build('span', id='%s-%s'%(anchor,self.lang)))
         pre = build('pre')
         pre.text = x.text
+        self.set_scrollable_attrs(pre, x, 'Source code', 'ソースコード')
         div.append(pre)
         return div
 
@@ -1489,8 +1514,34 @@ class HtmlWriter:
             text = '\n'.join(l.rstrip() for l in text.split('\n'))
             pre = build('pre')
             pre.text = text
+            self.set_scrollable_attrs(pre, x, 'Figure', '図')
             div.append(pre)
         return div
+
+    def scrollable_label(self, x, default_en, default_ja):
+        """横スクロールする要素の aria-label にする図名（e.g. Figure 1: 見出し）を返す"""
+        figure = next(x.iterancestors('figure'), None)
+        if figure is None:
+            return default_ja if self.lang == 'ja' else default_en
+        pn = figure.get('pn') or ''
+        text = pn.replace('-', ' ', 1).title().split(' ', 1)
+        if len(text) == 2 and text[0] == 'Figure':
+            label = self.section_label(text[0], text[1])
+        else:
+            label = ' '.join(text) or (default_ja if self.lang == 'ja' else default_en)
+        name = figure.find('name')
+        if name is not None:
+            # aria-label に改行が入らないよう空白をまとめる
+            title = ' '.join(clean_text(''.join(name.itertext())).split())
+            if title:
+                label += ': ' + title
+        return label
+
+    def set_scrollable_attrs(self, pre, x, default_en, default_ja):
+        """横スクロールする <pre> をキーボードでスクロールできるようにする"""
+        pre.set('tabindex', '0')
+        pre.set('role', 'region')
+        pre.set('aria-label', self.scrollable_label(x, default_en, default_ja))
 
     def render1_artset(self, h, x):
         # artset contains alternative representations of the same content
@@ -1710,6 +1761,21 @@ class HtmlWriter:
                     email_div.append(a)
                     card.append(email_div)
 
+            # URI
+            for c in x.findall('address/uri'):
+                uri = clean_text(''.join(c.itertext())).strip()
+                if not uri:
+                    continue
+                uri_div = build('div')
+                uri_div.set('class', 'author-uri')
+                if re.match(r'^https?://', uri, re.IGNORECASE):
+                    a = build('a', href=uri)
+                    a.text = uri
+                    uri_div.append(a)
+                else:
+                    uri_div.text = uri
+                card.append(uri_div)
+
             card.tail = x.tail
             return card
         elif self.part == 'references':
@@ -1745,7 +1811,8 @@ class HtmlWriter:
                 # All other cases use the "first author" name format.
                 name, ascii = ref_author_name_first(x)
 
-            span = wrap_ascii('span', name, ascii)
+            # 氏名がない場合（組織のみなど）は役割だけが表示されないようにする
+            span = wrap_ascii('span', name, ascii, role if name else '')
             span.set('class', 'refAuthor')
 
             # Now determine whether the span should be trailed by a conjunction.

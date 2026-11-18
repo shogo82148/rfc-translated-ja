@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8405: リンクステートIGPのための最短パス優先（SPF）バックオフ遅延アルゴリズム（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>PROPOSED STANDARD</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8405.html">RFC 8405</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8405">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8405">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8405</h1>
+<h1 id="title-en">Shortest Path First (SPF) Back-Off Delay Algorithm for Link-State IGPs</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8405</h1>
+<h1 id="title-ja">リンクステートIGPのための最短パス優先（SPF）バックオフ遅延アルゴリズム</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document defines a standard algorithm to temporarily postpone or
+"back off" link-state IGP Shortest Path First (SPF) computations.
+This reduces the computational load and churn on IGP nodes when
+multiple temporally close network events trigger multiple SPF
+computations.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書は、リンクステートIGPの最短パス優先（SPF）計算を一時的に延期する、つまり「バックオフ」するための標準アルゴリズムを定義します。これにより、時間的に近接した複数のネットワークイベントが複数のSPF計算を引き起こす場合に、IGPノードの計算負荷と変動（churn）が軽減されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">Having one standard algorithm improves interoperability by reducing
+the probability and/or duration of transient forwarding loops during
+the IGP convergence when the IGP reacts to multiple temporally close
+IGP events.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">標準アルゴリズムを1つに定めることで、IGPが時間的に近接した複数のIGPイベントに反応する際に、IGPの収束中に発生する一時的な転送ループの確率や継続時間、あるいはその両方が減少し、相互運用性が向上します。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This is an Internet Standards Track document.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">これはインターネット標準化過程（Internet Standards Track）の文書です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8405" class="eref">https://www.rfc-editor.org/info/rfc8405</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<span><a href="https://www.rfc-editor.org/info/rfc8405" class="eref">https://www.rfc-editor.org/info/rfc8405</a> で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+<ul id="section-toc.1-1.1.2-en">
+<li>
+              <p id="section-toc.1-1.1.1.1-en"><a href="#section-1.1-en">1.1</a>.  <a href="#name-requirements-language-en">Requirements Language</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-high-level-goals-en">High-Level Goals</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-definitions-and-parameters-en">Definitions and Parameters</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-principles-of-the-spf-delay-algorithm-en">Principles of the SPF Delay Algorithm</a></p>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-specification-of-the-spf-delay-state-machine-en">Specification of the SPF Delay State Machine</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-state-machine-en">State Machine</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-en">
+              <p id="section-toc.1-1.5.2.1-en"><a href="#section-5.2-en">5.2</a>.  <a href="#name-states-en">States</a></p>
+</li>
+            <li id="section-toc.1-1.5.3-en">
+              <p id="section-toc.1-1.5.3.1-en"><a href="#section-5.3-en">5.3</a>.  <a href="#name-timers-en">Timers</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-en">
+              <p id="section-toc.1-1.5.4.1-en"><a href="#section-5.4-en">5.4</a>.  <a href="#name-fsm-events-en">FSM Events</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-parameters-en">Parameters</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-partial-deployment-en">Partial Deployment</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-impact-on-micro-loops-en">Impact on Micro-loops</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#section-11-en">11</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.11.1.1-en"><a href="#section-11.1-en">11.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.11.2-en">
+              <p id="section-toc.1-1.11.2.1-en"><a href="#section-11.2-en">11.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.12-en">
+            <p id="section-toc.1-1.12.1-en"><a href="#section-appendix.a-en"></a><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.13-en">
+            <p id="section-toc.1-1.13.1-en"><a href="#section-appendix.b-en"></a><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+<ul id="section-toc.1-1.1.2-ja">
+<li>
+              <p id="section-toc.1-1.1.1.1-ja"><a href="#section-1.1-ja">1.1</a>.  <a href="#name-requirements-language-ja">要件言語</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-high-level-goals-ja">高レベルの目標</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-definitions-and-parameters-ja">定義とパラメーター</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-principles-of-the-spf-delay-algorithm-ja">SPF遅延アルゴリズムの原則</a></p>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-specification-of-the-spf-delay-state-machine-ja">SPF遅延状態機械の仕様</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-state-machine-ja">状態機械</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-ja">
+              <p id="section-toc.1-1.5.2.1-ja"><a href="#section-5.2-ja">5.2</a>.  <a href="#name-states-ja">状態</a></p>
+</li>
+            <li id="section-toc.1-1.5.3-ja">
+              <p id="section-toc.1-1.5.3.1-ja"><a href="#section-5.3-ja">5.3</a>.  <a href="#name-timers-ja">タイマー</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-ja">
+              <p id="section-toc.1-1.5.4.1-ja"><a href="#section-5.4-ja">5.4</a>.  <a href="#name-fsm-events-ja">FSMイベント</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-parameters-ja">パラメーター</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-partial-deployment-ja">部分的な展開</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-impact-on-micro-loops-ja">マイクロループへの影響</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#section-11-ja">11</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.11.1.1-ja"><a href="#section-11.1-ja">11.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.11.2-ja">
+              <p id="section-toc.1-1.11.2.1-ja"><a href="#section-11.2-ja">11.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.12-ja">
+            <p id="section-toc.1-1.12.1-ja"><a href="#section-appendix.a-ja"></a><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.13-ja">
+            <p id="section-toc.1-1.13.1-ja"><a href="#section-appendix.b-ja"></a><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">Link-state IGPs, such as IS-IS <span>[<a href="#ISO10589-en">ISO10589</a>]</span>, OSPF <span>[<a href="#RFC2328-en">RFC2328</a>]</span>, and OSPFv3
+<span>[<a href="#RFC5340-en">RFC5340</a>]</span>, perform distributed route computation on all routers in
+the area/level.  In order to have consistent routing tables across
+the network, such distributed computation requires that all routers
+have the same version of the network topology (Link-State Database
+(LSDB)) and perform their computation essentially at the same time.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">IS-IS <span>[<a href="#ISO10589-ja">ISO10589</a>]</span>、OSPF <span>[<a href="#RFC2328-ja">RFC2328</a>]</span>、OSPFv3 <span>[<a href="#RFC5340-ja">RFC5340</a>]</span>などのリンクステートIGPは、エリア/レベル内のすべてのルーターで分散型の経路計算を行います。ネットワーク全体で一貫したルーティングテーブルを得るために、このような分散計算では、すべてのルーターが同じバージョンのネットワークトポロジー（リンクステートデータベース（LSDB））を持ち、本質的に同時に計算を行う必要があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">In general, when the network is stable, there is a desire to trigger
+a new Shortest Path First (SPF) computation as soon as a failure is
+detected in order to quickly route around the failure.  However, when
+the network is experiencing multiple failures over a short period of
+time, there is a conflicting desire to limit the frequency of SPF
+computations, which would allow a reduction in control plane
+resources used by IGPs and all protocols/subsystems reacting to the
+attendant route change, such as LDP <span>[<a href="#RFC5036-en">RFC5036</a>]</span>, RSVP-TE <span>[<a href="#RFC3209-en">RFC3209</a>]</span>, BGP
+<span>[<a href="#RFC4271-en">RFC4271</a>]</span>, Fast Reroute computations (e.g., Loop-Free Alternates
+(LFAs) <span>[<a href="#RFC5286-en">RFC5286</a>]</span>), FIB updates, etc.  This also reduces network churn
+and, in particular, reduces side effects (such as micro-loops
+<span>[<a href="#RFC5715-en">RFC5715</a>]</span>) that ensue during IGP convergence.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">一般に、ネットワークが安定しているときは、障害を素早く迂回してルーティングするために、障害が検出されたらすぐに新しい最短パス優先（SPF）計算を開始することが望まれます。しかし、ネットワークが短期間に複数の障害を経験している場合には、SPF計算の頻度を制限したいという相反する要望があります。これにより、IGPと、それに伴う経路変更に反応するすべてのプロトコルやサブシステム（LDP <span>[<a href="#RFC5036-ja">RFC5036</a>]</span>、RSVP-TE <span>[<a href="#RFC3209-ja">RFC3209</a>]</span>、BGP <span>[<a href="#RFC4271-ja">RFC4271</a>]</span>、高速リルートの計算（たとえば、ループフリー代替経路（LFA） <span>[<a href="#RFC5286-ja">RFC5286</a>]</span>）、FIBの更新など）が使用するコントロールプレーンのリソースを削減できます。また、ネットワークの変動も軽減され、特に、IGPの収束中に生じる副作用（マイクロループ <span>[<a href="#RFC5715-ja">RFC5715</a>]</span>など）が軽減されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">To allow for this, IGPs usually implement an SPF Back-Off Delay
+algorithm that postpones or backs off the SPF computation.  However,
+different implementations chose different algorithms.  Hence, in a
+multi-vendor network, it's not possible to ensure that all routers
+trigger their SPF computation after the same delay.  This situation
+increases the average and maximum differential delay between routers
+completing their SPF computation.  It also increases the probability
+that different routers compute their FIBs based on different LSDB
+versions.  Both factors increase the probability and/or duration of
+micro-loops as discussed in <a href="#section-8-en">Section 8</a>.</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">これを可能にするために、IGPは通常、SPF計算を延期する、つまりバックオフするSPFバックオフ遅延アルゴリズムを実装しています。しかし、実装ごとに異なるアルゴリズムが選択されてきました。そのため、マルチベンダーネットワークでは、すべてのルーターが同じ遅延の後にSPF計算を開始することを保証できません。この状況は、SPF計算を完了するルーター間の遅延の差の平均値と最大値を増大させます。また、異なるルーターが異なるバージョンのLSDBに基づいてFIBを計算する確率も高くなります。<a href="#section-8-ja">セクション8</a>で説明するように、これらの要因はいずれも、マイクロループの確率や継続時間、あるいはその両方を増大させます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">This document specifies a standard algorithm to allow multi-vendor
+networks to have all routers delay their SPF computations for the
+same duration.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">この文書は、マルチベンダーネットワークにおいて、すべてのルーターがSPF計算を同じ時間だけ遅延させられるようにするための標準アルゴリズムを規定します。</p></div>
+</div>
+<section><span id="section-1.1"></span><span id="requirements-language-en"></span><span id="requirements-language-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-requirements-language-en" lang="en">
+<a id="section-1.1-en" href="#section-1.1-en" class="section-number selfRef">1.1.</a> <a href="#name-requirements-language-en" class="section-name selfRef">Requirements Language</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-requirements-language-ja" lang="ja">
+<a id="section-1.1-ja" href="#section-1.1-ja" class="section-number selfRef">1.1.</a> <a href="#name-requirements-language-ja" class="section-name selfRef">要件言語</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-1-en">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in
+BCP 14 <span>[<a href="#RFC2119-en">RFC2119</a>]</span> <span>[<a href="#RFC8174-en">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+<div lang="ja" class="col"><p id="section-1.1-1-ja">キーワード「<span class="bcp14">しなければなりません（MUST）</span>」、「<span class="bcp14">してはなりません（MUST NOT）</span>」、
+「<span class="bcp14">要求されています（REQUIRED）</span>」、
+「<span class="bcp14">することになります（SHALL）</span>」、「<span class="bcp14">することはありません（SHALL NOT）</span>」、
+「<span class="bcp14">すべきです（SHOULD）</span>」、「<span class="bcp14">すべきではありません（SHOULD NOT）</span>」、
+「<span class="bcp14">推奨されます（RECOMMENDED）</span>」、「<span class="bcp14">推奨されません（NOT RECOMMENDED）</span>」、
+「<span class="bcp14">してもよいです（MAY）</span>」、「<span class="bcp14">選択できます（OPTIONAL）</span>」は、
+BCP 14 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span> <span>[<a href="#RFC8174-ja">RFC8174</a>]</span>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</p></div>
+</div></section></section><section><span id="section-2"></span><span id="high-level-goals-en"></span><span id="high-level-goals-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-high-level-goals-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-high-level-goals-en" class="section-name selfRef">High-Level Goals</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-high-level-goals-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-high-level-goals-ja" class="section-name selfRef">高レベルの目標</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">The high-level goals of this algorithm are the following:</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">このアルゴリズムの高レベルの目標は次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-2-2-en">
+<li id="section-2-2.1-en">very fast convergence for a single event (e.g., link failure),</li>
+        <li id="section-2-2.2-en">paced fast convergence for multiple temporally close IGP events
+while IGP stability is considered acceptable,</li>
+        <li id="section-2-2.3-en">delayed convergence when IGP stability is problematic (this will
+allow the IGP and related processes to conserve resources during
+the period of instability), and</li>
+        <li id="section-2-2.4-en">avoidance of having different SPF_DELAY timer values (<a href="#section-3-en">Section 3</a>)
+across different routers in the area/level.  This requires
+specific consideration as different routers may receive IGP
+messages at different intervals, or even in different orders, due
+to differences both in the distance from the originator of the IGP
+event and in flooding implementations.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-2-2-ja">
+<li id="section-2-2.1-ja">単一のイベント（たとえば、リンク障害）に対する非常に高速な収束</li>
+        <li id="section-2-2.2-ja">IGPの安定性が許容範囲内と考えられる間の、時間的に近接した複数のIGPイベントに対する、ペースを調整した高速な収束</li>
+        <li id="section-2-2.3-ja">IGPの安定性に問題がある場合の、遅延させた収束（これにより、IGPと関連するプロセスは、不安定な期間中にリソースを節約できます）</li>
+        <li id="section-2-2.4-ja">エリア/レベル内の異なるルーター間で、SPF_DELAYタイマーの値（<a href="#section-3-ja">セクション3</a>）が異なる状況の回避。異なるルーターは、IGPイベントの発信元からの距離とフラッディングの実装の両方の違いにより、IGPメッセージを異なる間隔で、あるいは異なる順序で受信することがあるため、この目標には特別な考慮が必要です。</li>
+      </ul></div>
+</div></section><section><span id="section-3"></span><span id="definitions-and-parameters-en"></span><span id="definitions-and-parameters-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-definitions-and-parameters-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-definitions-and-parameters-en" class="section-name selfRef">Definitions and Parameters</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-definitions-and-parameters-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-definitions-and-parameters-ja" class="section-name selfRef">定義とパラメーター</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-3-1-en">
+<dt id="section-3-1.1-en">IGP event:</dt>
+        <dd id="section-3-1.2-en">The reception or origination of an IGP LSDB change
+requiring a new routing table computation.  Some examples are a
+topology change, a prefix change, and a metric change on a link or
+prefix.  Note that locally triggering a routing table computation is
+not considered an IGP event since other IGP routers are unaware of
+this occurrence.</dd>
+      </dl></div>
+<div lang="ja" class="col"><dl id="section-3-1-ja">
+<dt id="section-3-1.1-ja">IGPイベント：</dt>
+        <dd id="section-3-1.2-ja">新しいルーティングテーブルの計算を必要とするIGP LSDBの変更の受信または発信。例として、トポロジーの変更、プレフィックスの変更、リンクまたはプレフィックスのメトリックの変更があります。ローカルでルーティングテーブルの計算を開始することは、ほかのIGPルーターがその発生を知らないため、IGPイベントとはみなされないことに注意してください。</dd>
+      </dl></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">Routing table computation, in this document, is scoped to the IGP;
+so, this is the computation of the IGP RIB, performed by the IGP,
+using the IGP LSDB.  No distinction is made between the type of
+computation performed, e.g., full SPF, incremental SPF, or Partial
+Route Computation (PRC); the type of computation is a local
+consideration.  This document may interchangeably use the terms
+"routing table computation" and "SPF computation".</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">この文書におけるルーティングテーブルの計算は、IGPの範囲に限定されます。つまり、IGPがIGP LSDBを使用して行う、IGP RIBの計算のことです。実行される計算の種類（たとえば、完全なSPF、増分SPF、部分経路計算（PRC））は区別しません。計算の種類はローカルで決めることです。この文書では、「ルーティングテーブルの計算（routing table computation）」と「SPF計算（SPF computation）」という用語を区別せずに使うことがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-3-3-en">
+<dt id="section-3-3.1-en">SPF_DELAY:</dt>
+        <dd id="section-3-3.2-en">
+          <p id="section-3-3.2.1-en">The delay between the first IGP event triggering a new
+routing table computation and the start of that routing table
+computation.  It can take the following values:</p>
+<dl id="section-3-3.2.2-en">
+<dt id="section-3-3.2.2.1-en">INITIAL_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.2-en">A very small delay to quickly handle a single
+isolated link failure, e.g., 0 milliseconds.</dd>
+            <dt id="section-3-3.2.2.3-en">SHORT_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.4-en">A small delay to provide fast convergence in the
+case of a single component failure (such as a node failure or Shared
+Risk Link Group (SRLG) failure) that leads to multiple IGP events,
+e.g., 50-100 milliseconds.</dd>
+            <dt id="section-3-3.2.2.5-en">LONG_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.6-en">A long delay when the IGP is unstable, e.g., 2
+seconds.  Note that this allows the IGP network to stabilize.</dd>
+          </dl>
+</dd>
+        <dt id="section-3-3.3-en">TIME_TO_LEARN_INTERVAL:</dt>
+        <dd id="section-3-3.4-en">This is the maximum duration typically needed
+to learn all the IGP events related to a single component failure
+(such as router failure or SRLG failure), e.g., 1 second.  It's
+mostly dependent on failure detection time variation between all
+routers that are adjacent to the failure.  Additionally, it may
+depend on the different IGP implementations/parameters across the
+network and their relation to the origination and flooding of link
+state advertisements.</dd>
+        <dt id="section-3-3.5-en">HOLDDOWN_INTERVAL:</dt>
+        <dd id="section-3-3.6-en">The time required with no received IGP event
+before considering the IGP to be stable again and allowing the
+SPF_DELAY to be restored to INITIAL_SPF_DELAY, e.g., a
+HOLDDOWN_INTERVAL of 3 seconds.  The HOLDDOWN_INTERVAL <span class="bcp14">MUST</span> be
+defaulted or configured to be longer than the TIME_TO_LEARN_INTERVAL.</dd>
+      </dl></div>
+<div lang="ja" class="col"><dl id="section-3-3-ja">
+<dt id="section-3-3.1-ja">SPF_DELAY:</dt>
+        <dd id="section-3-3.2-ja">
+          <p id="section-3-3.2.1-ja">新しいルーティングテーブルの計算を引き起こす最初のIGPイベントから、そのルーティングテーブルの計算を開始するまでの遅延。次の値をとることができます。</p>
+<dl id="section-3-3.2.2-ja">
+<dt id="section-3-3.2.2.1-ja">INITIAL_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.2-ja">単一の孤立したリンク障害を素早く処理するための非常に小さな遅延。たとえば、0ミリ秒です。</dd>
+            <dt id="section-3-3.2.2.3-ja">SHORT_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.4-ja">複数のIGPイベントにつながる単一のコンポーネント障害（ノード障害や共有リスクリンクグループ（SRLG）障害など）の場合に、高速な収束を実現するための小さな遅延。たとえば、50～100ミリ秒です。</dd>
+            <dt id="section-3-3.2.2.5-ja">LONG_SPF_DELAY:</dt>
+            <dd id="section-3-3.2.2.6-ja">IGPが不安定な場合の長い遅延。たとえば、2秒です。これにより、IGPネットワークが安定できることに注意してください。</dd>
+          </dl>
+</dd>
+        <dt id="section-3-3.3-ja">TIME_TO_LEARN_INTERVAL:</dt>
+        <dd id="section-3-3.4-ja">単一のコンポーネント障害（ルーター障害やSRLG障害など）に関連するすべてのIGPイベントを把握するのに通常必要となる最大の時間です。たとえば、1秒です。これは主に、障害に隣接するすべてのルーター間での障害検出時間のばらつきに依存します。さらに、ネットワーク全体での異なるIGPの実装やパラメーターと、それらがリンクステート広告の発信やフラッディングにどう関係するかにも依存する場合があります。</dd>
+        <dt id="section-3-3.5-ja">HOLDDOWN_INTERVAL:</dt>
+        <dd id="section-3-3.6-ja">IGPが再び安定したとみなし、SPF_DELAYをINITIAL_SPF_DELAYに戻すまでに必要な、IGPイベントを受信しない時間。たとえば、3秒のHOLDDOWN_INTERVALです。HOLDDOWN_INTERVALは、デフォルト値または設定値がTIME_TO_LEARN_INTERVALより長く<span class="bcp14">なければなりません（MUST）</span>。</dd>
+      </dl></div>
+</div></section><section><span id="section-4"></span><span id="principles-of-the-spf-delay-algorithm-en"></span><span id="principles-of-the-spf-delay-algorithm-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-principles-of-the-spf-delay-algorithm-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-principles-of-the-spf-delay-algorithm-en" class="section-name selfRef">Principles of the SPF Delay Algorithm</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-principles-of-the-spf-delay-algorithm-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-principles-of-the-spf-delay-algorithm-ja" class="section-name selfRef">SPF遅延アルゴリズムの原則</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">For the first IGP event, we assume that there has been a single
+simple change in the network, which can be taken into account using a
+single routing computation (e.g., link failure, prefix (metric)
+change), and we optimize for very fast convergence by delaying the
+initial routing computation for a small interval, INITIAL_SPF_DELAY.
+Under this assumption, there is no benefit in delaying the routing
+computation.  In a typical network, this is the most common type of
+IGP event.  Hence, it makes sense to optimize this case.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">最初のIGPイベントについては、ネットワークで単一の単純な変更が発生し、それが1回のルーティング計算で反映できるもの（たとえば、リンク障害、プレフィックス（メトリック）の変更）であると仮定し、最初のルーティング計算を小さな間隔INITIAL_SPF_DELAYだけ遅延させることで、非常に高速な収束を目指して最適化します。この仮定のもとでは、ルーティング計算を遅延させても利点はありません。一般的なネットワークでは、これが最もよくある種類のIGPイベントです。したがって、この場合を最適化することには意味があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">If subsequent IGP events are received in a short period of time
+(TIME_TO_LEARN_INTERVAL), we then assume that a single component
+failed, but that this failure requires the knowledge of multiple IGP
+events in order for IGP routing to converge.  Under this assumption,
+we want fast convergence since this is a normal network situation.
+However, there is a benefit in waiting for all IGP events related to
+this single component failure: the IGP can then compute the post-failure
+routing table in a single additional route computation.  In
+this situation, we delay the routing computation by SHORT_SPF_DELAY.</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">後続のIGPイベントが短期間（TIME_TO_LEARN_INTERVAL）に受信された場合は、単一のコンポーネントに障害が発生したものの、IGPルーティングが収束するには複数のIGPイベントを把握する必要がある障害だと仮定します。この仮定のもとでは、これは通常のネットワークの状況なので、高速な収束が望まれます。しかし、この単一のコンポーネント障害に関連するすべてのIGPイベントを待つことには利点があります。そうすれば、IGPは障害後のルーティングテーブルを1回の追加の経路計算で計算できるからです。この状況では、ルーティング計算をSHORT_SPF_DELAYだけ遅延させます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-3-en">If IGP events are still received after TIME_TO_LEARN_INTERVAL from
+the initial IGP event received in QUIET state (see <a href="#section-5.1-en">Section 5.1</a>), then
+the network is presumably experiencing multiple independent failures.
+In this case, while waiting for network stability, the computations
+are delayed for a longer time, which is represented by
+LONG_SPF_DELAY.  This SPF delay is used until no IGP events are
+received for HOLDDOWN_INTERVAL.</p></div>
+<div lang="ja" class="col"><p id="section-4-3-ja">QUIET状態で受信した最初のIGPイベントからTIME_TO_LEARN_INTERVALが経過した後もIGPイベントを受信し続けている場合（<a href="#section-5.1-ja">セクション5.1</a>を参照）、ネットワークでは複数の独立した障害が発生していると推定されます。この場合、ネットワークが安定するのを待つ間、計算はより長い時間遅延されます。この時間をLONG_SPF_DELAYで表します。このSPF遅延は、HOLDDOWN_INTERVALの間IGPイベントを受信しなくなるまで使用されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-4-en">Note that in order to increase the consistency network wide, the
+algorithm uses a delay (TIME_TO_LEARN_INTERVAL) from the initial IGP
+event rather than the number of SPF computations performed.  Indeed,
+as all routers may receive the IGP events at different times, we
+cannot assume that all routers will perform the same number of SPF
+computations.  For example, assuming that the SPF delay is 50
+milliseconds, router R1 may receive three IGP events (E1, E2, E3) in
+those 50 milliseconds and hence will perform a single routing
+computation, while another router R2 may only receive two events (E1,
+E2) in those 50 milliseconds and hence will schedule another routing
+computation when receiving E3.</p></div>
+<div lang="ja" class="col"><p id="section-4-4-ja">ネットワーク全体での一貫性を高めるために、このアルゴリズムは、実行したSPF計算の回数ではなく、最初のIGPイベントからの遅延（TIME_TO_LEARN_INTERVAL）を使用することに注意してください。実際、すべてのルーターがIGPイベントを異なるタイミングで受信する可能性があるため、すべてのルーターが同じ回数のSPF計算を行うとは仮定できません。たとえば、SPF遅延が50ミリ秒であると仮定すると、ルーターR1はその50ミリ秒の間に3つのIGPイベント（E1、E2、E3）を受信し、その結果1回のルーティング計算を行う一方で、別のルーターR2はその50ミリ秒の間に2つのイベント（E1、E2）しか受信せず、その結果E3を受信したときに別のルーティング計算をスケジュールする場合があります。</p></div>
+</div></section><section><span id="section-5"></span><span id="specification-of-the-spf-delay-state-machine-en"></span><span id="specification-of-the-spf-delay-state-machine-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-specification-of-the-spf-delay-state-machine-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-specification-of-the-spf-delay-state-machine-en" class="section-name selfRef">Specification of the SPF Delay State Machine</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-specification-of-the-spf-delay-state-machine-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-specification-of-the-spf-delay-state-machine-ja" class="section-name selfRef">SPF遅延状態機械の仕様</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">This section specifies the Finite State Machine (FSM) intended to
+control the timing of the execution of SPF calculations in response
+to IGP events.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">このセクションでは、IGPイベントに応じてSPF計算を実行するタイミングを制御するための有限状態機械（FSM）を規定します。</p></div>
+</div>
+<section><span id="section-5.1"></span><span id="state-machine-en"></span><span id="state-machine-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-state-machine-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-state-machine-en" class="section-name selfRef">State Machine</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-state-machine-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-state-machine-ja" class="section-name selfRef">状態機械</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-1-en">The FSM is initialized to the QUIET state with all three timers
+(SPF_TIMER, HOLDDOWN_TIMER, and LEARN_TIMER) deactivated.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-1-ja">FSMは、3つのタイマー（SPF_TIMER、HOLDDOWN_TIMER、LEARN_TIMER）がすべて非アクティブの状態で、QUIET状態に初期化されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-2-en">The events that may change the FSM states are an IGP event or the
+expiration of one timer (SPF_TIMER, HOLDDOWN_TIMER, or LEARN_TIMER).</p></div>
+<div lang="ja" class="col"><p id="section-5.1-2-ja">FSMの状態を変更する可能性のあるイベントは、IGPイベントか、いずれかのタイマー（SPF_TIMER、HOLDDOWN_TIMER、LEARN_TIMER）の満了です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-3-en">The following diagram briefly describes the state transitions.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-3-ja">次の図は、状態遷移を簡潔に示しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-1-en"><span id="fig-1-en"></span><div lang="" id="section-5.1-4.1-en"><pre>
+                     +-------------------+
+               +----&gt;|                   |&lt;-------------------+
+               |     |      QUIET        |                    |
+               +-----|                   |&lt;---------+         |
+           7:        +-------------------+          |         |
+           SPF_TIMER           |                    |         |
+           expiration          |                    |         |
+                               | 1: IGP event       |         |
+                               |                    |         |
+                               v                    |         |
+                     +-------------------+          |         |
+               +----&gt;|                   |          |         |
+               |     |    SHORT_WAIT     |-----&gt;----+         |
+               +-----|                   |                    |
+           2:        +-------------------+  6: HOLDDOWN_TIMER |
+           IGP event           |               expiration     |
+           8: SPF_TIMER        |                              |
+              expiration       |                              |
+                               | 3: LEARN_TIMER               |
+                               |    expiration                |
+                               |                              |
+                               v                              |
+                     +-------------------+                    |
+               +----&gt;|                   |                    |
+               |     |     LONG_WAIT     |------------&gt;-------+
+               +-----|                   |
+           4:        +-------------------+  5: HOLDDOWN_TIMER
+           IGP event                           expiration
+           9: SPF_TIMER expiration
+</pre></div>
+<figcaption><span>Figure 1</span>:
+<span>State Machine</span>
+          </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-1-ja"><span id="fig-1-ja"></span><div lang="" id="section-5.1-4.1-ja"><pre>
+                     +-------------------+
+               +----&gt;|                   |&lt;-------------------+
+               |     |      QUIET        |                    |
+               +-----|                   |&lt;---------+         |
+           7:        +-------------------+          |         |
+           SPF_TIMER           |                    |         |
+           expiration          |                    |         |
+                               | 1: IGP event       |         |
+                               |                    |         |
+                               v                    |         |
+                     +-------------------+          |         |
+               +----&gt;|                   |          |         |
+               |     |    SHORT_WAIT     |-----&gt;----+         |
+               +-----|                   |                    |
+           2:        +-------------------+  6: HOLDDOWN_TIMER |
+           IGP event           |               expiration     |
+           8: SPF_TIMER        |                              |
+              expiration       |                              |
+                               | 3: LEARN_TIMER               |
+                               |    expiration                |
+                               |                              |
+                               v                              |
+                     +-------------------+                    |
+               +----&gt;|                   |                    |
+               |     |     LONG_WAIT     |------------&gt;-------+
+               +-----|                   |
+           4:        +-------------------+  5: HOLDDOWN_TIMER
+           IGP event                           expiration
+           9: SPF_TIMER expiration
+</pre></div>
+<figcaption><span>図1</span>:
+<span>状態機械</span>
+          </figcaption></figure></div>
+</div></section><section><span id="section-5.2"></span><span id="states-en"></span><span id="states-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-states-en" lang="en">
+<a id="section-5.2-en" href="#section-5.2-en" class="section-number selfRef">5.2.</a> <a href="#name-states-en" class="section-name selfRef">States</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-states-ja" lang="ja">
+<a id="section-5.2-ja" href="#section-5.2-ja" class="section-number selfRef">5.2.</a> <a href="#name-states-ja" class="section-name selfRef">状態</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-1-en">The naming and semantics of each state corresponds directly to the
+SPF delay used for IGP events received in that state.  Three states
+are defined:</p></div>
+<div lang="ja" class="col"><p id="section-5.2-1-ja">各状態の名前とセマンティクスは、その状態で受信したIGPイベントに対して使用するSPF遅延に直接対応しています。次の3つの状態を定義します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-5.2-2-en">
+<dt id="section-5.2-2.1-en">QUIET:</dt>
+          <dd id="section-5.2-2.2-en">This is the initial state, when no IGP events have occurred
+for at least HOLDDOWN_INTERVAL since the last routing table
+computation.  The state is meant to handle link failures very
+quickly.</dd>
+          <dt id="section-5.2-2.3-en">SHORT_WAIT:</dt>
+          <dd id="section-5.2-2.4-en">This is the state entered when an IGP event has been
+received in QUIET state.  This state is meant to handle a single
+component failure requiring multiple IGP events (e.g., node, SRLG).</dd>
+          <dt id="section-5.2-2.5-en">LONG_WAIT:</dt>
+          <dd id="section-5.2-2.6-en">This is the state reached after TIME_TO_LEARN_INTERVAL in
+state SHORT_WAIT.  This state is meant to handle multiple independent
+component failures during periods of IGP instability.</dd>
+        </dl></div>
+<div lang="ja" class="col"><dl id="section-5.2-2-ja">
+<dt id="section-5.2-2.1-ja">QUIET:</dt>
+          <dd id="section-5.2-2.2-ja">これは初期状態であり、最後のルーティングテーブルの計算から少なくともHOLDDOWN_INTERVALの間、IGPイベントが発生していない状態です。この状態は、リンク障害を非常に素早く処理することを目的としています。</dd>
+          <dt id="section-5.2-2.3-ja">SHORT_WAIT:</dt>
+          <dd id="section-5.2-2.4-ja">これは、QUIET状態でIGPイベントを受信したときに遷移する状態です。この状態は、複数のIGPイベントを必要とする単一のコンポーネント障害（たとえば、ノード、SRLG）を処理することを目的としています。</dd>
+          <dt id="section-5.2-2.5-ja">LONG_WAIT:</dt>
+          <dd id="section-5.2-2.6-ja">これは、SHORT_WAIT状態でTIME_TO_LEARN_INTERVALが経過した後に到達する状態です。この状態は、IGPが不安定な期間中に発生する、複数の独立したコンポーネント障害を処理することを目的としています。</dd>
+        </dl></div>
+</div></section><section><span id="section-5.3"></span><span id="timers-en"></span><span id="timers-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-timers-en" lang="en">
+<a id="section-5.3-en" href="#section-5.3-en" class="section-number selfRef">5.3.</a> <a href="#name-timers-en" class="section-name selfRef">Timers</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-timers-ja" lang="ja">
+<a id="section-5.3-ja" href="#section-5.3-ja" class="section-number selfRef">5.3.</a> <a href="#name-timers-ja" class="section-name selfRef">タイマー</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-5.3-1-en">
+<dt id="section-5.3-1.1-en">SPF_TIMER:</dt>
+          <dd id="section-5.3-1.2-en">This is the FSM timer that uses the computed SPF delay.
+Upon expiration, the routing table computation (as defined in
+<a href="#section-3-en">Section 3</a>) is performed.</dd>
+          <dt id="section-5.3-1.3-en">HOLDDOWN_TIMER:</dt>
+          <dd id="section-5.3-1.4-en">This is the FSM timer that is (re)started when an IGP
+event is received and set to HOLDDOWN_INTERVAL.  Upon expiration, the
+FSM is moved to the QUIET state.</dd>
+          <dt id="section-5.3-1.5-en">LEARN_TIMER:</dt>
+          <dd id="section-5.3-1.6-en">This is the FSM timer that is started when an IGP event
+is received while the FSM is in the QUIET state.  Upon expiration,
+the FSM is moved to the LONG_WAIT state.</dd>
+        </dl></div>
+<div lang="ja" class="col"><dl id="section-5.3-1-ja">
+<dt id="section-5.3-1.1-ja">SPF_TIMER:</dt>
+          <dd id="section-5.3-1.2-ja">これは、計算されたSPF遅延を使用するFSMのタイマーです。満了すると、ルーティングテーブルの計算（<a href="#section-3-ja">セクション3</a>で定義）が実行されます。</dd>
+          <dt id="section-5.3-1.3-ja">HOLDDOWN_TIMER:</dt>
+          <dd id="section-5.3-1.4-ja">これは、IGPイベントを受信したときに（再）開始され、HOLDDOWN_INTERVALに設定されるFSMのタイマーです。満了すると、FSMはQUIET状態に移行します。</dd>
+          <dt id="section-5.3-1.5-ja">LEARN_TIMER:</dt>
+          <dd id="section-5.3-1.6-ja">これは、FSMがQUIET状態にあるときにIGPイベントを受信すると開始されるFSMのタイマーです。満了すると、FSMはLONG_WAIT状態に移行します。</dd>
+        </dl></div>
+</div></section><section><span id="section-5.4"></span><span id="fsm-events-en"></span><span id="fsm-events-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-fsm-events-en" lang="en">
+<a id="section-5.4-en" href="#section-5.4-en" class="section-number selfRef">5.4.</a> <a href="#name-fsm-events-en" class="section-name selfRef">FSM Events</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-fsm-events-ja" lang="ja">
+<a id="section-5.4-ja" href="#section-5.4-ja" class="section-number selfRef">5.4.</a> <a href="#name-fsm-events-ja" class="section-name selfRef">FSMイベント</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-1-en">This section describes the events and the actions performed in
+response.</p></div>
+<div lang="ja" class="col"><p id="section-5.4-1-ja">このセクションでは、イベントと、それに応じて実行されるアクションを説明します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-2-en">Transition 1: IGP event while in QUIET state</p></div>
+<div lang="ja" class="col"><p id="section-5.4-2-ja">遷移1：QUIET状態でのIGPイベント</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-3-en">Actions on event 1:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-3-ja">イベント1に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-4-en">
+<li id="section-5.4-4.1-en">If SPF_TIMER is not already running, start it with value
+INITIAL_SPF_DELAY.</li>
+          <li id="section-5.4-4.2-en">Start LEARN_TIMER with TIME_TO_LEARN_INTERVAL.</li>
+          <li id="section-5.4-4.3-en">Start HOLDDOWN_TIMER with HOLDDOWN_INTERVAL.</li>
+          <li id="section-5.4-4.4-en">Transition to SHORT_WAIT state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-4-ja">
+<li id="section-5.4-4.1-ja">SPF_TIMERがまだ動作していない場合は、値INITIAL_SPF_DELAYで開始します。</li>
+          <li id="section-5.4-4.2-ja">LEARN_TIMERをTIME_TO_LEARN_INTERVALで開始します。</li>
+          <li id="section-5.4-4.3-ja">HOLDDOWN_TIMERをHOLDDOWN_INTERVALで開始します。</li>
+          <li id="section-5.4-4.4-ja">SHORT_WAIT状態に遷移します。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-5-en">Transition 2: IGP event while in SHORT_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-5-ja">遷移2：SHORT_WAITでのIGPイベント</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-6-en">Actions on event 2:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-6-ja">イベント2に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-7-en">
+<li id="section-5.4-7.1-en">Reset HOLDDOWN_TIMER to HOLDDOWN_INTERVAL.</li>
+          <li id="section-5.4-7.2-en">If SPF_TIMER is not already running, start it with value
+SHORT_SPF_DELAY.</li>
+          <li id="section-5.4-7.3-en">Remain in current state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-7-ja">
+<li id="section-5.4-7.1-ja">HOLDDOWN_TIMERをHOLDDOWN_INTERVALにリセットします。</li>
+          <li id="section-5.4-7.2-ja">SPF_TIMERがまだ動作していない場合は、値SHORT_SPF_DELAYで開始します。</li>
+          <li id="section-5.4-7.3-ja">現在の状態にとどまります。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-8-en">Transition 3: LEARN_TIMER expiration</p></div>
+<div lang="ja" class="col"><p id="section-5.4-8-ja">遷移3：LEARN_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-9-en">Actions on event 3:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-9-ja">イベント3に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-10-en">
+<li id="section-5.4-10.1-en">Transition to LONG_WAIT state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-10-ja">
+<li id="section-5.4-10.1-ja">LONG_WAIT状態に遷移します。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-11-en">Transition 4: IGP event while in LONG_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-11-ja">遷移4：LONG_WAITでのIGPイベント</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-12-en">Actions on event 4:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-12-ja">イベント4に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-13-en">
+<li id="section-5.4-13.1-en">Reset HOLDDOWN_TIMER to HOLDDOWN_INTERVAL.</li>
+          <li id="section-5.4-13.2-en">If SPF_TIMER is not already running, start it with value
+LONG_SPF_DELAY.</li>
+          <li id="section-5.4-13.3-en">Remain in current state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-13-ja">
+<li id="section-5.4-13.1-ja">HOLDDOWN_TIMERをHOLDDOWN_INTERVALにリセットします。</li>
+          <li id="section-5.4-13.2-ja">SPF_TIMERがまだ動作していない場合は、値LONG_SPF_DELAYで開始します。</li>
+          <li id="section-5.4-13.3-ja">現在の状態にとどまります。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-14-en">Transition 5: HOLDDOWN_TIMER expiration while in LONG_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-14-ja">遷移5：LONG_WAITでのHOLDDOWN_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-15-en">Actions on event 5:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-15-ja">イベント5に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-16-en">
+<li id="section-5.4-16.1-en">Transition to QUIET state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-16-ja">
+<li id="section-5.4-16.1-ja">QUIET状態に遷移します。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-17-en">Transition 6: HOLDDOWN_TIMER expiration while in SHORT_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-17-ja">遷移6：SHORT_WAITでのHOLDDOWN_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-18-en">Actions on event 6:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-18-ja">イベント6に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-19-en">
+<li id="section-5.4-19.1-en">Deactivate LEARN_TIMER.</li>
+          <li id="section-5.4-19.2-en">Transition to QUIET state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-19-ja">
+<li id="section-5.4-19.1-ja">LEARN_TIMERを非アクティブにします。</li>
+          <li id="section-5.4-19.2-ja">QUIET状態に遷移します。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-20-en">Transition 7: SPF_TIMER expiration while in QUIET</p></div>
+<div lang="ja" class="col"><p id="section-5.4-20-ja">遷移7：QUIETでのSPF_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-21-en">Actions on event 7:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-21-ja">イベント7に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-22-en">
+<li id="section-5.4-22.1-en">Compute SPF.</li>
+          <li id="section-5.4-22.2-en">Remain in current state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-22-ja">
+<li id="section-5.4-22.1-ja">SPFを計算します。</li>
+          <li id="section-5.4-22.2-ja">現在の状態にとどまります。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-23-en">Transition 8: SPF_TIMER expiration while in SHORT_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-23-ja">遷移8：SHORT_WAITでのSPF_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-24-en">Actions on event 8:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-24-ja">イベント8に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-25-en">
+<li id="section-5.4-25.1-en">Compute SPF.</li>
+          <li id="section-5.4-25.2-en">Remain in current state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-25-ja">
+<li id="section-5.4-25.1-ja">SPFを計算します。</li>
+          <li id="section-5.4-25.2-ja">現在の状態にとどまります。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-26-en">Transition 9: SPF_TIMER expiration while in LONG_WAIT</p></div>
+<div lang="ja" class="col"><p id="section-5.4-26-ja">遷移9：LONG_WAITでのSPF_TIMERの満了</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-27-en">Actions on event 9:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-27-ja">イベント9に対するアクション：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.4-28-en">
+<li id="section-5.4-28.1-en">Compute SPF.</li>
+          <li id="section-5.4-28.2-en">Remain in current state.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.4-28-ja">
+<li id="section-5.4-28.1-ja">SPFを計算します。</li>
+          <li id="section-5.4-28.2-ja">現在の状態にとどまります。</li>
+        </ul></div>
+</div></section></section><section><span id="section-6"></span><span id="parameters-en"></span><span id="parameters-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-parameters-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-parameters-en" class="section-name selfRef">Parameters</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-parameters-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-parameters-ja" class="section-name selfRef">パラメーター</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">All the parameters <span class="bcp14">MUST</span> be configurable at the protocol instance
+level.  They <span class="bcp14">MAY</span> be configurable on a per IGP LSDB basis (e.g., IS-IS
+level, OSPF area, or IS-IS Level 1 area).  All the delays
+(INITIAL_SPF_DELAY, SHORT_SPF_DELAY, LONG_SPF_DELAY,
+TIME_TO_LEARN_INTERVAL, and HOLDDOWN_INTERVAL) <span class="bcp14">SHOULD</span> be configurable
+with a granularity of a millisecond.  They <span class="bcp14">MUST</span> be configurable with
+a granularity of at least a tenth of a second.  The configurable
+range for all the parameters <span class="bcp14">SHOULD</span> be from 0 milliseconds to at
+least 6000 milliseconds.  The HOLDDOWN_INTERVAL <span class="bcp14">MUST</span> be defaulted or
+configured to be longer than the TIME_TO_LEARN_INTERVAL.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">すべてのパラメーターは、プロトコルインスタンスのレベルで設定可能で<span class="bcp14">なければなりません（MUST）</span>。IGP LSDBごと（たとえば、IS-ISのレベル、OSPFのエリア、IS-ISのレベル1エリア）に設定可能であっても<span class="bcp14">よいです（MAY）</span>。すべての遅延（INITIAL_SPF_DELAY、SHORT_SPF_DELAY、LONG_SPF_DELAY、TIME_TO_LEARN_INTERVAL、HOLDDOWN_INTERVAL）は、1ミリ秒の粒度で設定可能である<span class="bcp14">べきです（SHOULD）</span>。これらは、0.1秒（100ミリ秒）以下の刻み幅で設定可能で<span class="bcp14">なければなりません（MUST）</span>。すべてのパラメーターの設定可能な範囲は、0ミリ秒から少なくとも6000ミリ秒までである<span class="bcp14">べきです（SHOULD）</span>。HOLDDOWN_INTERVALは、デフォルト値または設定値がTIME_TO_LEARN_INTERVALより長く<span class="bcp14">なければなりません（MUST）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-2-en">If this SPF Back-Off algorithm is enabled by default, then in order
+to have consistent SPF delays between implementations with default
+configuration, the following default values <span class="bcp14">SHOULD</span> be implemented:</p></div>
+<div lang="ja" class="col"><p id="section-6-2-ja">このSPFバックオフアルゴリズムがデフォルトで有効になっている場合、デフォルト設定の実装間でSPF遅延を一貫させるために、次のデフォルト値を実装<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-6-3-en"><pre>
+   INITIAL_SPF_DELAY         50 ms
+   SHORT_SPF_DELAY          200 ms
+   LONG_SPF_DELAY          5000 ms
+   TIME_TO_LEARN_INTERVAL   500 ms
+   HOLDDOWN_INTERVAL      10000 ms
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-6-3-ja"><pre>
+   INITIAL_SPF_DELAY         50 ms
+   SHORT_SPF_DELAY          200 ms
+   LONG_SPF_DELAY          5000 ms
+   TIME_TO_LEARN_INTERVAL   500 ms
+   HOLDDOWN_INTERVAL      10000 ms
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-4-en">In order to satisfy the goals stated in <a href="#section-2-en">Section 2</a>, operators are
+<span class="bcp14">RECOMMENDED</span> to configure delay intervals such that INITIAL_SPF_DELAY
+&lt;= SHORT_SPF_DELAY and SHORT_SPF_DELAY &lt;= LONG_SPF_DELAY.</p></div>
+<div lang="ja" class="col"><p id="section-6-4-ja"><a href="#section-2-ja">セクション2</a>で述べた目標を満たすために、運用者は、INITIAL_SPF_DELAY &lt;= SHORT_SPF_DELAY かつ SHORT_SPF_DELAY &lt;= LONG_SPF_DELAY となるように遅延間隔を設定することが<span class="bcp14">推奨されます（RECOMMENDED）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-5-en">When setting (default) values, one should consider the customers and
+their application requirements, the computational power of the
+routers, the size of the network as determined primarily by the
+number of IP prefixes advertised in the IGP, the frequency and number
+of IGP events, and the number of protocol reactions/computations
+triggered by IGP SPF computation (e.g., BGP, Path Computation Element
+Communication Protocol (PCEP), Traffic Engineering Constrained SPF
+(CSPF), and Fast Reroute computations).  Note that some or all of
+these factors may change over the life of the network.  In case of
+doubt, it's <span class="bcp14">RECOMMENDED</span> that timer intervals should be chosen
+conservatively (i.e., longer timer values).</p></div>
+<div lang="ja" class="col"><p id="section-6-5-ja">（デフォルト）値を設定する際には、顧客とそのアプリケーションの要件、ルーターの計算能力、主にIGPで広告されるIPプレフィックスの数によって決まるネットワークの規模、IGPイベントの頻度と数、IGPのSPF計算によって引き起こされるプロトコルの反応や計算の数（たとえば、BGP、経路計算エレメント通信プロトコル（PCEP）、トラフィックエンジニアリングの制約付きSPF（CSPF）、高速リルートの計算）を考慮すべきです。これらの要因の一部またはすべてが、ネットワークの運用期間中に変化する可能性があることに注意してください。判断に迷う場合は、タイマー間隔を保守的に（つまり、長めのタイマー値に）選ぶことが<span class="bcp14">推奨されます（RECOMMENDED）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-6-en">For the standard algorithm to be effective in mitigating micro-loops,
+it is <span class="bcp14">RECOMMENDED</span> that all routers in the IGP domain, or at least all
+the routers in the same area/level, have exactly the same configured
+values.</p></div>
+<div lang="ja" class="col"><p id="section-6-6-ja">標準アルゴリズムがマイクロループの緩和に効果を発揮するためには、IGPドメイン内のすべてのルーター、または少なくとも同じエリア/レベル内のすべてのルーターが、まったく同じ設定値を持つことが<span class="bcp14">推奨されます（RECOMMENDED）</span>。</p></div>
+</div></section><section><span id="section-7"></span><span id="partial-deployment-en"></span><span id="partial-deployment-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-partial-deployment-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-partial-deployment-en" class="section-name selfRef">Partial Deployment</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-partial-deployment-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-partial-deployment-ja" class="section-name selfRef">部分的な展開</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">In general, the SPF Back-Off Delay algorithm is only effective in
+mitigating micro-loops if it is deployed with the same parameters on
+all routers in the IGP domain or, at least, all routers in an IGP
+area/level.  The impact of partial deployment is dependent on the
+particular event, the topology, and the algorithm(s) used on other
+routers in the IGP area/level.  In cases where the previous SPF Back-Off
+Delay algorithm was implemented uniformly, partial deployment
+will increase the frequency and duration of micro-loops.  Hence, it
+is <span class="bcp14">RECOMMENDED</span> that all routers in the IGP domain, or at least within
+the same area/level, be migrated to the SPF algorithm described
+herein at roughly the same time.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">一般に、SPFバックオフ遅延アルゴリズムがマイクロループの緩和に効果を発揮するのは、IGPドメイン内のすべてのルーター、または少なくともIGPのエリア/レベル内のすべてのルーターに、同じパラメーターで展開されている場合に限られます。部分的な展開の影響は、個々のイベント、トポロジー、IGPのエリア/レベル内のほかのルーターで使用されているアルゴリズムに依存します。以前のSPFバックオフ遅延アルゴリズムが一様に実装されていた場合、部分的な展開はマイクロループの頻度と継続時間を増大させます。したがって、IGPドメイン内のすべてのルーター、または少なくとも同じエリア/レベル内のすべてのルーターを、ほぼ同時期にこの文書で説明するSPFアルゴリズムに移行することが<span class="bcp14">推奨されます（RECOMMENDED）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-2-en">Note that this is not a new consideration; over time, network
+operators have changed SPF delay parameters in order to accommodate
+new customer requirements for fast convergence, as permitted by new
+software and hardware.  They may also have progressively replaced an
+implementation using a given SPF Back-Off Delay algorithm with
+another implementation using a different one.</p></div>
+<div lang="ja" class="col"><p id="section-7-2-ja">これは新しい考慮事項ではないことに注意してください。ネットワーク運用者はこれまでも、新しいソフトウェアやハードウェアで可能になるにつれて、高速な収束に対する顧客の新しい要件に対応するために、SPF遅延パラメーターを変更してきました。また、ある特定のSPFバックオフ遅延アルゴリズムを使用する実装を、別のアルゴリズムを使用する別の実装に段階的に置き換えてきた場合もあるでしょう。</p></div>
+</div></section><section><span id="section-8"></span><span id="impact-on-micro-loops-en"></span><span id="impact-on-micro-loops-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-impact-on-micro-loops-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-impact-on-micro-loops-en" class="section-name selfRef">Impact on Micro-loops</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-impact-on-micro-loops-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-impact-on-micro-loops-ja" class="section-name selfRef">マイクロループへの影響</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">Micro-loops during IGP convergence are due to a non-synchronized or
+non-ordered update of FIBs <span>[<a href="#RFC5715-en">RFC5715</a>]</span> <span>[<a href="#RFC6976-en">RFC6976</a>]</span> <span>[<a href="#SPF-MICRO-en">SPF-MICRO</a>]</span>.  FIBs are
+installed after multiple steps, such as flooding of the IGP event
+across the network, SPF wait time, SPF computation, FIB distribution
+across line cards, and FIB update.  This document only addresses the
+contribution from the SPF wait time.  This standardized procedure
+reduces the probability and/or duration of micro-loops when IGPs
+experience multiple temporally close events.  It does not prevent all
+micro-loops; however, it is beneficial and is less complex and costly
+to implement when compared to full solutions such as Distributed
+Tunnels <span>[<a href="#RFC5715-en">RFC5715</a>]</span>, Synchronized FIB Update <span>[<a href="#RFC5715-en">RFC5715</a>]</span>, or the ordered
+FIB approach <span>[<a href="#RFC6976-en">RFC6976</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">IGPの収束中のマイクロループは、FIBの更新が同期していないこと、あるいは順序付けられていないことが原因で発生します <span>[<a href="#RFC5715-ja">RFC5715</a>]</span> <span>[<a href="#RFC6976-ja">RFC6976</a>]</span> <span>[<a href="#SPF-MICRO-ja">SPF-MICRO</a>]</span>。FIBは、ネットワーク全体へのIGPイベントのフラッディング、SPFの待ち時間、SPF計算、ラインカードへのFIBの配布、FIBの更新といった複数のステップを経てインストールされます。この文書は、SPFの待ち時間による寄与のみを扱います。この標準化された手順は、IGPで時間的に近接した複数のイベントが発生した場合のマイクロループの確率や継続時間、あるいはその両方を減少させます。すべてのマイクロループを防ぐわけではありませんが、分散トンネル <span>[<a href="#RFC5715-ja">RFC5715</a>]</span>、同期FIB更新 <span>[<a href="#RFC5715-ja">RFC5715</a>]</span>、順序付きFIBアプローチ <span>[<a href="#RFC6976-ja">RFC6976</a>]</span>などの完全な解決策と比べて、有益であり、実装の複雑さとコストも小さくなります。</p></div>
+</div></section><section><span id="section-9"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">This document has no IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><section><span id="section-10"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-10-en" href="#section-10-en" class="section-number selfRef">10.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-10-ja" href="#section-10-ja" class="section-number selfRef">10.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10-1-en">The algorithm presented in this document does not compromise IGP
+security.  An attacker having the ability to generate IGP events
+would be able to delay the IGP convergence time.  The LONG_SPF_DELAY
+state may help mitigate the effects of Denial-of-Service (DoS)
+attacks generating many IGP events.</p></div>
+<div lang="ja" class="col"><p id="section-10-1-ja">この文書で提示するアルゴリズムは、IGPのセキュリティーを損なうものではありません。IGPイベントを生成する能力を持つ攻撃者は、IGPの収束時間を遅らせることができます。LONG_SPF_DELAY状態は、多数のIGPイベントを生成するサービス拒否（DoS）攻撃の影響を緩和するのに役立つ場合があります。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-11-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-11.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC8174-en">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-11.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="ISO10589-en">[ISO10589]</dt>
+<dd class="break">
+<span class="refAuthor">International Organization for Standardization</span>, <span></span><span class="refTitle">"Information technology -- Telecommunications and information exchange between systems -- Intermediate System to Intermediate System intra-domain routeing information exchange protocol for use in conjunction with the protocol for providing the connectionless-mode network service (ISO 8473)"</span>, <span class="refContent">Second Edition</span>, <span class="seriesInfo">ISO/IEC 10589:2002</span>, <time datetime="2002-11" class="refDate">November 2002</time>, </dd>
+<dt id="RFC2328-en">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC3209-en">[RFC3209]</dt>
+<dd class="break">
+<span class="refAuthor">Awduche, D.</span>, <span class="refAuthor">Berger, L.</span>, <span class="refAuthor">Gan, D.</span>, <span class="refAuthor">Li, T.</span>, <span class="refAuthor">Srinivasan, V.</span>, and <span class="refAuthor">G. Swallow</span>, <span></span><span class="refTitle">"RSVP-TE: Extensions to RSVP for LSP Tunnels"</span>, <span class="seriesInfo">RFC 3209</span>, <span class="seriesInfo">DOI 10.17487/RFC3209</span>, <time datetime="2001-12" class="refDate">December 2001</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3209">https://www.rfc-editor.org/info/rfc3209</a>&gt;</span>
+</dd>
+<dt id="RFC4271-en">[RFC4271]</dt>
+<dd class="break">
+<span class="refAuthor">Rekhter, Y.</span>, <span class="refAuthor">Li, T.</span>, and <span class="refAuthor">S. Hares</span>, <span></span><span class="refTitle">"A Border Gateway Protocol 4 (BGP-4)"</span>, <span class="seriesInfo">RFC 4271</span>, <span class="seriesInfo">DOI 10.17487/RFC4271</span>, <time datetime="2006-01" class="refDate">January 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4271">https://www.rfc-editor.org/info/rfc4271</a>&gt;</span>
+</dd>
+<dt id="RFC5036-en">[RFC5036]</dt>
+<dd class="break">
+<span class="refAuthor">Andersson, L.</span>, <span class="refAuthor">Minei, I.</span>, and <span class="refAuthor">B. Thomas</span>, <span></span><span class="refTitle">"LDP Specification"</span>, <span class="seriesInfo">RFC 5036</span>, <span class="seriesInfo">DOI 10.17487/RFC5036</span>, <time datetime="2007-10" class="refDate">October 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5036">https://www.rfc-editor.org/info/rfc5036</a>&gt;</span>
+</dd>
+<dt id="RFC5286-en">[RFC5286]</dt>
+<dd class="break">
+<span class="refAuthor">Atlas, A.</span> and <span class="refAuthor">A. Zinin</span>, <span></span><span class="refTitle">"Basic Specification for IP Fast Reroute: Loop-Free Alternates"</span>, <span class="seriesInfo">RFC 5286</span>, <span class="seriesInfo">DOI 10.17487/RFC5286</span>, <time datetime="2008-09" class="refDate">September 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5286">https://www.rfc-editor.org/info/rfc5286</a>&gt;</span>
+</dd>
+<dt id="RFC5340-en">[RFC5340]</dt>
+<dd class="break">
+<span class="refAuthor">Coltun, R.</span>, <span class="refAuthor">Ferguson, D.</span>, <span class="refAuthor">Moy, J.</span>, and <span class="refAuthor">A. Lindem</span>, <span></span><span class="refTitle">"OSPF for IPv6"</span>, <span class="seriesInfo">RFC 5340</span>, <span class="seriesInfo">DOI 10.17487/RFC5340</span>, <time datetime="2008-07" class="refDate">July 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5340">https://www.rfc-editor.org/info/rfc5340</a>&gt;</span>
+</dd>
+<dt id="RFC5715-en">[RFC5715]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span> and <span class="refAuthor">S. Bryant</span>, <span></span><span class="refTitle">"A Framework for Loop-Free Convergence"</span>, <span class="seriesInfo">RFC 5715</span>, <span class="seriesInfo">DOI 10.17487/RFC5715</span>, <time datetime="2010-01" class="refDate">January 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5715">https://www.rfc-editor.org/info/rfc5715</a>&gt;</span>
+</dd>
+<dt id="RFC6976-en">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="SPF-MICRO-en">[SPF-MICRO]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Decraene, B.</span>, and <span class="refAuthor">M. Horneffer</span>, <span></span><span class="refTitle">"Link State protocols SPF trigger and delay algorithm impact on IGP micro-loops"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-spf-uloop-pb-statement-07</span>, <time datetime="2018-05" class="refDate">May 2018</time>, </dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-11-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-11.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC8174-ja">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-11.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="ISO10589-ja">[ISO10589]</dt>
+<dd class="break">
+<span class="refAuthor">International Organization for Standardization</span>, <span></span><span class="refTitle">"Information technology -- Telecommunications and information exchange between systems -- Intermediate System to Intermediate System intra-domain routeing information exchange protocol for use in conjunction with the protocol for providing the connectionless-mode network service (ISO 8473)"</span>, <span class="refContent">Second Edition</span>, <span class="seriesInfo">ISO/IEC 10589:2002</span>, <time datetime="2002-11" class="refDate">November 2002</time>, </dd>
+<dt id="RFC2328-ja">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC3209-ja">[RFC3209]</dt>
+<dd class="break">
+<span class="refAuthor">Awduche, D.</span>, <span class="refAuthor">Berger, L.</span>, <span class="refAuthor">Gan, D.</span>, <span class="refAuthor">Li, T.</span>, <span class="refAuthor">Srinivasan, V.</span>, and <span class="refAuthor">G. Swallow</span>, <span></span><span class="refTitle">"RSVP-TE: Extensions to RSVP for LSP Tunnels"</span>, <span class="seriesInfo">RFC 3209</span>, <span class="seriesInfo">DOI 10.17487/RFC3209</span>, <time datetime="2001-12" class="refDate">December 2001</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3209">https://www.rfc-editor.org/info/rfc3209</a>&gt;</span>
+</dd>
+<dt id="RFC4271-ja">[RFC4271]</dt>
+<dd class="break">
+<span class="refAuthor">Rekhter, Y.</span>, <span class="refAuthor">Li, T.</span>, and <span class="refAuthor">S. Hares</span>, <span></span><span class="refTitle">"A Border Gateway Protocol 4 (BGP-4)"</span>, <span class="seriesInfo">RFC 4271</span>, <span class="seriesInfo">DOI 10.17487/RFC4271</span>, <time datetime="2006-01" class="refDate">January 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4271">https://www.rfc-editor.org/info/rfc4271</a>&gt;</span>
+</dd>
+<dt id="RFC5036-ja">[RFC5036]</dt>
+<dd class="break">
+<span class="refAuthor">Andersson, L.</span>, <span class="refAuthor">Minei, I.</span>, and <span class="refAuthor">B. Thomas</span>, <span></span><span class="refTitle">"LDP Specification"</span>, <span class="seriesInfo">RFC 5036</span>, <span class="seriesInfo">DOI 10.17487/RFC5036</span>, <time datetime="2007-10" class="refDate">October 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5036">https://www.rfc-editor.org/info/rfc5036</a>&gt;</span>
+</dd>
+<dt id="RFC5286-ja">[RFC5286]</dt>
+<dd class="break">
+<span class="refAuthor">Atlas, A.</span> and <span class="refAuthor">A. Zinin</span>, <span></span><span class="refTitle">"Basic Specification for IP Fast Reroute: Loop-Free Alternates"</span>, <span class="seriesInfo">RFC 5286</span>, <span class="seriesInfo">DOI 10.17487/RFC5286</span>, <time datetime="2008-09" class="refDate">September 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5286">https://www.rfc-editor.org/info/rfc5286</a>&gt;</span>
+</dd>
+<dt id="RFC5340-ja">[RFC5340]</dt>
+<dd class="break">
+<span class="refAuthor">Coltun, R.</span>, <span class="refAuthor">Ferguson, D.</span>, <span class="refAuthor">Moy, J.</span>, and <span class="refAuthor">A. Lindem</span>, <span></span><span class="refTitle">"OSPF for IPv6"</span>, <span class="seriesInfo">RFC 5340</span>, <span class="seriesInfo">DOI 10.17487/RFC5340</span>, <time datetime="2008-07" class="refDate">July 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5340">https://www.rfc-editor.org/info/rfc5340</a>&gt;</span>
+</dd>
+<dt id="RFC5715-ja">[RFC5715]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span> and <span class="refAuthor">S. Bryant</span>, <span></span><span class="refTitle">"A Framework for Loop-Free Convergence"</span>, <span class="seriesInfo">RFC 5715</span>, <span class="seriesInfo">DOI 10.17487/RFC5715</span>, <time datetime="2010-01" class="refDate">January 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5715">https://www.rfc-editor.org/info/rfc5715</a>&gt;</span>
+</dd>
+<dt id="RFC6976-ja">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="SPF-MICRO-ja">[SPF-MICRO]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Decraene, B.</span>, and <span class="refAuthor">M. Horneffer</span>, <span></span><span class="refTitle">"Link State protocols SPF trigger and delay algorithm impact on IGP micro-loops"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-spf-uloop-pb-statement-07</span>, <time datetime="2018-05" class="refDate">May 2018</time>, </dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">We would like to acknowledge Les Ginsberg, Uma Chunduri, Mike Shand,
+and Alexander Vainshtein for the discussions and comments related to
+this document.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">この文書に関する議論とコメントをくださったLes Ginsberg、Uma Chunduri、Mike Shand、Alexander Vainshteinに感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange Business Service</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange Business Service</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Hannes Gredler</div>
+<div class="author-org">RtBrick Inc.</div>
+<div class="author-email"><a href="mailto:hannes@rtbrick.com">hannes@rtbrick.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Hannes Gredler</div>
+<div class="author-org">RtBrick Inc.</div>
+<div class="author-email"><a href="mailto:hannes@rtbrick.com">hannes@rtbrick.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Acee Lindem</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">301 Midenhall Way</span></div>
+<div class="author-postal">
+<span class="locality">Cary</span>, <span class="region">NC</span> <span class="postal-code">27513</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:acee@cisco.com">acee@cisco.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Acee Lindem</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">301 Midenhall Way</span></div>
+<div class="author-postal">
+<span class="locality">Cary</span>, <span class="region">NC</span> <span class="postal-code">27513</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:acee@cisco.com">acee@cisco.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Pierre Francois</div>
+<div class="author-email"><a href="mailto:pfrpfr@gmail.com">pfrpfr@gmail.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Pierre Francois</div>
+<div class="author-email"><a href="mailto:pfrpfr@gmail.com">pfrpfr@gmail.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Chris Bowers</div>
+<div class="author-org">Juniper Networks, Inc.</div>
+<div class="author-postal"><span class="street-address">1194 N. Mathilda Ave.</span></div>
+<div class="author-postal">
+<span class="locality">Sunnyvale</span>, <span class="region">CA</span> <span class="postal-code">94089</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:cbowers@juniper.net">cbowers@juniper.net</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Chris Bowers</div>
+<div class="author-org">Juniper Networks, Inc.</div>
+<div class="author-postal"><span class="street-address">1194 N. Mathilda Ave.</span></div>
+<div class="author-postal">
+<span class="locality">Sunnyvale</span>, <span class="region">CA</span> <span class="postal-code">94089</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:cbowers@juniper.net">cbowers@juniper.net</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

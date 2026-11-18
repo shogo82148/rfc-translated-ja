@@ -486,6 +486,37 @@ sub handle_references($references) {
 my $content = slurp("src/rfcs/rfc$number.txt");
 my $meta = decode_json(slurp("src/rfcs/rfc$number.json"));
 
+# 原文 TXT 先頭のヘッダー（タイトル前の空行までの部分）から stream と発行日を読み取る
+my ($header) = $content =~ /\A(?:[ \t]*\n)*((?:[^\n]*\S[^\n]*\n)+)/;
+$header //= "";
+my $months = qr/January|February|March|April|May|June|July|August|September|October|November|December/;
+
+# stream: ヘッダー 1 行目の左側に書かれている（例: "Internet Research Task Force (IRTF)"）
+# 判定できなければ従来どおり IETF とする
+my $stream = "IETF";
+if ($header =~ /\A\s*(.*?)(?:\s{2,}|\n)/) {
+    my $first = $1;
+    if ($first =~ /\(IRTF\)|Internet Research Task Force/) {
+        $stream = "IRTF";
+    } elsif ($first =~ /\(IAB\)|Internet Architecture Board/) {
+        $stream = "IAB";
+    } elsif ($first =~ /^Independent Submission$/) {
+        $stream = "independent";
+    } elsif ($first =~ /^Editorial Stream$/) {
+        $stream = "editorial";
+    }
+}
+
+# 発行日: rfc-index（JSON）の pub_date は原文と食い違うことがあるので、
+# ヘッダー行末の "[日 ]月 年"（例: "August 2018", "1 April 1993"）を優先する
+# （日と月の間は空白 1 個に限る。左列の "BCP: 14" などを日と誤認しないため）
+my ($pub_day, $pub_month, $pub_year);
+if ($header =~ /(?:^|\s)(?:(\d{1,2}) )?($months) (\d{4})[ \t]*$/m) {
+    ($pub_day, $pub_month, $pub_year) = ($1, $2, $3);
+} elsif ($meta->{pub_date} && $meta->{pub_date} =~ /(?:($months) )?(\d+)/) {
+    ($pub_month, $pub_year) = ($1, $2);
+}
+
 # "---- Begin code block ----" と "---- End code block ----" で囲まれたコード（例: RFC 6386）は
 # 空行やページ区切りで分割されないように、先に取り出してプレースホルダーに置き換える
 $content =~ s{^[ ]*-{4} Begin code block -+\n(.*?)^[ ]*-{4} End code block -+$}{
@@ -742,14 +773,15 @@ if ($meta->{doi}) {
 # FRONT
 say $buf "  <front>";
 say $buf "    <title>" . escape($meta->{title}) . "</title>";
-say $buf '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="IETF"/>';
+say $buf '    <seriesInfo name="RFC" value="' . ($meta->{doc_id} =~ s/^RFC//r) . '" stream="' . $stream . '"/>';
 
-if ($meta->{pub_date} && $meta->{pub_date} =~ /(?:(January|February|March|April|May|June|July|August|September|October|November|December) )?(\d+)/) {
-    my $month = $1;
-    my $year = $2;
-    print $buf '    <date year="' . $year . '"';
-    if ($month) {
-        print $buf ' month="' . $month . '"';
+if ($pub_year) {
+    print $buf '    <date year="' . $pub_year . '"';
+    if ($pub_month) {
+        print $buf ' month="' . $pub_month . '"';
+    }
+    if ($pub_day) {
+        print $buf ' day="' . $pub_day . '"';
     }
     print $buf "/>\n";
 }

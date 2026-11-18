@@ -971,6 +971,14 @@ class HtmlWriter:
                     m = re.match(r'^(Section|Appendix|Figure|Table) (\S+)$', reftext)
                     if m:
                         a.text = self.section_label(m.group(1), m.group(2))
+                    # e.g. Section 2, Paragraph 3, Item 4 → セクション2、第3段落、項目4
+                    m = re.match(r'^(Section|Appendix) ([^,\s]+), Paragraph ([^,\s]+)(?:, Item ([^,\s]+))?$', reftext)
+                    if m:
+                        parts = [self.section_label(m.group(1), m.group(2)), self.ordinal_label('段落', m.group(3))]
+                        if m.group(4):
+                            # 訳文では「項目4」の書き方が多い
+                            parts.append('項目%s' % m.group(4))
+                        a.text = '、'.join(parts)
                 # 日本語訳では format="title" の derivedContent に英語の見出しが残っていることがあるので、訳文を優先する
                 use_content = self.lang == 'ja' and format == 'title' and content
                 if use_content:
@@ -1084,6 +1092,13 @@ class HtmlWriter:
         if self.lang == 'ja' and label in self.LABELS_JA:
             return '%s%s' % (self.LABELS_JA[label], section)
         return '%s %s' % (label, section)
+
+    # 段落の番号（e.g. 第3段落）。1.8.1 のような入れ子の番号は「段落1.8.1」とする
+    @staticmethod
+    def ordinal_label(label, num):
+        if num.isdigit():
+            return '第%s%s' % (num, label)
+        return '%s%s' % (label, num)
 
     # eref
     # <a href="https://..." class="eref">the text</a>

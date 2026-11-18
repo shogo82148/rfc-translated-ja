@@ -1124,11 +1124,16 @@ class HtmlWriter:
         if anchor and anchor != pn:
             h.append(build('span', id='%s-%s'%(anchor,self.lang)))
 
+        # 幅の広い表が隣の言語の列にはみ出さないよう、横スクロールできるラッパーで囲む
+        wrapper = build('div')
+        wrapper.set('class', 'table-wrapper')
+        h.append(wrapper)
+
         if pn:
             table = build('table', id='%s-%s'%(pn,self.lang))
         else:
             table = build('table')
-        h.append(table)
+        wrapper.append(table)
 
         if pn:
             # キャプション
@@ -1154,7 +1159,7 @@ class HtmlWriter:
                 self.inline_text_renderer(aa, name)
         for c in x:
             self.render1(table, c)
-        return table
+        return wrapper
 
     def render1_thead(self, h, x):
         thead = build('thead')

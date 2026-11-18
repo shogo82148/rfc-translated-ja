@@ -6,6 +6,7 @@ all: \
 	docs/rfc10087.html \
 	docs/rfc10082.html \
 	docs/rfc10080.html \
+	docs/rfc10079.html \
 	docs/rfc10078.html \
 	docs/rfc10075.html \
 	docs/rfc10073.html \
@@ -2149,6 +2150,10 @@ src/en/rfc10082.xml: src/rfcs/rfc10082.xml
 docs/rfc10080.html: src/en/rfc10080.xml src/rfcs/rfc10080.json src/ja/rfc10080.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 10080
 src/en/rfc10080.xml: src/rfcs/rfc10080.xml
+	cp $< $@
+docs/rfc10079.html: src/en/rfc10079.xml src/rfcs/rfc10079.json src/ja/rfc10079.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 10079
+src/en/rfc10079.xml: src/rfcs/rfc10079.xml
 	cp $< $@
 docs/rfc10078.html: src/en/rfc10078.xml src/rfcs/rfc10078.json src/ja/rfc10078.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 10078

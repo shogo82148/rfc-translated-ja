@@ -874,7 +874,8 @@ class HtmlWriter:
         section_id = None
         if num and numbered:
             if self.is_appendix(pn) and self.is_top_level_section(num):
-                num = 'Appendix %s' % num
+                # 日本語側は参照ラベルと同じく「付録A.」とする
+                num = ('付録%s' if self.lang == 'ja' else 'Appendix %s') % num
             section_id = '%s-%s' % (id_for_pn(pn), self.lang)
             a_number = build('a', id=section_id, href='#%s'%section_id)
             a_number.set('class', 'section-number selfRef')
@@ -965,6 +966,19 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
+                # 本文のない参照（derivedContent="Section 2.6"、"Figure 1" など）は日本語側で訳語にする
+                if self.lang == 'ja' and not content and reftext:
+                    m = re.match(r'^(Section|Appendix|Figure|Table) (\S+)$', reftext)
+                    if m:
+                        a.text = self.section_label(m.group(1), m.group(2))
+                    # e.g. Section 2, Paragraph 3, Item 4 → セクション2、第3段落、項目4
+                    m = re.match(r'^(Section|Appendix) ([^,\s]+), Paragraph ([^,\s]+)(?:, Item ([^,\s]+))?$', reftext)
+                    if m:
+                        parts = [self.section_label(m.group(1), m.group(2)), self.ordinal_label('段落', m.group(3))]
+                        if m.group(4):
+                            # 訳文では「項目4」の書き方が多い
+                            parts.append('項目%s' % m.group(4))
+                        a.text = '、'.join(parts)
                 # 日本語訳では format="title" の derivedContent に英語の見出しが残っていることがあるので、訳文を優先する
                 use_content = self.lang == 'ja' and format == 'title' and content
                 if use_content:
@@ -978,6 +992,7 @@ class HtmlWriter:
                 return a
         else:
             label = 'Section' if section[0].isdigit() else 'Appendix' if re.search(r'^[A-Z](\.|$)', section) else 'Part'
+            section_text = self.section_label(label, section)
             link = x.get('derivedLink')
             format  = x.get('sectionFormat')
             exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
@@ -999,13 +1014,13 @@ class HtmlWriter:
                     span.append(a1)
                     a1.tail = ']の'
                     a2 = build('a', href=link)
-                    a2.text = '%s %s' % (label, section)
+                    a2.text = section_text
                     span.append(a2)
                 else:
                     # e.g. Section x.y.z of [RFCxxxx]
                     a1 = build('a', href=link)
                     span.append(a1)
-                    a1.text = '%s %s' % (label, section)
+                    a1.text = section_text
                     a1.tail = ' of '
                     # 本文がある場合は e.g. Section x.y.z of the text [RFCxxxx]
                     self.render1_xref_content(span, x)
@@ -1025,7 +1040,7 @@ class HtmlWriter:
                 a1.tail = '], '
                 span.append(a1)
                 a2 = build('a', href=link)
-                a2.text = '%s %s' % (label, section)
+                a2.text = section_text
                 span.append(a2)
                 span.tail = x.tail
                 return span
@@ -1039,7 +1054,7 @@ class HtmlWriter:
                 a1.tail = '] ('
                 span.append(a1)
                 a2 = build('a', href=link)
-                a2.text = '%s %s' % (label, section)
+                a2.text = section_text
                 a2.tail = ')'
                 span.append(a2)
                 span.tail = x.tail
@@ -1068,6 +1083,22 @@ class HtmlWriter:
             a.tail = x.tail
             h.append(a)
             return a
+
+    # セクション・図・表の参照ラベル（e.g. Section 2.6, Figure 1）
+    # 日本語側では訳文の慣例に合わせて「セクション2.6」「付録A」「図1」「表1」とする。Part は訳語の慣例がないのでそのまま
+    LABELS_JA = { 'Section': 'セクション', 'Appendix': '付録', 'Figure': '図', 'Table': '表' }
+
+    def section_label(self, label, section):
+        if self.lang == 'ja' and label in self.LABELS_JA:
+            return '%s%s' % (self.LABELS_JA[label], section)
+        return '%s %s' % (label, section)
+
+    # 段落の番号（e.g. 第3段落）。1.8.1 のような入れ子の番号は「段落1.8.1」とする
+    @staticmethod
+    def ordinal_label(label, num):
+        if num.isdigit():
+            return '第%s%s' % (num, label)
+        return '%s%s' % (label, num)
 
     # eref
     # <a href="https://..." class="eref">the text</a>
@@ -1141,14 +1172,12 @@ class HtmlWriter:
             table.append(caption)
             a = build('a', href='#%s-%s'%(pn,self.lang))
             text = pn.split('-', 1)
-            if self.lang == 'ja':
-                if text[0] == 'table':
-                    text[0] = '表'
-                else:
-                    text[0] = text[0].title()
+            if len(text) == 2 and text[0] == 'table':
+                a.text = self.section_label('Table', text[1])
             else:
+                # 番号のない表（pn が section-... など）は従来どおり
                 text[0] = text[0].title()
-            a.text = ' '.join(text)
+                a.text = ' '.join(text)
             a.set('class', 'selfRef')
             caption.append(a)
             if name != None and name_slug:
@@ -1507,7 +1536,12 @@ class HtmlWriter:
         figure.append(caption)
         pn = x.get('pn')
         a1 = build('span')
-        a1.text = pn.replace('-', ' ', 1).title()
+        # 英語側は従来どおり pn 全体を title() する（e.g. figure-6a → Figure 6A）
+        text = pn.replace('-', ' ', 1).title().split(' ', 1)
+        if len(text) == 2 and text[0] == 'Figure':
+            a1.text = self.section_label(text[0], text[1])
+        else:
+            a1.text = ' '.join(text)
         caption.append(a1)
         if name != None:
             a1.tail = ':\n'

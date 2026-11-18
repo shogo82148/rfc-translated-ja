@@ -874,7 +874,8 @@ class HtmlWriter:
         section_id = None
         if num and numbered:
             if self.is_appendix(pn) and self.is_top_level_section(num):
-                num = 'Appendix %s' % num
+                # 日本語側は参照ラベルと同じく「付録A.」とする
+                num = ('付録%s' if self.lang == 'ja' else 'Appendix %s') % num
             section_id = '%s-%s' % (id_for_pn(pn), self.lang)
             a_number = build('a', id=section_id, href='#%s'%section_id)
             a_number.set('class', 'section-number selfRef')

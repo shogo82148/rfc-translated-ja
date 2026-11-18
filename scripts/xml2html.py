@@ -965,9 +965,9 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
-                # 本文のないセクション参照（derivedContent="Section 2.6" など）は日本語側で訳語にする
+                # 本文のない参照（derivedContent="Section 2.6"、"Figure 1" など）は日本語側で訳語にする
                 if self.lang == 'ja' and not content and reftext:
-                    m = re.match(r'^(Section|Appendix) (\S+)$', reftext)
+                    m = re.match(r'^(Section|Appendix|Figure|Table) (\S+)$', reftext)
                     if m:
                         a.text = self.section_label(m.group(1), m.group(2))
                 # 日本語訳では format="title" の derivedContent に英語の見出しが残っていることがあるので、訳文を優先する
@@ -1075,13 +1075,13 @@ class HtmlWriter:
             h.append(a)
             return a
 
-    # セクション参照のラベル（e.g. Section 2.6）
-    # 日本語側では訳文の慣例に合わせて「セクション2.6」「付録A」とする。Part は訳語の慣例がないのでそのまま
-    SECTION_LABELS_JA = { 'Section': 'セクション', 'Appendix': '付録' }
+    # セクション・図・表の参照ラベル（e.g. Section 2.6, Figure 1）
+    # 日本語側では訳文の慣例に合わせて「セクション2.6」「付録A」「図1」「表1」とする。Part は訳語の慣例がないのでそのまま
+    LABELS_JA = { 'Section': 'セクション', 'Appendix': '付録', 'Figure': '図', 'Table': '表' }
 
     def section_label(self, label, section):
-        if self.lang == 'ja' and label in self.SECTION_LABELS_JA:
-            return '%s%s' % (self.SECTION_LABELS_JA[label], section)
+        if self.lang == 'ja' and label in self.LABELS_JA:
+            return '%s%s' % (self.LABELS_JA[label], section)
         return '%s %s' % (label, section)
 
     # eref
@@ -1156,14 +1156,12 @@ class HtmlWriter:
             table.append(caption)
             a = build('a', href='#%s-%s'%(pn,self.lang))
             text = pn.split('-', 1)
-            if self.lang == 'ja':
-                if text[0] == 'table':
-                    text[0] = '表'
-                else:
-                    text[0] = text[0].title()
+            if len(text) == 2 and text[0] == 'table':
+                a.text = self.section_label('Table', text[1])
             else:
+                # 番号のない表（pn が section-... など）は従来どおり
                 text[0] = text[0].title()
-            a.text = ' '.join(text)
+                a.text = ' '.join(text)
             a.set('class', 'selfRef')
             caption.append(a)
             if name != None and name_slug:
@@ -1522,7 +1520,12 @@ class HtmlWriter:
         figure.append(caption)
         pn = x.get('pn')
         a1 = build('span')
-        a1.text = pn.replace('-', ' ', 1).title()
+        # 英語側は従来どおり pn 全体を title() する（e.g. figure-6a → Figure 6A）
+        text = pn.replace('-', ' ', 1).title().split(' ', 1)
+        if len(text) == 2 and text[0] == 'Figure':
+            a1.text = self.section_label(text[0], text[1])
+        else:
+            a1.text = ' '.join(text)
         caption.append(a1)
         if name != None:
             a1.tail = ':\n'

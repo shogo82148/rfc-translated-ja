@@ -124,6 +124,7 @@ argument-hint: <rfc-number>
 - BCP14 キーワードは `<bcp14>しなければなりません（MUST）</bcp14>` の形式にします（[bcp14.md](../../../bcp14.md)）。
   - 翻訳では、タグの中身を bcp14.md の一覧のどれかにします。動詞や助詞の一部はタグの外に出します（例: `しても<bcp14>よいです（MAY）</bcp14>`、`含めては<bcp14>なりません（MUST NOT）</bcp14>`、`である<bcp14>必要があります（MUST）</bcp14>`）
   - 「しなければならず」「してもよく」「してはならない」のような連用形・連体形はタグに入れられません。キーワードが 2 つ続く文は 2 文に分けるか、タグの外の言い回しを工夫します
+- 欧文と和文の間に半角スペースを入れません（例: `HTTPのQUERYメソッド`）。表示時は CSS の `text-autospace` で空きが入ります。
 - -er、-or、-ar、-y で終わる語のカタカナ表記は長音をつけます（セキュリティー、サーバー、パラメーターなど）。
 - 用語は [glossary.md](../../../glossary.md)（翻訳メモリー）と [.textlintrc.json](../../../.textlintrc.json) の辞書に従います。
 - 初出の専門用語は必要に応じて「認可サーバー（authorization server）」のように原語を併記します。
@@ -146,6 +147,7 @@ Python のコマンドは `venv` があれば `venv/bin/python` を使ってく�
 
 1. `scripts/check-translation.py N` — XML 構造と、要素ごとの BCP14 キーワード（`<bcp14>` タグ）が英語版と一致しているか確認します（構造エラーと `bcp14 mismatch` は必ず修正）。`UNTRANSLATED` と出た箇所は訳し漏れでないか確認し、レジストリー値や固有名詞など英語のままでよいもの以外は翻訳してください。
 2. `scripts/update-toc.pl` — 目次の `<xref>` のテキストを翻訳済みの見出しに合わせます。
+   続けて `scripts/remove-autospace.py N` で、欧文と和文の間に残った半角スペースを取り除きます。
 3. `npx textlint src/ja/rfcN.xml` — lint エラーを修正します。
 4. `scripts/register-rfc.py N` — `Makefile` と `docs/index.html` に登録します。TXT 形式の RFC では、`txt2xml.pl` のビルドルールと `update-english` ターゲットへの追加も行います。
 5. `make docs/rfcN.html` — HTML を生成します。TXT 形式の RFC では、`make -W src/rfcs/rfcN.txt docs/rfcN.html` として `src/en/rfcN.xml` も作り直し、TXT → パッチ → HTML の経路で生成できることを確認してください。

@@ -101,7 +101,7 @@ BCP14 キーワードは [bcp14.md](bcp14.md)、定型文は [boilerplate.md](bo
 |---|---|---|
 | client | クライアント | |
 | server | サーバー | サーバ |
-| user | ユーザー | 利用者（「HTTP の利用者」など、人を指す文脈では可） |
+| user | ユーザー | 利用者（「HTTPの利用者」など、人を指す文脈では可） |
 | end user | エンドユーザー | |
 | user agent | ユーザーエージェント | |
 | browser | ブラウザー | ブラウザ |

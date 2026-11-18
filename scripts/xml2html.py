@@ -965,6 +965,11 @@ class HtmlWriter:
                 # e.g. Table 1
                 a = build('a', href='#%s-%s'%(target, self.lang))
                 a.text = reftext
+                # 本文のないセクション参照（derivedContent="Section 2.6" など）は日本語側で訳語にする
+                if self.lang == 'ja' and not content and reftext:
+                    m = re.match(r'^(Section|Appendix) (\S+)$', reftext)
+                    if m:
+                        a.text = self.section_label(m.group(1), m.group(2))
                 # 日本語訳では format="title" の derivedContent に英語の見出しが残っていることがあるので、訳文を優先する
                 use_content = self.lang == 'ja' and format == 'title' and content
                 if use_content:
@@ -978,6 +983,7 @@ class HtmlWriter:
                 return a
         else:
             label = 'Section' if section[0].isdigit() else 'Appendix' if re.search(r'^[A-Z](\.|$)', section) else 'Part'
+            section_text = self.section_label(label, section)
             link = x.get('derivedLink')
             format  = x.get('sectionFormat')
             exptext = ("%s " % x.text.strip()) if (x.text and x.text.strip()) else ''
@@ -999,13 +1005,13 @@ class HtmlWriter:
                     span.append(a1)
                     a1.tail = ']の'
                     a2 = build('a', href=link)
-                    a2.text = '%s %s' % (label, section)
+                    a2.text = section_text
                     span.append(a2)
                 else:
                     # e.g. Section x.y.z of [RFCxxxx]
                     a1 = build('a', href=link)
                     span.append(a1)
-                    a1.text = '%s %s' % (label, section)
+                    a1.text = section_text
                     a1.tail = ' of '
                     # 本文がある場合は e.g. Section x.y.z of the text [RFCxxxx]
                     self.render1_xref_content(span, x)
@@ -1025,7 +1031,7 @@ class HtmlWriter:
                 a1.tail = '], '
                 span.append(a1)
                 a2 = build('a', href=link)
-                a2.text = '%s %s' % (label, section)
+                a2.text = section_text
                 span.append(a2)
                 span.tail = x.tail
                 return span
@@ -1039,7 +1045,7 @@ class HtmlWriter:
                 a1.tail = '] ('
                 span.append(a1)
                 a2 = build('a', href=link)
-                a2.text = '%s %s' % (label, section)
+                a2.text = section_text
                 a2.tail = ')'
                 span.append(a2)
                 span.tail = x.tail
@@ -1068,6 +1074,15 @@ class HtmlWriter:
             a.tail = x.tail
             h.append(a)
             return a
+
+    # セクション参照のラベル（e.g. Section 2.6）
+    # 日本語側では訳文の慣例に合わせて「セクション2.6」「付録A」とする。Part は訳語の慣例がないのでそのまま
+    SECTION_LABELS_JA = { 'Section': 'セクション', 'Appendix': '付録' }
+
+    def section_label(self, label, section):
+        if self.lang == 'ja' and label in self.SECTION_LABELS_JA:
+            return '%s%s' % (self.SECTION_LABELS_JA[label], section)
+        return '%s %s' % (label, section)
 
     # eref
     # <a href="https://..." class="eref">the text</a>

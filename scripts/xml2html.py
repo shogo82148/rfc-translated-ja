@@ -1199,6 +1199,17 @@ class HtmlWriter:
                 aa.set('class', 'selfRef')
                 caption.append(aa)
                 self.inline_text_renderer(aa, name)
+        elif name != None:
+            # pn がない（番号のない）表は表題だけをキャプションに出す
+            caption = build('caption')
+            table.append(caption)
+            if name_slug:
+                aa = build('a', href='#%s-%s'%(name_slug,self.lang))
+                aa.set('class', 'selfRef')
+                caption.append(aa)
+                self.inline_text_renderer(aa, name)
+            else:
+                self.inline_text_renderer(caption, name)
         for c in x:
             self.render1(table, c)
         return wrapper

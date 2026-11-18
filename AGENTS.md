@@ -28,6 +28,7 @@
 - TXT 原本から英語 XML を生成（パッチなし）: `scripts/txt2xml.pl --no-patch -o src/en/rfc<number>.xml <rfc-number>`
 - TXT 原本の RFC 1 件のパッチを作成・検証: `scripts/make-txt-patch.pl <rfc-number>`
 - 未翻訳の RFC を一覧: `scripts/list-untranslated.py [--order size|asc|desc] [--max-bytes N] [--format all|xml|txt]`
+- 欧文と和文の間の半角スペースを削除: `scripts/remove-autospace.py [<rfc-number>]`
 - 翻訳の XML 構造チェック: `scripts/check-translation.py [--strict] <rfc-number>`
 - 翻訳済み RFC を `Makefile` と `docs/index.html` に登録: `scripts/register-rfc.py <rfc-number>`
 - RFC を 1 件翻訳する手順: `.claude/skills/translate-rfc/SKILL.md`（GitHub Actions の `translate` ワークフローからも使用）
@@ -59,6 +60,11 @@
 
 - **文体**: すべての日本語訳は「ですます調」で統一してください。「である」「ではある」などの文語形は避けてください。
 - **例外**: 複雑な修飾句内など、文法上必要な場合のみ「である」の使用を認めます。
+
+### 欧文と和文の間の空白
+
+- 欧文（英数字）と和文の間に半角スペースを入れないでください（例: `HTTPのQUERYメソッド`、`<xref target="RFC9110" section="4.1" .../>で定義`）。表示時は CSS の `text-autospace` で自動的に空きが入ります。
+- 入ってしまったスペースは `scripts/remove-autospace.py [<rfc-number>]` で取り除けます。`<artwork>`、`<sourcecode>`、`<tt>` の中身は変更しません。
 
 ### BCP14 キーワードのタグ形式
 

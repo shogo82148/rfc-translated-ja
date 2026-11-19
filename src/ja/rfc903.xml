@@ -1,0 +1,145 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="903" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc903" rel="alternate"/>
+  <front>
+    <title>逆アドレス解決プロトコル</title>
+    <seriesInfo name="RFC" value="903" stream="IETF"/>
+    <author fullname="Ross Finlayson" initials="R." surname="Finlayson">
+      <organization showOnFrontPage="true">Stanford University</organization>
+      <address/>
+    </author>
+    <author fullname="Timothy Mann" initials="T." surname="Mann">
+      <organization showOnFrontPage="true">Stanford University</organization>
+      <address/>
+    </author>
+    <author fullname="Jeffrey Mogul" initials="J." surname="Mogul">
+      <organization showOnFrontPage="true">Stanford University</organization>
+      <address/>
+    </author>
+    <author fullname="Marvin Theimer" initials="M." surname="Theimer">
+      <organization showOnFrontPage="true">Stanford University</organization>
+      <address/>
+    </author>
+    <date year="1984" month="June"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このRFCは、ワークステーションがハードウェアアドレス（たとえば、接続している物理ネットワークのアドレス）しか知らないときに、自分のプロトコルアドレス（たとえば、インターネットアドレス）を動的に見つける方法を提案します。</t>
+        <t indent="0" pn="section-boilerplate.1.2">このRFCは、ARPAインターネットコミュニティーのためのプロトコルを提案し、改善のための議論と提案を求めるものです。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-i-introduction">I. はじめに</name>
+      <t indent="0" pn="section-unnumbered-1-1">ディスクレスワークステーションのようなネットワークホストは、起動時に自分のプロトコルアドレスを知らないことがよくあります。知っているのはハードウェアインターフェイスのアドレスだけということが多いのです。IPのような上位層のプロトコルを使って通信するには、何らかの外部の情報源から自分のプロトコルアドレスを見つけ出さなければなりません。問題は、そのための標準的な仕組みがないことです。</t>
+      <t indent="0" pn="section-unnumbered-1-2">Plummerの「アドレス解決プロトコル（Address Resolution Protocol、ARP）」<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>は、これと相補的な問題、つまりホストのプロトコルアドレスからそのハードウェアアドレスを解決する問題を解くために設計されています。このRFCは「逆アドレス解決プロトコル（Reverse Address Resolution Protocol、RARP）」を提案します。ARPと同じく、イーサネットのようなブロードキャスト媒体を前提とします。</t>
+    </section>
+    <section anchor="design-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-ii-design-considerations">II. 設計上の考慮事項</name>
+      <t indent="0" pn="section-unnumbered-2-1">RARPプロトコルの設計にあたっては、次の考慮事項を指針としました。</t>
+      <ol spacing="normal" type="A" indent="adaptive" start="1" pn="section-unnumbered-2-2">
+        <li pn="section-unnumbered-2-2.1">
+          <t indent="0" pn="section-unnumbered-2-2.1.1">ARPとRARPは異なる操作です。ARPは、すべてのホストが自分自身のハードウェアアドレスとプロトコルアドレス（複数の場合もあります）の対応付けを知っていることを前提とします。他のホストについて集めた情報は、小さなキャッシュに蓄積します。すべてのホストは対等であり、クライアントとサーバーの区別はありません。</t>
+          <t indent="0" pn="section-unnumbered-2-2.1.2">一方、RARPでは、1台以上のサーバーホストが、ハードウェアアドレスからプロトコルアドレスへの対応付けのデータベースを保持し、クライアントホストからの要求に応答する必要があります。</t>
+        </li>
+        <li pn="section-unnumbered-2-2.2">前述のとおり、RARPではサーバーホストが大きなデータベースを保持する必要があります。そのようなデータベースをホストのオペレーティングシステムのカーネル内に保持することは望ましくなく、場合によっては不可能です。したがって、ほとんどの実装では、カーネル外のプログラムと何らかの形でやり取りする必要があるでしょう。</li>
+        <li pn="section-unnumbered-2-2.3">実装の容易さと、既存のホストソフトウェアへの影響を最小限にすることが重要です。参加するつもりがあるかどうかにかかわらず、すべてのホストのソフトウェアに変更を要求するようなプロトコルを設計するのは誤りでしょう。</li>
+        <li pn="section-unnumbered-2-2.4">オーバーヘッドと開発コストを最小限にするために、既存のソフトウェアとコードを共有できる可能性を残しておくことが望ましいです。</li>
+      </ol>
+    </section>
+    <section anchor="the-proposed-protocol" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-iii-the-proposed-protocol">III. 提案するプロトコル</name>
+      <t indent="0" pn="section-unnumbered-3-1">RARPは、データリンクレベルの独立したプロトコルとして規定することを提案します。たとえば、使用する媒体がイーサネットであれば、RARPパケットはARPとは異なるEthertype（まだ割り当てられていません）を持つことになります。これは、ARPとRARPが根本的に異なる2つの操作であり、すべてのホストが等しくサポートするわけではないことを踏まえたものです。既存のシステムへの影響は最小限に抑えられます。既存のARPサーバーがRARPパケットによって混乱することはありません。また、これによってRARPは、ハードウェアアドレスを任意の上位層プロトコルのアドレスに対応付けるために使える汎用的な機能になります。</t>
+      <t indent="0" pn="section-unnumbered-3-2">この方式は、RARPクライアントホストにとっては最も単純な実装になりますが、RARPサーバーホストにとっては最も困難が多いものになります。しかし、4.2BSD Unix向けに考えられる2つの実装の概略を示した<xref target="two-example-implementations-for-4.2bsd-unix" format="default" sectionFormat="of" derivedContent="Appendix A"/>からわかるように、これらの困難は克服できるはずです。</t>
+      <t indent="0" pn="section-unnumbered-3-3">RARPは、ARPと同じパケット形式を使います。すなわち、次のとおりです。</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-unnumbered-3-4">
+        <dt pn="section-unnumbered-3-4.1">ar$hrd（ハードウェアアドレス空間）-</dt>
+        <dd pn="section-unnumbered-3-4.2">16ビット</dd>
+        <dt pn="section-unnumbered-3-4.3">ar$pro（プロトコルアドレス空間）-</dt>
+        <dd pn="section-unnumbered-3-4.4">16ビット</dd>
+        <dt pn="section-unnumbered-3-4.5">ar$hln（ハードウェアアドレスの長さ）-</dt>
+        <dd pn="section-unnumbered-3-4.6">8ビット</dd>
+        <dt pn="section-unnumbered-3-4.7">ar$pln（プロトコルアドレスの長さ）-</dt>
+        <dd pn="section-unnumbered-3-4.8">8ビット</dd>
+        <dt pn="section-unnumbered-3-4.9">ar$op（オペコード）-</dt>
+        <dd pn="section-unnumbered-3-4.10">16ビット</dd>
+        <dt pn="section-unnumbered-3-4.11">ar$sha（送信元ハードウェアアドレス）-</dt>
+        <dd pn="section-unnumbered-3-4.12">nバイト。nはar$hlnフィールドの値です。</dd>
+        <dt pn="section-unnumbered-3-4.13">ar$spa（送信元プロトコルアドレス）-</dt>
+        <dd pn="section-unnumbered-3-4.14">mバイト。mはar$plnフィールドの値です。</dd>
+        <dt pn="section-unnumbered-3-4.15">ar$tha（ターゲットハードウェアアドレス）-</dt>
+        <dd pn="section-unnumbered-3-4.16">nバイト</dd>
+        <dt pn="section-unnumbered-3-4.17">ar$tpa（ターゲットプロトコルアドレス）-</dt>
+        <dd pn="section-unnumbered-3-4.18">mバイト</dd>
+      </dl>
+      <t indent="0" pn="section-unnumbered-3-5">ar$hrd、ar$pro、ar$hln、ar$plnは、通常のARPと同じです（<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>を参照してください）。</t>
+      <t indent="0" pn="section-unnumbered-3-6">たとえば、「ハードウェア」アドレスが48ビットのイーサネットアドレスで、「プロトコル」アドレスが32ビットのインターネットアドレスだとします。つまり、既知のイーサネットアドレスに対応するインターネットアドレスを求めたいとします。この場合、各RARPパケットでは、ar$hrd = 1（イーサネット）、ar$pro = 10進数で2048（IPパケットのEthertype）、ar$hln = 6、ar$pln = 4となります。</t>
+      <t indent="0" pn="section-unnumbered-3-7">オペコードは3（'request reverse'、逆要求）と4（'reply reverse'、逆応答）の2つです。オペコード1または2は<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>と同じ意味を持ち、そのようなオペコードを持つパケットは通常のARPのコードに渡してもかまいません。それ以外のオペコードを持つパケットは未定義です。ARPと同様に、「見つからない」パケットや「エラー」パケットはありません。多くのRARPサーバーが自由に要求に応答できるからです。RARP要求パケットの送信者は、妥当な時間内にその要求に対する応答を受信しなければ、タイムアウトすべきです。</t>
+      <t indent="0" pn="section-unnumbered-3-8">RARPパケットのar$sha、ar$spa、$ar$tha、ar$tpaの各フィールドは、次のように解釈します。</t>
+      <t indent="0" pn="section-unnumbered-3-9">オペコードが3（'request reverse'）の場合：</t>
+      <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-unnumbered-3-10">
+        <li pn="section-unnumbered-3-10.1">
+          <t indent="0" pn="section-unnumbered-3-10.1.1">ar$shaは、パケットの送信者のハードウェアアドレスです。</t>
+        </li>
+        <li pn="section-unnumbered-3-10.2">
+          <t indent="0" pn="section-unnumbered-3-10.2.1">ar$spaは未定義です。</t>
+        </li>
+        <li pn="section-unnumbered-3-10.3">
+          <t indent="0" pn="section-unnumbered-3-10.3.1">ar$thaは、「ターゲット」のハードウェアアドレスです。</t>
+          <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-unnumbered-3-10.3.2">
+            <li pn="section-unnumbered-3-10.3.2.1">
+              <t indent="0" pn="section-unnumbered-3-10.3.2.1.1">送信者が自分自身のプロトコルアドレスを求めたい場合、これはar$shaと同じく、送信者のハードウェアアドレスになります。</t>
+            </li>
+          </ul>
+        </li>
+        <li pn="section-unnumbered-3-10.4">
+          <t indent="0" pn="section-unnumbered-3-10.4.1">ar$tpaは未定義です。</t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-unnumbered-3-11">オペコードが4（'reply reverse'）の場合：</t>
+      <ul empty="true" bare="false" indent="3" spacing="normal" pn="section-unnumbered-3-12">
+        <li pn="section-unnumbered-3-12.1">
+          <t indent="0" pn="section-unnumbered-3-12.1.1">ar$shaは、応答者（応答パケットの送信者）のハードウェアアドレスです。</t>
+        </li>
+        <li pn="section-unnumbered-3-12.2">
+          <t indent="0" pn="section-unnumbered-3-12.2.1">ar$spaは、応答者のプロトコルアドレスです（下記の注を参照してください）。</t>
+        </li>
+        <li pn="section-unnumbered-3-12.3">
+          <t indent="0" pn="section-unnumbered-3-12.3.1">ar$thaは、ターゲットのハードウェアアドレスであり、要求で与えられたものと同じであるべきです。</t>
+        </li>
+        <li pn="section-unnumbered-3-12.4">
+          <t indent="0" pn="section-unnumbered-3-12.4.1">ar$tpaは、ターゲットのプロトコルアドレス、つまり求めているアドレスです。</t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-unnumbered-3-13">オペコード4のパケットのar$spaに応答者のプロトコル（アドレス）を入れるという要件は、純粋に利便性のためのものであることに注意してください。たとえば、あるシステムがARPとRARPの両方を使う場合、有効なプロトコルアドレスとハードウェアアドレスの組（ar$spa、ar$sha）が含まれていれば、その後のARP要求が不要になるかもしれません。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-4">
+      <name slugifiedName="name-iv-references">IV. 参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>An Ethernet Address Resolution Protocol</title>
+          <author fullname="D. Plummer" initials="D." surname="Plummer"/>
+          <date year="1982" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="826"/>
+        <refcontent>MIT-LCS</refcontent>
+      </reference>
+    </references>
+    <section anchor="two-example-implementations-for-4.2bsd-unix" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-appendix-a-two-example-implementations-for-4.2bsd-unix">付録A. 4.2BSD Unix向けの2つの実装例</name>
+      <t indent="0" pn="section-unnumbered-5-1">次の実装の概略は、4.2BSDでRARPサーバーを実装するための2つの異なる方式を示すものです。</t>
+      <ol spacing="normal" type="A" indent="adaptive" start="1" pn="section-unnumbered-5-2">
+        <li pn="section-unnumbered-5-2.1">データリンクレベルのパケットへのアクセスをカーネル外に提供する。RARPサーバーは完全にカーネルの外で実装し、カーネルとのやり取りはRARPパケットの受信と送信のためだけに行います。これらのパケットへの適切なアクセスを提供するために、カーネルを変更する必要があります。現在の4.2カーネルでは、IPパケットへのアクセスしか許していません。この機能を提供する既存の仕組みの1つに、CMUの「パケットフィルター」疑似ドライバーがあります。これは、CMUとスタンフォードで、同じような「ユーザーレベル」のネットワークサーバーの実装に使われて成功を収めています。</li>
+        <li pn="section-unnumbered-5-2.2">
+          <t indent="0" pn="section-unnumbered-5-2.2.1">カーネル内にデータベースのエントリーのキャッシュを保持する。RARPサーバーの完全なデータベースは、ユーザープロセスがカーネルの外で保持します。RARPサーバー自体はカーネル内に直接実装し、応答には小さなデータベースエントリーのキャッシュを使います。このキャッシュは、順方向のARPで使うものと同じでもかまいません。</t>
+          <t indent="0" pn="section-unnumbered-5-2.2.2">キャッシュは、2つの新しいioctlによって実際のRARPデータベースから埋められます（これらはSIOCIFADDRと同様に、特定のソケットには実際には関連付けられていません）。1つは「変換すべきものが現れるまでスリープし、その要求をユーザープロセスに渡す」ことを意味し、もう1つは「この変換をカーネルの表に登録する」ことを意味します。したがって、カーネルはキャッシュ内にエントリーを見つけられなかったとき、要求を（グローバルな）キューに入れてwakeup()を行います。1つ目のioctlの実装は、sleep()してから、このキューの先頭の項目を取り出してユーザープロセスに返すというものです。カーネルは、ユーザープロセスが応答するまで割り込みレベルで待ち続けることはできないので、あきらめる（そして、要求元のホストが1秒後に要求パケットを再送すると想定する）か、2つ目のioctlが要求のコピーをカーネルに戻してきた場合に、その時点で応答を組み立てて送信するかのどちらかを行えます。</t>
+        </li>
+      </ol>
+    </section>
+  </back>
+</rfc>

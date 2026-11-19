@@ -1,0 +1,183 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="1051" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1051" rel="alternate"/>
+  <front>
+    <title>ARCNETネットワーク上でIPデータグラムとARPパケットを伝送するための標準</title>
+    <seriesInfo name="RFC" value="1051" stream="IETF"/>
+    <author fullname="P. Prindeville" initials="P." surname="Prindeville">
+      <organization showOnFrontPage="true">McGill University</organization>
+      <address/>
+    </author>
+    <date year="1988" month="March"/>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このRFCは、インターネットコミュニティーのための標準プロトコルを規定します。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-unnumbered-1-1">このRFCは、インターネットプロトコル（IP）<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>とアドレス解決プロトコル（ARP）<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>のデータグラムをARCNET<xref target="ref-3" format="default" sectionFormat="of" derivedContent="3"/>上でカプセル化する標準の方法を規定します。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-unnumbered-2-1">設備と情報を惜しみなく提供してくださったMcGill University Computing CentreのRobert CraigとDatapoint CorporationのBruce Hughesに感謝します。また、有益なアイデアとコメントをくださったPCIPメーリングリストの読者の皆さんにも感謝します。</t>
+    </section>
+    <section anchor="frame-format" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-frame-format">フレーム形式</name>
+      <t indent="0" pn="section-unnumbered-3-1">IPとARPのデータグラムは、標準のARCNETパケットで送信します。Datapoint Corporationの要求に従い、データフィールドの最初のオクテットはネットワーク層のプロトコル識別（Datapointの用語では「システムコード（system code）」）のために予約されており、IPの場合は240（16進数でF0）、ARPの場合は241（16進数でF1）という値を含まなければなりません。ARCNETのARPハードウェアアドレスタイプは7です<xref target="ref-9" format="default" sectionFormat="of" derivedContent="9"/>。</t>
+      <t indent="0" pn="section-unnumbered-3-2">ARCNETは、システムコードを含めて1～253オクテットのデータを含むパケット形式（通常形式）と、257～508オクテットのデータを含むパケット形式（拡張形式）をサポートしています。「禁止」されているデータ長の範囲（254～256）があることに注意してください。この範囲に入るIPパケットは、拡張パケットの最小サイズである257データオクテットを満たすように、（ゼロのオクテットで）パディングすべきです。このパディングはIPパケットの一部ではなく、IPヘッダーの全長フィールドには含まれません。</t>
+      <t indent="0" pn="section-unnumbered-3-3">拡張パケット形式をサポートしないホストがあるネットワークでは、IPの最大転送単位（MTU）を253に設定すべきです。ただし、実装者には拡張パケット形式での動作モードをサポートすることが推奨されます。</t>
+      <t indent="0" pn="section-unnumbered-3-4">ARCNETの最大パケット長はインターネットのデフォルトのMTUよりも小さいので、実装はIPレベルの断片化と再構築をサポートすることが強く推奨されます。これをサポートしないホストは、TCPの最大セグメントサイズオプション<xref target="ref-4" format="default" sectionFormat="of" derivedContent="4"/>を使うなどして、他のホストが断片化されたパケットを送らないようにする手段を講じるべきです。</t>
+      <t indent="0" pn="section-unnumbered-3-5">フレーム形式は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3-6"><![CDATA[
+            Normal Packet               Extended Packet
+          +----------------+          +----------------+
+          |     ALERT*     |          |     ALERT*     |
+          +----------------+          +----------------+
+          |      SOH (1)   |          |      SOH (1)   |
+          +----------------+          +----------------+
+          |      SID       |          |      SID       |
+          +----------------+          +----------------+
+          |                |          |                |
+          +      DID       +          +      DID       +
+          |                |          |                |
+          +----------------+          +----------------+
+          |     COUNT      |          |      NUL (0)   |
+          +----------------+          +                +
+          |  SYSTEM CODE   |          |     COUNT      |
+          +----------------+          +----------------+
+          |                |          |  SYSTEM CODE   |
+          :      DATA      :          +----------------+
+          |                |          |                |
+          +----------------+          :      DATA      :
+          |                |          |                |
+          +       CRC      +          +----------------+
+          |                |          |                |
+          +----------------+          +       CRC      +
+                                      |                |
+                                      +----------------+
+]]></artwork>
+      <dl spacing="compact" newline="false" indent="13" pn="section-unnumbered-3-7">
+        <dt pn="section-unnumbered-3-7.1">ALERT*:</dt>
+        <dd pn="section-unnumbered-3-7.2">フレームの始まりを示す6つのマークビット。</dd>
+        <dt pn="section-unnumbered-3-7.3">SID:</dt>
+        <dd pn="section-unnumbered-3-7.4">送信者のノードID。</dd>
+        <dt pn="section-unnumbered-3-7.5">DID:</dt>
+        <dd pn="section-unnumbered-3-7.6">受信者のノードID（信頼性のために繰り返す）。</dd>
+        <dt pn="section-unnumbered-3-7.7">COUNT:</dt>
+        <dd pn="section-unnumbered-3-7.8">データとシステムコードの長さ（1の補数）。</dd>
+        <dt pn="section-unnumbered-3-7.9">SYSTEM CODE:</dt>
+        <dd pn="section-unnumbered-3-7.10">IPは240、ARPは241（10進数）。</dd>
+        <dt pn="section-unnumbered-3-7.11">DATA:</dt>
+        <dd pn="section-unnumbered-3-7.12">IPパケットかARPパケットのどちらかで、長さが254～256オクテットにならないようにNULでパディングしたもの。</dd>
+        <dt pn="section-unnumbered-3-7.13">CRC:</dt>
+        <dd pn="section-unnumbered-3-7.14">巡回冗長検査（CRC-16）。</dd>
+      </dl>
+    </section>
+    <section anchor="address-mappings" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-address-mappings">アドレスのマッピング</name>
+      <t indent="0" pn="section-unnumbered-4-1">32ビットのインターネットアドレスから8ビットのARCNETアドレスへのマッピングはいくつかの方法で行えますが、推奨するのは次の方法です。</t>
+      <section anchor="host-number-extraction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4.1">
+        <name slugifiedName="name-host-number-extraction">ホスト番号の抽出</name>
+        <t indent="0" pn="section-unnumbered-4.1-1">最も簡単なのは、インターネットアドレスのホスト番号部分の下位8ビットを、そのホストのノードIDとして使うことです。これは、Experimental Ethernet<xref target="ref-5" format="default" sectionFormat="of" derivedContent="5"/>とProNET-10<xref target="ref-6" format="default" sectionFormat="of" derivedContent="6"/>で実装されています。</t>
+      </section>
+      <section anchor="dynamic-discovery" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4.2">
+        <name slugifiedName="name-dynamic-discovery">動的な発見</name>
+        <t indent="0" pn="section-unnumbered-4.2-1">32ビットのインターネットアドレスと8ビットのARCNETノードIDの間のマッピングは、ARPによって行うこともできます。インターネットのネットワークの中には、インターネットアドレスが任意に割り当てられるものもあります。システムどうしが相互運用できるように、ARPをサポートするすべての実装は、ARPを無効にして、上記のホスト番号抽出によるアドレスマッピングの方法を使う手段を備えなければなりません。</t>
+        <t indent="0" pn="section-unnumbered-4.2-2">ARPの使用は任意です。ただし、プロキシーARPのシナリオ<xref target="ref-8" format="default" sectionFormat="of" derivedContent="8"/>のように、サブネット化<xref target="ref-7" format="default" sectionFormat="of" derivedContent="7"/>をサポートしないIPの実装を使う場合には、ARPが望ましいです。</t>
+      </section>
+    </section>
+    <section anchor="broadcast-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-broadcast-address">ブロードキャストアドレス</name>
+      <t indent="0" pn="section-unnumbered-5-1">ブロードキャストのインターネットアドレス（ホスト部が2進数ですべて1であるネットワーク上のアドレス）は、ブロードキャストノードID 0にマッピングすべきです。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Internet Protocol</title>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1981" month="September"/>
+        </front>
+        <seriesInfo name="RFC" value="791"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>An Ethernet Address Resolution Protocol</title>
+          <author fullname="D. Plummer" initials="D." surname="Plummer"/>
+          <date year="1982" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="826"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>ARCNET Designer's Handbook</title>
+          <date year="1983"/>
+        </front>
+        <refcontent>Order Number 61610, Datapoint Corporation</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>The TCP Maximum Segment Size Option and Related Topics</title>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1983" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="879"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>A Standard for the Transmission of IP Datagrams over Experimental Ethernet Networks</title>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1984" month="April"/>
+        </front>
+        <seriesInfo name="RFC" value="895"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-6" quoteTitle="true" derivedAnchor="6">
+        <front>
+          <title>ProNET-10 Model p1300 IBM PC Interface System Installation and Programming Guide</title>
+          <date year="1986" month="July"/>
+        </front>
+        <refcontent>Version 4.0, Proteon Inc.</refcontent>
+      </reference>
+      <reference anchor="ref-7" quoteTitle="true" derivedAnchor="7">
+        <front>
+          <title>Internet Standard Subnetting Procedure</title>
+          <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1984" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="950"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-8" quoteTitle="true" derivedAnchor="8">
+        <front>
+          <title>Using ARP to Implement Transparent Subnet Gateways</title>
+          <author fullname="S. Carl-Mitchell" initials="S." surname="Carl-Mitchell"/>
+          <author fullname="J.S. Quarterman" initials="J.S." surname="Quarterman"/>
+          <date year="1987" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1027"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+      <reference anchor="ref-9" quoteTitle="true" derivedAnchor="9">
+        <front>
+          <title>Assigned Numbers</title>
+          <author fullname="J. Reynolds" initials="J." surname="Reynolds"/>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1987" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="1010"/>
+        <refcontent>Network Information Center, SRI</refcontent>
+      </reference>
+    </references>
+  </back>
+</rfc>

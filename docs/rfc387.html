@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 387: ネットワークグラフィックスプロトコルレベル0の実装経験（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>UNKNOWN</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc387.html">RFC 387</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc387">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc387">Info page</a>
+</dd>
+<div id="updated-by">このRFCは更新されました。更新内容は<span>RFC401</span>です。</div>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 387</h1>
+<h1 id="title-en">Some experiences in implementing Network Graphics Protocol Level 0</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 387</h1>
+<h1 id="title-ja">ネットワークグラフィックスプロトコルレベル0の実装経験</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">We are in the process of implementing NGP-0 at several hosts.  For
+the time being, we are forced to consider the remote host as the "last
+intelligent machine". We are attempting to translate NGP-0 to a machine
+dependent code for the Computek display. The remote hosts are CCN, UCSD,
+and soon RANDCSG. More comments about that work will be made in
+subsequent RFC's. The concern of this RFC is twofold:</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">私たちは、いくつかのホストでNGP-0を実装しているところです。当面は、リモートホストを「最後の知的なマシン（last intelligent machine）」とみなさざるを得ません。私たちは、NGP-0をComputekディスプレイ用のマシン依存のコードに変換しようとしています。リモートホストはCCN、UCSD、そして近いうちにRANDCSGです。その作業については、今後のRFCでさらに述べる予定です。このRFCの関心事は次の2つです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-abstract-2-en">
+<li id="section-abstract-2.1-en">Clarify the coordinate number system.</li>
+        <li id="section-abstract-2.2-en">
+          <p id="section-abstract-2.2.1-en">Puzzle over how to do TEXTR string without either:</p>
+<ol type="a" id="section-abstract-2.2.2-en">
+<li id="section-abstract-2.2.2.1-en">Reading current position and saving it while the text string
+is being output, or</li>
+            <li id="section-abstract-2.2.2.2-en">Monitoring the beam position for each NGP command and saving
+this information somewhere.</li>
+          </ol>
+</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-abstract-2-ja">
+<li id="section-abstract-2.1-ja">座標の数値体系を明確にすること。</li>
+        <li id="section-abstract-2.2-ja">
+          <p id="section-abstract-2.2.1-ja">次のどちらも行わずに、TEXTR文字列をどのように実行するかを検討すること。</p>
+<ol type="a" id="section-abstract-2.2.2-ja">
+<li id="section-abstract-2.2.2.1-ja">現在位置を読み取り、テキスト文字列を出力している間それを保存しておくこと</li>
+            <li id="section-abstract-2.2.2.2-ja">NGPコマンドごとにビームの位置を監視し、その情報をどこかに保存しておくこと</li>
+          </ol>
+</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-3-en">An appendix to this RFC will outline the conversion from the NGP
+coordinate system to the floating point arithmetic on the PDP-1O.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-3-ja">このRFCの付録では、NGPの座標系からPDP-1Oの浮動小数点演算への変換の概要を示します。</p></div>
+</div></section><section><span id="section-unnumbered-1"></span><span id="the-coordinate-data-en"></span><span id="the-coordinate-data-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-coordinate-data-en" lang="en">
+<span id="section-unnumbered-1-en"></span><a href="#name-the-coordinate-data-en" class="section-name selfRef">The Coordinate Data</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-coordinate-data-ja" lang="ja">
+<span id="section-unnumbered-1-ja"></span><a href="#name-the-coordinate-data-ja" class="section-name selfRef">座標データ</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-1-en">The document for NGP-0 (RFC 292) does not say specifically that the
+format of coordinate data is the same whether the command is in absolute
+or relative mode. The only thing stated is that they are in two's
+complement notation with the leftmost bit being the sign bit.  It is
+possible to use two different 2's complement schemes:</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-1-ja">NGP-0の文書（RFC 292）は、コマンドが絶対モードであっても相対モードであっても座標データの形式が同じであるとは明記していません。書かれているのは、座標データが2の補数表記で、最も左のビットが符号ビットであるということだけです。2の補数の方式としては、次の2つを使うことができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-unnumbered-1-2-en"><pre tabindex="0" role="region" aria-label="Figure">
+           System A                            System B
+    (Absolute Coordinates)              (Relative Coordinates)
+
+  -1 -2 -3                 -16         0 -1 -2                 -15
+ -2  2  2  ...          ...2         -2  2  2  ...             2
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ |  |  |  |  |         |  |  |       |  |  |  |  |         |  |  |
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ ^                                      ^
+
+
+ .0111 ...............11 = +1/2-e    0.11 ..............11 = 1-e
+
+ .00 .................01 = +e        0.100 .............00 = 1/2
+
+ .00 .................0 = 0          0.00...............01 = e
+
+ .111 ................11 = -e        0.00 ..............00 = 0
+
+ .100 ................   = 1/2       1.11 ..............11 = -e
+
+                                     1.10 ..............00 = -1/2
+
+                                     1.00 ..............01 = -1+e = -(1-e)
+
+                                     1.00 ..............00 = -1
+
+
+               -16                               -15
+ Where:    e = 2                     Where:  e = 2
+
+                          -16                           -15
+ Range:    -1/2 to +1/2 - 2          Range:  -1 to +1 - 2
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-unnumbered-1-2-ja"><pre tabindex="0" role="region" aria-label="図">
+           System A                            System B
+    (Absolute Coordinates)              (Relative Coordinates)
+
+  -1 -2 -3                 -16         0 -1 -2                 -15
+ -2  2  2  ...          ...2         -2  2  2  ...             2
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ |  |  |  |  |         |  |  |       |  |  |  |  |         |  |  |
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ ^                                      ^
+
+
+ .0111 ...............11 = +1/2-e    0.11 ..............11 = 1-e
+
+ .00 .................01 = +e        0.100 .............00 = 1/2
+
+ .00 .................0 = 0          0.00...............01 = e
+
+ .111 ................11 = -e        0.00 ..............00 = 0
+
+ .100 ................   = 1/2       1.11 ..............11 = -e
+
+                                     1.10 ..............00 = -1/2
+
+                                     1.00 ..............01 = -1+e = -(1-e)
+
+                                     1.00 ..............00 = -1
+
+
+               -16                               -15
+ Where:    e = 2                     Where:  e = 2
+
+                          -16                           -15
+ Range:    -1/2 to +1/2 - 2          Range:  -1 to +1 - 2
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-3-en">I submit that one could interpret the requirement for absolute
+coordinate data to be in the range -1/2 to +1/2 - e as requiring that
+two different number systems should be used.  Thinking along those
+lines, System A has the advantage that you never get handed a number out
+of range, which saves some checking worries.  It also has one whole bit
+more of precision.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-3-ja">絶対座標データは-1/2から+1/2 - eの範囲になければならないという要件は、2つの異なる数値体系を使うべきだという意味に解釈できると私は考えます。その考え方に沿えば、System Aには、範囲外の数値を渡されることがないので、範囲チェックの心配が減るという利点があります。また、精度もまるまる1ビット高くなります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-4-en">I further submit that having two systems to contend with merely
+clouds the issue and requires extra coding.  It makes more sense just to
+stick with System B above.  Among the advantages in its use are:</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-4-ja">さらに私は、2つの体系を扱わなければならないのは問題を分かりにくくするだけで、余分なコーディングも必要になると考えます。上記のSystem Bだけを使うほうが理にかなっています。System Bを使う利点には次のものがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-unnumbered-1-5-en">
+<li id="section-unnumbered-1-5.1-en">The single system can handle both absolute and relative
+coordinates.</li>
+        <li id="section-unnumbered-1-5.2-en">If an absolute coordinate exceeds range, simply forcing the sign
+bit on causes a nice wrap-around.</li>
+        <li id="section-unnumbered-1-5.3-en">The representation is the same as the mantissa for floating
+point numbers on most machines.  Notice, however, that mantissas
+of normalized floating point numbers are not in the range for
+absolute coordinates.  The program will have to shift the
+mantissa until exponent is 0.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-unnumbered-1-5-ja">
+<li id="section-unnumbered-1-5.1-ja">単一の体系で絶対座標と相対座標の両方を扱えます。</li>
+        <li id="section-unnumbered-1-5.2-ja">絶対座標が範囲を超えた場合、符号ビットを強制的にオンにするだけで、うまく折り返し（wrap-around）が起きます。</li>
+        <li id="section-unnumbered-1-5.3-ja">この表現は、たいていのマシンの浮動小数点数の仮数と同じです。ただし、正規化された浮動小数点数の仮数は、絶対座標の範囲には収まらないことに注意してください。プログラムは、指数が0になるまで仮数をシフトする必要があります。</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-6-en">It may be that few of us interpreted the NGP document to mean two
+number systems were needed.  If that is the case, so much the better.
+In any case, until shaken from the position by the overwhelming force of
+contrary logic, we will, in all of our implementations, use System B
+above for both absolute and relative coordinates.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-6-ja">NGPの文書を、2つの数値体系が必要だという意味に解釈した人はほとんどいないかもしれません。もしそうなら、なおさら好都合です。いずれにせよ、反対の論理の圧倒的な力によってこの立場から揺り動かされるまでは、私たちはすべての実装で、絶対座標と相対座標の両方に上記のSystem Bを使います。</p></div>
+</div></section><section><span id="section-unnumbered-2"></span><span id="the-textr-command-en"></span><span id="the-textr-command-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-textr-command-en" lang="en">
+<span id="section-unnumbered-2-en"></span><a href="#name-the-textr-command-en" class="section-name selfRef">The TEXTR Command</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-textr-command-ja" lang="ja">
+<span id="section-unnumbered-2-ja"></span><a href="#name-the-textr-command-ja" class="section-name selfRef">TEXTRコマンド</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-1-en">The last paragraph on page 4 of RFC 292 says, "...a command be
+included only if its output is a function solely of the current command
+and the "beam position" current at the start of the command.  In other
+words, the interpreter for level 0 need have no internal storage for
+'modes' or pushdown stacks."</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-1-ja">RFC 292の4ページの最後の段落には、「……コマンドは、その出力が現在のコマンドと、コマンド開始時点の現在の『ビーム位置』だけの関数である場合にのみ含める。言い換えれば、レベル0のインタープリターは『モード』やプッシュダウンスタックのための内部記憶域を持つ必要がない。」と書かれています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-2-en">In the case of the Computek display, most of the NGP commands
+correspond to capabilities of the device. The lone exception is the
+TEXTR command. There are two ways to know what beam position to return
+to after the string is displayed. One way is to read the cursor position
+from the display just before doing the string output. This is no good
+because it requires reading from the device (which we can't do until
+input protocols are implemented). Also, on this device, the cursor
+position is accurate only to within 4 scope points.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-2-ja">Computekディスプレイの場合、NGPコマンドのほとんどはデバイスの機能に対応しています。唯一の例外がTEXTRコマンドです。文字列を表示したあとに戻るべきビーム位置を知る方法は2つあります。1つ目の方法は、文字列を出力する直前にディスプレイからカーソル位置を読み取ることです。しかし、これはデバイスからの読み取りが必要になるので（入力プロトコルが実装されるまでは、それはできません）、うまくいきません。また、このデバイスでは、カーソル位置の精度はスコープの4ポイント以内でしかありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-3-en">The second way to know what beam position to return to is to monitor
+all motions of the beam in software. Thus our implementations of NGP-0
+to Computek translations will employ a software X register and Y
+register. On absolute commands, the registers will be set to the
+coordinates for that command.  On relative commands, the coordinate data
+will be added to the registers.  At the beginning and end of picture,
+these registers will be set to 0.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-3-ja">戻るべきビーム位置を知る2つ目の方法は、ビームのすべての動きをソフトウェアで監視することです。そこで、私たちのNGP-0からComputekへの変換の実装では、ソフトウェアのXレジスターとYレジスターを使います。絶対コマンドでは、レジスターはそのコマンドの座標に設定されます。相対コマンドでは、座標データがレジスターに加算されます。ピクチャーの開始時と終了時には、これらのレジスターは0に設定されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-4-en">The TEXTR command will also cause these software beam registers to
+be changed.  That is, the X register will be incremented for each
+character of the string to correspond to what is happening in the
+display itself.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-4-ja">TEXTRコマンドも、これらのソフトウェアのビームレジスターを変更します。つまり、ディスプレイ自体で起きていることに対応させるために、文字列の各文字ごとにXレジスターをインクリメントします。</p></div>
+</div></section><section><span id="section-unnumbered-3"></span><span id="appendix-en"></span><span id="appendix-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-appendix-en" lang="en">
+<span id="section-unnumbered-3-en"></span><a href="#name-appendix-en" class="section-name selfRef">APPENDIX</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-appendix-ja" lang="ja">
+<span id="section-unnumbered-3-ja"></span><a href="#name-appendix-ja" class="section-name selfRef">付録</a>
+      </h2></div>
+</div>
+<section><span id="section-unnumbered-3.1"></span><span id="ngp-0-to-pdp-10-floating-point-en"></span><span id="ngp-0-to-pdp-10-floating-point-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-ngp-0-to-pdp-10-floating-point-en" lang="en">
+<span id="section-unnumbered-3.1-en"></span><a href="#name-ngp-0-to-pdp-10-floating-point-en" class="section-name selfRef">NGP-0 to PDP-10 Floating Point</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-ngp-0-to-pdp-10-floating-point-ja" lang="ja">
+<span id="section-unnumbered-3.1-ja"></span><a href="#name-ngp-0-to-pdp-10-floating-point-ja" class="section-name selfRef">NGP-0からPDP-10の浮動小数点へ</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3.1-1-en">The NGP-0 looks at all data numbers (X and Y parameters) as a
+fraction number in the following format (16 bits per number).</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3.1-1-ja">NGP-0は、すべてのデータの数値（XパラメーターとYパラメーター）を、次の形式（1つの数値あたり16ビット）の小数とみなします。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-unnumbered-3.1-2-en"><pre tabindex="0" role="region" aria-label="Figure">
+             +--+--+--+--+--+--+-----------------+--+--+--+--+
+             |  |  |  |  |  |  | ...         ... |  |  |  |  |
+             +--.--+--+--+--+--+-----------------+--+--+--+--+
+Bit position   0  1  2  3 ......                        14 15
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-unnumbered-3.1-2-ja"><pre tabindex="0" role="region" aria-label="図">
+             +--+--+--+--+--+--+-----------------+--+--+--+--+
+             |  |  |  |  |  |  | ...         ... |  |  |  |  |
+             +--.--+--+--+--+--+-----------------+--+--+--+--+
+Bit position   0  1  2  3 ......                        14 15
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3.1-3-en">with the binary point assumed between bits 0 and 1.  Bit 0 is the sign
+bit and all negative numbers are represented as their two's complement.
+The PDP-10 machine code representation of fractions in floating point
+(mantissa part) is very similar to the above (with one exception--the
+number -1), so the transformation could be obtained simply by two
+operations, move and substitute.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3.1-3-ja">ここで、2進小数点はビット0とビット1の間にあるものとします。ビット0は符号ビットで、負の数はすべて2の補数で表します。PDP-10のマシンコードにおける浮動小数点の小数（仮数部）の表現は上記とよく似ているので（ただし、-1という数値だけは例外です）、変換は移動と置換という2つの操作だけで行えます。</p></div>
+</div></section><section><span id="section-unnumbered-3.2"></span><span id="data-xy-conversion-en"></span><span id="data-xy-conversion-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-data-xy-conversion-en" lang="en">
+<span id="section-unnumbered-3.2-en"></span><a href="#name-data-xy-conversion-en" class="section-name selfRef">Data (X,Y) Conversion</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-data-xy-conversion-ja" lang="ja">
+<span id="section-unnumbered-3.2-ja"></span><a href="#name-data-xy-conversion-ja" class="section-name selfRef">データ（X,Y）の変換</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-unnumbered-3.2-1-en"><pre tabindex="0" role="region" aria-label="Figure">
+   NGP (extreme points)                    Floating Point (PDP-10)
+
+        (16 bits)                                 (36 bits)
+                                           exp   mantissa
+
+1/2   0.1000 . . . . . .0              0 10000000  10 . . . . . .0
+
+-1/2  1.1000 . . . . . .0              1 01111111  10 . . . . . .0
+
+-1    1.00   . . . . . .0              1 01111101  10 . . . . . .0
+                                                        Special case
+
+1-e   0.11   . . . . . .1              0 10000000  1111 . . . . .1
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-unnumbered-3.2-1-ja"><pre tabindex="0" role="region" aria-label="図">
+   NGP (extreme points)                    Floating Point (PDP-10)
+
+        (16 bits)                                 (36 bits)
+                                           exp   mantissa
+
+1/2   0.1000 . . . . . .0              0 10000000  10 . . . . . .0
+
+-1/2  1.1000 . . . . . .0              1 01111111  10 . . . . . .0
+
+-1    1.00   . . . . . .0              1 01111101  10 . . . . . .0
+                                                        Special case
+
+1-e   0.11   . . . . . .1              0 10000000  1111 . . . . .1
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3.2-2-en">Translation from NGP into floating point for PDP-1O:</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3.2-2-ja">PDP-1OにおけるNGPから浮動小数点への変換：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-unnumbered-3.2-3-en">
+<li id="section-unnumbered-3.2-3.1-en">Move sign bit (leftmost one) to sign bit.</li>
+          <li id="section-unnumbered-3.2-3.2-en">Move fraction part (15 bits) to mantissa part (left justified;
+fill with zero's to right).</li>
+          <li id="section-unnumbered-3.2-3.3-en">
+            <p id="section-unnumbered-3.2-3.3.1-en">Fill in exponent part (8 bits) according to:</p>
+<ol type="a" id="section-unnumbered-3.2-3.3.2-en">
+<li id="section-unnumbered-3.2-3.3.2.1-en">If positive number      exp = 10000000 = (80) hex</li>
+              <li id="section-unnumbered-3.2-3.3.2.2-en">If negative number      exp = 01111111 = (7F) hex</li>
+              <li id="section-unnumbered-3.2-3.3.2.3-en">
+                <p id="section-unnumbered-3.2-3.3.2.3.1-en">Exception <em>in only</em> one number</p>
+<p id="section-unnumbered-3.2-3.3.2.3.2-en">-1 in NGP (negative sign and fraction all zero's)</p>
+<ol id="section-unnumbered-3.2-3.3.2.3.3-en">
+<li style='list-style-type: "(1) "' id="section-unnumbered-3.2-3.3.2.3.3.1-en">mantissa becomes same as -1/2</li>
+                  <li style='list-style-type: "(2) "' id="section-unnumbered-3.2-3.3.2.3.3.2-en">exponent becomes the one's complement of (82) hex
+= (7D) hex</li>
+                </ol>
+</li>
+            </ol>
+</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-unnumbered-3.2-3-ja">
+<li id="section-unnumbered-3.2-3.1-ja">符号ビット（最も左のビット）を符号ビットに移します。</li>
+          <li id="section-unnumbered-3.2-3.2-ja">小数部（15ビット）を仮数部に移します（左詰めにし、右側は0で埋めます）。</li>
+          <li id="section-unnumbered-3.2-3.3-ja">
+            <p id="section-unnumbered-3.2-3.3.1-ja">指数部（8ビット）を次のように埋めます。</p>
+<ol type="a" id="section-unnumbered-3.2-3.3.2-ja">
+<li id="section-unnumbered-3.2-3.3.2.1-ja">正の数の場合：exp = 10000000 = (80) hex</li>
+              <li id="section-unnumbered-3.2-3.3.2.2-ja">負の数の場合：exp = 01111111 = (7F) hex</li>
+              <li id="section-unnumbered-3.2-3.3.2.3-ja">
+                <p id="section-unnumbered-3.2-3.3.2.3.1-ja"><em>ただ1つの</em>数値だけの例外</p>
+<p id="section-unnumbered-3.2-3.3.2.3.2-ja">NGPにおける-1（符号が負で、小数部がすべて0）</p>
+<ol id="section-unnumbered-3.2-3.3.2.3.3-ja">
+<li style='list-style-type: "(1) "' id="section-unnumbered-3.2-3.3.2.3.3.1-ja">仮数は-1/2と同じになります</li>
+                  <li style='list-style-type: "(2) "' id="section-unnumbered-3.2-3.3.2.3.3.2-ja">指数は(82) hexの1の補数、つまり(7D) hexになります</li>
+                </ol>
+</li>
+            </ol>
+</li>
+        </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3.2-4-en">The methods of conversion will remain the same regardless of the
+number of bits (up to 24) that are used for the NGP fraction.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3.2-4-ja">NGPの小数に使うビット数が（24ビットまでの）何ビットであっても、変換の方法は変わりません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3.2-5-en">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Alex McKenzie with    ]
+[ support from GTE, formerly BBN Corp.             9/99 ]</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3.2-5-ja">[このRFCは、GTE（旧BBN Corp.）の支援を受けて、Alex McKenzieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。9/99]</p></div>
+</div></section></section>
+</body>
+</html>

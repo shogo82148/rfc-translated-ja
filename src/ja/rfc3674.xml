@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-zeilenga-ldap-features-05" indexInclude="true" number="3674" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-zeilenga-ldap-features-05" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3674" rel="alternate"/>
+  <front>
+    <title>LDAP（Lightweight Directory Access Protocol）における機能の発見</title>
+    <seriesInfo name="RFC" value="3674" stream="IETF"/>
+    <author fullname="K. Zeilenga" initials="K." surname="Zeilenga">
+      <organization showOnFrontPage="true">OpenLDAP Foundation</organization>
+      <address/>
+    </author>
+    <date year="2003" month="December"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">LDAP（Lightweight Directory Access Protocol）は、多数の選択的な機能（elective feature）を備えた拡張可能なプロトコルです。この文書は、既存のメカニズムでは発見できない選択的な機能や拡張を発見するための汎用的なメカニズムを導入します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2003).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="background-and-intended-use" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-background-and-intended-use">背景と想定される用途</name>
+      <t indent="0" pn="section-1-1">LDAP（Lightweight Directory Access Protocol）<xref target="RFC3377" format="default" sectionFormat="of" derivedContent="RFC3377"/>は、多数の選択的な機能を備えた拡張可能なプロトコルです。LDAPは、サポートされているプロトコルバージョン、コントロール、拡張操作、SASL（Simple Authentication and Security Layer）メカニズム、およびサブスキーマ情報をクライアントが発見するためのメカニズムを提供しています。しかし、これらのメカニズムは、汎用的な機能の発見をサポートするようには設計されていません。</t>
+      <t indent="0" pn="section-1-2">この文書は、サーバーがサポートしている選択的な機能の集合をクライアントが発見するために使用できる、単純で汎用的なメカニズムについて説明します。たとえば、このメカニズムを使うと、クライアントは、すべての操作属性の要求（例: 「+」<xref target="RFC3673" format="default" sectionFormat="of" derivedContent="RFC3673"/>）をサーバーがサポートしているかどうかを発見できます。別の例として、このメカニズムを使って、絶対真（例: 「(&amp;)」）と絶対偽（例: 「(|)」）の検索フィルター<xref target="T-F" format="default" sectionFormat="of" derivedContent="T-F"/>のサポートを発見することもできます。</t>
+      <t indent="0" pn="section-1-3">この文書は、supportedFeatures属性の値の登録をサポートするように、LDAP Protocol Mechanismレジストリー<xref target="RFC3383" format="default" sectionFormat="of" derivedContent="RFC3383"/>を拡張します。このレジストリーは、IANA（Internet Assigned Numbers Authority）によって管理されています。</t>
+      <t indent="0" pn="section-1-4">スキーマ定義は、LDAPの記述形式<xref target="RFC2252" format="default" sectionFormat="of" derivedContent="RFC2252"/>を使って示します。ここで示す定義は、読みやすさのために整形（行の折り返し）しています。</t>
+      <t indent="0" pn="section-1-5">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているとおりに解釈されます。</t>
+    </section>
+    <section anchor="discovery-of-supported-features" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-discovery-of-supported-features">サポートされている機能の発見</name>
+      <t indent="0" pn="section-2-1">サポートを発見できる選択的な機能は、それぞれオブジェクト識別子（OID）によって識別<bcp14>することになります（SHALL）</bcp14>。サーバーは、ある機能に関連付けられたOIDを、ルートDSEが保持する'supportedFeatures'属性の値として提供することで、その機能のサポートを広告します。クライアントは、この属性の値を調べて、特定の機能がサーバーでサポートされているかどうかを判断できます。クライアントは、認識できない値を無視<bcp14>しなければなりません（MUST）</bcp14>。そのような値は、クライアントが実装していない選択的な機能を指しているからです。</t>
+      <t indent="0" pn="section-2-2">標準化過程のプロトコルメカニズムに関連する機能は、登録<bcp14>しなければなりません（MUST）</bcp14>。その他のプロトコルメカニズムに関連する機能は、登録<bcp14>すべきです（SHOULD）</bcp14>。プロトコルメカニズムを登録する手順は、BCP 64 <xref target="RFC3383" format="default" sectionFormat="of" derivedContent="RFC3383"/>で説明されています。提出するLDAP Protocol Mechanismテンプレートのusageフィールドには、「Feature」という語を記入するべきです。</t>
+      <t indent="0" pn="section-2-3">'supportedFeatures'属性タイプは、次のように記述されます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-4"><![CDATA[
+   ( 1.3.6.1.4.1.4203.1.3.5
+     NAME 'supportedFeatures'
+     DESC 'features supported by the server'
+     EQUALITY objectIdentifierMatch
+     SYNTAX 1.3.6.1.4.1.1466.115.121.1.38
+     USAGE dSAOperation )
+]]></artwork>
+      <t indent="0" pn="section-2-5">サーバーは、この属性タイプを'supportedFeatures'という名前で認識できる<bcp14>必要があります（MUST）</bcp14>。サーバーは、ほかの名前でこの属性タイプを認識<bcp14>してもよいです（MAY）</bcp14>。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-3-1">悪意のあるクライアントは、ほかの手段（試行錯誤など）でサーバーの機能を発見できるため、この機能発見メカニズムがLDAPに新たなセキュリティーリスクをもたらすことはないと考えられています。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <section anchor="registration-of-features-as-protocol-mechanisms" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-registration-of-features-as-protocol-mechanisms">プロトコルメカニズムとしての機能の登録</name>
+        <t indent="0" pn="section-4.1-1">LDAPの機能を詳述する今後の仕様は、BCP 64 <xref target="RFC3383" format="default" sectionFormat="of" derivedContent="RFC3383"/>で示されているガイダンスに従って、各機能をLDAP Protocol Mechanismとして登録することになっています。Protocol Mechanism登録テンプレートのusageが「Feature」であることは、登録される値がLDAPの機能に関連付けられていることを示します。</t>
+      </section>
+      <section anchor="registration-of-the-supportedfeatures-descriptor" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-registration-of-the-supportedfeatures-descriptor">supportedFeatures記述子の登録</name>
+        <t indent="0" pn="section-4.2-1">IANAは、LDAPの'supportedFeatures'記述子を登録しました。次の登録テンプレートが提案されています。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.2-2"><![CDATA[
+   Subject: Request for LDAP Descriptor Registration
+   Descriptor (short name): supportedFeatures
+   Object Identifier: 1.3.6.1.4.1.4203.1.3.5
+   Person & email address to contact for further information:
+       Kurt Zeilenga <kurt@OpenLDAP.org>
+   Usage: Attribute Type
+   Specification: RFC 3674
+   Author/Change Controller: IESG
+]]></artwork>
+        <t indent="0" pn="section-4.2-3">このOIDは、OpenLDAP Foundationが、IANAから割り当てられたプライベートエンタープライズ番号の割り当て<xref target="PRIVATE" format="default" sectionFormat="of" derivedContent="PRIVATE"/>のもとで、この仕様で使用するために割り当てたものです<xref target="ASSIGN" format="default" sectionFormat="of" derivedContent="ASSIGN"/>。</t>
+      </section>
+    </section>
+    <section anchor="acknowledgment" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-acknowledgment">謝辞</name>
+      <t indent="0" pn="section-5-1">この文書は、IETF LDAPEXTワーキンググループからの意見に基づいています。</t>
+    </section>
+    <section anchor="intellectual-property-statement" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-intellectual-property-statement">知的財産に関する声明</name>
+      <t indent="0" pn="section-6-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための取り組みを行ったことを表明するものでもありません。標準化過程および標準関連の文書における権利に関するIETFの手続きの情報は、BCP-11に記載されています。公開用に提供された権利の主張の写し、利用可能になるライセンスの保証、またはこの仕様の実装者や利用者がそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETF事務局から入手できます。</t>
+      <t indent="0" pn="section-6-2">IETFは、この標準を実施するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF事務局長宛てにお送りください。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+        </reference>
+        <reference anchor="RFC2252" quoteTitle="true" derivedAnchor="RFC2252">
+          <front>
+            <title>Lightweight Directory Access Protocol (v3): Attribute Syntax Definitions</title>
+            <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+            <author fullname="A. Coulbeck" initials="A." surname="Coulbeck"/>
+            <author fullname="T. Howes" initials="T." surname="Howes"/>
+            <author fullname="S. Kille" initials="S." surname="Kille"/>
+            <date year="1997" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="2252"/>
+        </reference>
+        <reference anchor="RFC3377" quoteTitle="true" derivedAnchor="RFC3377">
+          <front>
+            <title>Lightweight Directory Access Protocol (v3): Technical Specification</title>
+            <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+            <author fullname="R. Morgan" initials="R." surname="Morgan"/>
+            <date year="2002" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3377"/>
+        </reference>
+        <reference anchor="RFC3383" quoteTitle="true" derivedAnchor="RFC3383">
+          <front>
+            <title>Internet Assigned Numbers Authority (IANA) Considerations for Lightweight Directory Access Protocol (LDAP)</title>
+            <author fullname="K. Zeilenga" initials="K." surname="Zeilenga"/>
+            <date year="2002" month="September"/>
+          </front>
+          <seriesInfo name="BCP" value="64"/>
+          <seriesInfo name="RFC" value="3383"/>
+        </reference>
+      </references>
+      <references pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC3673" quoteTitle="true" derivedAnchor="RFC3673">
+          <front>
+            <title>Lightweight Directory Access Protocol version 3 (LDAPv3): All Operational Attributes</title>
+            <author fullname="K. Zeilenga" initials="K." surname="Zeilenga"/>
+            <date year="2003" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="3673"/>
+        </reference>
+        <reference anchor="T-F" quoteTitle="true" derivedAnchor="T-F">
+          <front>
+            <title>LDAP True/False Filters</title>
+            <author fullname="K. Zeilenga" initials="K." surname="Zeilenga"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+        </reference>
+        <reference anchor="ASSIGN" target="http://www.openldap.org/foundation/oid-delegate.txt" quoteTitle="true" derivedAnchor="ASSIGN">
+          <front>
+            <title>OpenLDAP OID Delegations</title>
+            <author>
+              <organization showOnFrontPage="true">OpenLDAP Foundation</organization>
+            </author>
+          </front>
+        </reference>
+        <reference anchor="PRIVATE" target="http://www.iana.org/assignments/enterprise-numbers" quoteTitle="true" derivedAnchor="PRIVATE">
+          <front>
+            <title>Private Enterprise Numbers</title>
+            <author>
+              <organization showOnFrontPage="true">IANA</organization>
+            </author>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section anchor="authors-address" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Kurt D. Zeilenga" initials="K. D." surname="Zeilenga">
+        <organization showOnFrontPage="true">OpenLDAP Foundation</organization>
+        <address>
+          <email>Kurt@OpenLDAP.org</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-9-1">Copyright (C) The Internet Society (2003).  All Rights Reserved.</t>
+      <t indent="0" pn="section-9-2">この文書およびその翻訳は、複製して他者に提供できます。また、この文書を論評もしくは説明する派生物、またはその実装を支援する派生物は、上記の著作権表示とこの段落をそのようなすべての複製物および派生物に含めることを条件として、いかなる制限もなく、その全部または一部を作成、複製、公開、配布できます。ただし、この文書自体は、著作権表示やインターネットソサエティー（Internet Society）その他のインターネット関連組織への言及を削除するなど、いかなる方法でも変更できません。例外は、インターネット標準を策定する目的で必要な場合（この場合は、インターネット標準化プロセスで定められた著作権の手続きに従う必要があります）と、英語以外の言語に翻訳するために必要な場合です。</t>
+      <t indent="0" pn="section-9-3">上記で付与された限定的な許諾は永続的なものであり、インターネットソサエティーまたはその承継人もしくは譲受人によって取り消されることはありません。</t>
+      <t indent="0" pn="section-9-4">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。インターネットソサエティーおよびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.a-1">RFCエディターの機能に対する資金は、現在インターネットソサエティーによって提供されています。</t>
+      </section>
+  </back>
+</rfc>

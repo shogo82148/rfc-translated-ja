@@ -1,0 +1,188 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-zeilenga-ldap-passwd-exop-05" indexInclude="true" number="3062" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-zeilenga-ldap-passwd-exop-05" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3062" rel="alternate"/>
+  <front>
+    <title>LDAPパスワード変更拡張操作</title>
+    <seriesInfo name="RFC" value="3062" stream="IETF"/>
+    <author fullname="K. Zeilenga" initials="K." surname="Zeilenga">
+      <organization showOnFrontPage="true">OpenLDAP Foundation</organization>
+      <address/>
+    </author>
+    <date year="2001" month="February"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">LDAP（Lightweight Directory Access Protocol）と外部の認証サービスとの統合により、DNではない認証識別子が導入され、パスワードをディレクトリー以外に格納できるようになりました。そのため、ディレクトリーを更新するメカニズム（たとえばModify）を使ってユーザーのパスワードを変更することはできません。この文書は、認証識別子の形式にも、使用されるパスワードの格納メカニズムにも依存せずにユーザーのパスワードを変更できるようにする、LDAPの拡張操作について説明します。</t>
+      <t indent="0" pn="section-abstract-2">この文書におけるキーワード「しなければなりません（MUST）」、「してはなりません（MUST NOT）」、「要求されています（REQUIRED）」、「することになります（SHALL）」、「することはありません（SHALL NOT）」、「すべきです（SHOULD）」、「すべきではありません（SHOULD NOT）」、「推奨されます（RECOMMENDED）」、「してもよいです（MAY）」は、RFC 2119に記載されているとおりに解釈されるものとします。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="background-and-intent-of-use" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-background-and-intent-of-use">背景と使用目的</name>
+      <t indent="0" pn="section-1-1">LDAP（Lightweight Directory Access Protocol）<xref target="RFC2251" format="default" sectionFormat="of" derivedContent="RFC2251"/>は、単純なユーザー名とパスワードの組を含む、多くの認証メカニズムをサポートするように設計されています。従来、LDAPのユーザーはディレクトリーエントリーの識別名（Distinguished Name）<xref target="RFC2253" format="default" sectionFormat="of" derivedContent="RFC2253"/>によって識別され、そのエントリーには1つ以上のパスワードを含むuserPassword <xref target="RFC2256" format="default" sectionFormat="of" derivedContent="RFC2256"/>属性が含まれていました。</t>
+      <t indent="0" pn="section-1-2">このプロトコルは、ユーザーに関連付けられたパスワードをディレクトリーサーバーに格納することを義務付けてはいません。サーバーは、パスワードの格納に適した任意の属性（たとえばuserPassword）を使っても、ディレクトリー以外の格納場所を使ってもかまいません。</t>
+      <t indent="0" pn="section-1-3">単純なユーザー名／パスワードのメカニズム（DIGEST-MD5など）をサポートする、アプリケーションに中立なSASL <xref target="RFC2222" format="default" sectionFormat="of" derivedContent="RFC2222"/>サービスの統合<xref target="RFC2829" format="default" sectionFormat="of" derivedContent="RFC2829"/>により、LDAPのDNではない形式の認証識別子が導入され、パスワードの格納はSASLサービスプロバイダーの責任になりました。</t>
+      <t indent="0" pn="section-1-4">LDAPの更新操作は、ディレクトリー内のエントリーの属性に対して作用するように設計されています。ユーザーがDNで表されない場合、エントリーを持たない場合、またはサーバーが使うパスワードがエントリーの属性として格納されていない場合には、LDAPの更新操作を使ってユーザーのパスワードを変更することはできません。別のメカニズムが必要です。</t>
+      <t indent="0" pn="section-1-5">この文書は、ディレクトリークライアントがユーザーのパスワードを更新できるようにすることを意図した、LDAPの拡張操作（Extended Operation）について説明します。ユーザーはディレクトリーエントリーに関連付けられている場合もあれば、そうでない場合もあります。ユーザーはLDAPのDNとして表される場合もあれば、そうでない場合もあります。ユーザーのパスワードはディレクトリーに格納されている場合もあれば、そうでない場合もあります。</t>
+      <t indent="0" pn="section-1-6">この操作は、それ自体ではプライバシーや完全性の保護を提供しないため、適切なセキュリティー保護なしに使う<bcp14>べきではありません（SHOULD NOT）</bcp14>。この操作を匿名で使用<bcp14>することはありません（SHALL NOT）</bcp14>。</t>
+    </section>
+    <section anchor="password-modify-request-and-response" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-password-modify-request-and-response">パスワード変更の要求と応答</name>
+      <t indent="0" pn="section-2-1">パスワード変更（Password Modify）操作は、LDAPv3の拡張操作[RFC2251, Section 4.12]であり、OBJECT IDENTIFIER passwdModifyOIDによって識別されます。このセクションでは、プロトコルの要求と応答の構文を詳しく説明します。</t>
+      <sourcecode type="asn.1" markers="false" pn="section-2-2"><![CDATA[
+passwdModifyOID OBJECT IDENTIFIER ::= 1.3.6.1.4.1.4203.1.11.1
+
+PasswdModifyRequestValue ::= SEQUENCE {
+  userIdentity    [0]  OCTET STRING OPTIONAL
+  oldPasswd       [1]  OCTET STRING OPTIONAL
+  newPasswd       [2]  OCTET STRING OPTIONAL }
+
+PasswdModifyResponseValue ::= SEQUENCE {
+  genPasswd       [0]     OCTET STRING OPTIONAL }
+]]></sourcecode>
+      <section anchor="password-modify-request" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-password-modify-request">パスワード変更要求</name>
+        <t indent="0" pn="section-2.1-1">パスワード変更要求は、requestNameフィールドにpasswdModifyOID OIDを含み、任意でrequestValueフィールドを提供するExtendedRequestです。requestValueフィールドが提供される場合、それは1つ以上のフィールドが存在するPasswdModifyRequestValueを含むように<bcp14>することになります（SHALL）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-2">userIdentityフィールドが存在する場合、それは要求に関連付けられたユーザーのオクテット文字列表現を含むように<bcp14>することになります（SHALL）</bcp14>。この文字列はLDAPDN <xref target="RFC2253" format="default" sectionFormat="of" derivedContent="RFC2253"/>である場合もあれば、そうでない場合もあります。userIdentityフィールドが存在しない場合、要求は、LDAPセッションに現在関連付けられているユーザーのパスワードに対して作用します。</t>
+        <t indent="0" pn="section-2.1-3">oldPasswdフィールドが存在する場合、それはユーザーの現在のパスワードを含むように<bcp14>することになります（SHALL）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-4">newPasswdフィールドが存在する場合、それはこのユーザーに対する希望のパスワードを含むように<bcp14>することになります（SHALL）</bcp14>。</t>
+      </section>
+      <section anchor="password-modify-response" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-password-modify-response">パスワード変更応答</name>
+        <t indent="0" pn="section-2.2-1">パスワード変更応答は、responseNameフィールドが存在せず、responseフィールドが任意であるExtendedResponseです。responseフィールドが存在する場合、それはgenPasswdフィールドが存在するPasswdModifyResponseValueを含むように<bcp14>することになります（SHALL）</bcp14>。</t>
+        <t indent="0" pn="section-2.2-2">genPasswdフィールドが存在する場合、それはユーザーのために生成されたパスワードを含むように<bcp14>することになります（SHALL）</bcp14>。</t>
+        <t indent="0" pn="section-2.2-3">応答でsuccess（0）以外のresultCodeが示される場合、responseフィールドは存在しないようにし<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="operation-requirements" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-operation-requirements">操作の要件</name>
+      <t indent="0" pn="section-3-1">クライアントは、適切なセキュリティー上の保護策が整っていることを確認せずに、パスワード変更要求を送信す<bcp14>べきではありません（SHOULD NOT）</bcp14>。十分なセキュリティー保護が整っていない場合、サーバーは成功以外のresultCodeを返す<bcp14>べきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-3-2">サーバーは、ルートDSEのsupportedExtension属性型の値としてPasswdModifyOIDを提供することで、この拡張操作をサポートしていることを示す<bcp14>べきです（SHOULD）</bcp14>。サーバーは、クライアントが認可されている場合や、この操作を使うために必要なセキュリティー保護を確立している場合にのみ、この拡張を広告することを選択しても<bcp14>よいです（MAY）</bcp14>。クライアントは、操作を試みる前に、supportedExtension属性がPasswdModifyOIDの値を含むことを確かめることで、サーバーがこの拡張操作を実装していることを確認す<bcp14>べきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-3-3">サーバーは、ユーザーのパスワードの変更に成功した場合にのみ成功を返却<bcp14>することになります（SHALL）</bcp14>。そうでない場合、サーバーはパスワードを変更せずに残し、成功以外のresultCodeを返却<bcp14>することになります（SHALL）</bcp14>。</t>
+      <t indent="0" pn="section-3-4">提供されたフィールドを認識しない場合、または提供されたフィールドの組み合わせをサポートしない場合、サーバーはユーザーのパスワードを変更<bcp14>することはありません（SHALL NOT）</bcp14>。</t>
+      <t indent="0" pn="section-3-5">oldPasswdが存在し、提供された値を検証できないか誤っている場合、サーバーはユーザーのパスワードを変更<bcp14>することはありません（SHALL NOT）</bcp14>。oldPasswdが存在しない場合、サーバーはパスワードを変更するかどうかを判断するために別のポリシーを使っても<bcp14>よいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-3-6">クライアントがnewPasswdを提供した場合、サーバーはクライアントに代わってパスワードを生成<bcp14>することはありません（SHALL NOT）</bcp14>。クライアントがnewPasswdを提供しない場合、サーバーはクライアントに代わってパスワードを生成するか、成功以外の結果コードを返すかのどちらかを実行<bcp14>することになります（SHALL）</bcp14>。サーバーは、成功した場合、生成したパスワードをgenPasswdフィールドの値として提供し<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-7">サーバーは、操作を正常に完了できなかったことを示すために、必要に応じてadminLimitExceeded、busy、confidentialityRequired、operationsError、unavailable、unwillingToPerform、またはその他の成功以外のresultCodeを返しても<bcp14>よいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-3-8">サーバーは、この操作を制限する管理ポリシーを実装しても<bcp14>よいです（MAY）</bcp14>。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">この操作は、ユーザーのパスワードを変更するために使われます。この操作自体は、情報の完全性や機密性を確保するためのセキュリティー保護を何も提供しません。機密性を保証するプライバシー保護が整っていない場合にこの操作を使うことは強く推奨されず、権限のない者にパスワードが漏洩する結果になる可能性があります。この拡張は、Start TLS <xref target="RFC2830" format="default" sectionFormat="of" derivedContent="RFC2830"/>などの機密性保護とともに使用し<bcp14>なければなりません（MUST）</bcp14>。NULL暗号スイートを使用しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-bibliography">参考文献</name>
+      <reference anchor="RFC2219" quoteTitle="true" derivedAnchor="RFC2219">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC2222" quoteTitle="true" derivedAnchor="RFC2222">
+        <front>
+          <title>Simple Authentication and Security Layer (SASL)</title>
+          <author fullname="J. Myers" initials="J." surname="Myers"/>
+          <date year="1997" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="2222"/>
+      </reference>
+      <reference anchor="RFC2251" quoteTitle="true" derivedAnchor="RFC2251">
+        <front>
+          <title>Lightweight Directory Access Protocol (v3)</title>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <author fullname="T. Howes" initials="T." surname="Howes"/>
+          <author fullname="S. Kille" initials="S." surname="Kille"/>
+          <date year="1997" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2251"/>
+      </reference>
+      <reference anchor="RFC2252" quoteTitle="true" derivedAnchor="RFC2252">
+        <front>
+          <title>Lightweight Directory Access Protocol (v3): Attribute Syntax Definitions</title>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <author fullname="A. Coulbeck" initials="A." surname="Coulbeck"/>
+          <author fullname="T. Howes" initials="T." surname="Howes"/>
+          <author fullname="S. Kille" initials="S." surname="Kille"/>
+          <date year="1997" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2252"/>
+      </reference>
+      <reference anchor="RFC2253" quoteTitle="true" derivedAnchor="RFC2253">
+        <front>
+          <title>Lightweight Directory Access Protocol (v3): UTF-8 String Representation of Distinguished Names</title>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <author fullname="S. Kille" initials="S." surname="Kille"/>
+          <author fullname="T. Howes" initials="T." surname="Howes"/>
+          <date year="1997" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2253"/>
+      </reference>
+      <reference anchor="RFC2256" quoteTitle="true" derivedAnchor="RFC2256">
+        <front>
+          <title>A Summary of the X.500(96) User Schema for use with LDAPv3</title>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <date year="1997" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2256"/>
+      </reference>
+      <reference anchor="RFC2829" quoteTitle="true" derivedAnchor="RFC2829">
+        <front>
+          <title>Authentication Methods for LDAP</title>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <author fullname="H. Alvestrand" initials="H." surname="Alvestrand"/>
+          <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+          <author fullname="R. Morgan" initials="R." surname="Morgan"/>
+          <date year="2000" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="2829"/>
+      </reference>
+      <reference anchor="RFC2830" quoteTitle="true" derivedAnchor="RFC2830">
+        <front>
+          <title>Lightweight Directory Access Protocol (v3): Extension for Transport Layer Security</title>
+          <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+          <author fullname="R. Morgan" initials="R." surname="Morgan"/>
+          <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+          <date year="2000" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="2830"/>
+      </reference>
+    </references>
+    <section anchor="acknowledgment" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-acknowledgment">謝辞</name>
+      <t indent="0" pn="section-6-1">この文書は多くのIETF文書から借用しており、IETFのLDAPextワーキンググループからの意見に基づいています。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Kurt D. Zeilenga" initials="K. D." surname="Zeilenga">
+        <organization showOnFrontPage="true">OpenLDAP Foundation</organization>
+        <address>
+          <email>Kurt@OpenLDAP.org</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-8-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      <t indent="0" pn="section-8-2">この文書およびその翻訳は、複製して他者に提供できます。また、この文書を論評もしくは説明する派生物、またはその実装を支援する派生物は、上記の著作権表示とこの段落をそのようなすべての複製物および派生物に含めることを条件として、いかなる制限もなく、その全部または一部を作成、複製、公開、配布できます。ただし、この文書自体は、著作権表示やインターネットソサエティー（Internet Society）その他のインターネット関連組織への言及を削除するなど、いかなる方法でも変更できません。例外は、インターネット標準を策定する目的で必要な場合（この場合は、インターネット標準化プロセスで定められた著作権の手続きに従う必要があります）と、英語以外の言語に翻訳するために必要な場合です。</t>
+      <t indent="0" pn="section-8-3">上記で付与された限定的な許諾は永続的なものであり、インターネットソサエティーまたはその承継人もしくは譲受人によって取り消されることはありません。</t>
+      <t indent="0" pn="section-8-4">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。インターネットソサエティーおよびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.a-1">RFCエディター機能の資金は、現在インターネットソサエティー（Internet Society）が提供しています。</t>
+      </section>
+  </back>
+</rfc>

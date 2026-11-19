@@ -1,0 +1,122 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="906" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc906" rel="alternate"/>
+  <front>
+    <title>TFTPを用いたブートストラップローディング</title>
+    <seriesInfo name="RFC" value="906" stream="IETF"/>
+    <author fullname="Ross Finlayson" initials="R." surname="Finlayson">
+      <organization showOnFrontPage="true">Stanford University</organization>
+      <address/>
+    </author>
+    <date year="1984" month="June"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">コンピューターシステムを通信ネットワークからブートストラップできると便利なことがよくあります。このRFCは、その場合のブートストラップローディングにIPのTFTPプロトコルを使用することを提案します。</t>
+        <t indent="0" pn="section-boilerplate.1.2">このRFCは、ARPAインターネットコミュニティーのためのプロトコルを提案し、改善のための議論と提案を求めるものです。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-unnumbered-1-1">ディスクレスワークステーションなど、多くのコンピューターシステムは、ネットワーク越しに1つ以上のコードファイルをロードすることによってブートストラップされます。残念ながら、これらの最初のファイルをロードするために使われるプロトコルは標準化されておらず、コンピューターメーカーごとにさまざまな方法が採用されてきました。このため、たとえば、ある設置場所でローカルエリアネットワーク上の何種類ものシステムをサポートすることが難しくなる場合があります。使用される起動の仕組みのそれぞれを、たとえば1台以上のホストマシン上に多数のサーバーを実装することによって、サポートしなければなりません。これらの異種のシステムが、いったん起動すれば（すべて同じプロトコルを使って）自由に通信できるかもしれないにもかかわらず、こうなっているのです。</t>
+      <t indent="0" pn="section-unnumbered-1-2">私たちは、ブートストラップローディングのための標準プロトコルとして、TFTP（Trivial File Transfer Protocol）<xref target="ref-6" format="default" sectionFormat="of" derivedContent="6"/>を使用することを提案します。このプロトコルは、標準のインターネットプロトコル（IP）<xref target="ref-4" format="default" sectionFormat="of" derivedContent="4"/>に基づいているので、私たちの目的によく適しています。TFTPは、起動されるマシンでも、ネット上のどこか別の場所にあるブートストラップサーバーでも、容易に実装できます。（さらに、多くの普及しているオペレーティングシステムは、すでにTFTPサーバーをサポートしています。）TFTPがかなり遅いプロトコルであることは、深刻な懸念にはなりません。TFTPは一次ブートストラップにだけ使えばよいからです。二次ブートストラップでは、より高速なプロトコルを使用できます。</t>
+      <t indent="0" pn="section-unnumbered-1-3">このRFCは、起動されるシステム（以下では「ブーター（booter）」と呼びます）が、TFTPを使って目的のコードファイルをロードする方法を説明します。また、イーサネット向けの既存の（ROMによる）実装についても説明します。</t>
+      <t indent="0" pn="section-unnumbered-1-4">私たちが規定するのは、起動するシステムが使用するネットワークプロトコルだけであることに注意してください。ユーザーが実際にシステムを起動する方法（コンソールで入力するコマンドの形式など）を義務付けようとはしていません。さらに、私たちの提案は、特定のデータリンクレベルのネットワークアーキテクチャーの使用を前提としていません（ただし、以下で説明する例ではイーサネットを使用しています）。</t>
+    </section>
+    <section anchor="network-protocols-used-by-the-booting-system" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-network-protocols-used-by-the-booting-system">起動するシステムが使用するネットワークプロトコル</name>
+      <t indent="0" pn="section-unnumbered-2-1">ファイルをロードするために、ブーターは、ロードするファイルの名前を含む標準のTFTP読み込み要求（RRQ）パケットを送信します。ファイル名は、オペレーティングシステムに依存する命名規則を前提とすべきではありません（英数字だけを含むファイル名で十分なはずです）。その後、システムは、TFTP仕様<xref target="ref-6" format="default" sectionFormat="of" derivedContent="6"/>に従って、TFTPのDATAパケットを受信し、TFTPのACKパケットやERRORパケットを送信します。</t>
+      <t indent="0" pn="section-unnumbered-2-2">TFTPはユーザーデータグラムプロトコル（UDP）<xref target="ref-5" format="default" sectionFormat="of" derivedContent="5"/>を使って実装され、UDPはさらにIPを使って実装されます。したがって、TFTPのDATAパケットは最大516オクテットの長さになり、UDPヘッダーは8オクテットの長さなので、ブーターは（IPヘッダーを除いて）最大524オクテットを含むIPデータグラムを受信できなければなりません。起動するマシンは、受信したTFTPの読み込み要求や書き込み要求に応答する必要はありません。</t>
+      <t indent="0" pn="section-unnumbered-2-3">私たちは、さらに2つのプロトコルの使用を認めます。それは、ARP（アドレス解決プロトコル、Address Resolution Protocol）<xref target="ref-3" format="default" sectionFormat="of" derivedContent="3"/>とRARP（逆アドレス解決プロトコル、Reverse Address Resolution Protocol）<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>です。これらのプロトコルの使い方については、以下で説明します。ブーターは（名前の検索などのために）ほかのプロトコルを使用することもできますが、それらはIPベースで、かつインターネット標準であるべきです。</t>
+      <t indent="0" pn="section-unnumbered-2-4">最初のTFTP RRQを含むIPデータグラム（およびブーターが送信する他のすべてのIPデータグラム）は、当然、そのIPヘッダーに送信元インターネットアドレスと宛先インターネットアドレスの両方を含んでいなければなりません。しかし、ブーターは最初は自分のインターネットアドレスを知らず、下位レベルの（たとえばイーサネットの）アドレスしか知らないことがよくあります。ブーターは、自分のインターネットアドレスを（TFTP RRQを送信する前に）見つけるために、逆アドレス解決プロトコル（RARP）<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>を使用できます。RARPは、Plummerのアドレス解決プロトコル（ARP）<xref target="ref-3" format="default" sectionFormat="of" derivedContent="3"/>から着想を得たものです。ARPは、既知の上位レベルのプロトコル（たとえばインターネット）のアドレスに対応する「ハードウェア」アドレスを見つけるために使われますが、それとは異なり、RARPは、既知のハードウェアアドレスから上位レベルのプロトコルのアドレスを決定するために使われます。RARPはARPと同じパケット形式を使用し、ARPと同様に、さまざまなデータリンクプロトコルで使用できます。</t>
+      <t indent="0" pn="section-unnumbered-2-5">ARPも使用できます。宛先インターネットアドレスがわかっている場合は、そのアドレスを含むARP要求をブロードキャストして、後続のTFTP RRQの送信先となる、対応するハードウェアアドレスを見つけることができます。この要求が失敗しても問題にはならないかもしれません。RRQも（データリンクレベルで）ブロードキャストできるからです。しかし、このようなARP要求パケットには送信者の（つまりブーターの）インターネットアドレスとハードウェアアドレスも含まれているので、この情報がローカルサブネットの他の部分で利用可能になり、たとえばルーティングに役立つ可能性があります。</t>
+      <t indent="0" pn="section-unnumbered-2-6">単一の宛先インターネットアドレスがわからない場合は、すべての「ローカル」なインターネットホストが受信できるように、特別な「ブロードキャスト」インターネットアドレスをTFTP RRQの宛先アドレスとして使用できます。（ただし、現時点では、インターネットのブロードキャストに関する標準は正式に採用されていません。[**]）</t>
+    </section>
+    <section anchor="an-example-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-an-example-implementation">実装例</name>
+      <t indent="0" pn="section-unnumbered-3-1">著者は、上で規定したTFTPによる起動を実装しました。できあがったコードはROMに格納されています。（この実装は、イーサネット経由で起動するMotorola 68000ベースのワークステーション向けのものです。）このようなマシンを起動したいユーザーは、ファイル名と、（必要に応じて）ワークステーションのインターネットアドレスや、ファイルのロード元となるサーバーマシンのインターネットアドレスを入力します。ブートストラップコードは次のように処理を進めます。</t>
+      <ol type="(%d)" spacing="normal" indent="adaptive" start="1" pn="section-unnumbered-3-2">
+        <li pn="section-unnumbered-3-2.1" derivedCounter="(1)">（イーサネットインターフェイスに問い合わせることによって）ワークステーションのイーサネットアドレスを見つけます。</li>
+        <li pn="section-unnumbered-3-2.2" derivedCounter="(2)">ワークステーションのインターネットアドレスが与えられていない場合は、それを見つけるためにRARP要求をブロードキャストします。この要求が失敗した（つまり、タイムアウトした）場合は、ブートストラップは失敗します。</li>
+        <li pn="section-unnumbered-3-2.3" derivedCounter="(3)">サーバーホストのインターネットアドレスが与えられている場合は、ARP要求をブロードキャストして、対応するイーサネットアドレスを見つけようとします。これが失敗した場合や、サーバーのインターネットアドレスが与えられていない場合は、イーサネットのブロードキャストアドレスを使用します。</li>
+        <li pn="section-unnumbered-3-2.4" derivedCounter="(4)">サーバーホストのインターネットアドレスが与えられていない場合は、<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>で説明されている、「ローカルサブネット」上のブロードキャストを表す特別なインターネットアドレスを使用します。（これはインターネット標準ではありません。）</li>
+        <li pn="section-unnumbered-3-2.5" derivedCounter="(5)">要求されたファイルに対するTFTP RRQを、ステップ(3)で見つけたイーサネットアドレスに送信します。送信元インターネットアドレスはステップ(2)で見つけたもので、宛先インターネットアドレスはステップ(4)で見つけたものです。</li>
+      </ol>
+      <t indent="0" pn="section-unnumbered-3-3">一般に、複数のTFTPサーバーがRRQに応答する可能性があるので、TFTPのERRORパケットを受信しても中断しないことに注意してください。ERRORパケットを受信しても、別のサーバーが後から要求されたファイルの最初のデータパケットで応答してくる可能性がなくなるわけではないからです。RRQに対する応答として最初の有効なTFTP DATAパケットを受信すると、このパケットの送信元のインターネットアドレスとイーサネットアドレスを、後続のTFTP ACKパケットの宛先アドレスとして使用します。その後に別のサーバーがDATAパケットで応答してきた場合は、その応答としてERRORパケットを送り返します。</t>
+      <t indent="0" pn="section-unnumbered-3-4">TFTPによる起動の実装は、注意しないと多くの領域を占めてしまうことがあります。コードを限られた量のROMに収めなければならない場合、これは重大な問題になりえます。しかし、上で説明した実装は、（イーサネットのデバイスドライバーを除いて）4Kバイト未満のコードで構成されています。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-unnumbered-4-1">ここで示したアイデアは、何人かの人々、特にJeff Mogulとの議論の成果です。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-5">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>A Reverse Address Resolution Protocol</title>
+          <author fullname="R. Finlayson" initials="R." surname="Finlayson"/>
+          <author fullname="T. Mann" initials="T." surname="Mann"/>
+          <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+          <author fullname="M. Theimer" initials="M." surname="Theimer"/>
+          <date year="1984" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="903"/>
+        <refcontent>Stanford University</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Internet Broadcasting</title>
+          <author fullname="J. Mogul" initials="J." surname="Mogul"/>
+          <date year="1984" month="January"/>
+        </front>
+        <refcontent>Proposed RFC</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>An Ethernet Address Resolution Protocol</title>
+          <author fullname="D. Plummer" initials="D." surname="Plummer"/>
+          <date year="1982" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="826"/>
+        <refcontent>MIT-LCS</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>Internet Protocol - DARPA Internet Program Protocol Specification</title>
+          <author fullname="J. Postel" initials="J." surname="Postel" role="editor"/>
+          <date year="1981" month="September"/>
+        </front>
+        <seriesInfo name="RFC" value="791"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>User Datagram Protocol</title>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1980" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="768"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-6" quoteTitle="true" derivedAnchor="6">
+        <front>
+          <title>The TFTP Protocol (Revision 2)</title>
+          <author fullname="K. Sollins" initials="K." surname="Sollins"/>
+          <date year="1981" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="783"/>
+        <refcontent>MIT/LCS</refcontent>
+      </reference>
+    </references>
+    <section anchor="editors-note" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-6">
+      <name slugifiedName="name-editors-note">[**]編集者注</name>
+      <t indent="0" pn="section-unnumbered-6-1">インターネット全体のブロードキャストアドレスやマルチキャストアドレスの標準はありませんが、特定のネットワークにおけるブロードキャストを示すには、インターネットアドレスのローカル部を「すべて1」にしたものを使用することを強く推奨します。つまり、クラスAのネットワーク1ではブロードキャストアドレスは1.255.255.255、クラスBのネットワーク128.1ではブロードキャストアドレスは128.1.255.255、クラスCのネットワーク192.1.1ではブロードキャストアドレスは192.1.1.255となります。</t>
+    </section>
+  </back>
+</rfc>

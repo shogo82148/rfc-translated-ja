@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="535" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc535" rel="alternate"/>
+  <front>
+    <title>ファイルアクセスプロトコルに関するコメント</title>
+    <seriesInfo name="RFC" value="535" stream="IETF"/>
+    <author fullname="B. Thomas" initials="B." surname="Thomas">
+      <organization showOnFrontPage="true">BBN-TENEX</organization>
+      <address/>
+    </author>
+    <date year="1973" month="July"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">RFC 520でJohn Dayが提案したような種類のファイルアクセスプロトコル（FAP）は良いアイデアです。以下のコメントは、RFC 520で記述されたプロトコルに対する改善（主に追加）を提案するものです。</t>
+      <ol spacing="normal" type="1." indent="adaptive" start="1" pn="section-abstract-2">
+        <li pn="section-abstract-2.1" derivedCounter="1.">（思想的なコメント）FTPとFAPのどちらも、ユーザーがリモートからファイルにアクセスできるようにすることを意図しています。実質的に、FTPは、通常コマンド言語のレベルで開始されるような種類のファイル操作（の一部）を、ネットワーク越しにファイルが存在するサイトへ「従属」させる手段をユーザーに提供します。同様に、FAPは、通常オペレーティングシステムやモニターのレベルでプログラムによって開始されるような種類の操作を、ネットワーク越しにファイルが存在するサイトへ「従属」させるしくみを提供することを意図しています。FAPのOPEN、CLOS、SETPなどのコマンドは、「汎用的な」ファイルシステムのモニターコールを定義する試みとみなせます。以下の提案は、通常ローカルユーザーが利用できる機能を、FAPを介してリモートユーザーも利用できるようにするためのさらなる試みです。</li>
+        <li pn="section-abstract-2.2" derivedCounter="2.">
+          <t indent="0" pn="section-abstract-2.2.1">OPENコマンドでは、追記（append）を表すAという3つ目のOPENモードを使えるようにすべきです。ファイルとファイルポインターに対する動作の点では、次のコマンド</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.2.2"><![CDATA[
+   OPEN A FOO
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.2.3">は、次の一連のコマンドと等価になります。</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.2.4"><![CDATA[
+   OPEN W FOO
+   SETP E
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.2.5">違いはアクセス制御に関するものです。多くのシステムでは、ユーザーはファイルへの書き込みアクセスと追記アクセスを別々に制御できます（たとえば、TENEXでは、ユーザーは通常、自分のMESSAGE.TXTファイルの保護を、誰でも追記できるが書き込めるのは本人だけになるように設定します）。そのようなシステムでは、書き込みのOPENが失敗するような多くの場合でも、追記のOPENは成功します。ここでの原則は、FAPは（実用的な範囲でできる限り）ローカルユーザーと同じ方法でリモートユーザーがファイルにアクセスできるようにすべきだということです。</t>
+        </li>
+        <li pn="section-abstract-2.3" derivedCounter="3.">
+          <t indent="0" pn="section-abstract-2.3.1">提案されたプロトコルでは非順次ファイルを作成できますが、作成後にそれらにリモートからアクセスする便利な方法がありません。たとえば、TENEXサーバーに次の一連のコマンドを送ると、</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.3.2"><![CDATA[
+        OPEN W FOO     //byte size assumed = 36
+        SETP B
+        WRITE 512
+        SETP 1024
+        WRITE 512
+        CLOS
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.3.3">2つのページ（TENEXでは1ページ＝36ビットワード512個）を持つファイルFOOが作成されます。2つのページはページ#0とページ#2になります。ページ#1が存在しないので、このファイルには「穴」があると言います。リモートユーザーがアクセスする前にFOOの（ページ）構造を知っていなければ、FAPを介してFOOにアクセスするのは困難です。FOOのようなファイルへのリモートアクセスをサポートするために、FAPには、ユーザーがファイルの構造を調べる手段があるべきです。ファイルポインターの現在の位置より先にある、次の使用中のページ（ブロックまたはレコード）の先頭バイトを指すために、ファイルポインターに設定すべき値を返す、値を返すコマンドを考えてみてください。そのようなコマンドをFNUB（Find Next Used Block）と呼ぶことにすると、FOOのような穴のあるファイルを取得するのに、次の一連のコマンドを使えます。</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.3.4"><![CDATA[
+        OPEN R FILE
+        SETP B
+a:      FNUB               //let x=the value returned
+        if x=null
+           then CLOS
+           else ( SETP x
+                  READ 512   //page size=512
+                  goto a )
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.3.5">これは、リモートユーザーがファイルに適切にアクセスできるよう、ブロック（ページ）のサイズを知っていることを前提としています。可変サイズのブロックを持つファイルも考えられます。おそらくFNUBは、次のブロックのファイルポインター位置と、そのブロックのバイト単位のサイズという、2つの値を返すべきでしょう。</t>
+        </li>
+        <li pn="section-abstract-2.4" derivedCounter="4.">
+          <t indent="0" pn="section-abstract-2.4.1">FAPは、リモートユーザーが特定のファイルに関するある種のステータス情報や「記述子」情報を取得する手段を提供すべきです。以下は、TENEXのファイルにリモートからアクセスするユーザーにとって有用な情報の（網羅的ではない）一覧です。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-abstract-2.4.2">
+            <li pn="section-abstract-2.4.2.1">ファイルに対するユーザーのアクセス権。ユーザーはそのファイルを読み込み、書き込み、実行、追記できるか？</li>
+            <li pn="section-abstract-2.4.2.2">サイズ情報。ファイルへの最後の書き込みアクセス（OPEN W）で使われたバイトサイズ。（そのサイズの）バイト単位でのファイルサイズ。</li>
+            <li pn="section-abstract-2.4.2.3">ファイルアクセスの日付。作成日、最終読み込み日、最終書き込み日。</li>
+            <li pn="section-abstract-2.4.2.4">TENEXでは、ユーザーは同じファイル内のページごとに異なるアクセス制御を指定できます。リモートユーザーは、ファイルに関するそのようなアクセス制御情報を取得できる（そして、ファイルを作成するときにそのようなアクセス制御を指定できる）べきです。</li>
+          </ul>
+        </li>
+        <li pn="section-abstract-2.5" derivedCounter="5.">
+          <t indent="0" pn="section-abstract-2.5.1">ローカルユーザーと同じように、リモートユーザーが複数のファイルに同時にアクセスしたいアプリケーションは数多くあります。提案されたFAPは、そのような複数ファイルへのアクセスをサポートできません（もちろん、ユーザーはいつでもICPを実行してサーバーとの別の接続を確立できます）。あるFAPコマンドがどのファイルを対象とするかを指定するのに使う「ファイルハンドル」という概念を取り入れることで、FAPを簡単に拡張して複数ファイルへのアクセスをサポートできます。ユーザーが次のコマンドを実行すると、</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.5.2"><![CDATA[
+        OPEN R FOO
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.5.3">サーバーの応答にはFOOのハンドルが含まれ、ユーザーはその後FOOを参照するときにそのハンドルを使います。返されるハンドルはサーバーが選んだ文字列です。ファイルの名前（FOO）や小さな整数などが考えられます。完全なファイル名の代わりに（サーバーが選んだ）ファイルハンドルを使うことで、サーバーはコマンドごとにファイル名を解析し直すオーバーヘッドを負うことなく、FAPコマンドに応答できます。例として、読み込み用に1つ、書き込み用に1つのファイルを開き、1つ目のファイルからデータとして3バイトを読み込み、そのデータを使って計算し、2バイトの結果を2つ目のファイルに書き込む、次の一連のコマンドを考えてみてください。</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.5.4"><![CDATA[
+        OPEN R FOO   //server returns FH as handle
+        OPEN W MOO   //server returns MH as handle
+        READ 3 FH    //user reads data
+        //User does some computation on the 3 bytes
+        WRIT 2  MH   //user writes the result
+        CLOS MH
+        CLOS FH
+]]></artwork>
+          <t indent="0" pn="section-abstract-2.5.5">ハンドルには妥当なデフォルトを設けることもできます。たとえば、ハンドルのないFAPコマンドは直前のコマンドと同じファイルを対象とする、などです。（ハンドルとファイルの関連付けは、OPENコマンドの副作用として行うよりも、たとえば次のような別のFAPコマンドで行うほうがおそらく良いでしょう。</t>
+          <artwork name="" type="" align="left" alt="" pn="section-abstract-2.5.6"><![CDATA[
+        HNDL FOO   )
+]]></artwork>
+        </li>
+        <li pn="section-abstract-2.6" derivedCounter="6.">ローカルな変換を考慮に入れることは重要です（RFC 520の3ページ）。しかし、リモートユーザーが望むなら、ローカルな変換を抑止して、格納されているとおりにファイルにアクセスできるようにすることも同じくらい重要です。これにより、ファイルを操作するプログラムは、ファイルがローカルにある（そしてシステムコールを介して「直接」アクセスされる）場合でも、リモートにある（そして「トラップ」されてFAPコマンドに変換され、リモートサイトに送られるシステムコールを介して「間接的に」アクセスされる）場合でも、同じようにうまく動作できるようになります。</li>
+      </ol>
+      <t indent="0" pn="section-abstract-3">[このRFCは、GTE（旧BBN Corp.）の支援を受けて、Alex McKenzieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。10/99]</t>
+    </abstract>
+  </front>
+  <middle>
+  </middle>
+  <back>
+  </back>
+</rfc>

@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-foster-mgcp-lockstep-01" indexInclude="true" number="3992" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-foster-mgcp-lockstep-01" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3992" rel="alternate"/>
+  <front>
+    <title>メディアゲートウェイ制御プロトコル（MGCP）のロックステップ状態報告メカニズム</title>
+    <seriesInfo name="RFC" value="3992" stream="IETF"/>
+    <author fullname="B. Foster" initials="B." surname="Foster">
+      <organization showOnFrontPage="true">Cisco Systems</organization>
+      <address/>
+    </author>
+    <author fullname="F. Andreasen" initials="F." surname="Andreasen">
+      <organization showOnFrontPage="true">Cisco Systems</organization>
+      <address/>
+    </author>
+    <date year="2005" month="February"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">メディアゲートウェイ制御プロトコル（MGCP）のエンドポイントが、不利な障害状況（コールエージェントのフェイルオーバーが発生したときに過渡的な呼に関与していた場合など）に遭遇すると、イベントが隔離されたまま通知されないロックステップ状態に取り残される可能性があります。この文書で説明するMGCPパッケージは、新しいコールエージェントが必要な障害回復手順をとれるように、このような状況を報告するメカニズムを提供します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーに情報を提供するものです。いかなる種類のインターネット標準も規定するものではありません。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2005).</t>
+      </section>
+      <section anchor="iesg-note" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.3">
+        <name slugifiedName="name-iesg-note">IESGノート</name>
+        <t indent="0" pn="section-boilerplate.3-1">この文書は、コミュニティーへの情報提供のために発行されるものです。この文書は、現在いくつかの製品で展開が進んでいる、IETF以外で策定されたプロトコルについて説明しています。実装者は、RFC 3015に留意すべきです。RFC 3015は、IETFのMegacoワーキンググループとITU-T SG16で策定されたもので、MGCPが対処するように設計されたニーズを満たすための、IETFとITU-Tによる標準に基づく方法（レビュー済みのセキュリティーに関する考慮事項を含む）とみなされています。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">メディアゲートウェイ制御プロトコル（MGCP）<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>では、「ステップ（step）」モードで動作しているエンドポイントがNotifyを生成すると、そのエンドポイントは通知状態に入り、Notifyへの応答を待ちます。さらに、エンドポイントは、イベント処理を再開する前に、新しいNotificationRequestを待たなければなりません。エンドポイントがこのNotificationRequestを待っている間、そのエンドポイントはロックステップ状態（lockstep state）にあるといいます。</t>
+      <t indent="0" pn="section-1-2">ロックステップ状態にあるエンドポイントは、イベント処理をまったく実行できず、したがって新しいNotifyを生成することもできません。エンドポイントがロックステップ状態にあるのは、ごく短い時間だけであるべきです。しかし、不利な状況下では、コールエージェントが気付かないうちに、エンドポイントがロックステップ状態に陥ってしまう可能性があります。明らかに、これは提供されるサービスの点で非常に悪い結果をもたらしえます。</t>
+      <t indent="0" pn="section-1-3">この文書で定義するLockstepパッケージは、EndpointConfigurationコマンドとRestartInProgressコマンドの拡張を定義します。これにより、コールエージェントは、エンドポイントが指定された期間ロックステップ状態にあるときにそのことを通知するよう、エンドポイントに要求できます。</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-document">この文書で使用する規則</name>
+        <t indent="0" pn="section-1.1-1">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、BCP 14、RFC 2119<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>で説明されているとおりに解釈されます。</t>
+      </section>
+    </section>
+    <section anchor="lockstep-package" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-lockstep-package">Lockstepパッケージ</name>
+      <dl newline="false" spacing="compact" indent="3" pn="section-2-1">
+        <dt pn="section-2-1.1">パッケージ名:</dt>
+        <dd pn="section-2-1.2">LCK</dd>
+        <dt pn="section-2-1.3">バージョン:</dt>
+        <dd pn="section-2-1.4">0</dd>
+      </dl>
+      <t indent="0" pn="section-2-2">パッケージの説明: このパッケージの目的は、エンドポイントが指定された期間「ロックステップ状態」にあるという状況を報告するためのメカニズムを提供することです。</t>
+      <t indent="0" pn="section-2-3">このパッケージには2つの側面があります。</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-4">
+        <li pn="section-2-4.1">指定された期間ロックステップ状態にある場合に報告するよう、コールエージェントがエンドポイントに要求する機能。これは、セクション2.1で説明するように、EndpointConfigurationコマンドで行います。</li>
+        <li pn="section-2-4.2">報告のメカニズムそのもの。これは、セクション2.2で説明するように、RSIPコマンドの新しい「lockstep」RestartMethodで行います。</li>
+      </ul>
+      <section anchor="request-to-report-lockstep-state" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-request-to-report-lockstep-state">ロックステップ状態の報告の要求</name>
+        <t indent="0" pn="section-2.1-1">新しい「LCK/LST」EndpointConfigurationパラメーターは、コールエージェントが「ロックステップ」状態の報告を要求するために使用します。これは次のABNFを使用します。</t>
+        <sourcecode type="abnf" markers="false" pn="section-2.1-2">
+"LCK/LST:" 0*WSP LSTIME
+
+LSTIME = 1*(4DIGIT)
+</sourcecode>
+        <t indent="0" pn="section-2.1-3">ここで、LSTIMEは秒単位で表され、値の範囲は0から9999です。2*T-HIST（<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>を参照）を超える値が<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+        <t indent="0" pn="section-2.1-4">LSTIMEは、エンドポイントがロックステップ状態になってから報告するまでの時間です。タイマーは、エンドポイントがロックステップ状態に入ったときに開始し、タイムアウトが発生する前にエンドポイントがロックステップ状態を抜けた場合には取り消されます。指定された値は、明示的に変更されるまで（または再起動が発生するまで）有効です。0以外のタイマー値が指定されたときに、エンドポイントがすでにロックステップ状態にある場合は、指定された値でロックステップタイマーを開始するだけです。既存のロックステップタイマーは取り消されます。値0は、報告を無効にするために使用します。</t>
+        <t indent="0" pn="section-2.1-5">このパラメーターは、AuditEndpointコマンドを使用して監査できます。返される値は、最後に設定された値か、値が設定されていない場合は値0です。</t>
+      </section>
+      <section anchor="lockstep-restart-method" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-lockstep-restart-method">ロックステップ再起動方法</name>
+        <t indent="0" pn="section-2.2-1">「LCK」パッケージで、新しい「lockstep」再起動方法を定義します。エンドポイントにLSTIMEの0以外の値が設定されていて、そのタイマーが満了した場合、このRestartMethodを指定したRestartInProgress（RSIP）が送信されます。ロックステップタイマーは、一度設定されると、Notifyコマンド1つにつき1回しか発火できないことに注意してください。ただし、エンドポイントがロックステップ状態にある間にタイマーを複数回設定する（つまり、その特定のNotifyに対してタイマーを再設定する）ことは可能です。再起動方法の構文は<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>に従います。</t>
+        <sourcecode type="abnf" markers="false" pn="section-2.2-2">
+"RM" ":" 0*(WSP) "LCK/lockstep"
+</sourcecode>
+        <t indent="0" pn="section-2.2-3">RestartDelay（<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>を参照）は、「lockstep」RestartMethodでは使用しません。また、「lockstep」RestartMethodはサービス状態を定義しないため、RestartMethodを監査したときにこの値が返されることはありません。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-3-1">名前「LCK」、バージョン番号0のMGCPパッケージタイトル「Lockstep」は、<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>の付録C.1に示されているとおりにIANAに登録されています。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">基本MGCP仕様<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>のセクション5では、基本MGCPプロトコルのセキュリティー要件について説明しており、これはこの文書で定義するパッケージにも同様に適用されます。リクエストとレスポンスが認証された送信元から得られたものであり、メッセージが改変されていないことを保証するために、メッセージごとの認証と完全性のサービスを提供するIPsec（RFC 2401、RFC 2406）などのセキュリティープロトコルを使用する必要があります。これらのサービスがなければ、ゲートウェイとコールエージェントは攻撃にさらされます。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-normative-references">引用規格</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Media Gateway Control Protocol (MGCP) Version 1.0</title>
+          <author fullname="F. Andreasen" initials="F." surname="Andreasen"/>
+          <author fullname="B. Foster" initials="B." surname="Foster"/>
+          <date year="2003" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="3435"/>
+      </reference>
+    </references>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Bill Foster" initials="B." surname="Foster">
+        <address>
+          <phone>+1 250 758 9418</phone>
+          <email>bfoster@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Flemming Andreasen" initials="F." surname="Andreasen">
+        <organization showOnFrontPage="true">Cisco Systems</organization>
+        <address>
+          <postal>
+            <street>499 Thornall Street, 8th Floor</street>
+            <city>Edison</city>
+            <region>NJ</region>
+            <code>08837</code>
+          </postal>
+          <email>fandreas@cisco.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2005).</t>
+        <t indent="0" pn="section-appendix.b-2">この文書は、BCP 78およびwww.rfc-editor.orgに含まれる権利、ライセンス、制限の対象であり、そこに定められている場合を除き、著者はすべての権利を保持します。</t>
+        <t indent="0" pn="section-appendix.b-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（存在する場合）、インターネットソサエティー（Internet Society）、およびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+        <t indent="0" pn="section-appendix.c-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。ISOC文書における権利に関するISOCの手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+        <t indent="0" pn="section-appendix.c-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+        <t indent="0" pn="section-appendix.c-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.d-1">RFCエディター機能の資金は、現在インターネットソサエティー（Internet Society）が提供しています。</t>
+      </section>
+  </back>
+</rfc>

@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="784" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc784" rel="alternate"/>
+  <front>
+    <title>メール転送プロトコル：ISI TOPS20実装</title>
+    <seriesInfo name="RFC" value="784" stream="IETF"/>
+    <author fullname="S. Sluizer" initials="S." surname="Sluizer">
+      <organization showOnFrontPage="true">ISI</organization>
+      <address/>
+    </author>
+    <author fullname="J. Postel" initials="J." surname="Postel">
+      <organization showOnFrontPage="true">ISI</organization>
+      <address/>
+    </author>
+    <date year="1981" month="July"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">私たちは、TOPS20向けのMTPの実装を作成しています。プログラムはBLISS-10で書かれています。この実装は、TCPとNCPの両方のトランスポートサービスを使ってMTPのユーザー機能とサーバー機能をサポートし、他のメール配送の仕組みへのインターフェイスも提供します。</t>
+      <t indent="0" pn="section-abstract-2">トランスポートサービス（NCP、TCPなど）は、MTP送信プログラムとMTP受信プログラムの間の通信を確立するために使います。このメモの以降の部分では、これらの通信路をチャネルと呼びます。</t>
+      <t indent="0" pn="section-abstract-3">私たちの動作モデルでは、メールの発生源がユーザーディレクトリーにメールファイルを作成します。メールの発生源には、ユーザーのメール作成プログラム（Hermes、MM、SNDMSGなど）と、さまざまな入力チャネルからメールを受け付けるシステムのネットワークメール受信プログラムの両方があります。メールファイルはバックグラウンドプログラムによって処理され、このプログラムがメールをさまざまな出力チャネルに振り分けます。また、（必要なチャネルが利用可能であれば）メールをすぐに送信するための、ユーザー版のディスパッチャーもあります。</t>
+      <t indent="0" pn="section-abstract-4">MTPの複数受信者機能を活用するために、メールは2つのファイルで構成されます。1つ目は制御ファイルで、配送情報と2つ目のファイルへのポインターを含みます。2つ目のファイルには、配送するメールデータ（RFC 733ヘッダーを含む）が入っています。</t>
+      <t indent="0" pn="section-abstract-5">2つのファイルを使う理由は、メールデータは読み出すだけでよい（ただし、ファイルは最終的に削除されるか名前が変更されます）のに対し、制御情報はメールの処理に応じて変更しなければならないからです。たとえば、1つのメッセージが異なるチャネルを通じて異なる受信者に送られることがあります。チャネルの1つが利用できない場合は、制御ファイルを変更して、メールを送信済みの受信者に印を付けるか削除し、まだ送信していない受信者の情報は利用できるように残しておかなければなりません。ディスパッチャーの将来の実装では、出力チャネルの使用を最適にスケジュールするために、制御情報をデータ領域内のマスターテーブルに移すかもしれません。</t>
+      <t indent="0" pn="section-abstract-6">ディスパッチャーは、各受信者へのメールの送り方を、ホストごとに（1）TCP上のMTP、（2）NCP上のMTP、（3）NCP上のFTP（すなわち旧来の方法）のどれでメールを受け付けられるかを示すテーブルを参照して決定します。その他の場合（たとえば、UCLが作成した別のメール伝送システムを経由した、英国のホストへの配送）のためのテーブルもあります。</t>
+      <t indent="0" pn="section-abstract-7">このシステムの個々の構成要素は次のとおりです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-abstract-8">
+        <li pn="section-abstract-8.1">TCP用のMTP受信プログラム。</li>
+        <li pn="section-abstract-8.2">NCP用のMTP受信プログラム。</li>
+        <li pn="section-abstract-8.3">ディスパッチャー。</li>
+        <li pn="section-abstract-8.4">TCP用のMTP送信プログラム。</li>
+        <li pn="section-abstract-8.5">NCP用のMTP送信プログラム。</li>
+        <li pn="section-abstract-8.6">メール作成プログラム（MM、HERMES、MSG、SNDMSGなど）。</li>
+        <li pn="section-abstract-8.7">ユーザーのメールボックスファイル。</li>
+        <li pn="section-abstract-8.8">保留中のメールファイル。</li>
+        <li pn="section-abstract-8.9">その他のメールの発生源。</li>
+        <li pn="section-abstract-8.10">その他のメールの配送先。</li>
+        <li pn="section-abstract-8.11">ホストのメール対応能力テーブル。</li>
+        <li pn="section-abstract-8.12">ホストの特別処理テーブル。</li>
+      </ol>
+      <t indent="0" pn="section-abstract-9">私たちは1から5を構築し、6については他の人々がこのシステムに適合させてくれることを期待しています（MMの1つのバージョンはISIで適合済みです）。7は既存のものを使い、8は定義して使い、9と10については要望に応じてインターフェイスを提供し、11と12は作成して使います。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-10"><![CDATA[
+           +-----+   +-----+   +------+   +------+
+           | MTP |   | MTP |   | USER |   |OTHER |
+           | TCP |   | NCP |   | MAIL |   |MAIL  |
+           | RCV |   | RCV |   | PGM  |   |SOURCE|
+           +-----+   +-----+   +------+   +------+
+              |         |          |         |
+              |         |          |         |
+              |         |          |         |
+              v         v          v         v
+            +----+    +----+     +----+     +----+
+            |    |    |    |     |    |     |    |
+Pending   +----+ |  +----+ |   +----+ |   +----+ |
+Files     |    |-+  |    |-+   |    |-+   |    |-+
+          |    |    |    |     |    |     |    |
+          +----+    +----+     +----+     +----+
+                \      |         |       /
+                 \     |         |      /
+                  \    |         |     /
+                   v   v         v    v
+
+                    +------------------+       TABLES
+                    |                  |       +----+
+                    |    DISPATCHER    |<----->|    |---+
+                    |                  |       |    |   |
+                    +------------------+       +----+   |
+                    /      /     \      \          +----+
+                   /      /       \      \
+                  /      /         \      \
+                 v      v           v      v
+           +-----+   +-----+   +-------+   +-----+
+           | MTP |   | MTP |   | LOCAL |   |OTHER|
+           | TCP |   | NCP |   |MAILBOX|   |MAIL |
+           | SND |   | SND |   | FILES |   |SINK |
+           +-----+   +-----+   +-------+   +-----+
+]]></artwork>
+      <t indent="0" pn="section-abstract-11">現在の実装では、ディスパッチャーと、MTP-on-TCPおよびMTP-on-TCPの送信プログラムが1つのプログラムにまとめられていることに注意してください。</t>
+    </abstract>
+  </front>
+  <middle>
+  </middle>
+  <back>
+  </back>
+</rfc>

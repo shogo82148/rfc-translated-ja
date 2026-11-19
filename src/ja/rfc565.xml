@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="565" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc565" rel="alternate"/>
+  <front>
+    <title>データコンピューターへのネットワーク調査データの保存</title>
+    <seriesInfo name="RFC" value="565" stream="IETF"/>
+    <author fullname="D. Cantor" initials="D." surname="Cantor">
+      <organization showOnFrontPage="true">Computer Corporation of America</organization>
+      <address/>
+    </author>
+    <date year="1973" month="August" day="28"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">1972年11月、Computer Corporation of America（CCA）と、M.I.T.のProject MACのDynamics Modeling System（DMS）のProgramming Technology Divisionは、DMSのプログラムSURVEY [2]が収集したARPAネットワークのホストの振る舞いに関する情報を、CCAのデータコンピューター（datacomputer）[1]に送信する計画を始めました。その情報はデータコンピューターに保存し、DMSのPDP-10からデータコンピューターにアクセスする対話型プログラムで取り出すことになっていました。</t>
+      <t indent="0" pn="section-abstract-2">この共同プロジェクトの目的の1つは、SURVEYが収集するすべての情報をDMSが保持できるようにすることでした。SURVEYは1971年後半から稼働していましたが、調査結果の短い日次の要約だけを保存し、役に立つ可能性のある詳細は破棄していました。2つ目の目的は、CCAのデータコンピューターとリモートホストで動作するプログラムとの間のインターフェイスにおける欠点を見つけて取り除くことでした。</t>
+      <t indent="0" pn="section-abstract-3">このプロジェクトは先月完了し、この文書で説明するプログラムは7月10日からデータコンピューターと連携して順調に動作しています。</t>
+      <t indent="0" pn="section-abstract-4">以下のパート1ではSURVEYの出力について説明します。パート2では、その出力の一部をデータコンピューターから取り出すプログラムについて説明します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="part-1-the-survey-database" numbered="false" removeInRFC="false" toc="exclude" pn="section-1">
+      <name slugifiedName="name-part-1-the-survey-database">パート1：調査データベース</name>
+      <t indent="0" pn="section-1-1">DMSのプログラムSURVEYは20分ごとに起動し、DMSのPDP-10から28のネットワークホストそれぞれのロガーソケット（ソケット1）に対して初期接続プロトコルを実行します。</t>
+      <t indent="0" pn="section-1-2">SURVEYは、各ホストについて日時、ホスト、状態、応答時間を記録します。ホストは次のいずれかの状態にあります。</t>
+      <ul empty="true" spacing="normal" bare="false" indent="3" pn="section-1-3">
+        <li pn="section-1-3.1">不明、または調査していない</li>
+        <li pn="section-1-3.2">ネットワークから切断されている、またはダウンしている</li>
+        <li pn="section-1-3.3">ネットワーク制御プログラムが応答しない</li>
+        <li pn="section-1-3.4">ロガーへのICPがホストによって中断された</li>
+        <li pn="section-1-3.5">ロガーへのICPが20秒後にSURVEYによってタイムアウトになった</li>
+        <li pn="section-1-3.6">ロガーが利用可能で、20秒以内に応答している</li>
+      </ul>
+      <t indent="0" pn="section-1-4">SURVEYは、応答しているホストの応答時間を10分の1秒単位で記録します。</t>
+      <t indent="0" pn="section-1-5">28台すべてのホストのデータがそろうと、SURVEYはそのデータをCCAのデータコンピューターに送信します。何らかの理由でデータコンピューターが情報を受け付けられない場合、情報はDMSで保持され、後で改めて送信されます。</t>
+      <t indent="0" pn="section-1-6">データコンピューターの調査データベースは、ホスト、状態、月、年で転置（inverted）されています。つまり、データコンピューターは、1つのホストのロガーとの全二重コネクションを確立しようとする1回の試行の記録に対する索引をいくつか保持しています。ホストごと、状態ごと、月ごと、年ごとに1つずつ索引を保持しています。データコンピューターは、転置索引に対してブール演算を行うことで、データそのものを参照せずに、ブール式で指定された記録を選択できます。したがって、転置索引によって、以下で説明する調査データ取り出しプログラムとデータコンピューター上の調査データベースとの間のすばやいやり取りが容易になります。</t>
+      <t indent="0" pn="section-1-7">SURVEYは、1つのホストへのアクセスの試行ごとの記録を17文字のASCII文字で表します。すると、1回の調査の記録は17 * 28 = 476文字になり、データコンピューターはDMSから毎日3 * 24 * 476 = 34,272文字を受信します。</t>
+    </section>
+    <section anchor="part-2-retrieving-survey-data" numbered="false" removeInRFC="false" toc="exclude" pn="section-2">
+      <name slugifiedName="name-part-2-retrieving-survey-data">パート2：調査データの取り出し</name>
+      <t indent="0" pn="section-2-1">DMSでMUDDLE言語で書かれたSURRETというプログラムを使うと、データコンピューターに保存された調査データベースから資料を選択的に取り出せます[3]。ユーザーは、ホスト名、日付、時刻、応答時間、ホストの状態という5つのフィールドのそれぞれについて、値、値のグループ、または必要に応じて値の上限と下限を指定できます。さらに、5つのフィールドすべて、またはその任意の部分集合を取り出すよう要求できます。以下に、SURRETとのやり取りの例を示します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-2"><![CDATA[
+    <HOST (CASE-10)>$
+    "OK"
+    <DATE (AUG 5 73)>$
+    "OK"
+    <TIME (BETWEEN 2000 2400)>$
+    "OK"
+    <REQ ((TIME STATUS RESTIME))>$
+    ;J205 10-08-73 1557:20 RHRUN: SUCCESSFUL COMPILATION
+    .1241 10-08-73 1557:21 OCSOP: (DEFAULT) OUTPUT PORT OPENED
+
+   TIME           STATUS             R.T.(1/10 SEC)
+   2004    LOGGER RESPONDING (UP)        019
+   2024    LOGGER RESPONDING (UP)        024
+   2044    LOGGER RESPONDING (UP)        021
+   2104    LOGGER RESPONDING (UP)        016
+   2124    LOGGER RESPONDING (UP)        046
+   2144    LOGGER RESPONDING (UP)        018
+   2204    LOGGER RESPONDING (UP)        017
+   2224    LOGGER RESPONDING (UP)        017
+   2244    LOGGER RESPONDING (UP)        023
+   2304    LOGGER RESPONDING (UP)        015
+   2324    LOGGER RESPONDING (UP)        016
+   2344    LOGGER RESPONDING (UP)        015
+   "END OF DATCOMPUTER OUTPUT"
+]]></artwork>
+      <t indent="0" pn="section-2-3">山括弧とその中身、および「$」（ESCまたはaltmode）は、SURRETを使う人が入力したものです。残りはシステムが出力したものです。引用符で囲まれた語句は、実質的にSURRETのプロンプトです。「;」と「.」で始まるステータスメッセージは、データコンピューターが生成したものです。列見出しと表は、データコンピューターから取り出した数値を使ってSURRETが整形したものです。</t>
+      <t indent="0" pn="section-2-4">SURRETは、データ言語（datalanguage）を生成してデータコンピューターに送信し、データコンピューターから送られてくるシステム診断とデータを処理します。上記のSURRETのリクエストに対して生成されたデータ言語は次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-5"><![CDATA[
+   FOR |SURVEY.LOGTRY, SURVEY.LOGTRY WITH
+     ((YEAR EQ '73' AND MONTH EQ '08' AND DAY EQ '05')
+     AND (HRMIN GE '2000' AND HRMIN LE '2400')
+     AND (HOST EQ '013'))
+   HRMIN=HRMIN ;  STATUS=STATUS  ;  RESTIME=RESTIME  ;
+   END;
+]]></artwork>
+      <t indent="0" pn="section-2-6">データ言語中のフィールド名は、最初のデータを読み込む前にファイル記述子とともに登録しました。</t>
+      <t indent="0" pn="section-2-7">任意の数のフィールドの値を変更して新たにREQ（リクエスト）を発行すれば、SURRETに新しいデータを取り出させることができます。コマンド&lt;state&gt;は、5つの取り出し条件の候補の現在の値を表示します。たとえば次のようになります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-8"><![CDATA[
+    <HOST (USC-44)>$
+    "OK"
+    <STATE>$
+    !HOST: (USC-44)STATUS: () RESTIME: () DATE: (AUG 5 73)
+      TIME: (BETWEEN 2000 2400)!
+
+    <REQ ((TIME STATUS RESTIME))>$
+    ;J205 10-08-73 1610:08 RHRUN: SUCCESSFUL COMPILATION
+    .1241 10-08-73 1610:09 OCSOP: (DEFAULT) OUTPUT PORT OPENED
+
+   TIME           STATUS             R.T.(1/10 SEC)
+   2004    LOGGER RESPONDING (UP)        020
+   2024    LOGGER RESPONDING (UP)        008
+   2044    LOGGER RESPONDING (UP)        008
+   2104    LOGGER RESPONDING (UP)        009
+   2124    LOGGER NOT RESPONDING (LNR)   000
+   2144    LOGGER NOT AVAILABLE(DEAD)    000
+   2204    NCP NOT RESPONDING (NNR)      000
+   2224    LOGGER NOT RESPONDING (LNR)   000
+   2244    LOGGER NOT AVAILABLE (DEAD)   000
+   2304    LOGGER NOT AVAILABLE (DEAD    000
+   2324    NCP NOT RESPONDING (NNR)      000
+   2344    LOGGER RESPONDING (UP)        007
+   "END OF DATCOMPUTER OUTPUT"
+]]></artwork>
+      <t indent="0" pn="section-2-9">上記の出力はすべて、次のようにしても取り出せたはずです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-10"><![CDATA[
+         <HOST (CASE-10 OR USC-44)>
+]]></artwork>
+      <t indent="0" pn="section-2-11">さらに、</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-12"><![CDATA[
+         <HOST (CASE-10 CCA OR USC-44)>
+]]></artwork>
+      <t indent="0" pn="section-2-13">とすると、SURRETはデータベースに2回アクセスします。1回目はCase-10に関する情報のため、2回目は残りの2つのホストに関する情報のためです。</t>
+      <t indent="0" pn="section-2-14">1973年7月10日以降の詳細な調査データは、データコンピューターから直接、またはSURRETを通じて利用できます。データコンピューターを直接使いたい人は、NICを通じて、またはCCAのDale Stern（617-491-3670）に連絡して、関連文書を入手できます。</t>
+    </section>
+    <section anchor="endnotes" numbered="false" removeInRFC="false" toc="exclude" pn="section-3">
+      <name slugifiedName="name-endnotes">文末脚注</name>
+      <t indent="0" pn="section-3-1">[1]データコンピューターの概要は、Thomas Marill, The Datacomputer, 18 Oct '71, 7pp.（NIC 7979）に記載されています。データコンピューターにアクセスするためのプログラミング言語の詳細な検討は、Computer Corporation of America, Datacomputer Project Working Paper No. 3, Datalanguage, 29 Oct '71, 78 pp.（NIC 8208）にあります。この言語の現状は、Richard Winter, Specifications for Datalanguage, Version 0/9, 6 Jun '73, 36 pp.（NIC 16446）で概説されています。バージョン0/9のユーザーマニュアルは、1973年9月にCCAから公開される予定です。</t>
+      <t indent="0" pn="section-3-2">[2] SURVEYについては、Abhay Bhushan, A Report on the Survey Project, 22 June '73（NIC 17375）で説明されています。</t>
+      <t indent="0" pn="section-3-3">[3] SURRETの詳細な説明は、Safwan Bengelloun, MUDDLE Survey Data Retrieval Programs（1973年6月14日付のDMS内部メモ）にあります。ここでの目的は、プログラムがデータコンピューターとどのようにやり取りするかを示すのに十分な範囲で、プログラムの構文と構造を説明することです。</t>
+      <t indent="0" pn="section-3-4">[このRFCは、Via Genieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。08/00]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

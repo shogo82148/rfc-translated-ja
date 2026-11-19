@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 596: TelnetのGo-Aheadについての再考（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>UNKNOWN</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc596.html">RFC 596</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc596">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc596">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 596</h1>
+<h1 id="title-en">Second Thoughts on Telnet Go-Ahead</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 596</h1>
+<h1 id="title-ja">TelnetのGo-Aheadについての再考</h1>
+</div>
+</div>
+<section><span id="section-unnumbered-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<span id="section-unnumbered-1-en"></span><a href="#name-introduction-en" class="section-name selfRef">INTRODUCTION</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<span id="section-unnumbered-1-ja"></span><a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-1-en">In this RFC we present objections to the requirement that hosts
+implement the Telnet Go-Ahead (GA) command, as specified in the
+Telnet Protocol Specification (NIC #15372).  The thrust of these
+objections is in three major directions:</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-1-ja">このRFCでは、Telnetプロトコル仕様（NIC #15372）に規定されている、ホストがTelnetのGo-Ahead（GA）コマンドを実装しなければならないという要件への異議を述べます。これらの異議の要点は、大きく分けて次の3つの方向にあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-unnumbered-1-2-en">
+<li id="section-unnumbered-1-2.1-en">The GA mechanism is esthetically unappealing, both to myself
+and to many other people I have talked to.  I shall attempt to
+describe why this is so.</li>
+        <li id="section-unnumbered-1-2.2-en">As specified in the Protocol, GA will not, in general, work;
+i.e. it will not serve its intended purpose unless hosts make
+various unwarranted assumptions about how other hosts operate.</li>
+        <li id="section-unnumbered-1-2.3-en">GA is impossible for most hosts to implement correctly in all
+cases.  This is certainly true of the PDP-10 operating systems
+with which I am familiar (10/50 and Tenex).</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-unnumbered-1-2-ja">
+<li id="section-unnumbered-1-2.1-ja">GAの仕組みは、私自身にとっても、私が話をした他の多くの人々にとっても、美的に魅力がありません。なぜそうなのかを説明してみます。</li>
+        <li id="section-unnumbered-1-2.2-ja">プロトコルで規定されているとおりでは、GAは一般にうまく機能しません。つまり、ホストが他のホストの動作について根拠のないさまざまな仮定を置かない限り、GAは本来の目的を果たしません。</li>
+        <li id="section-unnumbered-1-2.3-ja">ほとんどのホストにとって、GAをあらゆる場合に正しく実装することは不可能です。これは、私がよく知っているPDP-10のオペレーティングシステム（10/50とTenex）では確実に当てはまります。</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-3-en">The purpose of this RFC is to advocate either complete removal of the
+GA mechanism or relegating it to the status of a negotiated option
+whose default state is that it be suppressed.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-3-ja">このRFCの目的は、GAの仕組みを完全に削除するか、またはGAを、デフォルトの状態では抑止されるネゴシエーション可能なオプションの地位に格下げすることを提唱することです。</p></div>
+</div></section><section><span id="section-unnumbered-2"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-terminology-en" lang="en">
+<span id="section-unnumbered-2-en"></span><a href="#name-terminology-en" class="section-name selfRef">TERMINOLOGY</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-terminology-ja" lang="ja">
+<span id="section-unnumbered-2-ja"></span><a href="#name-terminology-ja" class="section-name selfRef">用語</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-1-en">"Half-duplex" is a two-way communication discipline in which
+transmission takes place in only one direction at a time and the
+receiving party is constrained not to transmit until the transmitting
+party has explicitly given up control of the communication path
+("turned the line around").</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-1-ja">「半二重（half-duplex）」とは、双方向通信の方式の1つで、伝送は一度に一方向にしか行われず、受信側は、送信側が通信路の制御を明示的に手放す（「回線を反転させる（turned the line around）」）まで送信できないように制約されるものです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-2-en">This definition is distinct from a common (but incorrect) use of the
+terms "half-duplex" and "full-duplex" to designate local and remote
+character echoing.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-2-ja">この定義は、「半二重」と「全二重（full-duplex）」という用語を、ローカルエコーとリモートエコーを指すのに使う一般的な（しかし誤った）用法とは異なります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-3-en">"Reverse break" is a means by which a computer connected to a
+terminal by a half-duplex path may regain control of the path for
+further typeout after previously having relinquished it.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-3-ja">「リバースブレーク（reverse break）」とは、半二重の経路で端末に接続されたコンピューターが、いったん経路の制御を手放したあとで、さらにタイプアウト（出力）を行うために経路の制御を取り戻す手段です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-4-en">This is the complement of the "break" or "attention" mechanism,
+implemented by all half-duplex terminals, by means of which the user
+may gain control of the line while it is in use by the computer.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-4-ja">これは、すべての半二重端末に実装されている「ブレーク（break）」または「アテンション（attention）」の仕組みを補完するものです。ブレークやアテンションによって、ユーザーはコンピューターが回線を使用している間に回線の制御を得ることができます。</p></div>
+</div></section><section><span id="section-unnumbered-3"></span><span id="esthetic-objections-to-ga-en"></span><span id="esthetic-objections-to-ga-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-esthetic-objections-to-ga-en" lang="en">
+<span id="section-unnumbered-3-en"></span><a href="#name-esthetic-objections-to-ga-en" class="section-name selfRef">ESTHETIC OBJECTIONS TO GA</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-esthetic-objections-to-ga-ja" lang="ja">
+<span id="section-unnumbered-3-ja"></span><a href="#name-esthetic-objections-to-ga-ja" class="section-name selfRef">GAへの美的な異議</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-1-en">One assumption that permeates the Telnet Protocol specification (and
+is explicitly stated on Page 7) is that the "normal" mode of
+communication between computers and terminals is half-duplex,
+line-at-a-time.  While historically this is partially true, it is also
+clear, both within the ARPA Network community and elsewhere, that the
+trend is toward highly interactive man-machine communication systems
+which are difficult to implement under half-duplex communication
+disciplines.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-1-ja">Telnetプロトコル仕様に浸透している（そして7ページで明示されている）仮定の1つは、コンピューターと端末の間の「通常の」通信モードは半二重で行単位（line-at-a-time）である、というものです。歴史的にはこれは部分的には正しいものの、ARPAネットワークのコミュニティーの内外を問わず、半二重の通信方式の下では実装が難しい、高度に対話的なマンマシン通信システムへと向かう傾向があることも明らかです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-2-en">The GA mechanism is an attempt to solve a specific problem, that of
+switching control between computer and user in a subset of those
+hosts utilizing IBM 2741 or equivalent terminals.  I say "a subset"
+because in fact the problem arises only in the case of TIPs from
+2741s (with reverse break); from what experience I have had, I think
+the TIP does a very good job of turning the line around at the right
+moments.  (I am told this is also the case at Multics).</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-2-ja">GAの仕組みは、IBM 2741または同等の端末を使用するホストのうちの一部において、コンピューターとユーザーの間で制御を切り替えるという特定の問題を解決しようとするものです。「一部」と言ったのは、実際には、この問題は（リバースブレーク付きの）2741からTIPを使う場合にしか生じないからです。私の経験から言えば、TIPは適切なタイミングで回線を反転させることを非常にうまく行っていると思います。（Multicsでもそうだと聞いています。）</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-3-en">Given the trend toward more interactive communication, and given the
+fact that terminals on the Network requiring a Go-Ahead mechanism are
+a distinct minority of all terminals, I think we should be reluctant
+to burden our protocols with kludges that are so clearly a concession
+to obsolete design.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-3-ja">通信がより対話的になる傾向にあること、そしてGo-Aheadの仕組みを必要とするネットワーク上の端末が全端末の中で明らかに少数派であることを考えると、時代遅れの設計への譲歩であることがこれほど明らかなその場しのぎの策（kludge）で、私たちのプロトコルに負担をかけることには慎重であるべきだと考えます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-4-en">I have little doubt that before long somebody (if not IBM) will
+produce a full-duplex 2741-like terminal (indeed, perhaps it has
+already been done).  There is an obvious need for a terminal with
+Selectric quality keyboard and hard-copy better suited to
+interactive applications (i.e. full-duplex).</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-4-ja">近いうちに誰かが（IBMでないとしても）全二重の2741のような端末を製造することは、ほぼ疑いありません（実際、すでに製造されているかもしれません）。Selectric品質のキーボードとハードコピーを備え、対話的なアプリケーションにより適した（つまり全二重の）端末が必要とされていることは明らかです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-5-en">As a more practical consideration, it makes little sense to have the
+default state of the GA option be the one that benefits the least
+number of hosts and terminals.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-5-ja">より実際的な考慮事項として、GAオプションのデフォルトの状態を、恩恵を受けるホストや端末が最も少ない状態にすることには、ほとんど意味がありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-6-en">There is no question that most parties to Telnet communication
+will immediately negotiate to suppress GA.  To do otherwise will
+double the amount of network traffic generated by
+character-at-a-time typein, and will increase it by a non-negligible amount even
+for a line-at-a-time typein.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-6-ja">Telnet通信の当事者のほとんどが、ただちにGAを抑止するようネゴシエーションすることは疑いありません。そうしなければ、文字単位（character-at-a-time）のタイプイン（入力）で生成されるネットワークトラフィックの量は2倍になり、行単位のタイプインであっても無視できない量だけ増加します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-7-en">It strikes me as worthwhile to minimize the number of such
+"necessary" option negotiations, especially in view of the large
+number of TIPs and mini-hosts on the Network.  Many such hosts
+must, due to resource constraints, implement only a limited subset
+of the available options.  It follows, then, that the default
+state of all options should be the one most hosts will be willing
+to use.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-7-ja">このような「必要な」オプションネゴシエーションの数を最小限に抑えることは、特にネットワーク上に多数のTIPやミニホストがあることを考えると、価値があることだと思います。そのようなホストの多くは、リソースの制約のために、利用可能なオプションの限られたサブセットしか実装できません。したがって、すべてのオプションのデフォルトの状態は、ほとんどのホストが進んで使用する状態にすべきだということになります。</p></div>
+</div></section><section><span id="section-unnumbered-4"></span><span id="why-ga-wont-work-en"></span><span id="why-ga-wont-work-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-why-ga-wont-work-en" lang="en">
+<span id="section-unnumbered-4-en"></span><a href="#name-why-ga-wont-work-en" class="section-name selfRef">WHY GA WON'T WORK</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-why-ga-wont-work-ja" lang="ja">
+<span id="section-unnumbered-4-ja"></span><a href="#name-why-ga-wont-work-ja" class="section-name selfRef">GAが機能しない理由</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-1-en">We now show that a server process's being "blocked on input" (as
+specified in the Protocol) is not itself a sufficient condition for
+sending out GA.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-1-ja">ここでは、（プロトコルで規定されているように）サーバープロセスが「入力待ちでブロックされている」ことは、それ自体ではGAを送出するための十分条件ではないことを示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-2-en">This is due to the fact that the user Telnet has no control over the
+packaging of a "line" of information sent to the server; rather, this
+is a function of the NCP, which must observe constraints such as
+allocation and buffering.  Consider the following example:</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-2-ja">これは、サーバーに送られる情報の「行」をどのようにまとめるかについて、ユーザーTelnetには制御権がないことによるものです。むしろ、それはNCPの機能であり、NCPはアロケーションやバッファリングなどの制約を守らなければなりません。次の例を考えてみます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-3-en">A user types a line of text, which is buffered by his host's user
+Telnet until he signals end-of-line.  His keyboard then becomes
+locked (this being the behavior of half-duplex terminals while the
+computer has control of the line), and stays locked in
+anticipation of the server's eventual response and subsequent GA
+command.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-3-ja">ユーザーがテキストを1行タイプすると、その行はユーザーが行末（end-of-line）を通知するまで、そのユーザーのホストのユーザーTelnetによってバッファリングされます。するとユーザーのキーボードはロックされ（これは、コンピューターが回線の制御を持っている間の半二重端末の動作です）、サーバーからのいずれ来る応答と、それに続くGAコマンドを待つ間、ロックされたままになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-4-en">The user Telnet transmits this text line over the connection;
+however, due to insufficient allocation or other conditions, the
+text actually gets packaged up and sent as two or more separate
+messages, which arrive at the server host in the correct order but
+separated by some amount of time.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-4-ja">ユーザーTelnetは、このテキスト行をコネクション上で送信します。しかし、アロケーションの不足やその他の条件のために、テキストは実際には2つ以上の別々のメッセージにまとめられて送信され、それらは正しい順序でサーバーホストに到着するものの、ある程度の時間を置いて到着します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-5-en">The server Telnet passes the contents of the first message to the
+appropriate process, which reads the partial text line and
+immediately blocks for further input.  At this moment (assuming
+the second message hasn't arrived yet), the server telnet, in
+accordance with the Protocol, sends back a GA command.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-5-ja">サーバーTelnetは、最初のメッセージの内容を適切なプロセスに渡します。そのプロセスは、行の一部のテキストを読み込み、ただちにさらなる入力を待ってブロックします。この時点で（2つ目のメッセージがまだ到着していないとすると）、サーバーTelnetは、プロトコルに従ってGAコマンドを送り返します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-6-en">The rest of the text then arrives in response, the server process
+may generate a large volume of output.  Meanwhile, however, the GA
+command has caused the user's keyboard to become unlocked and
+computer output thereby blocked.  Hence we have a deadlock, which
+will be resolved only when the user recognizes what has happened
+and (manually) gives control back to the computer.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-6-ja">その後、残りのテキストが到着し、それに応答してサーバープロセスが大量の出力を生成することがあります。しかし一方で、GAコマンドによってユーザーのキーボードはロック解除され、その結果コンピューターの出力はブロックされてしまっています。こうしてデッドロックが生じ、これは、ユーザーが何が起きたかに気づいて（手動で）コンピューターに制御を戻したときにしか解消されません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-7-en">Of course, this particular problem is avoided if the Telnet protocol
+is modified to specify that the server Telnet will transmit GA only
+if the server process is blocked for input AND the most recent
+character passed to that process was end-of-line.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-7-ja">もちろん、サーバープロセスが入力待ちでブロックされており、かつ（AND）そのプロセスに最後に渡された文字が行末であった場合にのみ、サーバーTelnetがGAを送信するようにTelnetプロトコルを変更すれば、この特定の問題は回避できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-8-en">I claim that this solution is bad in principle because it assumes
+too much knowledge on the part of the serving host as to what
+constitutes "end-of-line" in the using host.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-8-ja">この解決策は、利用側のホストで何が「行末」となるかについて、サービス提供側のホストが知っていることをあまりにも多く仮定しているため、原理的に良くないと私は主張します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-9-en">Furthermore, the Protocol explicitly (and quite rightly) specifies
+that the user Telnet should provide some means by which a user may
+signal that all buffered text should be transmitted immediately,
+without its being terminated by end-of-line.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-9-ja">さらに、プロトコルは、バッファリングされたすべてのテキストを、行末で終端させることなくただちに送信すべきであることをユーザーが通知できる何らかの手段をユーザーTelnetが提供すべきであると、明示的に（そしてまったく正しく）規定しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-4-10-en">One must conclude, then, that in general the server Telnet has no
+precise way of knowing when it should send GA commands.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-4-10-ja">したがって、一般に、サーバーTelnetにはGAコマンドをいつ送るべきかを正確に知る方法がない、と結論せざるをえません。</p></div>
+</div></section><section><span id="section-unnumbered-5"></span><span id="implementation-problems-en"></span><span id="implementation-problems-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-problems-en" lang="en">
+<span id="section-unnumbered-5-en"></span><a href="#name-implementation-problems-en" class="section-name selfRef">IMPLEMENTATION PROBLEMS</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-problems-ja" lang="ja">
+<span id="section-unnumbered-5-ja"></span><a href="#name-implementation-problems-ja" class="section-name selfRef">実装上の問題</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-1-en">The foregoing analysis illustrates the problems that arise with the
+GA mechanism in communication between servers and users whose normal
+mode of operation is half-duplex, line-at-a-time.  When we turn to
+hosts that provide full-duplex service, such as the PDP-10s and many
+other hosts on the Network, the problems are much more severe.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-1-ja">ここまでの分析は、通常の動作モードが半二重で行単位であるサーバーとユーザーの間の通信において、GAの仕組みで生じる問題を示しています。PDP-10やネットワーク上の他の多くのホストのように、全二重のサービスを提供するホストに目を向けると、問題ははるかに深刻になります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-2-en">This is particularly true of operating system such as Tenex that
+exercise such tight control over terminal behavior that they
+prefer to operate in server echoing, character-at-a-time mode.
+This will probably become less necessary as protocols such as
+Remote Controlled transmission and Echoing Option come into
+general use, enabling servers to regulate echoing and break
+character classes in user Telnets.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-2-ja">これは、Tenexのように端末の動作を非常に厳密に制御するため、サーバーエコーで文字単位のモードで動作することを好むオペレーティングシステムに特に当てはまります。このような動作は、Remote Controlled TransmissionやEchoing Optionなどのプロトコルが一般に使われるようになり、サーバーがユーザーTelnetのエコーやブレーク文字のクラスを制御できるようになるにつれて、おそらく必要性が低くなるでしょう。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-3-en">Even in hosts such as 10/50 systems that provide reasonable service
+to line-at-a-time users for most subsystems (e.g. excluding DDT and
+TECO), GA is impossible to implement correctly.  This is true for
+several reasons.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-3-ja">ほとんどのサブシステム（たとえばDDTとTECOを除く）について行単位のユーザーに妥当なサービスを提供している10/50システムのようなホストでさえ、GAを正しく実装することは不可能です。これにはいくつかの理由があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-4-en">First, there are a number of subsystems that never block for terminal
+input but rather poll for it or accept it on an interrupt basis.  In
+the absence of typein, such processes go on to do other tasks,
+possibly generating terminal output.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-4-ja">第一に、端末の入力を待ってブロックすることがなく、入力をポーリングしたり、割り込みベースで入力を受け付けたりするサブシステムが数多くあります。タイプインがない場合、そのようなプロセスは他の処理を続け、場合によっては端末への出力を生成します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-5-en">Processes of this sort come immediately to mind.  The user telnet,
+FTP, and RJE programs are implemented in this fashion by almost
+all hosts.  10/50 has a subsystem called OPSER, used to control
+multiple independent subjobs from a single terminal.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-5-ja">この種のプロセスはすぐに思い浮かびます。ユーザーTelnet、FTP、RJEのプログラムは、ほぼすべてのホストでこの方式で実装されています。10/50には、1つの端末から複数の独立したサブジョブを制御するために使われるOPSERというサブシステムがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-6-en">Since these programs never block for input, GA commands will never
+be sent by the server Telnet in such cases even though the
+processes are prepared to accept terminal input at any time.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-6-ja">これらのプログラムは入力を待ってブロックすることがないので、プロセスがいつでも端末からの入力を受け付ける準備ができているにもかかわらず、このような場合にサーバーTelnetがGAコマンドを送ることは決してありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-7-en">Second, there is not necessarily a one-to-one relationship between
+processes and terminals, as seems to be assumed by the Telnet
+Protocol specification.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-7-ja">第二に、Telnetプロトコル仕様では前提とされているようですが、プロセスと端末の間に1対1の関係があるとは限りません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-8-en">For example, in Tenex one process may be blocked for terminal
+input while another process is generating output to the same
+terminal.  (Such processes are typically parallel forks of the
+same job).</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-8-ja">たとえばTenexでは、あるプロセスが端末の入力を待ってブロックしている間に、別のプロセスが同じ端末への出力を生成していることがあります。（そのようなプロセスは、通常、同じジョブの並列フォークです。）</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-9-en">Third, there is the possibility of inter-terminal links, such as are
+provided in many systems.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-9-ja">第三に、多くのシステムで提供されているような端末間リンクの可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-10-en">By this I do not mean special Telnet connections established
+between a pair of NVTs for the express purpose of
+terminal-to-terminal communication, as is suggested on page 9 of the Protocol
+specification.  Rather, I am referring to facilities such as the
+Tenex LINK facility, in which any number and any mixture of local
+and Network terminals and processes may have their input and
+output streams linked together in arbitrarily complex ways.
+Clearly the GA mechanism will fall flat on its face in this case.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-10-ja">これは、プロトコル仕様の9ページで提案されているような、端末間通信という明確な目的のために一対のNVTの間に確立される特別なTelnetコネクションのことではありません。そうではなく、TenexのLINK機能のような機能のことを言っています。この機能では、ローカルとネットワークの端末やプロセスを任意の数だけ任意に組み合わせて、それらの入出力ストリームを任意に複雑な方法で結び付けることができます。明らかに、この場合にGAの仕組みはまったく役に立ちません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-11-en">Also, the notion that one user of an inter-terminal link should
+have to "manually signal that it is time for a GA to be sent over
+the Telnet connection" in order to unblock another user's keyboard
+offends me to no end.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-11-ja">また、端末間リンクのあるユーザーが、別のユーザーのキーボードのブロックを解除するために、「GAをTelnetコネクション上で送るべき時であることを手動で通知」しなければならないという考えは、私にとって不快極まりないものです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-12-en">Finally, most systems provide means by which system personnel and
+processes may broadcast important messages to all terminals (e.g.
+SEND ALL in 10/50, NOTIFY in Tenex).  Clearly such asynchronous
+messages will be blocked by a half-duplex terminal that has been
+irrevocably placed in the typein state by a previous GA.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-12-ja">最後に、ほとんどのシステムは、システム要員やプロセスがすべての端末に重要なメッセージをブロードキャストできる手段（たとえば10/50のSEND ALL、TenexのNOTIFY）を提供しています。明らかに、そのような非同期のメッセージは、以前のGAによって後戻りできない形でタイプイン状態に置かれた半二重端末によってブロックされてしまいます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-13-en">This strikes me as such an obvious problem that I am forced to
+wonder how half-duplex hosts handle it even for their local
+terminals.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-13-ja">これはあまりにも明白な問題なので、半二重のホストは自身のローカル端末についてさえこれをどう扱っているのだろうかと、疑問に思わずにはいられません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-5-14-en">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Mirsad Todorovac 5/98 ]</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-5-14-ja">[このRFCは、Mirsad Todorovacによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。5/98]</p></div>
+</div></section>
+</body>
+</html>

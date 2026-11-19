@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="1110" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1110" rel="alternate"/>
+  <front>
+    <title>TCPビッグウィンドウオプションの問題</title>
+    <seriesInfo name="RFC" value="1110" stream="IETF"/>
+    <author fullname="A. McKenzie" initials="A." surname="McKenzie">
+      <organization showOnFrontPage="true">BBN STC</organization>
+      <address/>
+    </author>
+    <date year="1989" month="August"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">RFC 1106で議論されているTCP Big Windowオプションは、帯域幅遅延積（bandwidth * delay product）が大きく、かつパケットの順序の入れ替わりや重複が起こりうるインターネット環境では、正しく動作しません。そのようなネットワークでは、シーケンス番号空間を同様に拡大することなく、ウィンドウサイズを拡大してはなりません。したがって、インターネットでは、大きなウィンドウについて別のアプローチを取るべきです。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、RFC 1106で説明されているTCP Big Windowオプションについて意見を述べるものです。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="discussion" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-discussion">議論</name>
+      <t indent="0" pn="section-unnumbered-1-1">TCPは、パケットの損失、パケットの順序の入れ替わり、パケットの重複が起こりうることを特徴とする、パケットのストアアンドフォワード環境で動作するように設計されました。パケットの損失は、たとえば、輻輳したネットワーク要素がパケットを破棄することによって起こりえます。パケットの順序の入れ替わりは、たとえば、TCPコネクションのパケットが、一部は低帯域の地上経路で、一部は高帯域の衛星経路で、任意に送信されることによって起こりえます。パケットの重複は、たとえば、直接接続された2つのネットワーク要素が信頼性のあるリンクプロトコルを使用していて、受信側がパケットを正しく受信した後、送信側がそのパケットの確認応答を受け取る前にリンクがダウンした場合に起こりえます。この場合、送信側と受信側はそれぞれ、同じパケットを最終的な宛先に届けようとする責任を負うことになります。</t>
+      <t indent="0" pn="section-unnumbered-1-2">TCPには、送信元で生成されたデータストリームの正確なコピーを、同じ順序で、欠落や重複なしに宛先で再現するという役割があります。この役割を果たすために使われる仕組みは、送信元でデータの各バイトに「一意な」シーケンス番号を割り当て、宛先でシーケンス番号に従ってバイトを並べ替えるというものです。並べ替えの操作によって、順序の入れ替わりが修正されます。確認応答、タイムアウト、再送の方式によって、データの損失が修正されます。シーケンス番号の一意性によって、データの重複が修正されます。</t>
+      <t indent="0" pn="section-unnumbered-1-3">しかし、実際には、シーケンス番号は一意ではありません。シーケンス番号は32ビットのフィールドに格納されるので、2**32バイトのデータを送信すると「一周（wrap around）」します。シーケンス番号の実質的な一意性を確保するために、さらに2つの仕組みが使われます。TCPの送信ウィンドウと、IPのTime-to-Live（TTL）を含む、インターネット内のパケットの寿命の上限です。送信ウィンドウは、送信元と宛先の間の1往復時間に送信元が送信できる最大バイト数を指定します。TCPの送信ウィンドウは16ビットで指定され、これはシーケンス番号空間の1/65536なので、シーケンス番号は65,536往復時間のあいだ再利用される（別のバイトの番号付けに使われる）ことはありません。IP TTLに対するゲートウェイの動作と、ゲートウェイ同士を相互接続する個々のネットワーク内での保持時間の組み合わせによって、パケットの寿命が65,536往復時間を超えないかぎり、各シーケンス番号は実質的に一意です。TCPの設計者は、インターネットを構成するネットワークとゲートウェイがこの制約を満たすと考えており、実際にそのとおりになっています。</t>
+      <t indent="0" pn="section-unnumbered-1-4">RFC 1106で説明されている、提案中のTCP Big Windowオプションは、シーケンス番号空間を変えずに、ウィンドウ指定のサイズを30ビットに拡大します。そのため、シーケンス番号は4往復時間後に再利用される可能性があります。さらに、Nakオプションによって、送信元はわずか1往復時間後にパケットを再送する（つまり、重複させる可能性がある）ことができます。したがって、パケットがインターネット内でわずか5往復時間ほど「行方不明」になると、そのシーケンス番号が再びウィンドウ内に入ったとき、ウィンドウの後のサイクルであるにもかかわらず、そのパケットが配送されるかもしれません。この場合、TCPは、送信元で生成されたデータストリームの正確なコピーを宛先で再現するとは限らず、一部のデータを以前のデータで置き換えてしまうかもしれません。</t>
+      <t indent="0" pn="section-unnumbered-1-5">もちろん、上で説明した問題は、「行方不明」のパケットがネット内に保存され、その後に順序どおりでなく配送されることから生じます。RFC 1106は、提案されたオプションを孤立した衛星ネットワークで使用することを説明しているようです。このネットワークには記憶がなく、したがってパケットを順序どおりでなく配送することはないと仮定してもよいでしょう。つまり、パケットを順序どおりに配送するか、失うかのどちらかです。その場合、提案されたオプションに問題はありません。しかし、インターネットはパケットを順序どおりでなく配送することがあり、これはギガビットのリンクがインターネットの一部になったとしても、おそらく変わらないでしょう。したがって、RFC 1106で説明されているアプローチは、インターネットでの一般的な使用には採用できません。</t>
+    </section>
+  </middle>
+  <back>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Alex McKenzie" initials="A." surname="McKenzie">
+        <organization showOnFrontPage="true">Bolt Beranek and Newman Inc.</organization>
+        <address>
+          <postal>
+            <street>10 Moulton Street</street>
+            <city>Cambridge</city>
+            <region>MA</region>
+            <code>02238</code>
+          </postal>
+          <phone>(617) 873-2962</phone>
+          <email>MCKENZIE@BBN.COM</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

@@ -1,0 +1,158 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-meyer-rip-analysis-02" indexInclude="true" number="1581" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-meyer-rip-analysis-02" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc1581" rel="alternate"/>
+  <front>
+    <title>デマンド回線をサポートするためのRIP拡張のプロトコル分析</title>
+    <seriesInfo name="RFC" value="1581" stream="IETF"/>
+    <author fullname="G. Meyer" initials="G." surname="Meyer">
+      <organization showOnFrontPage="true">Spider Systems</organization>
+      <address/>
+    </author>
+    <date year="1994" month="February"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">ルーティングプロトコルの基準（Routing Protocol Criteria）<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>の要求に従い、この報告書は、広域ネットワーク上のデマンド回線を介したルーティング - RIP<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>の主要な特徴と、現在の実装経験を記録します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーに情報を提供するものです。この文書は、いかなる種類のインターネット標準も規定するものではありません。この文書の配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-unnumbered-1-1">Spiderの同僚、特にSpiderのIP RIP、IPX RIP、SAPの実装を開発したRichard EdmonstoneとAlan Turlandに感謝します。</t>
+    </section>
+    <section anchor="protocol-documents" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-protocol-documents">プロトコル文書</name>
+      <t indent="0" pn="section-1-1">「Extensions to RIP to Support Demand Circuits」<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>は、「Routing Internet Protocol」（RIP）<xref target="ref-3" format="default" sectionFormat="of" derivedContent="3"/>と「RIP-2」<xref target="ref-4" format="default" sectionFormat="of" derivedContent="4"/>を広域ネットワーク（WAN）上でより費用対効果よく動作させるための拡張を提案しています。デマンドRIPのためのネットワーク管理の拡張は、RIP Version 2 MIB Extensions<xref target="ref-5" format="default" sectionFormat="of" derivedContent="5"/>で説明されています。</t>
+    </section>
+    <section anchor="applicability" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-applicability">適用範囲</name>
+      <t indent="0" pn="section-2-1">デマンドRIPでは、有限で予測可能な期間内に到達不能を判定する仕組みが下位層にあることが必要です。</t>
+      <t indent="0" pn="section-2-2">RIPのデマンド拡張は、金銭的なものであれパケットのオーバーヘッドであれ、そのコストのためにルーティング（またはサービス広告）の更新を定期的に送信することが受け入れられないWANに特に適しています。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-3">
+        <li pn="section-2-3.1">コネクション型の公衆データネットワーク。たとえば、X.25パケット交換網やISDN。</li>
+        <li pn="section-2-3.2">リンクの障害を判定するために、PPPのリンク品質監視やエコー要求をサポートするポイントツーポイントリンク。</li>
+      </ul>
+      <t indent="0" pn="section-2-4">デマンドRIPの実装は、ローカルエリアネットワーク（LAN）上では標準のRIPを動作させるので、もとの仕様に従った実装と透過的に相互運用できます。</t>
+    </section>
+    <section anchor="key-features" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-key-features">主要な特徴</name>
+      <t indent="0" pn="section-3-1">この提案は、LANや固定のポイントツーポイントリンク上で動作する場合は、RIPやRIP-2と同じ基本アルゴリズムを使います。パケット形式、ブロードキャストの頻度、トリガー更新の動作、データベースのタイムアウトはすべて変更されていません。</t>
+      <t indent="0" pn="section-3-2">新しい機能は、断続的な接続性を実現するためにオンデマンドで交換回線を使うWAN上で動作します。定期的な「ブロードキャスト」を使う代わりに、情報はトリガー更新としてのみ送られます。この提案は、接続性に関するフィードバックを提供するために、下位のコネクション型サービスの機能を利用します。</t>
+      <section anchor="triggered-updates" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-triggered-updates">トリガー更新</name>
+        <t indent="0" pn="section-3.1-1">WAN上では、ルーティングデータベースを変更するイベントが起きたときにだけ更新を送ります。各更新は、確認応答されるまで再送されます。更新で受け取った情報はタイムアウトしません。</t>
+        <t indent="0" pn="section-3.1-2">RIPの応答のパケット形式は、シーケンス番号とフラグメント番号の情報を含むように（別の一意なコマンドフィールドを使って）変更されています。確認応答パケットも定義されています。</t>
+      </section>
+      <section anchor="circuit-manager" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-circuit-manager">回線マネージャー</name>
+        <t indent="0" pn="section-3.2-1">IPネットワーク層の下で動作する回線マネージャー（circuit manager）は、転送するデータ（またはルーティングの更新）があるときはいつでも、次ホップのルーターへの回線を確立する責任を負います。一定期間何も活動がなければ、回線マネージャーは回線を閉じます。</t>
+        <t indent="0" pn="section-3.2-2">回線マネージャーが接続に失敗すると、回線ダウンの通知がルーティングアプリケーションに送られます。その後、回線マネージャーは（だんだん長くなる）間隔で接続の確立を試みます。成功すると、回線アップの通知がルーティングアプリケーションに送られます。</t>
+      </section>
+      <section anchor="presumption-of-reachability" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-presumption-of-reachability">到達可能性の推定</name>
+        <t indent="0" pn="section-3.3-1">安定したネットワークでは回線上でルーティング情報を伝播する必要はないので、回線上でルーティング情報を（現在）受け取っていない場合は、次のように仮定します。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.3-2">
+          <li pn="section-3.3-2.1">最後に受け取った情報が正確である。</li>
+          <li pn="section-3.3-2.2">間の経路が稼働している（現在コネクションがないかもしれないが）。</li>
+        </ul>
+        <t indent="0" pn="section-3.3-3">間の経路が稼働して「いない」と回線マネージャーが判断した場合は、その回線で以前に受け取ったルーティング情報はタイムアウトします。このイベントを引き起こすのは、ルーティングされる「任意の」データグラムでありうるという点は強調しておく価値があります。</t>
+        <t indent="0" pn="section-3.3-4">回線マネージャーがコネクションを再確立すると、アプリケーションは相手と完全なルーティング情報を交換します。</t>
+      </section>
+      <section anchor="routing-information-flow-control" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-routing-information-flow-control">ルーティング情報のフロー制御</name>
+        <t indent="0" pn="section-3.4-1">回線マネージャーが回線のダウンを報告した場合、ルーティングアプリケーションはフロー制御を受け、その回線でそれ以上情報を送らないようにします。</t>
+        <t indent="0" pn="section-3.4-2">送信キューのオーバーフローを防ぎ、また「予測可能な」回線ダウンメッセージを避けるため、ルーティングアプリケーションは、インターフェイスにルーティングメッセージを送る速度を制限することもできます（任意）。</t>
+      </section>
+    </section>
+    <section anchor="implementations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-implementations">実装</name>
+      <t indent="0" pn="section-4-1">現段階では、完成した実装は1つだけだと考えられています。</t>
+      <t indent="0" pn="section-4-2">Spider Systemsの実装は、IP RIP-1、IPX RIP、IPX SAPについて、概要を述べたすべての機能をサポートしています。RIP-2は今のところサポートしていません。この実装は、X.25とISDNのWAN上で、同じ実装どうしでテストされています。また、イーサネットのLAN上で、さまざまなルーターやホストのRIP-1、IPX RIP、IPX SAPの実装と組み合わせた運用でもテストされています。</t>
+      <t indent="0" pn="section-4-3">Novell専用の実装がほかに2つ開発中であることが知られています。</t>
+    </section>
+    <section anchor="restrictions" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-restrictions">制限事項</name>
+      <t indent="0" pn="section-5-1">デマンドRIPは、どちらの方向にも発呼できることを前提としています。ダイヤルアップサービスの中には、DTRダイヤリングのように、一方向にしか発呼できないものもあります。</t>
+      <t indent="0" pn="section-5-2">デマンドRIPは、WAN上での経路の第三者広告とは一緒に動作できません。WAN上で広告されるすべての経路について、RIP-2の次ホップIPアドレスは常に0.0.0.0であるべきです。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">セキュリティーは、ルーティングの更新の送信者の論理アドレスと物理アドレスを認証することによって提供されます。着信呼の要求は、回線マネージャーが（発信呼を行うために使う）物理アドレスのリストと照合します。ルーティングアプリケーションは、さらに着信した更新の論理アドレスを確認します。</t>
+      <t indent="0" pn="section-6-2">必要に応じて、RIP-2の認証<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>によって追加のセキュリティーを提供できます。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Internet Engineering Task Force Internet Routing Protocol Standardization Criteria</title>
+          <author fullname="R. Hinden" initials="R." surname="Hinden"/>
+          <date year="1991" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1264"/>
+        <refcontent>Bolt Beranek and Newman, Inc</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Extensions to RIP to Support Demand Circuits</title>
+          <author fullname="G. Meyer" initials="G." surname="Meyer"/>
+          <date year="1994" month="February"/>
+        </front>
+        <seriesInfo name="RFC" value="1582"/>
+        <refcontent>Spider Systems</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>Routing Information Protocol</title>
+          <author fullname="C. Hedrick" initials="C." surname="Hedrick"/>
+          <date year="1988" month="June"/>
+        </front>
+        <seriesInfo name="STD" value="34"/>
+        <seriesInfo name="RFC" value="1058"/>
+        <refcontent>Rutgers University</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>RIP Version 2 - Carrying Additional Information</title>
+          <author fullname="G. Malkin" initials="G." surname="Malkin"/>
+          <date year="1993" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="1388"/>
+        <refcontent>Xylogics</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>RIP Version 2 MIB Extensions</title>
+          <author fullname="G. Malkin" initials="G." surname="Malkin"/>
+          <author fullname="F. Baker" initials="F." surname="Baker"/>
+          <date year="1993" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="1389"/>
+        <refcontent>Xylogics, ACC</refcontent>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Gerry Meyer" initials="G." surname="Meyer">
+        <organization showOnFrontPage="true">Spider Systems</organization>
+        <address>
+          <postal>
+            <street>Stanwell Street</street>
+            <city>Edinburgh</city>
+            <code>EH6 5NG</code>
+            <country>Scotland, UK</country>
+          </postal>
+          <phone>(UK) 31 554 9424</phone>
+          <facsimile>(UK) 31 554 0649</facsimile>
+          <email>gerry@spider.co.uk</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

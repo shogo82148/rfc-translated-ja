@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-ipv6-host-load-sharing-04" indexInclude="true" number="4311" updates="2461" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-ipv6-host-load-sharing-04" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc4311" rel="alternate"/>
+  <front>
+    <title>IPv6のホストからルーターへの負荷分散</title>
+    <seriesInfo name="RFC" value="4311" stream="IETF"/>
+    <author fullname="R. Hinden" initials="R." surname="Hinden">
+      <organization showOnFrontPage="true">Nokia</organization>
+      <address/>
+    </author>
+    <author fullname="D. Thaler" initials="D." surname="Thaler">
+      <organization showOnFrontPage="true">Microsoft</organization>
+      <address/>
+    </author>
+    <date year="2005" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">当初のIPv6の概念上の送信アルゴリズムは、同等なIPv6ルーター間での負荷分散を行わず、実際には問題となりうる方式を示唆しています。この文書は、異なる宛先へのトラフィックを効率的な方法でルーター間に分散できるように、RFC 2461の概念上の送信アルゴリズムを更新します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2005).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1"><xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/>の概念上の送信アルゴリズムと<xref target="ROUTERSEL" format="default" sectionFormat="of" derivedContent="ROUTERSEL"/>のオプションの拡張では、リンク外の宛先に対する宛先キャッシュエントリーが存在しない場合、または既存のルーターを経由した通信が失敗している場合に、ネクストホップを選択します。通常、ルーターは、特定の宛先IPアドレスに初めてトラフィックを送信するときに選択されます。同じ宛先アドレスへのその後のトラフィックは、別のルーターに変更する何らかの理由（たとえば、リダイレクトメッセージを受信した、ルーターが到達不能であることが判明したなど）がない限り、同じルーターを使い続けます。</t>
+      <t indent="0" pn="section-1-2">さらに、<xref target="ADDRSEL" format="default" sectionFormat="of" derivedContent="ADDRSEL"/>で説明されているように、ネクストホップの選択は送信元アドレスの選択にも影響する場合があり、したがって間接的に（そしてより小さな程度で）、受信トラフィックに使用されるルーターにも影響する場合があります。</t>
+      <t indent="0" pn="section-1-3">基本の送信アルゴリズムとオプションの拡張のどちらにおいても、ホストがある宛先に対して複数の同等なルーターから選択できる場合があります。つまり、他のすべての要素が等しく、ホストは何らかの実装固有の手段で同順位を解消しなければなりません。</t>
+      <t indent="0" pn="section-1-4">同等なルーターが複数ある場合には、ホストが送信トラフィックをこれらのルーター間に分散させることが望ましいことがよくあります。これにより、複数のルーター間で負荷が分担され、ホストのトラフィックの性能が向上します。</t>
+      <t indent="0" pn="section-1-5">一方で、単一のルーターで十分な容量が得られ、単一のルーターを使用することでトラフィックパターンをより予測しやすくなるような状況では、負荷分散は望ましくない場合があります。特に、単一のルーターを使用すると、ファーストホップルーターより先の接続性の問題を診断しやすくなります。</t>
+      <t indent="0" pn="section-1-6"><xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/>は、この点について特定の動作を要求していません。実装は常に同じルーター（たとえば、リストの先頭のもの）を選択してもよいし、ラウンドロビン方式でルーターを順に巡回してもよいと規定しています。これらの提案はどちらも問題があります。</t>
+      <t indent="0" pn="section-1-7">明らかに、常に同じルーターを選択するのでは負荷分散になりません。ラウンドロビンやランダムといった素朴な同順位解消の手法を使用した負荷分散のいくつかの問題は、<xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>で議論されています。判定がパケットごとではないので宛先キャッシュによってある程度の安定性は得られますが、キャッシュの追い出しやタイムアウトによって、時間とともに経路が不安定または予測不能になる可能性は残り、性能が低下し、問題の診断が難しくなります。ラウンドロビンによる選択は、ホスト間の同期の問題を引き起こす可能性もあり、最悪の場合、負荷が一度に1つのルーターに集中します。</t>
+      <t indent="0" pn="section-1-8">この文書の以降の部分におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているとおりに解釈されます。</t>
+    </section>
+    <section anchor="load-sharing" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-load-sharing">負荷分散</name>
+      <t indent="0" pn="section-2-1">ホストが複数の同等なルーターから選択する場合、常に同じルーター（たとえば、リストの先頭のもの）を選択するのではなく、異なる宛先に対する負荷を同等なルーター間に分散させる何らかの方法を使用した選択をサポート<bcp14>すべきです（SHOULD）</bcp14>。このメモは、負荷分散のサポートをデフォルトで有効にすべきか無効にすべきかについては立場をとりません。さらに、ルーター間に負荷を分散させようとするホストは、使用するルーターの選択に、<xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>で説明されているような、（少なくとも）宛先IPアドレスを考慮に入れるハッシュベースの方式を使用<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-2-2">ある宛先アドレスへのトラフィックは、その宛先アドレスの宛先キャッシュエントリー（Destination Cache Entry）が削除されない限り、同じルーターを使用することに注意してください。ハッシュベースの方式では、宛先キャッシュエントリーが削除されても、同等なルーターのリストが変わらない限り、ある宛先アドレスへのトラフィックは時間が経っても同じルーターを使用します。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-3-1"><xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>で述べられているように、ネクストホップの選択が予測可能な場合、アプリケーションはすべて同じハッシュ値になるトラフィックを合成でき、負荷分散アルゴリズムに対するサービス拒否攻撃を仕掛けて、特定のルーターを過負荷にすることが可能になります。これは、ホストに所定の宛先アドレスへ応答させることができるリモートのアプリケーションによっても実行できます。この特殊なケースが、<xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/>で許されているアルゴリズムのように、常に同じ（単一の）ネクストホップが選択される場合です。ハッシュを導入すると、このような攻撃をより困難にできます。ハッシュが予測しにくいほど、任意の単一のルーターに対するサービス拒否攻撃を行うことは難しくなります。</t>
+      <t indent="0" pn="section-3-2">ただし、悪意のあるローカルアプリケーションは、rawソケットなどの仕組みを使用して自身のトラフィックについてはアルゴリズムを回避でき、リモートの攻撃者は依然としてルーターを直接過負荷にできます。したがって、ここで議論した仕組みは、インターネットインフラストラクチャーのセキュリティーに対して、大きな追加の影響を与えません。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-4-1">この文書の著者は、Erik Nordmark、Brian Haberman、Steve Deering、Aron Silverton、Christian Huitema、Pekka Savolaに感謝します。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-normative-references">引用規格</name>
+      <reference anchor="ND" quoteTitle="true" derivedAnchor="ND">
+        <front>
+          <title>Neighbor Discovery for IP Version 6 (IPv6)</title>
+          <author fullname="T. Narten" initials="T." surname="Narten"/>
+          <author fullname="E. Nordmark" initials="E." surname="Nordmark"/>
+          <author fullname="W. Simpson" initials="W." surname="Simpson"/>
+          <date year="1998" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2461"/>
+      </reference>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="ADDRSEL" quoteTitle="true" derivedAnchor="ADDRSEL">
+        <front>
+          <title>Default Address Selection for Internet Protocol version 6 (IPv6)</title>
+          <author fullname="R. Draves" initials="R." surname="Draves"/>
+          <date year="2003" month="February"/>
+        </front>
+        <seriesInfo name="RFC" value="3484"/>
+      </reference>
+      <reference anchor="ROUTERSEL" quoteTitle="true" derivedAnchor="ROUTERSEL">
+        <front>
+          <title>Default Router Preferences and More-Specific Routes</title>
+          <author fullname="R. Draves" initials="R." surname="Draves"/>
+          <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+          <date year="2005" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="4191"/>
+      </reference>
+    </references>
+    <references pn="section-6">
+      <name slugifiedName="name-informative-references">参考文献</name>
+      <reference anchor="MULTIPATH" quoteTitle="true" derivedAnchor="MULTIPATH">
+        <front>
+          <title>Multipath Issues in Unicast and Multicast Next-Hop Selection</title>
+          <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+          <author fullname="C. Hopps" initials="C." surname="Hopps"/>
+          <date year="2000" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="2991"/>
+      </reference>
+    </references>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Robert Hinden" initials="R." surname="Hinden">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>313 Fairchild Drive</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+          </postal>
+          <phone>+1 650 625-2004</phone>
+          <email>bob.hinden@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Dave Thaler" initials="D." surname="Thaler">
+        <organization showOnFrontPage="true">Microsoft Corporation</organization>
+        <address>
+          <postal>
+            <street>One Microsoft Way</street>
+            <city>Redmond</city>
+            <region>WA</region>
+            <code>98052</code>
+          </postal>
+          <phone>+1 425 703 8835</phone>
+          <email>dthaler@microsoft.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2005).</t>
+        <t indent="0" pn="section-appendix.b-2">この文書は、BCP 78に含まれる権利、ライセンス、および制限にしたがうものとし、そこに定める場合を除き、著者はすべての権利を保持します。</t>
+        <t indent="0" pn="section-appendix.b-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供され、寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（もしあれば）、インターネットソサエティー、およびインターネット技術タスクフォースは、ここに含まれる情報の使用がいかなる権利も侵害しないという保証、または商品性もしくは特定目的への適合性に関する黙示の保証を含め、明示的か黙示的かを問わず、一切の保証を否認します。</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+        <t indent="0" pn="section-appendix.c-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。RFC文書における権利に関する手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+        <t indent="0" pn="section-appendix.c-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+        <t indent="0" pn="section-appendix.c-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.d-1">RFCエディターの機能に対する資金は、現在インターネットソサエティーによって提供されています。</t>
+      </section>
+  </back>
+</rfc>

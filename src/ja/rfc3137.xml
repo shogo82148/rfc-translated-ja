@@ -1,0 +1,157 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-ospf-stub-adv-02" indexInclude="true" number="3137" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-ospf-stub-adv-02" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3137" rel="alternate"/>
+  <front>
+    <title>OSPFスタブルーター広告</title>
+    <seriesInfo name="RFC" value="3137" stream="IETF"/>
+    <date year="2001" month="June"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このメモは、OSPF（Open Shortest Path First）の実装が、トランジットトラフィックを転送できないことを広告したり、そのようなルーターを経由する経路の優先度を下げたりするために使用できる、後方互換性のある手法を説明します。場合によっては、特定のOSPFルーターを経由してトランジットトラフィックをルーティングしないことが望ましいことがあります。しかし、OSPFはこれを実現する標準的な方法を規定していません。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーに情報を提供するものです。いかなる種類のインターネット標準も規定するものではありません。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="motivation" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-motivation">動機</name>
+      <t indent="0" pn="section-1-1">状況によっては、ネットワーク内のルーターに対して、特定のルーターをトランジットポイントとしては使用しないが、そのルーター自体へのルーティングは引き続き行うよう通知することが有益な場合があります。考えられる状況には次のものがあります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-2">
+        <li pn="section-1-2.1">ルーターが危機的な状態にある（たとえば、CPU負荷が非常に高い、またはすべてのLSAを格納したりルーティングテーブルを構築したりするのに十分なメモリーがない）。</li>
+        <li pn="section-1-2.2">ネットワークへのルーターの穏やかな導入と、ネットワークからの穏やかな除去。</li>
+        <li pn="section-1-2.3">その他（管理上またはトラフィックエンジニアリング上）の理由。</li>
+      </ul>
+      <t indent="0" pn="section-1-3">提案する解決策は、（そのルーターのrouter-LSAをフラッシュするだけで実現できるように）ネットワークのトポロジーの視点からルーターを取り除くものではないことに注意してください。そうではなく、ルーター自身のIPアドレスへのパケットのルーティングは引き続き行いつつ、他のルーターがそのルーターをトランジットルーティングに使用することを防ぎます。すなわち、そのルーターはスタブとして広告されます。</t>
+      <t indent="0" pn="section-1-4">提案する解決策が真の利点をもたらすのは、スタブルーターを迂回してトラフィックをルーティングできるよう、少なくともある程度の冗長性を持って設計されたネットワークにおいてであることを強調しておかなければなりません。そうでない場合、そのようなスタブルーターを通じて到達可能なネットワーク宛てのトラフィックは、引き続きそのルーターを通じてルーティングされます。</t>
+    </section>
+    <section anchor="proposed-solution" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-proposed-solution">提案する解決策</name>
+      <t indent="0" pn="section-2-1">この文書で説明する解決策は、上で概説した問題に関連する2つの課題を解決します。以下の説明では、ルーターXは自身をスタブとして広告するルーターです。</t>
+      <ol type="%d)" spacing="normal" indent="adaptive" start="1" pn="section-2-2">
+        <li pn="section-2-2.1" derivedCounter="1)">ダイクストラ計算を行う際に、他のルーターがルーターXを迂回する経路を優先するようにする。</li>
+        <li pn="section-2-2.2" derivedCounter="2)">他のルーターが、ルーターXに直接接続されたIPプレフィックスに到達できるようにする。</li>
+      </ol>
+      <t indent="0" pn="section-2-3">課題1)だけであれば、ルーターXのrouter-LSAをドメインからフラッシュするだけで簡単に対処できることに注意してください。しかし、それでは課題2)は解決しません。他のルーターはダイクストラ計算でルーターXへのリンクを使用できなくなり（バックリンクがない）、またルーターXは隣接ルーターへのリンクを持たなくなるからです。</t>
+      <t indent="0" pn="section-2-4">両方の問題に対処するために、ルーターXは自身のrouter-LSAを次のようにして隣接ルーターに広告します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-5">
+        <li pn="section-2-5.1">すべての非スタブリンク（タイプ3以外のリンク）のコストを、LSInfinity（サマリーLSAやAS外部LSAで使用される24ビット値0xFFFFFFではなく、16ビット値0xFFFF）に設定する。</li>
+        <li pn="section-2-5.2">スタブリンク（タイプ3）のコストを、インターフェイスの出力コストに設定する。</li>
+      </ul>
+      <t indent="0" pn="section-2-6">これにより、課題1)と2)に対処できます。</t>
+    </section>
+    <section anchor="compatibility-issues" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-compatibility-issues">互換性の問題</name>
+      <t indent="0" pn="section-3-1"><xref target="RFC1247" format="default" sectionFormat="of" derivedContent="RFC1247"/>の規定どおりにエリア内のダイクストラ計算を行う（コスト値がLSInfinityであるrouter-LSA内のリンクレコードを破棄する）ルーターと、<xref target="RFC1583" format="default" sectionFormat="of" derivedContent="RFC1583"/>以降の規定どおりにそれを行う（コストがLSInfinityのリンクを到達不能として扱わない）ルーターとでネットワークが構成されている場合、ある程度の不整合が見られることがあります。この不整合がルーティングループにつながることはないことに注意してください。ネットワーク内に何らかの代替経路があれば、どちらの種類のルーターもスタブルーターを経由する経路ではなくその代替経路を使用することで一致するからです。スタブルーターを経由する経路が唯一の経路である場合、前者の種類のルーターはスタブルーターをトランジットに使用しません（これが望ましい動作です）が、後者の種類のルーターは引き続きこの経路を使用します。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-4-1">この文書の著者は、説明したアイデアの独創性について何ら主張するものではありません。この話題に関する初期の議論の1つに参加してくれたHenk Smitをはじめとする方々に感謝します。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">この文書で説明する手法は、OSPFプロトコルに新たなセキュリティー上の問題をもたらしません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-6">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="RFC2328" quoteTitle="true" derivedAnchor="RFC2328">
+        <front>
+          <title>OSPF Version 2</title>
+          <author fullname="J. Moy" initials="J." surname="Moy"/>
+          <date year="1998" month="April"/>
+        </front>
+        <seriesInfo name="STD" value="54"/>
+        <seriesInfo name="RFC" value="2328"/>
+      </reference>
+      <reference anchor="RFC1247" quoteTitle="true" derivedAnchor="RFC1247">
+        <front>
+          <title>OSPF Version 2</title>
+          <author fullname="J. Moy" initials="J." surname="Moy"/>
+          <date year="1991" month="July"/>
+        </front>
+        <seriesInfo name="RFC" value="1247"/>
+      </reference>
+      <reference anchor="RFC1583" quoteTitle="true" derivedAnchor="RFC1583">
+        <front>
+          <title>OSPF Version 2</title>
+          <author fullname="J. Moy" initials="J." surname="Moy"/>
+          <date year="1994" month="March"/>
+        </front>
+        <seriesInfo name="RFC" value="1583"/>
+      </reference>
+    </references>
+    <section anchor="authors-addresses" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Alvaro Retana" initials="A." surname="Retana">
+        <address>
+          <postal>
+            <street>7025 Kit Creek Rd.</street>
+            <street>Research Triangle Park, NC 27709</street>
+            <street>USA</street>
+          </postal>
+          <email>aretana@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Liem Nguyen" initials="L." surname="Nguyen">
+        <address>
+          <postal>
+            <street>7025 Kit Creek Rd.</street>
+            <street>Research Triangle Park, NC 27709</street>
+            <street>USA</street>
+          </postal>
+          <email>lhnguyen@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Russ White" initials="R." surname="White">
+        <organization showOnFrontPage="true">Cisco Systems, Inc.</organization>
+        <address>
+          <postal>
+            <street>7025 Kit Creek Rd.</street>
+            <street>Research Triangle Park, NC 27709</street>
+          </postal>
+          <email>riw@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Alex Zinin" initials="A." surname="Zinin">
+        <organization showOnFrontPage="true">Nexsi Systems</organization>
+        <address>
+          <postal>
+            <street>1959 Concourse Drive</street>
+            <street>San Jose,CA 95131</street>
+          </postal>
+          <email>azinin@nexsi.com</email>
+        </address>
+      </author>
+      <author fullname="Danny McPherson" initials="D." surname="McPherson">
+        <organization showOnFrontPage="true">Amber Networks</organization>
+        <address>
+          <postal>
+            <street>48664 Milmont Drive</street>
+            <street>Fremont, CA 94538</street>
+          </postal>
+          <email>danny@ambernetworks.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-8-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      <t indent="0" pn="section-8-2">この文書およびその翻訳は、複製して他者に提供できます。また、この文書を論評もしくは説明する派生物、またはその実装を支援する派生物は、上記の著作権表示とこの段落をそのようなすべての複製物および派生物に含めることを条件として、いかなる制限もなく、その全部または一部を作成、複製、公開、配布できます。ただし、この文書自体は、著作権表示やインターネットソサエティー（Internet Society）その他のインターネット関連組織への言及を削除するなど、いかなる方法でも変更できません。例外は、インターネット標準を策定する目的で必要な場合（この場合は、インターネット標準化プロセスで定められた著作権の手続きに従う必要があります）と、英語以外の言語に翻訳するために必要な場合です。</t>
+      <t indent="0" pn="section-8-3">上記で付与された限定的な許諾は永続的なものであり、インターネットソサエティーまたはその承継人もしくは譲受人によって取り消されることはありません。</t>
+      <t indent="0" pn="section-8-4">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。インターネットソサエティーおよびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">RFCエディター機能の資金は、現在インターネットソサエティー（Internet Society）が提供しています。</t>
+    </section>
+  </back>
+</rfc>

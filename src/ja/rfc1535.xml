@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="1535" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1535" rel="alternate"/>
+  <front>
+    <title>広く展開されているDNSソフトウェアのセキュリティー問題と修正案</title>
+    <seriesInfo name="RFC" value="1535" stream="IETF"/>
+    <author fullname="E. Gavron" initials="E." surname="Gavron">
+      <organization showOnFrontPage="true">ACES Research Inc.</organization>
+      <address/>
+    </author>
+    <date year="1993" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書では、現在配布されている一部の名前リゾルバークライアントの欠陥について説明します。この欠陥は、ユーザーが部分的なドメイン名を指定したときにこれらのリゾルバーが実行する検索ヒューリスティックに関連したセキュリティー上の弱点を露呈させるもので、（誰にでもできるわけではないものの）悪用は容易です。この文書では、この欠陥、その具体例、そして解決策を示します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーに情報を提供するものです。インターネット標準を規定するものではありません。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="background" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-background">背景</name>
+      <t indent="0" pn="section-unnumbered-1-1">現在のドメインネームサーバーのクライアントは、ドット区切りの4つ組で表されるIPアドレスを覚える負担を軽減するように設計されています。そのため、クライアントは人間が読める名前をアドレスやその他のリソースレコードに変換します。この変換処理の一部には、完全修飾ドメイン名（FQDN）ではないホスト名を理解して扱うことが含まれます。</t>
+      <t indent="0" pn="section-unnumbered-1-2">絶対的な「ルート付き（rooted）」FQDNの形式は{name}{.}です。「ルート付き」でないドメイン名の形式は{name}です。</t>
+      <t indent="0" pn="section-unnumbered-1-3">ドメイン名は多くの部分から構成されることがあり、通常はホスト、ドメイン、種別が含まれます。例: foobar.company.comやfooschool.university.edu。</t>
+    </section>
+    <section anchor="flaw" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-flaw">欠陥</name>
+      <t indent="0" pn="section-unnumbered-2-1">BSDのBINDリゾルバーをもとにした、広く配布されているほとんどのリゾルバーの問題は、DNSレコードが見つかるまで、指定されたホスト名の一部に部分的なドメインを付け加えるための検索リストを処理して、部分的な名前を解決しようとすることです。この「機能」は、公式のBIND 4.9.2リリースではデフォルトで無効になっています。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-2"><![CDATA[
+   Example: A TELNET attempt by    User@Machine.Tech.ACES.COM
+                             to    UnivHost.University.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-2-3">リゾルバークライアントは、「UnivHost.University.EDU」が「.」で終わっていないので、絶対的な「ルート付き」FQDNではないと判断します。そして、リソースレコードが見つかるまで、次の組み合わせを試します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-4"><![CDATA[
+                UnivHost.University.EDU.Tech.ACES.COM.
+                UnivHost.University.EDU.ACES.COM.
+                UnivHost.University.EDU.COM.
+                UnivHost.University.EDU.
+]]></artwork>
+    </section>
+    <section anchor="security-issue" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-security-issue">セキュリティー上の問題</name>
+      <t indent="0" pn="section-unnumbered-3-1">EDU.COMドメインを登録した後、ワイルドカードのCNAMEレコードを1つ不用意に適用するだけで、任意の.COMサイトから任意の.EDUサイトへの*すべての*接続が、私的なedu.comサブドメイン内の1台のターゲットマシンに到達してしまうことが判明しました。</t>
+      <t indent="0" pn="section-unnumbered-3-2">さらに、議論を通じて、この私的なサブドメインや同様の名前を持つ任意のサブドメインに登録された特定のホスト名を使って、ホストになりすませることが明らかになりました。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3-3"><![CDATA[
+        Example:        harvard.edu.com.        CNAME   targethost
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-3-4">したがって、すべての.comサイトからHarvard.eduへのすべての接続は、Harvard.eduのログインバナーを提示できるマシンであるtargthostに到達することになります。</t>
+      <t indent="0" pn="section-unnumbered-3-5">これは明らかに受け入れられません。さらに、COM.EDU、MIL.GOV、GOV.COMなどのドメインがあれば、状況は悪化するばかりです。</t>
+    </section>
+    <section anchor="public-vs-local-name-space-administration" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-public-vs-local-name-space-administration">名前空間の公的な管理とローカルな管理</name>
+      <t indent="0" pn="section-unnumbered-4-1">ドメインネームシステムの仕様とそれを実装するソフトウェアは、名前空間の下位部分の管理を委任できる、区別のない階層を提供しています。実際の名前空間の管理は、「公的（public）」な部分と「ローカル（local）」な部分に分かれています。公的な管理は、.COMや.EDUなどのすべてのトップレベルドメインに関係します。一部のドメインでは、いくつかのレベルのサブドメインにも関係します。公的な管理が複数のレベルにわたることは、国のトップレベルドメインで最も顕著です。たとえば、完全修飾ドメイン名dbc.mtview.ca.us.では、「mtview.ca.us」の部分が3つのレベルの公的な管理を表しています。ローカルな管理の対象となるのは、最も左の部分だけです。</t>
+      <t indent="0" pn="section-unnumbered-4-2">現在一般に行われているヒューリスティックな検索の危険性は、検索リストをさかのぼっていく間に意図しない値に一致することで、検索を「横取り」できてしまうことです。これはどのレベルでも潜在的に危険ですが、その誤りがローカルな管理の外にいるユーザーに影響する場合は、まったく受け入れられません。</t>
+      <t indent="0" pn="section-unnumbered-4-3">部分的なドメイン名を解決しようとするとき、DNSリゾルバーは、検索を行うホストのドメイン名から検索リストを導き出します。既存のDNSリゾルバーは、その名前のうちローカルに管理されている範囲の部分と、公的に管理されている部分とを区別しません。</t>
+    </section>
+    <section anchor="solutions" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-solutions">解決策</name>
+      <t indent="0" pn="section-unnumbered-5-1">最低限、DNSリゾルバーは、検索リストをドメイン名空間のローカルに管理されている部分に限定することで、ローカルな管理と公的な管理の境界（BOUNDARY）を尊重しなければなりません。そのためには、ローカルな管理者が管理している名前空間の範囲を示すパラメーターが必要です。</t>
+      <t indent="0" pn="section-unnumbered-5-2">これにより、最も修飾されたものから、より修飾の少ないものへと、ローカルに管理されているドメインまでは段階的に検索できますが、それを越えることはできなくなります。</t>
+      <t indent="0" pn="section-unnumbered-5-3">たとえば、ローカルユーザーが次の宛先に到達しようとしている場合を考えます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-4"><![CDATA[
+        User@chief.admin.DESERTU.EDU from
+        starburst,astro.DESERTU.EDU,
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-5">ユーザーがchief.adminとだけ入力し、次の範囲を検索するのは妥当です。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-6"><![CDATA[
+        chief.admin.astro.DESERTU.EDU
+        chief.admin.DESERTU.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-7">しかし、次は検索すべきではありません。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-8"><![CDATA[
+        chief.admin.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-9">この場合、「search」の値は「DESERTU.EDU」に設定すべきです。それがローカルのDNS管理者が管理している名前空間の範囲だからです。</t>
+      <t indent="0" pn="section-unnumbered-5-10">これは単なる最適化のための小細工ではありません。ローカルな管理者は、ローカルに管理されているドメイン内での名前の割り当てを管理しているので、省略形が正しいものに解決されるようにできます。ローカルな管理の外では、ユーザーは必然的に危険にさらされます。</t>
+      <t indent="0" pn="section-unnumbered-5-11">この問題に対処するために、BIND 4.9.2ではより厳格なメカニズムが実装されています。</t>
+      <t indent="0" pn="section-unnumbered-5-12">DNS名前リゾルバークライアントは、暗黙の（IMPLICIT）検索リストがあればそれを絞り込み、示した例の最初と最後だけを試すようにします。</t>
+      <t indent="0" pn="section-unnumbered-5-13">それ以外の検索の候補は、リゾルバーに明示的に（EXPLICITLY）設定しなければなりません。</t>
+      <t indent="0" pn="section-unnumbered-5-14">DNS名前リゾルバーソフトウェアは、部分的な名前を絶対的なFQDNに解決しようとする際に、ホストの直接の親ドメイン以外に対して暗黙の検索リストを使用すべきではありません（SHOULD NOT）。</t>
+      <t indent="0" pn="section-unnumbered-5-15">暗黙の検索リストを引き続き使用するリゾルバーは、その範囲をローカルに管理されているサブドメインに限定しなければなりません（MUST）。</t>
+      <t indent="0" pn="section-unnumbered-5-16">DNS名前リゾルバーソフトウェアは、この問題を存続させるような明示的な検索リストをあらかじめ設定した状態で提供すべきではありません（SHOULD NOT）。</t>
+      <t indent="0" pn="section-unnumbered-5-17">さらに、指定された名前に「.」が含まれている場合は、いかなる場合でも完全修飾ドメイン名（FQDN）であるとみなすべきであり、最初にルート付きの名前として試すべきです（SHOULD）。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-18"><![CDATA[
+   Example:  Given  user@a.b.c.d connecting to e.f.g.h  only two tries
+             should be attempted as a result of using an implicit
+             search list:
+
+                e.f.g.h.  and e.f.g.h.b.c.d.
+
+             Given user@a.b.c.d. connecting to host those same two
+             tries would appear as:
+
+                x.b.c.d.  and x.
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-19">一部の組織では、複数の部分からなる、部分的に修飾されたドメイン名を日常的に使用しています。たとえば、ホストfoo.loc1.org.city.state.usは、bar.loc2やmumble.loc3を参照するために使われるかもしれません。これらはいずれもwhatever.locN.org.city.state.usを指します。</t>
+      <t indent="0" pn="section-unnumbered-5-20">BIND 4.9.2の厳格な暗黙の検索規則により、これらの検索は失敗するようになります。これらの検索が再び成功するようにするには、クライアントのリゾルバーの設定を変更して、org.city.state.usに対する明示的な検索規則を含める必要があります。つまり、ローカルに管理されているサブドメインのうち、検索リストに含めたいすべての部分について、それぞれ明示的な規則を含める必要があります。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-references">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Domain Names Concepts and Facilities</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1034"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Domain Names Implementation and Specification</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1035"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>Mail Routing and the Domain System</title>
+          <author fullname="C. Partridge" initials="C." surname="Partridge"/>
+          <date year="1986" month="January"/>
+        </front>
+        <seriesInfo name="STD" value="14"/>
+        <seriesInfo name="RFC" value="974"/>
+        <refcontent>CSNET CIC BBN</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>Common DNS Implementation Errors and Suggested Fixes</title>
+          <author fullname="A. Kumar" initials="A." surname="Kumar"/>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <author fullname="C. Neuman" initials="C." surname="Neuman"/>
+          <author fullname="P. Danzig" initials="P." surname="Danzig"/>
+          <author fullname="S. Miller" initials="S." surname="Miller"/>
+          <date year="1993" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1536"/>
+        <refcontent>USC/Information Sciences Institute, USC</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>Common DNS Data File Configuration Errors</title>
+          <author fullname="P. Beertema" initials="P." surname="Beertema"/>
+          <date year="1993" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1537"/>
+        <refcontent>CWI</refcontent>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-appendix.a-1">このメモは、あまりにも寛容すぎるDNSクライアントの脆弱性を示しています。そして、将来この問題が起こる可能性をなくす修正を示しています。</t>
+    </section>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Ehud Gavron" initials="E." surname="Gavron">
+        <organization showOnFrontPage="true">ACES Research Inc.</organization>
+        <address>
+          <postal>
+            <street>PO Box 14546</street>
+            <city>Tucson</city>
+            <region>AZ</region>
+            <code>85711</code>
+          </postal>
+          <phone>(602) 743-9841</phone>
+          <email>gavron@aces.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

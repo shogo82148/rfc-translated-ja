@@ -1,0 +1,217 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-freed-smtperror-01" indexInclude="true" number="2034" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-freed-smtperror-01" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2034" rel="alternate"/>
+  <front>
+    <title>拡張エラーコードを返すためのSMTPサービス拡張</title>
+    <seriesInfo name="RFC" value="2034" stream="IETF"/>
+    <author fullname="N. Freed" initials="N." surname="Freed">
+      <organization showOnFrontPage="true">Innosoft</organization>
+      <address/>
+    </author>
+    <date year="1996" month="October"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="abstract" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-abstract">概要</name>
+      <t indent="0" pn="section-1-1">このメモは、SMTPサーバーがRFC 1893で定義されている拡張メールシステムステータスコードをレスポンスに付加する、SMTPサービス<xref target="RFC-821" format="default" sectionFormat="of" derivedContent="RFC-821"/> <xref target="RFC-1869" format="default" sectionFormat="of" derivedContent="RFC-1869"/>の拡張を定義します。これらのコードは、特にRFC 1894で定義されている配送状態通知（delivery status notification）の形式の文脈において、エラー状態をより詳しく説明するために使用できます。</t>
+    </section>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-2-1">SMTPは広く堅牢に展開されていますが、インターネットコミュニティーの一部からさまざまな拡張が求められてきました。特に、現代の国際的で多言語のインターネットでは、さまざまな言語に翻訳できるコードを特定のエラー状態に割り当てる必要があります。RFC 1893はそのようなステータスコードの集合を定義し、RFC 1894はそのようにコード化された内容をユーザーに送るメカニズムを定義しています。しかし、多くの場合、RFC 1894の配送状態通知を作成するエージェントは、リモートのSMTPサーバーから受け取ったエラーに応じてそれを作成しています。</t>
+      <t indent="0" pn="section-2-2">そのため、リモートのサーバーには、拡張ステータスコードをレスポンスに埋め込むメカニズムと、実際にそうしていることをクライアントに示す方法が必要です。このメモは、RFC 1869で説明されているSMTP拡張メカニズムを使って、そのようなメカニズムを定義します。</t>
+    </section>
+    <section anchor="framework-for-the-enhanced-error-statuses-extension" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-framework-for-the-enhanced-error-statuses-extension">拡張エラーステータス拡張の枠組み</name>
+      <t indent="0" pn="section-3-1">拡張エラーステータスのトランスポート拡張は、次のように構成されます。</t>
+      <ol type="(%d)" indent="adaptive" spacing="normal" start="1" pn="section-3-2">
+        <li pn="section-3-2.1">ここで定義するSMTPサービス拡張の名前は、Enhanced-Status-Codesです。</li>
+        <li pn="section-3-2.2">この拡張に対応するEHLOキーワードの値は、ENHANCEDSTATUSCODESです。</li>
+        <li pn="section-3-2.3">ENHANCEDSTATUSCODES EHLOキーワードにはパラメーターを使いません。</li>
+        <li pn="section-3-2.4">最初の挨拶（greeting）とHELOまたはEHLOに対するレスポンスを除く、すべての2xx、4xx、5xxのSMTPレスポンスのテキスト部分の先頭には、RFC 1893で定義されているステータスコードを付けます。このステータスコードの後には、常に1つ以上の空白が続きます。</li>
+        <li pn="section-3-2.5">この拡張によって追加のSMTPの動詞（verb）は定義されません。</li>
+        <li pn="section-3-2.6">この拡張のサポートがサーバーとクライアントのSMTPの動作にどのように影響するかを次のセクションで規定します。</li>
+      </ol>
+    </section>
+    <section anchor="the-enhanced-status-codes-service-extension" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-the-enhanced-status-codes-service-extension">Enhanced-Status-Codesサービス拡張</name>
+      <t indent="0" pn="section-4-1">Enhanced-Status-Codes拡張をサポートするサーバーは、ほぼすべてのレスポンス行のテキスト部分の先頭にステータスコードを付けなければなりません。RFC 1893と同様に、これらのステータスコードの構文は次のABNFで与えられます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-4-2"><![CDATA[
+     status-code ::= class "." subject "." detail
+     class       ::= "2" / "4" / "5"
+     subject     ::= 1*3digit
+     detail      ::= 1*3digit
+]]></artwork>
+      <t indent="0" pn="section-4-3">これらのコードは、最初の挨拶とHELOまたはEHLOに対するレスポンスを除く、すべての2xx、4xx、5xxのレスポンス行に現れなければなりません。3xxのレスポンスはこの一覧に含まれ「ない」ことに注意してください。</t>
+      <t indent="0" pn="section-4-4">サーバーが返すすべてのステータスコードは、主たるレスポンスコードと一致しなければなりません。つまり、2xxのレスポンスには2.X.Xのコードを、4xxのレスポンスには4.X.Xのコードを、5xxのレスポンスには5.X.Xのコードを含めなければなりません。</t>
+      <t indent="0" pn="section-4-5">レスポンスが複数行にわたって続く場合は、レスポンスの各行のテキストの先頭に同じステータスコードが現れなければなりません。</t>
+      <t indent="0" pn="section-4-6">この拡張をサポートするサーバーは、クライアントがEHLOを使用したかどうかにかかわらず、レスポンスに拡張ステータスコードを付けなければなりません。</t>
+    </section>
+    <section anchor="status-codes-and-negotiation" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-status-codes-and-negotiation">ステータスコードとネゴシエーション</name>
+      <t indent="0" pn="section-5-1">この仕様は、ステータスコードを返すこと、または返さないことをクライアントが要求する手段を提供しません。準拠するサーバーは、クライアントがそれを期待しているかどうかにかかわらず、送信するレスポンスにこれらのコードを含めます。これは、他のほとんどのSMTP拡張とはいくぶん異なります。一般的に言えば、他の拡張では、拡張されたサーバーが拡張されていないサーバーと異なる動作をする前に、クライアントが明示的に要求をしなければなりません。この場合にクライアントとのネゴシエーションを省略したのは、まったく意図的なものです。SMTPサーバーのエラーコードの実装が全般的に貧弱な状態にあることを考えると、エラーコードをよりわかりやすくするための取り組みはどのようなものであれ、拡張されているかどうかにかかわらず、すべてのクライアントが恩恵を受けるべきものだと考えられます。</t>
+      <t indent="0" pn="section-5-2">重要な注：この拡張でこのアプローチを使うことは、非常に特殊なケースとみなすべきです。これを、サーバーからの適切な通知と、それに対応するクライアントからの有効化コマンドなしに、将来のSMTP拡張がSMTPのクライアントとサーバーのやり取りの性質を大幅に変えてよいという許可とみなしては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+    </section>
+    <section anchor="usage-example" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-usage-example">使用例</name>
+      <t indent="0" pn="section-6-1">次のやり取りは、サーバーによる拡張ステータスコードの使用例を示しています。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-6-2"><![CDATA[
+S: <wait for connection on TCP port 25>
+C: <open connection to server>
+S: 220 dbc.mtview.ca.us SMTP service ready
+C: EHLO ymir.claremont.edu
+S: 250-dbc.mtview.ca.us says hello
+S: 250 ENHANCEDSTATUSCODES
+C: MAIL FROM:<ned@ymir.claremont.edu>
+S: 250 2.1.0 Originator <ned@ymir.claremont.edu> ok
+C: RCPT TO:<mrose@dbc.mtview.ca.us>
+S: 250 2.1.5 Recipient <mrose@dbc.mtview.ca.us> ok
+C: RCPT TO:<nosuchuser@dbc.mtview.ca.us>
+S: 550 5.1.1 Mailbox "nosuchuser" does not exist
+C: RCPT TO:<remoteuser@isi.edu>
+S: 551-5.7.1 Forwarding to remote hosts disabled
+S: 551 5.7.1 Select another host to act as your forwarder
+C: DATA
+S: 354 Send message, ending in CRLF.CRLF.
+ ...
+C: .
+S: 250 2.6.0 Message accepted
+C: QUIT
+S: 221 2.0.0 Goodbye
+]]></artwork>
+      <t indent="0" pn="section-6-3">これらのレスポンスを受け取ったクライアントは、次に、おおむね次のような形式の不達通知（nondelivery notification）を送信するかもしれません。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-6-4"><![CDATA[
+   Date: Mon, 11 Mar 1996 09:21:47 -0400
+   From: Mail Delivery Subsystem <mailer-daemon@ymir.claremont.edu>
+   Subject: Returned mail
+   To: <ned@ymir.claremont.edu>
+   MIME-Version: 1.0
+   Content-Type: multipart/report; report-type=delivery-status;
+         boundary="JAA13167.773673707/YMIR.CLAREMONT.EDU"
+
+   --JAA13167.773673707/YMIR.CLAREMONT.EDU
+   content-type: text/plain; charset=us-ascii
+
+      ----- Mail was successfully relayed to
+            the following addresses -----
+
+   <mrose@dbc.mtview.ca.us>
+
+      ----- The following addresses had delivery problems -----
+   <nosuchuser@dbc.mtview.ca.us>
+     (Mailbox "nosuchuser" does not exist)
+   <remoteuser@isi.edu>
+     (Forwarding to remote hosts disabled)
+
+   --JAA13167.773673707/YMIR.CLAREMONT.EDU
+   content-type: message/delivery-status
+
+   Reporting-MTA: dns; ymir.claremont.edu
+
+   Original-Recipient: rfc822;mrose@dbc.mtview.ca.us
+   Final-Recipient: rfc822;mrose@dbc.mtview.ca.us
+   Action: relayed
+   Status: 2.1.5 (Destination address valid)
+   Diagnostic-Code: smtp;
+    250 Recipient <mrose@dbc.mtview.ca.us> ok
+   Remote-MTA: dns; dbc.mtview.ca.us
+
+   Original-Recipient: rfc822;nosuchuser@dbc.mtview.ca.us
+   Final-Recipient: rfc822;nosuchuser@dbc.mtview.ca.us
+   Action: failed
+   Status: 5.1.1 (Bad destination mailbox address)
+   Diagnostic-Code: smtp;
+    550 Mailbox "nosuchuser" does not exist
+   Remote-MTA: dns; dbc.mtview.ca.us
+
+   Original-Recipient: rfc822;remoteuser@isi.edu
+   Final-Recipient: rfc822;remoteuser@isi.edu
+   Action: failed
+   Status: 5.7.1 (Delivery not authorized, message refused)
+   Diagnostic-Code: smtp;
+     551 Forwarding to remote hosts disabled
+     Select another host to act as your forwarder
+   Remote-MTA: dns; dbc.mtview.ca.us
+
+   --JAA13167.773673707/YMIR.CLAREMONT.EDU
+   content-type: message/rfc822
+
+   [original message goes here]
+   --JAA13167.773673707/YMIR.CLAREMONT.EDU--
+]]></artwork>
+      <t indent="0" pn="section-6-5">見づらくなるのを避けるため、報告するMTAは、自らが生成したdiagnostic-codeフィールドから拡張ステータスコードの情報を省略していることに注意してください。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">サーバーのレスポンスに詳細を追加すれば、当然ながらサーバーに関する追加の情報を提供することになります。この種の追加情報が、サーバーのセキュリティーを回避する助けになることも考えられます。追加の情報を提供することの利点は、そうすることのセキュリティー上の影響と常に比較検討しなければなりません。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="RFC-821" quoteTitle="true" derivedAnchor="RFC-821">
+        <front>
+          <title>Simple Mail Transfer Protocol</title>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1982" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="821"/>
+      </reference>
+      <reference anchor="RFC-1869" quoteTitle="true" derivedAnchor="RFC-1869">
+        <front>
+          <title>SMTP Service Extensions</title>
+          <author fullname="M. Rose" initials="M." surname="Rose"/>
+          <author fullname="E. Stefferud" initials="E." surname="Stefferud"/>
+          <author fullname="C. Crocker" initials="C." surname="Crocker"/>
+          <author fullname="J. Klensin" initials="J." surname="Klensin"/>
+          <author fullname="N. Freed" initials="N." surname="Freed"/>
+          <date year="1995" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="1869"/>
+      </reference>
+      <reference anchor="RFC-1893" quoteTitle="true" derivedAnchor="RFC-1893">
+        <front>
+          <title>Enhanced Mail System Status Codes</title>
+          <author fullname="G. Vaudreuil" initials="G." surname="Vaudreuil"/>
+          <date year="1996" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="1893"/>
+      </reference>
+      <reference anchor="RFC-1894" quoteTitle="true" derivedAnchor="RFC-1894">
+        <front>
+          <title>An Extensible Message Format for Delivery Status Notifications</title>
+          <author fullname="K. Moore" initials="K." surname="Moore"/>
+          <author fullname="G. Vaudreuil" initials="G." surname="Vaudreuil"/>
+          <date year="1996" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="1894"/>
+      </reference>
+    </references>
+    <section anchor="author-address" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-author-address">著者の連絡先</name>
+      <author fullname="Ned Freed" initials="N." surname="Freed">
+        <organization showOnFrontPage="true">Innosoft International, Inc.</organization>
+        <address>
+          <postal>
+            <street>1050 East Garvey Avenue South</street>
+            <city>West Covina</city>
+            <region>CA</region>
+            <code>91790</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 818 919 3600</phone>
+          <facsimile>+1 818 919 3614</facsimile>
+          <email>ned@innosoft.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

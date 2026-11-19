@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-katz-router-alert-03" indexInclude="true" number="2113" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-katz-router-alert-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2113" rel="alternate"/>
+  <front>
+    <title>IPルーターアラートオプション</title>
+    <seriesInfo name="RFC" value="2113" stream="IETF"/>
+    <date year="1997" month="February"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このメモは、IPパケットの内容をより詳しく調べるよう中継ルーターに注意を促す、新しいIPオプションタイプについて記述します。これは、宛先にアドレス指定されているものの、経路上のルーターで比較的複雑な処理を必要とする新しいプロトコルなどに有用です。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1.0">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1.0-1">ルーティングプロトコルにおける最近の傾向として、新しいルーティング機能を既存のユニキャストルーティングに疎結合させることが挙げられます。その動機は単純かつ洗練されたものです。基本的なルーティングプロトコルの機能をすべて作り直すことなく新しいルーティング機能を展開でき、仕様と実装の複雑さを大幅に減らせるのです。</t>
+      <t indent="0" pn="section-1.0-2">その欠点は、新しい機能がユニキャストルーティングにおける最小公分母、つまり宛先に向かうネクストホップにしか依存できないことです。より詳細な情報（リンクステートデータベースなど）が存在することは前提にできません。</t>
+      <t indent="0" pn="section-1.0-3">また、新しい技術を段階的に展開できること、具体的には送信元と宛先の間の経路上にあるすべてのルーターをアップグレードしなくても済むことが望まれます。この目標は、利用できる情報が最小公分母に限られることとやや相容れません。新しいプロトコルをサポートする他のルーターと直接隣接していないルーターには、そのような他のルーターの位置や身元を判断する手段がないからです（ユニキャスト転送の上にフラッディングアルゴリズムのようなものを実装すれば別ですが、それは単純さという目標と相反します）。</t>
+      <t indent="0" pn="section-1.0-4">ユニキャストルーティングを活用する明白なアプローチのひとつは、新しいプロトコルのパケットを最終的な宛先に向かう経路に沿ってホップバイホップで転送することです。新しいプロトコルを実装する各システムは、そのプロトコルを理解する経路上の次のシステムにパケットをアドレス指定する責任を負います。しかし前述のとおり、そのプロトコルを実装する次のシステムを知ることは困難です。単純な退化したケースは、経路上のすべてのシステムがそのプロトコルを実装していると仮定することです。しかし、これは新しいプロトコルを段階的に展開する際の障壁となります。</t>
+      <t indent="0" pn="section-1.0-5">RSVP<xref target="1" format="default" sectionFormat="of" derivedContent="1"/>は、この問題を巧みに回避しています。IPの宛先アドレス（Destination Address）フィールドには最終的な宛先のアドレスを入れ、そのうえですべてのRSVPルーターに「転送パスにおける…小さな変更」を求めます。この変更により、ルーターは特定のRSVPパケットタイプを探して、そのようなパケットを主要な転送パスから取り出し、ローカルで処理してから転送します。パケットは自然に最終的な宛先へ流れていくため、この方法にはRSVPを理解しないルーターを自動的にトンネリングして通過できるという明らかな利点があります。しかし、ルーターの主要な転送パスは高度にチューニングされていることが多く、命令を1つ追加するだけでも性能が毎秒数百パケット低下することがあるため、この「小さな変更」を行う性能上のコストは受け入れられない場合があります。</t>
+    </section>
+    <section anchor="router-alert-option" numbered="true" removeInRFC="false" toc="include" pn="section-2.0">
+      <name slugifiedName="name-router-alert-option">ルーターアラートオプション</name>
+      <t indent="0" pn="section-2.0-1">そこで目標となるのは、大きな性能低下を招くことなく、ルーターが自分宛てではないパケットを横取りできる仕組みを提供することです。この文書は、この目的のために新しいIPオプションタイプであるルーターアラート（Router Alert）を定義します。</t>
+      <t indent="0" pn="section-2.0-2">ルーターアラートオプションは、「ルーターはこのパケットをより詳しく調べるべきである」という意味を持ちます。RSVPは、自身のプロトコルメッセージのIPヘッダーにルーターアラートオプションを含めることで、通常のデータパケットの転送にほとんど、あるいはまったく性能低下を生じさせずに、そのメッセージを横取りさせることができます。</t>
+      <t indent="0" pn="section-2.0-3">ファストパスでオプション処理をサポートするルーターは、すでにオプションタイプフィールドに基づいて処理を振り分けています。ファストパスですべてのオプションタイプがサポートされている場合、処理するオプションタイプが1つ増えても性能に影響を与える可能性は低いです。ファストパスで一部のオプションタイプがサポートされていない場合、この新しいオプションタイプは認識されず、それを含むパケットはスローパスに回されます。したがってファストパスを変更する必要はなく、通常のデータパケットに性能低下は生じません。</t>
+      <t indent="0" pn="section-2.0-4">ファストパスでオプション処理をサポートしないルーターは、この新しいオプションを含むパケットをスローパスで転送します。したがってファストパスを変更する必要はなく、通常のデータパケットに性能低下は生じません。</t>
+      <section anchor="syntax" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-syntax">構文</name>
+        <t indent="0" pn="section-2.1-1">ルーターアラートオプションの形式は次のとおりです。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-2.1-2"><![CDATA[
+              +--------+--------+--------+--------+
+              |10010100|00000100|  2 octet value  |
+              +--------+--------+--------+--------+
+]]></artwork>
+        <dl newline="false" spacing="normal" indent="3" pn="section-2.1-3">
+          <dt pn="section-2.1-3.1">Type:</dt>
+          <dd pn="section-2.1-3.2">
+            <dl newline="false" spacing="compact" indent="3" pn="section-2.1-3.2.1">
+              <dt pn="section-2.1-3.2.1.1">Copied flag:</dt>
+              <dd pn="section-2.1-3.2.1.2">1（すべてのフラグメントがこのオプションを含まなければならない）</dd>
+              <dt pn="section-2.1-3.2.1.3">Option class:</dt>
+              <dd pn="section-2.1-3.2.1.4">0（制御）</dd>
+              <dt pn="section-2.1-3.2.1.5">Option number:</dt>
+              <dd pn="section-2.1-3.2.1.6">20（10進数）</dd>
+            </dl>
+          </dd>
+          <dt pn="section-2.1-3.3">Length:</dt>
+          <dd pn="section-2.1-3.4">4</dd>
+          <dt pn="section-2.1-3.5">Value:</dt>
+          <dd pn="section-2.1-3.6">
+            <t indent="0" pn="section-2.1-3.6.1">次の値をとる2オクテットのコード。</t>
+            <dl newline="false" spacing="compact" indent="3" pn="section-2.1-3.6.2">
+              <dt pn="section-2.1-3.6.2.1">0 -</dt>
+              <dd pn="section-2.1-3.6.2.2">ルーターはパケットを調べる</dd>
+              <dt pn="section-2.1-3.6.2.3">1-65535 -</dt>
+              <dd pn="section-2.1-3.6.2.4">予約済み</dd>
+            </dl>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="semantics" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-semantics">セマンティクス</name>
+        <t indent="0" pn="section-2.2-1">ホストはこのオプションを無視します。このオプションを認識しないルーターは、これを無視します。このオプションを認識するルーターは、このオプションを含むパケットをより詳しく調べ（たとえばIPのプロトコル（Protocol）フィールドを確認し）、さらなる処理が必要かどうかを判断します。認識できない値のフィールドは、何も通知せずに無視します。</t>
+        <t indent="0" pn="section-2.2-2">Valueフィールドのその他の値のセマンティクスは、今後の検討課題です。</t>
+      </section>
+    </section>
+    <section anchor="impact-on-other-protocols" numbered="true" removeInRFC="false" toc="include" pn="section-3.0">
+      <name slugifiedName="name-impact-on-other-protocols">他のプロトコルへの影響</name>
+      <t indent="0" pn="section-3.0-1">このオプションが効果を発揮するには、自分宛てではないパケットに対してルーターが重要な処理を行うことを前提とするプロトコルで、その使用を義務付ける必要があります。現在、そのようなプロトコルにはRSVP<xref target="1" format="default" sectionFormat="of" derivedContent="1"/>とIGMP<xref target="2" format="default" sectionFormat="of" derivedContent="2"/>があります。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4.0">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4.0-1">ルーターアラートオプションを設定すべきなのに設定しなかった場合、ルーターアラートを使用するプロトコル（たとえばRSVPやIGMPv2）は、ルーターアラートオプションの使用に依存しているため、その動作に悪影響を受けます。</t>
+      <t indent="0" pn="section-4.0-2">設定すべきでないときにルーターアラートオプションを設定した場合、そのフローは性能低下を被る可能性が高くなります。ルーターアラートオプションが設定されたパケットはルーターのファストパスを通らず、オプションが設定されていない場合よりもルーター内でゆっくり処理されるからです。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5.0">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Resource ReSerVation Protocol (RSVP)</title>
+          <author fullname="B. Braden" initials="B." surname="Braden" role="editor"/>
+          <author fullname="L. Zhang" initials="L." surname="Zhang"/>
+          <author fullname="D. Estrin" initials="D." surname="Estrin"/>
+          <author fullname="S. Herzog" initials="S." surname="Herzog"/>
+          <author fullname="S. Jamin" initials="S." surname="Jamin"/>
+          <date year="1996" month="March"/>
+        </front>
+        <refcontent>work in progress</refcontent>
+      </reference>
+      <reference anchor="2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Internet Group Management Protocol, Version 2 (IGMPv2)</title>
+          <author fullname="W. Fenner" initials="W." surname="Fenner"/>
+          <date year="1996" month="October"/>
+        </front>
+        <refcontent>work in progress</refcontent>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Dave Katz" initials="D." surname="Katz">
+        <organization showOnFrontPage="true">cisco Systems</organization>
+        <address>
+          <postal>
+            <street>170 W. Tasman Dr.</street>
+            <city>San Jose</city>
+            <region>CA</region>
+            <code>95134-1706</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 408 526 8284</phone>
+          <email>dkatz@cisco.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

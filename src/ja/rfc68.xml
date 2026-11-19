@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="68" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc68" rel="alternate"/>
+  <front>
+    <title>メモリー割り当て制御コマンド（CEASE、ALL、GVB、RET）とRFNMについてのコメント</title>
+    <seriesInfo name="RFC" value="68" stream="IETF"/>
+    <author fullname="M. Elie" initials="M." surname="Elie">
+      <organization showOnFrontPage="true">UCLA</organization>
+      <address/>
+    </author>
+    <date year="1970" month="August" day="31"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">プロトコルはバッファー割り当ての方式を提供しています。この方式は、2つの並行するメカニズムを必要とするため、かなり複雑です。両方が必要かどうかは明らかではありません。実際のところ、この方式はおそらく、次メッセージ要求（Request for Next Message、RFNM）の考え方を少し変えたもので置き換えられると考えられます。現在、RFNMは、メッセージが再構成されて最初のパケットがホストに送信された後に、受信側のIMPから返送されます。メッセージ全体がホストに受け入れられ、正しく受信されたことを保証するものは何もありません。また、ホストとIMPのインターフェイスの設計上、ホストはIMPからのデータの受け入れを任意の時間停止できます。RFNMを返送したことでリンクのブロックはすでに解除されているため、送信側の外部ホストが別のメッセージを送信するかもしれず、それがIMPのメモリーを混雑させることになります。一方で、通常、ホストはネットワーク上で送信されるよりも高い速度、たとえば200kビット/秒でIMPからデータを受け入れられると考えられます。そのため、IMPからホストへメッセージ全体を送信する時間はおよそ1/20秒となり、これはネットワーク上でのメッセージの平均伝送遅延の10分の1です。このことから、ホストがメッセージ全体を受信した後にRFNMを送信しても、ネットワークの応答時間はそれほど増えないことがわかります。</t>
+      <t indent="0" pn="section-abstract-2">この場合、受信側のホストが、メッセージを正しく受信したことの確認応答（ACK）としてRFNMを発行し、それをホストとIMP間のメッセージか制御コマンドのメッセージのどちらかの形にできない理由はありません。このRFNMは、次の2つの形をとることができます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-3"><![CDATA[
+         ACK  (CONTINUE)
+or       ACK  (CEASE)
+]]></artwork>
+      <t indent="0" pn="section-abstract-4">こうすれば、[DELO 69]で提案されているチェックサムビットのような、誤り検出のための冗長性をメッセージに追加できるようになります。現在の設計では、たとえば干渉やホストとIMPのインターフェイスのどれかの不具合によって、テキストの1ビットまたは数ビットが変化していないことを保証するものは何もありません。これは、たとえばテキストが集中型のデータベースの更新に使われる場合には、重大な結果をもたらす可能性があります。また、ユーザーが誤りを検出する手段を持っていても、それを訂正する手段を持っていなければ、メッセージの再送を求める手段はありません。そのメッセージは、RFNMを受け取った時点でおそらく送信側で破棄されているからです。実際、テキストの誤りを検出しなければならないのはユーザーではなく、NCPであるように思われます。ユーザープロセスは、できる限り、ほかのローカルのプロセスと会話しているかのように振る舞えなければなりません。そこで、NCPが送信する第3の種類のRFNMとして、次のものが考えられます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-5"><![CDATA[
+            NAK(REPEAT)
+]]></artwork>
+      <t indent="0" pn="section-abstract-6">応答がない場合にも再送が開始されます。</t>
+      <t indent="0" pn="section-abstract-7">このように、こうしたわずかな変更を加えることには価値があると思われます。この変更により、送信側のホストと受信側のホストの間で非常に単純なポイントツーポイントの伝送手順を使えるようになり、送信するデータの制御をエンドツーエンドで保証できるようになります。</t>
+      <t indent="0" pn="section-abstract-8">これはメモリー割り当てのメカニズムを置き換えることもできます。ACK (CONTINUE) は、このコネクションで新しいメッセージのための領域が利用可能な場合にのみ送信し、ACK (CEASE) は、それ以上の領域が利用できない場合に送信するようにします。これは、古典的な伝送手順[USAS69]のWABTに相当します。伝送は、受信側からのACK (CONTINUE) またはRESUMEによって再開できます。ユーザープロセスは、システム（またはNCP）の機能であるこのメモリー割り当てにはまったく関わりません。ユーザープロセスに見えるのは、コネクション上でのデータの全体的な伝送速度が変化することだけです。IMPのプログラムがネットワークの分散的な性質に応じてデータのルーティングを行うので、ユーザーもシステム（またはNCP）もそれに関与しません。プロトコルのその他の改良点は、実際に使ってみた後で見つかるかもしれません。</t>
+      <t indent="0" pn="section-abstract-9">最後に、この解決策では、現在の解決策よりも長くIMPのメモリーを占有することはないことに注意してください。メッセージを再送しなければならないのはIMPではなく、送信側のホストだからです。</t>
+      <dl spacing="normal" indent="8" newline="false" pn="section-abstract-10">
+        <dt pn="section-abstract-10.1">DELO 69</dt>
+        <dd pn="section-abstract-10.2">DELOCHE G.  Implementation of the Host-Host Software
+Procedures in GORDO Network Working Group RFC #11 Aug 1969</dd>
+        <dt pn="section-abstract-10.3">USAS 69</dt>
+        <dd pn="section-abstract-10.4">Proposed USA standard data communication control procedures
+for USASCII CACM Vol. 12 NB 3 March 1969 PB 166-178</dd>
+      </dl>
+      <t indent="0" pn="section-abstract-11">[このRFCは、Kai Henningsenによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。6/97]</t>
+    </abstract>
+  </front>
+  <middle>
+  </middle>
+  <back>
+  </back>
+</rfc>

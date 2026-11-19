@@ -1,0 +1,196 @@
+--- 
++++ 
+@@ -20,33 +20,181 @@
+     </boilerplate>
+   </front>
+   <middle>
++    <section anchor="overview-and-rational" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
++      <name slugifiedName="name-overview-and-rational">Overview and Rational</name>
++      <t indent="0" pn="section-unnumbered-1-1">The FTP protocol <xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/> uses a secondary TCP connection for actual
++transmission of files.  By default, this connection is set up by an
++active open from the FTP server to the FTP client.  However, this
++scheme does not work well with packet filter-based firewalls, which
++in general cannot permit incoming calls to random port numbers.</t>
++      <t indent="0" pn="section-unnumbered-1-2">If, on the other hand, clients use the PASV command, the data channel
++will be an outgoing call through the firewall.  Such calls are more
++easily handled, and present fewer problems.</t>
++    </section>
++    <section anchor="the-gory-details" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
++      <name slugifiedName="name-the-gory-details">The Gory Details</name>
++      <t indent="0" pn="section-unnumbered-2-1">The FTP specification says that by default, all data transfers should
++be over a single connection.  An active open is done by the server,
++from its port 20 to the same port on the client machine as was used
++for the control connection.  The client does a passive open.</t>
++      <t indent="0" pn="section-unnumbered-2-2">For better or worse, most current FTP clients do not behave that way.
++A new connection is used for each transfer; to avoid running afoul of
++TCP's TIMEWAIT state, the client picks a new port number each time
++and sends a PORT command announcing that to the server.</t>
++      <t indent="0" pn="section-unnumbered-2-3">Neither scenario is firewall-friendly.  If a packet filter is used
++(as, for example, provided by most modern routers), the data channel
++requests appear as incoming calls to unknown ports.  Most firewalls
++are constructed to allow incoming calls only to certain believed-to-be-safe
++ports, such as SMTP.  The usual compromise is to block only
++the &quot;server&quot; area, i.e., port numbers below 1024.  But that strategy
++is risky; dangerous services such as X Windows live at higher-numbered
++ports.</t>
++      <t indent="0" pn="section-unnumbered-2-4">Outgoing calls, on the other hand, present fewer problems, either for
++the firewall administrator or for the packet filter.  Any TCP packet
++with the ACK bit set cannot be the packet used to initiate a TCP
++connection; filters can be configured to pass such packets in the
++outbound direction only.  We thus want to change the behavior of FTP
++so that the data channel is implemented as a call from the client to
++the server.</t>
++      <t indent="0" pn="section-unnumbered-2-5">Fortunately, the necessary mechanisms already exist in the protocol.
++If the client sends a PASV command, the server will do a passive TCP
++open on some random port, and inform the client of the port number.
++The client can then do an active open to establish the connection.</t>
++      <t indent="0" pn="section-unnumbered-2-6">There are a few FTP servers in existence that do not honor the PASV
++command.  While this is unfortunate (and in violation of STD 3, RFC
++1123 <xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/>), it does not pose a problem.  Non-conforming
++implementations will return a &quot;500 Command not understood&quot; message;
++it is a simple matter to fall back to current behavior.  While it may
++not be possible to talk to such sites through a firewall, that would
++have been the case had PASV not been adopted.</t>
++    </section>
++    <section anchor="recommendation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
++      <name slugifiedName="name-recommendation">Recommendation</name>
++      <t indent="0" pn="section-unnumbered-3-1">We recommend that vendors convert their FTP client programs
++(including FTP proxy agents such as Gopher <xref target="ref-3" format="default" sectionFormat="of" derivedContent="3"/> daemons) to use PASV
++instead of PORT.  There is no reason not to use it even for non-firewall
++transfers, and adopting it as standard behavior will make
++the client more useful in a firewall environment.</t>
++      <t indent="0" pn="section-unnumbered-3-2">STD 3, RFC 1123 notes that the format of the response to a PASV
++command is not well-defined.  We therefore recommend that FTP clients
++and servers follow the recommendations of that RFC for solving this
++problem.</t>
++    </section>
++    <section anchor="discussion" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
++      <name slugifiedName="name-discussion">Discussion</name>
++      <t indent="0" pn="section-unnumbered-4-1">Given the behavior of most current FTP clients, the use of PASV does
++not cause any additional messages to be sent.  In all cases, a
++transfer operation is preceded by an extra exchange between the
++client and the server; it does not matter if that exchange involves a
++PORT command or a PASV command.</t>
++      <t indent="0" pn="section-unnumbered-4-2">There is some extra overhead with Gopher-style clients; since they
++transfer exactly one file per control channel connection, they do not
++need to use PORT commands.  If this is a serious concern, the Gopher
++proxy should be located on the outside of the firewall, so that it is
++not hampered by the packet filter's restrictions.</t>
++      <t indent="0" pn="section-unnumbered-4-3">If we accept that clients should always perform active opens, it
++might be worthwhile enhancing the FTP protocol to eliminate the extra
++exchange entirely.  At startup time, the client could send a new
++command APSV (&quot;all passive&quot;); a server that implements this option
++would always do a passive open.  A new reply code 151 would be issued
++in response to all file transfer requests not preceded by a PORT or
++PASV command; this message would contain the port number to use for
++that transfer.  A PORT command could still be sent to a server that
++had previously received APSV; that would override the default
++behavior for the next transfer operation, thus permitting third-party
++transfers.</t>
++    </section>
++    <section anchor="implementation-status" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
++      <name slugifiedName="name-implementation-status">Implementation Status</name>
++      <t indent="0" pn="section-unnumbered-5-1">At least two independent implementations of the modified clients
++exist.  Source code to one is freely available.  To our knowledge,
++APSV has not been implemented.</t>
++    </section>
++    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-6">
++      <name slugifiedName="name-security-considerations">Security Considerations</name>
++      <t indent="0" pn="section-unnumbered-6-1">Some people feel that packet filters are dangerous, since they are
++very hard to configure properly.  We agree.  But they are quite
++popular.  Another common complaint is that permitting arbitrary
++outgoing calls is dangerous, since it allows free export of sensitive
++data through a firewall.  Some firewalls impose artificial bandwidth
++limits to discourage this.  While a discussion of the merits of this
++approach is beyond the scope of this memo, we note that the sort of
++application-level gateway necessary to implement a bandwidth limiter
++could be implemented just as easily using PASV as with PORT.</t>
++      <t indent="0" pn="section-unnumbered-6-2">Using PASV does enhances the security of gateway machines, since they
++no longer need to create ports that an outsider might connect to
++before the real FTP client.  More importantly, the protocol between
++the client host and the firewall can be simplified, if there is no
++need to specify a &quot;create&quot; operation.</t>
++      <t indent="0" pn="section-unnumbered-6-3">Concerns have been expressed that this use of PASV just trades one
++problem for another.  With it, the FTP server must accept calls to
++random ports, which could pose an equal problem for its firewall.  We
++believe that this is not a serious issue, for several reasons.</t>
++      <t indent="0" pn="section-unnumbered-6-4">First, there are many fewer FTP servers than there are clients.  It
++is possible to secure a small number of special-purpose machines,
++such as gateways and organizational FTP servers.  The firewall's
++filters can be configured to allow access to just these machines.
++Further precautions can be taken by modifying the FTP server so that
++it only uses very high-numbered ports for the data channel.  It is
++comparatively easy to ensure that no dangerous services live in a
++given port range.  Again, this is feasible because of the small
++number of servers.</t>
++    </section>
+   </middle>
+   <back>
+-    <references pn="section-references">
++    <references anchor="references" pn="section-unnumbered-7">
+       <name slugifiedName="name-references">References</name>
+-      <reference quoteTitle="true">
++      <reference anchor="ref-1" target="https://www.rfc-editor.org/info/rfc959" quoteTitle="true" derivedAnchor="1">
+         <front>
+-          <title></title>
++          <title>File Transfer Protocol</title>
++          <author fullname="J. Postel" initials="J." surname="Postel"/>
++          <author fullname="J. Reynolds" initials="J." surname="Reynolds"/>
+           <date year="1985" month="October"/>
+         </front>
+-        <seriesInfo name="STD">1</seriesInfo>
+-        <seriesInfo name="RFC">959</seriesInfo>
++        <seriesInfo name="STD" value="1"/>
++        <seriesInfo name="RFC" value="959"/>
++        <refcontent>USC/Information Sciences Institute</refcontent>
+       </reference>
+-      <reference quoteTitle="true">
++      <reference anchor="ref-2" target="https://www.rfc-editor.org/info/rfc1123" quoteTitle="true" derivedAnchor="2">
+         <front>
+-          <title></title>
++          <title>Requirements for Internet Hosts - Application and Support</title>
++          <author fullname="R. Braden" initials="R." surname="Braden" role="editor"/>
+           <date year="1989" month="October"/>
+         </front>
+-        <seriesInfo name="STD">3</seriesInfo>
+-        <seriesInfo name="RFC">1123</seriesInfo>
++        <seriesInfo name="STD" value="3"/>
++        <seriesInfo name="RFC" value="1123"/>
++        <refcontent>USC/Information Sciences Institute</refcontent>
+       </reference>
+-      <reference quoteTitle="true">
++      <reference anchor="ref-3" target="https://www.rfc-editor.org/info/rfc1436" quoteTitle="true" derivedAnchor="3">
+         <front>
+-          <title></title>
++          <title>The Internet Gopher Protocol (a distributed document search and retrieval protocol)</title>
++          <author fullname="F. Anklesaria" initials="F." surname="Anklesaria"/>
++          <author fullname="M. McCahill" initials="M." surname="McCahill"/>
++          <author fullname="P. Lindner" initials="P." surname="Lindner"/>
++          <author fullname="D. Johnson" initials="D." surname="Johnson"/>
++          <author fullname="D. Torrey" initials="D." surname="Torrey"/>
++          <author fullname="B. Alberti" initials="B." surname="Alberti"/>
+           <date year="1993" month="March"/>
+         </front>
+-        <seriesInfo name="RFC">1436</seriesInfo>
++        <seriesInfo name="RFC" value="1436"/>
++        <refcontent>University of Minnesota</refcontent>
+       </reference>
+     </references>
++    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-8">
++      <name slugifiedName="name-authors-address">Author's Address</name>
++      <author fullname="Steven M. Bellovin" initials="S." surname="Bellovin">
++        <organization showOnFrontPage="true">AT&amp;T Bell Laboratories</organization>
++        <address>
++          <postal>
++            <street>600 Mountain Avenue</street>
++            <city>Murray Hill</city>
++            <region>NJ</region>
++            <code>07974</code>
++          </postal>
++          <phone>(908) 582-5886</phone>
++          <email>smb@research.att.com</email>
++        </address>
++      </author>
++    </section>
+   </back>
+ </rfc>

@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-hoffman-tls-master-secret-input-03" indexInclude="true" number="6358" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-hoffman-tls-master-secret-input-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc6358" rel="alternate"/>
+  <front>
+    <title>TLSのための追加のマスターシークレット入力</title>
+    <seriesInfo name="RFC" value="6358" stream="IETF"/>
+    <author fullname="P. Hoffman" initials="P." surname="Hoffman">
+      <organization showOnFrontPage="true">VPN Consortium</organization>
+      <address/>
+    </author>
+    <date year="2012" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書では、トランスポート層セキュリティー（TLS）およびデータグラムTLS（DTLS）で追加のマスターシークレット入力を使用するためのメカニズムについて説明します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。RFC 5741のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、http://www.rfc-editor.org/info/rfc6358で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2012 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（http://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+        <t indent="0" pn="section-boilerplate.2-3">この文書には、2008年11月10日より前に公開または一般利用可能となったIETF文書またはIETF Contributionsに由来する素材が含まれている場合があります。これらの素材の一部について著作権を管理する者は、そのような素材をIETF Standards Processの外で改変することをIETFトラストに許諾していない可能性があります。そのような素材の著作権を管理する者から適切な許諾を得ない限り、この文書はIETF Standards Processの外で改変してはならず、英語以外の言語への翻訳、またはRFCとして公開するための整形を除き、IETF Standards Processの外でこの文書の派生物を作成してはなりません。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">TLS 1.2<xref target="RFC5246" format="default" sectionFormat="of" derivedContent="RFC5246"/>およびDTLS 1.2<xref target="RFC6347" format="default" sectionFormat="of" derivedContent="RFC6347"/>の一部の拡張は、特定のデータをマスターシークレットの計算に混ぜ込むことを望んでいます。この混ぜ込みによって、追加された素材が、TLSセッションを保護するために使われるシークレットに直接、暗号学的に結び付けられます。たとえば、TLSのマスターシークレットに十分なランダム性があることを確実にしたいシステムがあり、これはランダム性をマスターシークレットの計算に直接追加することで実現できます。</t>
+      <t indent="0" pn="section-1-2">この文書では、これらの要件を満たすためのTLSおよびDTLSの拡張のフレームワークについて説明します。このフレームワークを使う拡張では、クライアントとサーバーが通常のTLS拡張を使ってハンドシェイクの中でデータを提供し、そのデータはmaster_secretの導出の際にClientHelloとServerHelloのランダム値と組み合わされます。</t>
+      <t indent="0" pn="section-1-3">マスターシークレットに追加するデータを規定する拡張を「マスターシークレット入力を持つ拡張（extensions with master secret input）」と呼びます。マスターシークレット入力を持つ拡張は、クライアントとサーバーの両方またはどちらか一方から来る追加の入力を規定しなければなりません。ここで「両方またはどちらか一方（and/or）」という語を使っているのは、拡張の定義によっては、マスターシークレットへの入力が参加者の一方だけから来る場合があるためです。</t>
+      <t indent="0" pn="section-1-4">マスターシークレット入力を持つ拡張であることを規定していない拡張は、マスターシークレット入力を持つ拡張にはなれないことに注意してください。つまり、自らをマスターシークレット入力を持つ拡張と称していない拡張はすべて、通常の拡張とまったく同じように扱われます。また、この文書はフレームワークを説明するだけであることにも注意してください。ある拡張がこのフレームワークを使い、クライアントとサーバーの両方がその拡張を実装している場合、マスターシークレット入力の使用についてのシグナリングは必要ありません。それは拡張の定義そのものの一部として含まれるからです。</t>
+      <t indent="0" pn="section-1-5">これらの拡張を1つ以上使うと、TLSおよびDTLSにおけるマスターシークレットの計算方法が変わります。つまり、ハンドシェイクに拡張がない場合、またはマスターシークレット入力を持つ拡張ではない拡張しかない場合は、マスターシークレットの計算は変わりません。</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-document">この文書で使用する表記規則</name>
+        <t indent="0" pn="section-1.1-1">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>に記載されているとおりに解釈されるものとします。</t>
+      </section>
+    </section>
+    <section anchor="master-secret-calculation-modifications-for-tls-and-dtls" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-master-secret-calculation-modifications-for-tls-and-dtls">TLSおよびDTLSのマスターシークレット計算の変更</name>
+      <t indent="0" pn="section-2-1">マスターシークレット入力を持つ拡張がハンドシェイクに存在する場合、マスターシークレットの計算時に、追加のマスターシークレット入力の値を、クライアントとサーバーのランダム値とともに疑似ランダム関数（PRF）の計算に混ぜ込ま<bcp14>なければなりません（MUST）</bcp14>。マスターシークレットの計算では、拡張を拡張タイプの順序で並べ替え<bcp14>なければなりません（MUST）</bcp14>。TLS 1.2では、拡張はタイプごとに1つしか存在できず、拡張は任意の順序で現れうると規定されていることに注意してください。</t>
+      <t indent="0" pn="section-2-2">マスターシークレット入力を持つ各拡張は、それぞれが規定する入力を追加します。タイプ番号が最も小さいマスターシークレット入力を持つ拡張の入力を「additional_ms_input_1」、タイプ番号が2番目に小さいマスターシークレット入力を持つ拡張の入力を「additional_ms_input_2」のように呼びます。</t>
+      <t indent="0" pn="section-2-3">マスターシークレットの計算は次のようになります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-4"><![CDATA[
+   master_secret = PRF(pre_master_secret, "master secret",
+                       ClientHello.random +
+                       ClientHello.additional_ms_input_1 +
+                       ClientHello.additional_ms_input_2 +
+                       . . .
+                       ClientHello.additional_ms_input_N +
+                       ServerHello.random +
+                       ServerHello.additional_ms_input_1 +
+                       ServerHello.additional_ms_input_2 +
+                       . . .
+                       ServerHello.additional_ms_input_N +
+                       )[0..47];
+]]></artwork>
+      <t indent="0" pn="section-2-5">相互運用性のためには、master_secretにおいて、規定された順序でadditional_ms_input_nフィールドを使うことが必要です。そうしないと、サーバーとクライアントは、同じmaster_secretを曖昧さなく計算する方法がわからなくなります。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-3-1">TLSおよびDTLSに対するこの変更により、攻撃者がマスターシークレットの計算に注入できるデータの量が増えます。これによって、マスターシークレットの計算への入力を部分的に侵害した攻撃者が、出力に影響を与える余地が広がる可能性があります。TLSのマスターシークレットの計算で使われるようなハッシュベースのPRFは、入力のサイズにはほとんど左右されないように設計されています。</t>
+      <t indent="0" pn="section-3-2">追加のマスターシークレット入力にはエントロピーがない場合があります。実際、攻撃者にとって完全に予測可能であるかもしれません。TLSは、マスターシークレットの計算で使われるPRFに予測可能な素材が大量に含まれていても正しく機能するように設計されています。これは、PRFがコネクションごとに別個の鍵素材を生成するために使われるからです。したがって、追加のマスターシークレット入力の値が完全に予測可能であっても、結果として得られるPRFの出力に害は及びません。これらの値にエントロピーがある場合、そのエントロピーはPRFの出力に反映されます。</t>
+    </section>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-4-1">この文書のテキストの多くは、Eric Rescorla、Margaret Salter、Jerry Solinasが書いたテキストに由来しています。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-normative-references">引用規格</name>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC5246" quoteTitle="true" derivedAnchor="RFC5246">
+        <front>
+          <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+          <author fullname="T. Dierks" initials="T." surname="Dierks"/>
+          <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+          <date year="2008" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="5246"/>
+      </reference>
+      <reference anchor="RFC6347" quoteTitle="true" derivedAnchor="RFC6347">
+        <front>
+          <title>Datagram Transport Layer Security version 1.2</title>
+          <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+          <author fullname="N. Modadugu" initials="N." surname="Modadugu"/>
+          <date year="2012" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="6347"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Paul Hoffman" initials="P." surname="Hoffman">
+        <organization showOnFrontPage="true">VPN Consortium</organization>
+        <address>
+          <email>paul.hoffman@vpnc.org</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

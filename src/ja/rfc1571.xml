@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-ietf-telnet-interoperability-00" indexInclude="true" number="1571" updates="1408" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-telnet-interoperability-00" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc1571" rel="alternate"/>
+  <front>
+    <title abbrev="Environment Option Interoperability">Telnet環境オプションの相互運用性の問題</title>
+    <seriesInfo name="RFC" value="1571" stream="IETF"/>
+    <author fullname="D. Borman" initials="D." surname="Borman">
+      <organization showOnFrontPage="true">Cray Research, Inc.</organization>
+      <address/>
+    </author>
+    <date year="1994" month="January"/>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーに情報を提供するものです。いかなる種類のインターネット標準も規定するものではありません。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-overview">概要</name>
+      <t indent="0" pn="section-1-1">Telnet環境オプション（Telnet Environment Option）の仕様であるRFC 1408 <xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>は、VARとVALUEの定義を、Telnet環境オプションのBSD実装とは逆に規定しています。BSD実装は、このRFCが文書化するはずだったリファレンス実装であり、既存の多くの実装のベースとなっているため、VARとVALUEの定義が食い違う実装の間で相互運用性の問題が生じています。</t>
+      <t indent="0" pn="section-1-2">この文書では、コネクションの相手側がVARとVALUEのどちらの定義を使っているかを特定するのに役立つ一連のヒューリスティックを提供することで、実装者が環境オプションの実装をできるだけ多くのほかの実装と相互運用できるようにする方法を説明します。</t>
+    </section>
+    <section anchor="client-telnet:-parsing-a-send" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-client-telnet:-parsing-a-send">クライアントTelnet: SENDの解析</name>
+      <t indent="0" pn="section-2-1">SENDサブオプションには、VARコマンドとUSERVARコマンドだけが含まれるべきです。VALUEが含まれることは決してあってはなりません。SENDサブオプションの解析中にVALUEに遭遇した場合、クライアントは、サーバーがVARとVALUEの値を逆にしていると想定すべきです。そしてそれ以降、クライアントは、SENDサブオプションの残りの部分を解析するときと、ISサブオプションやINFOサブオプションを生成するときの両方で、それらの値を逆にすべきです。VALUEコマンドとVARコマンドの両方に遭遇した場合、そのSENDコマンドは正しい形式ではなく、何が起こるかは実装依存です。</t>
+      <t indent="0" pn="section-2-2">SENDサブオプションにVARコマンドもVALUEコマンドもない場合、クライアントは、サーバーがVARとVALUEにどちらの値を期待しているかを知ることができません。この場合、クライアントは単にサーバーが正しい定義を持っていると想定し、VARとVALUEに正しい値を使うべきです。</t>
+    </section>
+    <section anchor="server-telnet:-parsing-an-is-or-info" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-server-telnet:-parsing-an-is-or-info">サーバーTelnet: ISまたはINFOの解析</name>
+      <t indent="0" pn="section-3-1">サブオプション内のISまたはINFOの後に正当に続けられるのは、VARかUSERVARのどちらかだけです。ISまたはINFOの直後にVARが続く場合、クライアントはVARとVALUEについて正しい定義を持っていると想定できます。ISまたはINFOの直後にVALUEが続く場合、クライアントはVARとVALUEについて逆の定義を持っていると想定でき、それ以降、サーバーはVALUEとVARの定義が逆になっていると想定すべきです。</t>
+      <t indent="0" pn="section-3-2">ISまたはINFOの直後にUSERVARが続く場合、クライアントのVARとVALUEの定義がどうなっているかを判断するために、さらにヒューリスティックを適用しなければなりません。これは、USERVARの後にはVARとVALUEのどちらが続いても正当だからです。USERVARの後のVALUEは、そのUSERVERの値を与えます。USERVARの後のVARは、そのUSERVARが未定義であることを意味します。</t>
+      <t indent="0" pn="section-3-3">次に行うことは、サブオプション全体を走査して、VARまたはVALUEが2つ連続している箇所、または空のVARやVALUEを探すことです。間にVARやUSERVARを挟まずに2つのVALUEを含むサブオプションは正当ではなく、空のVARを含むサブオプションも正当ではありません。したがって、2つ連続したVARか空のVALUEが見つかれば、そのサブオプションを生成したクライアントはVARとVALUEについて正しい定義を使っていると想定できます。2つ連続したVALUEか空のVARが見つかれば、そのサブオプションを生成したクライアントはVARとVALUEについて逆の定義を持っていると想定でき、それ以降、サーバーはVARとVALUEの定義が逆になっていると想定すべきです。</t>
+      <t indent="0" pn="section-3-4">それでもまだ判断がつかない場合、次に適用できるテストは、受信したVAR、USERVAR、VALUEの数を数えることです。（間にVALUEやVARを挟まずに連続するUSERVARは、1つとして数えるべきです。）VALUEはVARかUSERVARの後にしか続けられないので、VALUEの数がVARとUSERVARの合計を超えることは決してありません。また、すべてのVARとUSERVARが値を持つ場合、VALUEの数はVARとUSERVARの数とちょうど同じになります。VARとUSERVARの数がVALUEの総数と同じであれば、クライアントはVARとVALUEについて正しい定義を持っています。VALUEとUSERVARの数がVARの総数と同じであれば、クライアントはVARとVALUEについて逆の定義を持っています。</t>
+      <t indent="0" pn="section-3-5">VALUEの数がVARとUSERVARの合計を超える場合、クライアントはVARとVALUEについて逆の定義を持っていると想定できます。また、VARがUSERVARとVALUEよりも多い場合、クライアントはVARとVALUEについて正しい定義を持っていると想定できます。しかし、このステップに至るまでに、連続するVARやVALUEがないことはすでに判明しています。少し計算すればわかるとおり、これは、VALUEの数がVARとUSERVARの合計を超えることは決してなく、VARの数がVALUEとUSERVARの合計を超えることも決してないことを意味します。したがって、このチェックは冗長であり、省略できます。</t>
+      <t indent="0" pn="section-3-6">それでもまだ判断がつかない場合、VARコマンドの値を調べて、それらが実際によく知られた変数を指定しているかどうかを確認できます。どれかがそうであれば、クライアントはおそらくVARとVALUEについて正しい定義を使っています。そうではなく、VALUEのどれかによく知られた変数名が含まれていれば、クライアントはおそらくVARとVALUEについて逆の定義を持っています。</t>
+      <t indent="0" pn="section-3-7">上記のヒューリスティックがすべて失敗した場合、サーバーはクライアントの種類を判断するためにできることをすべて行ったことになり、単にクライアントがVARとVALUEについて正しい定義を使っていると想定すべきです。</t>
+    </section>
+    <section anchor="client-summary" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-client-summary">クライアントのまとめ</name>
+      <dl newline="true" spacing="normal" indent="4" pn="section-4-1">
+        <dt pn="section-4-1.1">SENDサブオプションにVARコマンドとUSERVARコマンドだけが含まれている。</dt>
+        <dd pn="section-4-1.2">サーバーは正常です。</dd>
+        <dt pn="section-4-1.3">SENDサブオプションにVALUEコマンドが含まれている。</dt>
+        <dd pn="section-4-1.4">サーバーは逆です。</dd>
+        <dt pn="section-4-1.5">VARコマンドもVALUEコマンドも見つからない。</dt>
+        <dd pn="section-4-1.6">サーバーは正常と想定します。</dd>
+      </dl>
+    </section>
+    <section anchor="server-summary" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-server-summary">サーバーのまとめ</name>
+      <dl newline="true" spacing="normal" indent="4" pn="section-5-1">
+        <dt pn="section-5-1.1">IS/INFOの後にVARが続いている。</dt>
+        <dd pn="section-5-1.2">クライアントは正常です。</dd>
+        <dt pn="section-5-1.3">IS/INFOの後にVALUEが続いている。</dt>
+        <dd pn="section-5-1.4">クライアントは逆です。</dd>
+        <dt pn="section-5-1.5">2つ連続したVARがある。</dt>
+        <dd pn="section-5-1.6">クライアントは正常です。</dd>
+        <dt pn="section-5-1.7">連続したVALUEがある。</dt>
+        <dd pn="section-5-1.8">クライアントは逆です。</dd>
+        <dt pn="section-5-1.9">空のVALUEがある。</dt>
+        <dd pn="section-5-1.10">クライアントは正常です。</dd>
+        <dt pn="section-5-1.11">空のVARがある。</dt>
+        <dd pn="section-5-1.12">クライアントは逆です。</dd>
+        <dt pn="section-5-1.13">USERVARとVARの数がVALUEの数と等しい。</dt>
+        <dd pn="section-5-1.14">クライアントは正常と想定します。</dd>
+        <dt pn="section-5-1.15">USERVARとVALUEの数がVARの数と等しい。</dt>
+        <dd pn="section-5-1.16">クライアントは逆と想定します。</dd>
+        <dt pn="section-5-1.17">よく知られた名前を持つVARがある。</dt>
+        <dd pn="section-5-1.18">クライアントは正常と想定します。</dd>
+        <dt pn="section-5-1.19">よく知られた名前を持つVALUEがある。</dt>
+        <dd pn="section-5-1.20">クライアントは逆と想定します。</dd>
+        <dt pn="section-5-1.21">それ以外。</dt>
+        <dd pn="section-5-1.22">クライアントは正常と想定します。</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-1">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Telnet Environment Option</title>
+          <author fullname="D. Borman" initials="D." surname="Borman" role="editor">
+            <organization showOnFrontPage="true">Cray Research, Inc.</organization>
+          </author>
+          <date year="1993" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="1408"/>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-unnumbered-2-1">このメモではセキュリティーの問題については議論しません。</t>
+    </section>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="David A. Borman" initials="D. A." surname="Borman">
+        <organization showOnFrontPage="true">Cray Research, Inc.</organization>
+        <address>
+          <postal>
+            <street>655F Lone Oak Drive</street>
+            <city>Eagan</city>
+            <region>MN</region>
+            <code>55123</code>
+          </postal>
+          <phone>(612) 452-6650</phone>
+          <email>dab@CRAY.COM</email>
+        </address>
+      </author>
+      <t indent="0" pn="section-unnumbered-3-1">Telnetワーキンググループのメーリングリスト: telnet-ietf@CRAY.COM</t>
+    </section>
+  </back>
+</rfc>

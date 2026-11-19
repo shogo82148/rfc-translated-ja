@@ -1,0 +1,147 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-nir-ikev2-auth-lt-05" indexInclude="true" number="4478" category="exp" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-nir-ikev2-auth-lt-05" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc4478" rel="alternate"/>
+  <front>
+    <title>インターネット鍵交換（IKEv2）プロトコルにおける認証の繰り返し</title>
+    <seriesInfo name="RFC" value="4478" stream="IETF"/>
+    <author fullname="Y. Nir" initials="Y." surname="Nir">
+      <organization showOnFrontPage="true">Check Point</organization>
+      <address/>
+    </author>
+    <date year="2006" month="April"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、インターネット鍵交換（IKEv2：Internet Key Exchange）プロトコルの文書<xref target="IKEv2" format="default" sectionFormat="of" derivedContent="IKEv2"/>を拡張します。一部のIPsecピアでは、特にリモートアクセスのシナリオにおいて、相互認証を定期的に繰り返すことが望まれます。その目的は、IPsecピアの制御を奪った第三者がセキュリティーアソシエーション（SA）を使用できる時間を制限することです。この文書では、この機能を実行するためのメカニズムを説明します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーのための実験的なプロトコルを定義します。いかなる種類のインターネット標準も規定するものではありません。改善のための議論と提案を求めます。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2006).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">リモートアクセスのシナリオなど、いくつかの場合には、ポリシーによって相互認証を定期的に繰り返す必要があると定められています。認証の繰り返しは通常、より厳しいポリシーを持つ側がInitial交換を単に繰り返すことで実現できます。</t>
+      <t indent="0" pn="section-1-2">しかし、リモートアクセスのシナリオでは、認証のクレデンシャルを提供するのは通常は人間のユーザーであり、認証には拡張認証プロトコル（EAP：Extensible Authentication Protocol）がよく使われます。そのため、リモートアクセスゲートウェイがIKEv2交換を開始するのは不合理であるか、不可能です。</t>
+      <t indent="0" pn="section-1-3">この文書では、元のレスポンダーが、認証を繰り返す必要があるまでの秒数を元のイニシエーターに送ることができる新しい通知について説明します。イニシエーターは、その時間が経過する前にInitial交換を繰り返す<bcp14>べきです（SHOULD）</bcp14>。イニシエーターがそうしなかった場合、レスポンダーはすべてのセキュリティーアソシエーションを閉じることがあります。</t>
+      <t indent="0" pn="section-1-4">認証の繰り返しはIKE SAの鍵更新（rekeying）と同じではなく、それに結び付ける必要はありません。この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」は、<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているとおりに解釈されます。</t>
+    </section>
+    <section anchor="authentication-lifetime" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-authentication-lifetime">認証の有効期間</name>
+      <t indent="0" pn="section-2-1">IKEv2ネゴシエーションのレスポンダーは、ピアが新しいInitial交換によって認証を繰り返すよう求められるまでに、IKE SAとそれに関連するIPsec SAを使用できる時間を制限するように設定<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-2-2">レスポンダーは、この情報をAUTH_LIFETIME通知でイニシエーターに送信<bcp14>しなければなりません（MUST）</bcp14>。この通知は、IKE_AUTH交換の最後のメッセージで送るか、いつでも送信できるINFORMATIONALリクエストで送ります。</t>
+      <t indent="0" pn="section-2-3">IKE SAの確立の一部として送信する場合、AUTH_LIFETIME通知は次のように使われます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-4"><![CDATA[
+   Initiator                            Responder
+   -------------------------------      -----------------------------
+   HDR, SAi1, KEi, Ni              -->
+                                   <--  HDR, SAr1, KEr, Nr, [CERTREQ]
+   HDR, SK {IDi, [CERT,] [CERTREQ,]
+      [IDr,] AUTH, SAi2, TSi, TSr} -->
+                                   <--  HDR, SK {IDr, [CERT,] AUTH,
+                                                 SAr2, TSi, TSr,
+                                                  N(AUTH_LIFETIME)}
+]]></artwork>
+      <t indent="0" pn="section-2-5">独立したInformational交換は次のように構成されます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-6"><![CDATA[
+                                   <--  HDR, SK {N(AUTH_LIFETIME)}
+   HDR  SK {}                      -->
+]]></artwork>
+      <t indent="0" pn="section-2-7">AUTH_LIFETIME通知についてはセクション3で説明します。</t>
+      <t indent="0" pn="section-2-8">AUTH_LIFETIME通知を送信した元のレスポンダーは、有効期間が経過する前にIKE SAが削除されない限り、有効期間の終了後すぐにDELETE通知を送信<bcp14>すべきです（SHOULD）</bcp14>。IKE SAの鍵が更新された場合、時間制限は新しいSAに適用されます。</t>
+      <t indent="0" pn="section-2-9">AUTH_LIFETIME通知を受信したイニシエーターは、通知に示された時間内にInitial交換を繰り返す<bcp14>べきです（SHOULD）</bcp14>。この時間は、元のイニシエーターが通知を受信した時点から計測します。</t>
+      <t indent="0" pn="section-2-10">特殊なケースとして、通知がInformational交換で送信され、有効期間がゼロの場合があります。その場合、元のレスポンダーは、認証の繰り返しが行われるまでの妥当な時間を許容<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-2-11">AUTH_LIFETIME通知は保護され<bcp14>なければなりません（MUST）</bcp14>。また、元のレスポンダーはこの通知をいつでも送信<bcp14>してもよいです（MAY）</bcp14>。ポリシーが変更された場合、元のレスポンダーは新しいInformationalでこの通知を再び送信<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-2-12">新しいInitial交換は変更されません。イニシエーターは、新しいAuth交換から妥当な時間内に古いIKE SAを削除<bcp14>すべきです（SHOULD）</bcp14>。</t>
+    </section>
+    <section anchor="auth_lifetime-notification" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-auth_lifetime-notification">AUTH_LIFETIME通知</name>
+      <t indent="0" pn="section-3-1">AUTH_LIFETIMEメッセージは、次のような形式の通知ペイロードです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-2"><![CDATA[
+                        1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   ! Next Payload  !C!  RESERVED   !         Payload Length        !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   !  Protocol ID  !   SPI Size    !      Notify Message Type      !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   !                           Lifetime                            !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+      <ul bare="false" empty="false" indent="3" spacing="compact" pn="section-3-3">
+        <li pn="section-3-3.1">Payload Lengthは12です。</li>
+        <li pn="section-3-3.2">Protocol ID（1オクテット）は0で<bcp14>なければなりません（MUST）</bcp14>。</li>
+        <li pn="section-3-3.3">SPI sizeは0です（SPIはメッセージヘッダーにあります）。</li>
+        <li pn="section-3-3.4">Notify Message typeは、IANAによる16403です。</li>
+        <li pn="section-3-3.5">Lifetimeは、ピアがInitial交換を繰り返すべきときまでの残り時間（秒単位）です。値がゼロの場合は、Initial交換をただちに開始すべきであることを意味します。ユーザーにとって煩わしすぎるため、通常、この値を300（5分）未満に設定するのは妥当ではありません。また、認証を繰り返すことによるセキュリティー上の利点を損なうため、通常、この値を86400（1日）を超える値に設定するのも妥当ではありません。</li>
+      </ul>
+    </section>
+    <section anchor="interoperability-with-non-supporting-ikev2-implementations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-interoperability-with-non-supporting-ikev2-implementations">この仕様をサポートしないIKEv2実装との相互運用性</name>
+      <t indent="0" pn="section-4-1">AUTH_LIFETIME通知をサポートしないIKEv2実装は、この通知を無視し、認証を繰り返しません。その場合、元のレスポンダーは、Informational交換でIKE SAのDelete通知を送信します。そのような実装は、認証を定期的に繰り返すように手動で設定できる場合があります。</t>
+      <t indent="0" pn="section-4-2">この仕様をサポートしないレスポンダーは、これらの通知を送信しないだけなので問題になりません。その場合、元のイニシエーターが再認証する必要はありません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">レスポンダーが送信するAUTH_LIFETIME通知は、イニシエーターのセキュリティーポリシーを上書きしません。特に、イニシエーターが再認証に関して異なるポリシーを持ち、より頻繁な再認証を必要とする場合があります。そのようなイニシエーターは、通知で求められるよりも早く認証を繰り返すことができます。</t>
+      <t indent="0" pn="section-5-2">イニシエーターは、AUTH_LIFETIME通知の時間の長さに妥当な制限を設定<bcp14>してもよいです（MAY）</bcp14>。たとえば、SAの開始から300秒未満の認証の有効期間は、妥当でないとみなされることがあります。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">IANAは、IKEv2 Notify Message Typesレジストリーから、AUTH_LIFETIME通知のための通知ペイロードタイプを割り当てました。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-7">
+      <name slugifiedName="name-normative-references">引用規格</name>
+      <reference anchor="IKEv2" quoteTitle="true" derivedAnchor="IKEv2">
+        <front>
+          <title>Internet Key Exchange (IKEv2) Protocol</title>
+          <author fullname="C. Kaufman" initials="C." surname="Kaufman"/>
+          <date year="2005" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="4306"/>
+      </reference>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Yoav Nir" initials="Y." surname="Nir">
+        <organization showOnFrontPage="true">Check Point Software Technologies</organization>
+        <address>
+          <email>ynir@checkpoint.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2006).</t>
+        <t indent="0" pn="section-appendix.b-2">この文書は、BCP 78に含まれる権利、ライセンス、および制限にしたがうものとし、そこに定める場合を除き、著者はすべての権利を保持します。</t>
+        <t indent="0" pn="section-appendix.b-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供され、寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（もしあれば）、インターネットソサエティー、およびインターネット技術タスクフォースは、ここに含まれる情報の使用がいかなる権利も侵害しないという保証、または商品性もしくは特定目的への適合性に関する黙示の保証を含め、明示的か黙示的かを問わず、一切の保証を否認します。</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+        <t indent="0" pn="section-appendix.c-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。RFC文書における権利に関する手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+        <t indent="0" pn="section-appendix.c-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+        <t indent="0" pn="section-appendix.c-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.d-1">RFCエディターの機能に対する資金は、IETF管理支援活動（IASA）によって提供されています。</t>
+      </section>
+  </back>
+</rfc>

@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-ogier-ospf-dbex-opt-03" indexInclude="true" number="5243" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ogier-ospf-dbex-opt-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc5243" rel="alternate"/>
+  <front>
+    <title>OSPFのデータベース交換サマリーリストの最適化</title>
+    <seriesInfo name="RFC" value="5243" stream="IETF"/>
+    <author fullname="R. Ogier" initials="R." surname="Ogier">
+      <organization showOnFrontPage="true">SRI International</organization>
+      <address/>
+    </author>
+    <date year="2008" month="May"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、OSPFv2とOSPFv3のデータベース交換（Database Exchange）プロセスに対する後方互換性のある最適化について説明します。この最適化では、ルーターは、近隣ルーターから受信済みのデータベース記述（Database Description）パケットに同じかより新しいリンクステート広告（Link State Advertisement、LSA）のインスタンスが列挙されていた場合、その近隣ルーターに送信するデータベース記述パケットにそのLSAを列挙しません。この最適化により、大規模なネットワークでは、データベース記述のオーバーヘッドが約50%削減されます。この最適化は、データベース記述パケットから不要な情報を省くだけなので、同期には影響しません。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーに情報を提供するものです。いかなる種類のインターネット標準も規定するものではありません。このメモの配布は無制限です。</t>
+    </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">OSPFv2 <xref target="RFC2328" format="default" sectionFormat="of" derivedContent="RFC2328"/>とOSPFv3 <xref target="RFC2740" format="default" sectionFormat="of" derivedContent="RFC2740"/>では、隣接する2つのルーターが隣接関係（adjacency）を形成するとき、データベース交換プロセスによってリンクステートデータベースを同期します。各ルーターは、自身のリンクステートデータベースを記述する一連のデータベース記述（DD）パケットを相手のルーターに送信します。これは、各LSAを、送信するDDパケットのいずれかに列挙する（すなわち、各LSAのヘッダーを含める）ことによって行います。この手順により、各ルーターは、リンクステート要求（Link State Request）パケットで要求すべき新しいLSAインスタンスを相手のルーターが持っているかどうかを判断できます。</t>
+      <t indent="0" pn="section-1-2">この最適化は、近隣ルーターが同じかより新しいLSAのインスタンスをすでに持っている（したがってそのLSAを要求しない）ことがわかっていれば、ルーター（マスターかスレーブかを問わず）がそのLSAをDDパケットに列挙する必要はない、という点に着目したものにすぎません。そのようなLSAをDDパケットに列挙しないようにするため、近隣ルーターから受信したDDパケットにLSAが列挙されていて、その近隣ルーターに対するデータベースサマリーリストに、受信したものと同じかそれより古いLSAのインスタンスがある場合、そのLSAをサマリーリストから削除します。</t>
+      <t indent="0" pn="section-1-3">データベース交換サマリーリスト最適化と呼ぶこの最適化は、DDパケットから省かれるLSAは不要なものなので、同期には影響しません。この最適化はOSPFと完全な後方互換性があります。隣接関係を形成する時点でルーターがたいていすでにほぼ同期している大規模なネットワークでは、交換されるLSAヘッダーの総数を約半分に減らすので、この最適化によってデータベース記述のオーバーヘッドが約50%削減されます。この最適化は、大規模なモバイルアドホックネットワークのような、帯域幅が限られた大規模なネットワークで特に有益です。</t>
+    </section>
+    <section anchor="specification-of-optimization" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-specification-of-optimization">最適化の仕様</name>
+      <t indent="0" pn="section-2-1">データベース交換サマリーリスト最適化は、RFC 2328のセクション10.6「Receiving Database Description Packets」を次のように変更することで定義します。セクション10.6の最後から2番目の段落を、次の拡張した段落に置き換えます。</t>
+      <t indent="0" pn="section-2-2">ルーターが受信したデータベース記述パケットを順序どおりの次のパケットとして受け入れた場合、パケットの内容を次のように処理します。列挙された各LSAについて、そのLSAのLSタイプが有効かどうかを確認します。LSタイプが不明な場合（たとえば、この仕様で定義されたLSタイプ1〜5のいずれでもない場合）、またはこれがAS外部LSA（LSタイプ = 5）で、近隣ルーターがスタブエリアに関連付けられている場合は、近隣イベントSeqNumberMismatchを生成し、パケットの処理を中止します。そうでなければ、ルーターは自身のデータベースでそのLSAを検索し、自身もそのLSAのインスタンスを持っているかどうかを確認します。持っていない場合、またはデータベースのコピーのほうが古い場合は、そのLSAをリンクステート要求リストに入れ、（ただちに、または後で）リンクステート要求パケットで要求できるようにします。さらに、データベースサマリーリストに、列挙されたLSAと同じかそれより古いLSAのインスタンスが含まれている場合は、そのLSAをデータベースサマリーリストから削除します。</t>
+      <t indent="0" pn="section-2-3">上記の追加の手順（データベースサマリーリストを更新する手順）は、ルーターが列挙されたLSAを自身のデータベースで検索し、場合によってはそのLSAをリンクステート要求リストに追加する前と後のどちらで実行してもかまいません。ただし、この最適化を実装するには、応答として次のDDパケットを送信する前に、受信したDDパケットに列挙された各LSAについて（データベースサマリーリストを完全に更新するために）追加の手順を実行しなければなりません。</t>
+      <t indent="0" pn="section-2-4">この最適化では、LSAを特定の順序でDDパケットに列挙することを求めませんが、すべてのルーターがLSAを同じ順序で列挙すれば、データベースサマリーリストにおけるLSAの検索を高速化できる可能性があります。そのような順序付けを使用する場合、異なる実装が同じ順序付けを使用するよう促すため、この文書では、OSPFv2では（LSタイプ、リンクステートID、広告ルーター）、OSPFv3では（LSタイプ、広告ルーター、リンクステートID）の辞書式の昇順でLSAを列挙することを推奨します。</t>
+    </section>
+    <section anchor="example" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-example">例</name>
+      <t indent="0" pn="section-3-1">このセクションでは、データベース交換サマリーリスト最適化を説明するための例を示します。ルーターRT1とRT2が、データベース交換を開始する時点ですでに同一のデータベースを持っていると仮定します。また、データベースのLSAヘッダーのリストが2つのDDパケットに収まると仮定します。すると、RT1が最初に近隣状態をExStartに変更した場合、標準のデータベース交換は次のようになります。各ルーターが2つの満杯のDDパケットを送信していることに注意してください。</t>
+      <artwork align="left" pn="section-3-2"><![CDATA[
+   RT1 (slave)                                      RT2 (master)
+
+   ExStart      Empty DD (Seq=x,I,M,Master)
+              ------------------------------>
+                Empty DD (Seq=y,I,M,Master)         ExStart
+              <------------------------------
+   Exchange     Full  DD (Seq=y,M,Slave)
+              ------------------------------>
+                Full  DD (Seq=y+1,M,Master)         Exchange
+              <------------------------------
+                Full  DD (Seq=y+1,Slave)
+              ------------------------------>
+                Full  DD (Seq=y+2, Master)
+              <------------------------------
+    Full        Empty DD (Seq=y+2, Slave)
+              ------------------------------>
+                                                    Full
+]]></artwork>
+      <t indent="0" pn="section-3-3">最適化を使用する場合、RT2はRT1から最初の満杯のDDパケットを受信すると、そのDDパケットに列挙されているすべてのLSAを自身のサマリーリストから削除します。次にRT2は、残りのLSAを列挙したDDパケットを送信します（すべてのLSAヘッダーは2つのDDパケットに収まるためです）。RT1はこのDDパケットを受信すると、残りのLSAを自身のサマリーリストから削除し（その結果リストは空になります）、空のDDパケットをRT2に送信します。</t>
+      <t indent="0" pn="section-3-4">最適化を使用すると、次に示すように、各ルーターが送信する満杯のDDパケットは2つではなく1つだけになります。</t>
+      <artwork align="left" pn="section-3-5"><![CDATA[
+   RT1 (slave)                                      RT2 (master)
+
+   ExStart      Empty DD (Seq=x,I,M,Master)
+              ------------------------------>
+                Empty DD (Seq=y,I,M,Master)         ExStart
+              <------------------------------
+   Exchange     Full  DD (Seq=y,M,Slave)
+              ------------------------------>
+                Full  DD (Seq=y+1,Master)           Exchange
+              <------------------------------
+    Full        Empty DD (Seq=y+1, Slave)
+              ------------------------------>
+                                                    Full
+]]></artwork>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">この文書は、新たなセキュリティー上の懸念を生じさせません。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">この文書は、新しい番号の割り当てを必要としない、OSPFv2とOSPFv3に対する単純で後方互換性のある最適化を規定します。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-6">
+      <name slugifiedName="name-normative-references">引用規格</name>
+      <reference anchor="RFC2328" quoteTitle="true" derivedAnchor="RFC2328">
+        <front>
+          <title>OSPF Version 2</title>
+          <author fullname="J. Moy" initials="J." surname="Moy"/>
+          <date year="1998" month="April"/>
+        </front>
+        <seriesInfo name="STD" value="54"/>
+        <seriesInfo name="RFC" value="2328"/>
+      </reference>
+      <reference anchor="RFC2740" quoteTitle="true" derivedAnchor="RFC2740">
+        <front>
+          <title>OSPF for IPv6</title>
+          <author fullname="R. Coltun" initials="R." surname="Coltun"/>
+          <author fullname="D. Ferguson" initials="D." surname="Ferguson"/>
+          <author fullname="J. Moy" initials="J." surname="Moy"/>
+          <date year="1999" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2740"/>
+      </reference>
+    </references>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-7-1">LSAを辞書式順序で列挙するという推奨は、Acee Lindemによって提案されました。</t>
+    </section>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Richard G. Ogier" initials="R." surname="Ogier">
+        <address>
+          <email>rich.ogier@earthlink.net</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-appendix.b-1">Copyright (C) The IETF Trust (2008).</t>
+      <t indent="0" pn="section-appendix.b-2">この文書は、BCP 78に含まれる権利、ライセンス、制限の対象であり、そこに定められている場合を除き、著者はすべての権利を保持します。</t>
+      <t indent="0" pn="section-appendix.b-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（存在する場合）、インターネットソサエティー（Internet Society）、IETF Trust、およびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+      <t indent="0" pn="section-appendix.c-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。RFC文書における権利に関する手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+      <t indent="0" pn="section-appendix.c-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+      <t indent="0" pn="section-appendix.c-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+    </section>
+  </back>
+</rfc>

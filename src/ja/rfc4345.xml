@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-harris-ssh-arcfour-fixes-03" indexInclude="true" number="4345" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-harris-ssh-arcfour-fixes-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc4345" rel="alternate"/>
+  <front>
+    <title>セキュアシェル（SSH）トランスポート層プロトコルのための改良されたArcfourモード</title>
+    <seriesInfo name="RFC" value="4345" stream="IETF"/>
+    <author fullname="B. Harris" initials="B." surname="Harris">
+      <address/>
+    </author>
+    <date year="2006" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、セキュアシェル（Secure Shell; SSH）プロトコルにおいて、Arcfour暗号の鍵スケジューリングアルゴリズムの弱点を緩和するArcfour暗号の使用方法を規定します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2006).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">セキュアシェル（SSH）<xref target="RFC4251" format="default" sectionFormat="of" derivedContent="RFC4251"/>は、安全なリモートログインのプロトコルです。SSHでは、転送中のデータの機密性を提供するために、拡張可能なさまざまな共通鍵暗号アルゴリズムを使用できます。基本プロトコルで規定されているアルゴリズムの1つに「arcfour」があり、これは高速なストリーム暗号であるArcfour（RC4とも呼ばれます）の使用を規定しています。しかし、<xref target="RFC4253" format="default" sectionFormat="of" derivedContent="RFC4253"/>が述べているように、「Arcfour（およびRC4）には弱い鍵の問題があり、注意して使用すべきです」。これらの問題は<xref target="MANTIN01" format="default" sectionFormat="of" derivedContent="MANTIN01"/>でより詳しく説明されており、そこでは暗号の内部状態が十分に攪拌されるよう、キーストリームの最初の1536バイトを破棄することが推奨されています。この文書は、この推奨に従うSSHの新しい暗号アルゴリズムを規定します。</t>
+    </section>
+    <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-used-in-this-document">この文書で使用する規約</name>
+      <t indent="0" pn="section-2-1">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているとおりに解釈されます。</t>
+    </section>
+    <section anchor="applicability-statement" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-applicability-statement">適用性声明</name>
+      <t indent="0" pn="section-3-1">Arcfourの実装は通常、現在SSH用に定義されているほかのどの暗号化アルゴリズムの実装よりも少し高速で、はるかに小さくなります。しかし、このことは、セクション5で説明するArcfourの既知のセキュリティー上の問題と比較検討しなければなりません。速度とコードサイズが決定的な問題ではないほとんどの場合には、代わりに<xref target="RFC4344" format="default" sectionFormat="of" derivedContent="RFC4344"/>で規定されているアルゴリズムを使うべきです。</t>
+    </section>
+    <section anchor="algorithm-definitions" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-algorithm-definitions">アルゴリズムの定義</name>
+      <t indent="0" pn="section-4-1">「arcfour128」アルゴリズムは、<xref target="SCHNEIER" format="default" sectionFormat="of" derivedContent="SCHNEIER"/>で説明されているRC4暗号であり、128ビットの鍵を使用します。暗号が生成するキーストリームの最初の1536バイトは破棄<bcp14>しなければなりません（MUST）</bcp14>。また、最初の暗号化パケットの最初のバイトは、キーストリームの1537番目のバイトを使って暗号化<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-4-2">「arcfour256」アルゴリズムも同じですが、256ビットの鍵を使用します。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1"><xref target="RFC4251" format="default" sectionFormat="of" derivedContent="RFC4251"/>のセキュリティーに関する考慮事項が適用されます。</t>
+      <t indent="0" pn="section-5-2">破棄したキーストリームのバイトは秘密にしておか<bcp14>なければなりません（MUST）</bcp14>。また、ネットワーク上で送信しては<bcp14>なりません（MUST NOT）</bcp14>。これらのバイトの内容から、鍵に関する情報が明らかになる可能性があるからです。</t>
+      <t indent="0" pn="section-5-3"><xref target="MIRONOV" format="default" sectionFormat="of" derivedContent="MIRONOV"/>では、Arcfourに対する2種類の攻撃が説明されています。強い識別器（strong distinguisher）は、ストリームの先頭部分でArcfourのキーストリームを乱数と区別するもので、この文書で定義するアルゴリズムによって防御されます。弱い識別器（weak distinguisher）はキーストリームの任意の部分に対して機能でき、<xref target="FMcG" format="default" sectionFormat="of" derivedContent="FMcG"/>と<xref target="MANTIN05" format="default" sectionFormat="of" derivedContent="MANTIN05"/>で説明されている最良のものは、複数の異なるキーストリームのデータを使用できます。その結果、同じデータ（たとえばパスワード）を別々のArcfourキーストリームで十分な回数暗号化すると、そのデータに関する情報が攻撃者に漏れるおそれがあります。したがって、Arcfour（ここで説明する形式でも<xref target="RFC4251" format="default" sectionFormat="of" derivedContent="RFC4251"/>で説明されている形式でも）を、大量のパスワード認証接続に使用しないことが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">IANAは、<xref target="RFC4250" format="default" sectionFormat="of" derivedContent="RFC4250"/>に従って、暗号化アルゴリズム名（Encryption Algorithm Names）「arcfour128」と「arcfour256」を割り当てました。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+        </reference>
+        <reference anchor="RFC4250" quoteTitle="true" derivedAnchor="RFC4250">
+          <front>
+            <title>The Secure Shell (SSH) Protocol Assigned Numbers</title>
+            <author fullname="S. Lehtinen" initials="S." surname="Lehtinen"/>
+            <author fullname="C. Lonvick" initials="C." surname="Lonvick" role="editor"/>
+            <date year="2006" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="4250"/>
+        </reference>
+        <reference anchor="RFC4251" quoteTitle="true" derivedAnchor="RFC4251">
+          <front>
+            <title>The Secure Shell (SSH) Protocol Architecture</title>
+            <author fullname="T. Ylonen" initials="T." surname="Ylonen"/>
+            <author fullname="C. Lonvick" initials="C." surname="Lonvick" role="editor"/>
+            <date year="2006" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="4251"/>
+        </reference>
+        <reference anchor="RFC4253" quoteTitle="true" derivedAnchor="RFC4253">
+          <front>
+            <title>The Secure Shell (SSH) Transport Layer Protocol</title>
+            <author fullname="T. Ylonen" initials="T." surname="Ylonen"/>
+            <author fullname="C. Lonvick" initials="C." surname="Lonvick" role="editor"/>
+            <date year="2006" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="4253"/>
+        </reference>
+        <reference anchor="RFC4344" quoteTitle="true" derivedAnchor="RFC4344">
+          <front>
+            <title>The Secure Shell (SSH) Transport Layer Encryption Modes</title>
+            <author fullname="M. Bellare" initials="M." surname="Bellare"/>
+            <author fullname="T. Kohno" initials="T." surname="Kohno"/>
+            <author fullname="C. Namprempre" initials="C." surname="Namprempre"/>
+            <date year="2006" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="4344"/>
+        </reference>
+        <reference anchor="SCHNEIER" quoteTitle="true" derivedAnchor="SCHNEIER">
+          <front>
+            <title>Applied Cryptography Second Edition: protocols algorithms and source in code in C</title>
+            <author fullname="B. Schneier" initials="B." surname="Schneier"/>
+            <date year="1996"/>
+          </front>
+          <refcontent>John Wiley and Sons, New York, NY</refcontent>
+        </reference>
+      </references>
+      <references pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="FMcG" target="http://www.mindspring.com/~dmcgrew/rc4-03.pdf" quoteTitle="true" derivedAnchor="FMcG">
+          <front>
+            <title>Statistical Analysis of the Alleged RC4 Keystream Generator</title>
+            <author fullname="S. Fluhrer" initials="S." surname="Fluhrer"/>
+            <author fullname="D. McGrew" initials="D." surname="McGrew"/>
+            <date year="2000" month="April"/>
+          </front>
+          <refcontent>Fast Software Encryption:  7th International Workshop, FSE 2000</refcontent>
+        </reference>
+        <reference anchor="MANTIN01" target="http://www.wisdom.weizmann.ac.il/~itsik/RC4/Papers/Mantin1.zip" quoteTitle="true" derivedAnchor="MANTIN01">
+          <front>
+            <title>Analysis of the Stream Cipher RC4</title>
+            <author fullname="I. Mantin" initials="I." surname="Mantin"/>
+            <date year="2001"/>
+          </front>
+          <refcontent>M.Sc. Thesis, Weizmann Institute of Science</refcontent>
+        </reference>
+        <reference anchor="MIRONOV" target="http://eprint.iacr.org/2002/067.pdf" quoteTitle="true" derivedAnchor="MIRONOV">
+          <front>
+            <title>(Not So) Random Shuffles of RC4</title>
+            <author fullname="I. Mironov" initials="I." surname="Mironov"/>
+            <date year="2002" month="August"/>
+          </front>
+          <refcontent>Advances in Cryptology -- CRYPTO 2002: 22nd Annual International Cryptology Conference</refcontent>
+        </reference>
+        <reference anchor="MANTIN05" quoteTitle="true" derivedAnchor="MANTIN05">
+          <front>
+            <title>Predicting and Distinguishing Attacks on RC4 Keystream Generator</title>
+            <author fullname="I. Mantin" initials="I." surname="Mantin"/>
+            <date year="2005" month="May"/>
+          </front>
+          <refcontent>Advances in Cryptology -- EUROCRYPT 2005: 24th Annual International Conference on the Theory and Applications of Cryptographic Techniques</refcontent>
+        </reference>
+      </references>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Ben Harris" initials="B." surname="Harris">
+        <address>
+          <postal>
+            <street>2a Eachard Road</street>
+            <city>CAMBRIDGE</city>
+            <code>CB3 0HY</code>
+            <country>UNITED KINGDOM</country>
+          </postal>
+          <email>bjh21@bjh21.me.uk</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="trademark-notice" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-trademark-notice">商標に関する表示</name>
+      <t indent="0" pn="section-appendix.b-1">「RC4」と「SSH」は米国における登録商標です。</t>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+        <t indent="0" pn="section-appendix.c-1">Copyright (C) The Internet Society (2006).</t>
+        <t indent="0" pn="section-appendix.c-2">この文書は、BCP 78に含まれる権利、ライセンス、および制限にしたがうものとし、そこに定める場合を除き、著者はすべての権利を保持します。</t>
+        <t indent="0" pn="section-appendix.c-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供され、寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（もしあれば）、インターネットソサエティー、およびインターネット技術タスクフォースは、ここに含まれる情報の使用がいかなる権利も侵害しないという保証、または商品性もしくは特定目的への適合性に関する黙示の保証を含め、明示的か黙示的かを問わず、一切の保証を否認します。</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.d">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+        <t indent="0" pn="section-appendix.d-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。RFC文書における権利に関する手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+        <t indent="0" pn="section-appendix.d-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+        <t indent="0" pn="section-appendix.d-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.e">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.e-1">RFCエディターの機能に対する資金は、IETF管理支援活動（IASA）によって提供されています。</t>
+      </section>
+  </back>
+</rfc>

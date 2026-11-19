@@ -1,0 +1,176 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-degener-sieve-copy-03" indexInclude="true" number="3894" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-degener-sieve-copy-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3894" rel="alternate"/>
+  <front>
+    <title>Sieve拡張：副作用のないコピー</title>
+    <seriesInfo name="RFC" value="3894" stream="IETF"/>
+    <author fullname="J. Degener" initials="J." surname="Degener">
+      <organization showOnFrontPage="true">Sendmail, Inc.</organization>
+      <address/>
+    </author>
+    <date year="2004" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">Sieveスクリプト言語により、ユーザーは受信した電子メールの取り扱いと処分を制御できます。デフォルトでは、Sieveスクリプトで処理された電子メールメッセージは所有者の「inbox」に保存されます。「fileinto」や「redirect」などのアクションは、このデフォルトの動作を取り消します。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、Sieveの「fileinto」アクションと「redirect」アクションで使う新しいキーワードパラメーター「:copy」を定義します。アクションに「:copy」を付けると、デフォルトの「inbox」への保存が取り消されなくなります。これにより、ユーザーはスクリプトの残りの部分の意味を変えずに、既存のスクリプトにコマンドを追加できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2004).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">Sieveスクリプト言語<xref target="SIEVE" format="default" sectionFormat="of" derivedContent="SIEVE"/>により、ユーザーは受信した電子メールの取り扱いと処分を制御できます。よく使われるSieveコマンドに、「fileinto」（IMAPサーバーなどのローカルなメッセージストアへの保存）と「redirect」（別の電子メールアドレスへの転送）の2つがあります。これらはどちらも、ユーザーの「inbox」に保存するというSieveのデフォルトの動作を取り消します。</t>
+      <t indent="0" pn="section-1-2">しかし、ユーザーの中には、通常のメッセージ配送に加えて、保管のためにメッセージの追加のコピーを別の電子メールアドレスに転送したり、コピーをフォルダーに保存したりしたいと考える人もいます。この場合、通常の配送はコピーの影響を受けるべきではありません。</t>
+      <t indent="0" pn="section-1-3">ユーザーがしたいことが追加のコピーを保存することだけであれば、</t>
+      <artwork name="" type="" align="left" alt="" pn="section-1-4"><![CDATA[
+      fileinto "unfiltered";
+      keep;
+]]></artwork>
+      <t indent="0" pn="section-1-5">で目的は果たせます。「keep」コマンドは、取り消されたデフォルトの動作が行っていたことを明示的に行います。しかし、後にさらに処理が続く場合、明示的な「keep」は暗黙の「keep」の代わりとしては不十分です。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-1-6"><![CDATA[
+      fileinto "unfiltered";
+      keep;
+
+      if header "Subject" "MAKE MONEY FAST!!!"
+      {
+              discard;
+      }
+]]></artwork>
+      <t indent="0" pn="section-1-7">この例では、「discard」は明示的な「keep」に対して効果がなく、破棄されたはずのメッセージは結局ユーザーのinboxに入ってしまいます。</t>
+      <t indent="0" pn="section-1-8">ユーザーの希望を完全に表現するSieveコードを生成することは可能ですが、「fileinto」や「redirect」コマンドがなかった場合に暗黙の「keep」が持っていたはずの状態を追跡する必要があるため、そのようなコードはすぐに扱いにくくなります。</t>
+      <t indent="0" pn="section-1-9">この拡張は、「copy」のセマンティクスを直接表現できるようにすることで、ユーザーインターフェイスの設計者やスクリプトの作成者の負担を軽くしようとするものです。</t>
+    </section>
+    <section anchor="conventions-used" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-used">使用する規約</name>
+      <t indent="0" pn="section-2-1">表記の規約は、アクションとタグ付き引数の構文の定義に<xref target="KEYWORDS" format="default" sectionFormat="of" derivedContent="KEYWORDS"/>と「Syntax:」ラベルを使うことも含めて、<xref target="SIEVE" format="default" sectionFormat="of" derivedContent="SIEVE"/>のセクション1.1のとおりです。</t>
+      <t indent="0" pn="section-2-2">この文書で定義する拡張に関連付けられたケイパビリティー文字列は「copy」です。</t>
+    </section>
+    <section anchor="copy-extension-to-the-fileinto-and-redirect-commands" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-copy-extension-to-the-fileinto-and-redirect-commands">「fileinto」コマンドと「redirect」コマンドに対する「:copy」拡張</name>
+      <t indent="0" pn="section-3-1">構文：</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-2"><![CDATA[
+        "fileinto" [":copy"] <folder: string>
+        "redirect" [":copy"] <address: string>
+]]></artwork>
+      <t indent="0" pn="section-3-3">省略可能な「:copy」キーワードを「fileinto」または「redirect」とともに指定した場合、そのタグ付きコマンドは暗黙の「keep」を取り消しません。代わりに、メッセージに対して行われる他の処理に加えて、コピーを保存またはリダイレクトするだけです。</t>
+      <t indent="0" pn="section-3-4">例：</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-5"><![CDATA[
+      require ["copy", "fileinto"];
+      fileinto :copy "incoming";
+
+      # ... more processing follows ...
+]]></artwork>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">「copy」拡張により、ユーザーに気付かれずにユーザーのメッセージの流れを盗聴することが容易になります。これは、攻撃者がユーザーのSieveスクリプトへの読み書きアクセスを得れば以前から技術的に可能でしたが、今では攻撃者はスクリプトを改変するためにスクリプトを解析する必要がなくなります。Sieveスクリプトへの書き込みアクセスは、たとえば正しくパラメーター設定されたLDAP over TLS <xref target="LDAP" format="default" sectionFormat="of" derivedContent="LDAP"/>のような安全なディレクトリープロトコルを使うなどして、電子メールへの読み書きアクセスと同じくらい強力に保護しなければなりません。</t>
+      <t indent="0" pn="section-4-2">ユーザーの電子メールトラフィックを監視したい組織は、送信者や意図された受信者による制御なしに、あるいは彼らが知ることさえなしに過去の電子メールトラフィックの保管庫を作成する前に、その地域のデータ保護法を十分に理解しなければなりません。</t>
+      <t indent="0" pn="section-4-3">「redirect :copy」を合法的に使って通信を傍受する組織（たとえば、後でインサイダー取引に関する問い合わせに答えるためにログを残す場合）は、ユーザーのプライバシーに対する期待を正しく設定しておくことで、将来の問題を回避できます。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">次のテンプレートは、この文書で規定する「copy」Sieve拡張のIANA登録を規定します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-5-2"><![CDATA[
+   To: iana@iana.org
+   Subject: Registration of new Sieve extension
+
+   Capability name: copy
+   Capability keyword: copy
+   Capability arguments: N/A
+   Standards Track: RFC 3894
+   Person and email address to contact for further information:
+
+      Jutta Degener
+      Sendmail, Inc.
+      6425 Christie Ave, 4th Floor
+      Emeryville, CA 94608
+
+      Email: jutta@sendmail.com
+]]></artwork>
+      <t indent="0" pn="section-5-3">この情報は、<eref target="http://www.iana.org/assignments/sieve-extensions" brackets="none"/>にあるSieve拡張の一覧に追加されています。</t>
+    </section>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-6-1">訂正とコメントをくださったEric Allman、Ned Freed、Will Lee、Nigel Swinson、Rand Wackerに感謝します。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references anchor="normative-references" pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="KEYWORDS" quoteTitle="true" derivedAnchor="KEYWORDS">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+        </reference>
+        <reference anchor="SIEVE" quoteTitle="true" derivedAnchor="SIEVE">
+          <front>
+            <title>Sieve: A Mail Filtering Language</title>
+            <author fullname="T. Showalter" initials="T." surname="Showalter"/>
+            <date year="2001" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="3028"/>
+        </reference>
+      </references>
+      <references anchor="informative-references" pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="LDAP" quoteTitle="true" derivedAnchor="LDAP">
+          <front>
+            <title>Authentication Methods for LDAP</title>
+            <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+            <author fullname="H. Alvestrand" initials="H." surname="Alvestrand"/>
+            <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+            <author fullname="R. Morgan" initials="R." surname="Morgan"/>
+            <date year="2000" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="2829"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Jutta Degener" initials="J." surname="Degener">
+        <organization showOnFrontPage="true">Sendmail, Inc.</organization>
+        <address>
+          <postal>
+            <street>6425 Christie Ave, 4th Floor</street>
+            <city>Emeryville</city>
+            <region>CA</region>
+            <code>94608</code>
+          </postal>
+          <email>jutta@sendmail.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2004).</t>
+        <t indent="0" pn="section-appendix.b-2">この文書は、BCP 78に含まれる権利、ライセンス、制限の対象であり、そこに定められている場合を除き、著者はすべての権利を保持します。</t>
+        <t indent="0" pn="section-appendix.b-3">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（存在する場合）、インターネットソサエティー（Internet Society）、およびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">知的財産</name>
+        <t indent="0" pn="section-appendix.c-1">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。IETF文書における権利に関するIETFの手続きの情報は、BCP 78およびBCP 79に記載されています。</t>
+        <t indent="0" pn="section-appendix.c-2">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</t>
+        <t indent="0" pn="section-appendix.c-3">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.d-1">RFCエディターの機能に対する資金は、現在インターネットソサエティーによって提供されています。</t>
+      </section>
+  </back>
+</rfc>

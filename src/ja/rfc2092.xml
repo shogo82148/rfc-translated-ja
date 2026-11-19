@@ -1,0 +1,205 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-ietf-rip-trigger-analysis-01" indexInclude="true" number="2092" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-rip-trigger-analysis-01" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2092" rel="alternate"/>
+  <front>
+    <title>トリガー型RIPのプロトコル分析</title>
+    <seriesInfo name="RFC" value="2092" stream="IETF"/>
+    <author fullname="S. Sherry" initials="S." surname="Sherry">
+      <organization showOnFrontPage="true">Xyplex</organization>
+      <address/>
+    </author>
+    <author fullname="G. Meyer" initials="G." surname="Meyer">
+      <organization showOnFrontPage="true">Shiva</organization>
+      <address/>
+    </author>
+    <date year="1997" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">ルーティングプロトコルの基準（Routing Protocol Criteria）<xref target="1" format="default" sectionFormat="of" derivedContent="1"/>が求めるとおり、この報告書は、「Triggered Extensions to RIP to Support Demand Circuits」<xref target="2" format="default" sectionFormat="of" derivedContent="2"/>の主な機能と現在の実装経験を文書化します。</t>
+      <t indent="0" pn="section-abstract-2">トリガー型RIPの特性が改善されたことにより、デマンドRIP<xref target="5" format="default" sectionFormat="of" derivedContent="5"/>を廃止することを提案します。</t>
+    </abstract>
+    <note removeInRFC="false" pn="section-note.1">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-note.1-1">著者らは、この取り組みを改善する多くのコメントと提案をくれたXyplexのJohanna KrugerとJim Pearlに感謝します。</t>
+    </note>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーのための情報を提供します。このメモは、いかなる種類のインターネット標準も規定しません。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="protocol-documents" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-protocol-documents">プロトコルの文書</name>
+      <t indent="0" pn="section-1-1">「Triggered Extensions to RIP to Support Demand Circuits」<xref target="2" format="default" sectionFormat="of" derivedContent="2"/>は、「Routing Internet Protocol」（RIP）<xref target="3" format="default" sectionFormat="of" derivedContent="3"/>と「RIP-2」<xref target="4" format="default" sectionFormat="of" derivedContent="4"/>を広域ネットワーク（WAN）上でよりコスト効率よく動作させるための拡張を提案しています。</t>
+    </section>
+    <section anchor="applicability" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-applicability">適用範囲</name>
+      <t indent="0" pn="section-2-1">トリガー型RIP（Triggered RIP）は、有限で予測可能な時間内に到達不能を判断するための、下位のメカニズムが存在することを必要とします。</t>
+      <t indent="0" pn="section-2-2">RIPのトリガー型拡張は、経済的なコストかパケットのオーバーヘッドのいずれかのコストによって、ルーティング（またはサービス広告）の更新の定期的な送信が許容できないようなWANに特に適しています。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-3">
+        <li pn="section-2-3.1">コネクション指向の公衆データネットワーク。たとえば、X.25パケット交換ネットワークやISDN。</li>
+        <li pn="section-2-3.2">リンク障害を判断するためにPPPのリンク品質監視またはエコーリクエストをサポートするポイントツーポイントリンク。</li>
+      </ul>
+      <t indent="0" pn="section-2-4">トリガー型RIPの実装は、ローカルエリアネットワーク（LAN）上では標準のRIPを実行するため、元の仕様に従う実装と透過的に相互運用できます。</t>
+    </section>
+    <section anchor="key-features" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-key-features">主な機能</name>
+      <t indent="0" pn="section-3-1">この提案は、LAN上で動作するときはRIPまたはRIP-2と同じ基本アルゴリズムを共有します。パケット形式、ブロードキャストの頻度、トリガー更新の動作、データベースのタイムアウトはすべて変更されません。</t>
+      <t indent="0" pn="section-3-2">新しい機能は、断続的な接続性を実現するためにオンデマンドの交換回線を使用するWAN、またはルーティングパケットのオーバーヘッドを最小限に抑えたい恒久的なWAN接続上で動作します。定期的な「ブロードキャスト」を使用する代わりに、情報はトリガー更新としてのみ送信されます。この提案では、接続性に関するフィードバックを提供するために、下位のコネクション指向サービスの機能を利用します。</t>
+      <section anchor="triggered-updates" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-triggered-updates">トリガー更新</name>
+        <t indent="0" pn="section-3.1-1">更新は、イベントによってルーティングデータベースが変更されたときにのみWAN上で送信されます。各更新は、確認応答されるまで再送されます。更新で受信した情報はタイムアウトしません。</t>
+        <t indent="0" pn="section-3.1-2">RIPレスポンスのパケット形式は、シーケンス番号の情報を含めるように（異なる一意のコマンドフィールドを使って）変更されます。確認応答パケットも定義されます。</t>
+      </section>
+      <section anchor="circuit-manager" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-circuit-manager">回線マネージャー</name>
+        <t indent="0" pn="section-3.2-1">IPネットワーク層の下で動作する回線マネージャー（circuit manager）は、転送すべきデータ（またはルーティングの更新）があるときはいつでも、ネクストホップルーターへの回線を確立する責任を負います。一定期間通信がないと、回線は回線マネージャーによって閉じられます。</t>
+        <t indent="0" pn="section-3.2-2">回線マネージャーが接続に失敗した場合、回線ダウンの通知がルーティングアプリケーションに送信されます。その後、回線マネージャーは（だんだん長くなる）間隔で接続の確立を試みます。成功すると、回線アップの通知がルーティングアプリケーションに送信されます。</t>
+      </section>
+      <section anchor="technology-restrictions" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-technology-restrictions">技術上の制約</name>
+        <t indent="0" pn="section-3.3-1">誤って設定されたリンクや正常に動作していないリンクが深刻なデータ損失を引き起こし、その結果ルーティングに「ブラックホール」が生じる可能性は、小さいながらも無視できない程度にあります。これは多くの場合一方向です。つまり、経路の更新が通るリンクは正常に動作していても、帰りの経路は正常に動作していません。</t>
+        <t indent="0" pn="section-3.3-2">ルーティング情報が任意の長い期間（逆方向の更新がレスポンスを得られなくなるまで）保持・広告されてしまう場合、トリガー型RIPは正しく機能しません（したがって、使用すべきではありません）。</t>
+        <t indent="0" pn="section-3.3-3">PPPカプセル化を使用する技術でブラックホールを検出するには、エコーリクエスト/レスポンス（Echo Request/Response）またはリンク品質監視（Link Quality Monitoring）のいずれかを使用すべきです。ブラックホールが検出されたときは、回線ダウンの通知をルーティングアプリケーションに送信しなければなりません。</t>
+        <t indent="0" pn="section-3.3-4">PPPを使用しない現在の（および将来の）技術では、同等の「are-you-there」メカニズムを使用する必要があります。そうでない場合、トリガー型RIPと一緒に使用すべきではありません。</t>
+      </section>
+      <section anchor="presumption-of-reachability" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-presumption-of-reachability">到達可能性の推定</name>
+        <t indent="0" pn="section-3.4-1">安定したネットワークでは、回線上でルーティング情報を伝搬する必要はありません。そのため、回線上でルーティング情報を受信していない場合は、次のように想定します。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.4-2">
+          <li pn="section-3.4-2.1">最後に受信した情報は正確である。</li>
+          <li pn="section-3.4-2.2">途中の経路は運用可能である（ただし、現在コネクションが存在しない場合もある）。</li>
+        </ul>
+        <t indent="0" pn="section-3.4-3">回線マネージャーが途中の経路が運用可能ではないと判断した場合、その回線で以前に受信したルーティング情報はタイムアウトします。このイベントを引き起こすのは、ルーティングされるどのような（ANY）データグラムでもあり得ることを強調しておきます。</t>
+        <t indent="0" pn="section-3.4-4">回線マネージャーがコネクションを再確立すると、アプリケーションはピアとすべてのルーティング情報を交換します。</t>
+      </section>
+      <section anchor="routing-information-flow-control" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-routing-information-flow-control">ルーティング情報のフロー制御</name>
+        <t indent="0" pn="section-3.5-1">回線マネージャーが回線のダウンを報告した場合、ルーティングアプリケーションは、その回線でそれ以上の情報を送信しないようにフロー制御されます。</t>
+      </section>
+    </section>
+    <section anchor="relationship-to-demand-rip" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-relationship-to-demand-rip">デマンドRIPとの関係</name>
+      <t indent="0" pn="section-4-1">トリガー型RIPの提案<xref target="2" format="default" sectionFormat="of" derivedContent="2"/>には、デマンドRIPの提案<xref target="5" format="default" sectionFormat="of" derivedContent="5"/>に比べて、効率面でいくつかの利点があります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4-2">
+        <li pn="section-4-2.1">
+          <t indent="0" pn="section-4-2.1.1">ルーティング情報が変化すると、デマンドRIPはデータベース全体をパートナーに送信します。</t>
+          <t indent="0" pn="section-4-2.1.2">トリガー型RIPは、ルーターがパートナーとすべてのルーティング情報を交換した後は、変更された情報だけをパートナーに送信します。これにより、経路の変更が発生したときに伝搬する必要のある情報の量を大幅に減らすことができます。</t>
+        </li>
+        <li pn="section-4-2.2">
+          <t indent="0" pn="section-4-2.2.1">デマンドRIPでは、ルーティングデータベースに変更を適用する前に、受信者がルーティングの更新全体を保存する必要があります。</t>
+          <t indent="0" pn="section-4-2.2.2">トリガー型RIPの受信者は、パートナーから各パケットを受信するとすぐに、すべての変更を適用できます。そのため、システムが使用するメモリーはデマンドRIPよりも少なくて済みます。</t>
+        </li>
+        <li pn="section-4-2.3">
+          <t indent="0" pn="section-4-2.3.1">デマンドRIPでは、1つの更新のフラグメントの数は255が上限です。これにより、伝搬できるルーティングデータベースとサービス広告データベースのサイズに上限が設けられます。</t>
+          <t indent="0" pn="section-4-2.3.2">トリガー型RIP（フラグメンテーションを使用しない）では、この制限はなくなります。</t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-4-3">その他のすべての点で、デマンドRIPとトリガー型RIPは同じ機能を果たします。</t>
+    </section>
+    <section anchor="obsoleting-demand-rip" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-obsoleting-demand-rip">デマンドRIPの廃止</name>
+      <t indent="0" pn="section-5-1">システムがデマンドRIPとトリガー型RIPの両方をサポートできる可能性はありますが、構造体の内部的な維持管理は大きく異なる可能性が高いです。情報を伝搬する方法も大きく異なります。実際には、システムがデマンドRIPとトリガー型RIPの両方をサポートすることはないでしょう。</t>
+      <t indent="0" pn="section-5-2">トリガー型RIPの特性が改善されたことにより、デマンドRIP<xref target="5" format="default" sectionFormat="of" derivedContent="5"/>を廃止することを提案します。</t>
+    </section>
+    <section anchor="implementations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-implementations">実装</name>
+      <t indent="0" pn="section-6-1">現段階では、完成した実装が2つあると考えられています。</t>
+      <t indent="0" pn="section-6-2">Xyplexの実装は、IP RIP-1、IP RIP-2、IPX RIP、IPX SAPについて説明したすべての機能をサポートしています。ただし、パートナーごとに未処理の確認応答を1つしかサポートしていません。この実装は、X.25、ISDN、フレームリレー、V42bis CSU/DSU、非同期モデム上で、実装自身を相手としてテストされています。また、イーサネットLAN上のさまざまなルーターとホストの実装と組み合わせた運用でもテストされています。</t>
+      <t indent="0" pn="section-6-3">DECの実装は、ISDN、フレームリレー、専用線、V.25bis上でIP RIP-1をサポートしています。XyplexとDECのIP RIP-1実装は、ISDN上で問題なく相互運用できることが確認されています。</t>
+    </section>
+    <section anchor="restrictions" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-restrictions">制約</name>
+      <t indent="0" pn="section-7-1">デマンドRIPは、どちらの方向にも発呼できることに依存しています。一部のダイヤルアップサービス（たとえば、DTRダイヤリング）では、一方向にしか発呼できません。</t>
+      <t indent="0" pn="section-7-2">デマンドRIPは、WAN上での経路の第三者広告では動作できません。WAN上で広告するすべての経路について、RIP-2のネクストホップIPアドレスは常に0.0.0.0にすべきです。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">セキュリティーは、ルーティングの更新の送信者の論理アドレスと物理アドレスの認証によって提供されます。着信呼のリクエストは、回線マネージャーによって（発信呼に使用する）物理アドレスのリストと照合されます。ルーティングアプリケーションは、受信した更新の論理アドレスについてさらにチェックを行います。</t>
+      <t indent="0" pn="section-8-2">必要に応じて、RIP-2の認証<xref target="2" format="default" sectionFormat="of" derivedContent="2"/>によって追加のセキュリティーを提供できます。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-references">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Internet Engineering Task Force Internet Routing Protocol Standardization Criteria</title>
+          <author fullname="R. Hinden" initials="R." surname="Hinden"/>
+          <date year="1991" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1264"/>
+        <refcontent>Bolt Beranek and Newman, Inc</refcontent>
+      </reference>
+      <reference anchor="2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Triggered Extensions to RIP to Support Demand Circuits</title>
+          <author fullname="G.M. Meyer" initials="G.M." surname="Meyer"/>
+          <author fullname="S. Sherry" initials="S." surname="Sherry"/>
+          <date year="1995" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="2091"/>
+        <refcontent>Shiva and Xyplex</refcontent>
+      </reference>
+      <reference anchor="3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>Routing Information Protocol</title>
+          <author fullname="C. Hedrick" initials="C." surname="Hedrick"/>
+          <date year="1988" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="1058"/>
+        <refcontent>Rutgers University</refcontent>
+      </reference>
+      <reference anchor="4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>RIP Version 2 - Carrying Additional Information</title>
+          <author fullname="G. Malkin" initials="G." surname="Malkin"/>
+          <date year="1994" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="1723"/>
+        <refcontent>Xylogics</refcontent>
+      </reference>
+      <reference anchor="5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>Extensions to RIP to Support Demand Circuits</title>
+          <author fullname="G. Meyer" initials="G." surname="Meyer"/>
+          <date year="1994" month="February"/>
+        </front>
+        <refcontent>Spider Systems</refcontent>
+      </reference>
+    </references>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Steve Sherry" initials="S." surname="Sherry">
+        <organization showOnFrontPage="true">Xyplex</organization>
+        <address>
+          <postal>
+            <street>295 Foster St.</street>
+            <city>Littleton</city>
+            <region>MA</region>
+            <code>01460</code>
+          </postal>
+          <phone>(US) 508 952 4745</phone>
+          <facsimile>(US) 508 952 4887</facsimile>
+          <email>shs@xyplex.com</email>
+        </address>
+      </author>
+      <author fullname="Gerry Meyer" initials="G." surname="Meyer">
+        <organization showOnFrontPage="true">Shiva Europe Ltd</organization>
+        <address>
+          <postal>
+            <street>Stanwell Street</street>
+            <city>Edinburgh</city>
+            <code>EH6 5NG</code>
+            <country>Scotland, UK</country>
+          </postal>
+          <phone>(UK) 131 561 4223</phone>
+          <facsimile>(UK) 131 561 4083</facsimile>
+          <email>gerry@europe.shiva.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

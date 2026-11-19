@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-borman-jumbograms-00" indexInclude="true" number="2147" updates="1883" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-borman-jumbograms-00" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2147" rel="alternate"/>
+  <front>
+    <title>IPv6ジャンボグラム上のTCPとUDP</title>
+    <seriesInfo name="RFC" value="2147" stream="IETF"/>
+    <author fullname="David A. Borman" initials="D." surname="Borman">
+      <organization showOnFrontPage="true">Berkeley Software Design, Inc.</organization>
+      <address/>
+    </author>
+    <date year="1997" month="May"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-overview">概要</name>
+      <t indent="0" pn="section-1-1">IPv6は、ジャンボペイロード（Jumbo Payload）ホップバイホップオプション<xref target="Deering95" format="default" sectionFormat="of" derivedContent="Deering95"/>を使用することで、65535バイトを超える長さのデータグラムをサポートします。このようなデータグラムはジャンボグラム（jumbogram）と呼ばれることがよくあります。UDPプロトコルには16ビットの長さフィールドがあるため、ジャンボグラムを利用できません。また、TCPには長さフィールドはありませんが、MSSオプションと緊急（Urgent）フィールドはいずれも16ビットに制約されています。この文書では、TCPとUDPがIPv6ジャンボグラムを利用できるようにするためのいくつかの簡単な変更について説明します。</t>
+    </section>
+    <section anchor="udp-jumbograms" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-udp-jumbograms">UDPジャンボグラム</name>
+      <t indent="0" pn="section-2-1">UDPがジャンボグラムを利用できるようにするには、UDPの長さフィールドを拡張するか、無視するかのどちらかが必要です。フィールドのサイズは変更できないため、長さフィールドを無視することを示すために長さ0を使用し、UDPヘッダーとデータを合わせた本当の長さを判断するには「疑似ヘッダー（pseudo-header）」の長さを使用します。UDPの長さフィールドにはUDPヘッダーが含まれるため、このフィールドの有効な最小値は8であり、それゆえこの方法はうまく機能します。</t>
+      <t indent="0" pn="section-2-2">UDPパケットを送信するとき、UDPヘッダーとデータを合わせた長さが65,535を超える場合に限り、UDPヘッダーの長さフィールドを0に設定します。</t>
+      <aside pn="section-2-3">
+        <t indent="0" pn="section-2-3.1">注1：UDPチェックサムの計算のために「疑似ヘッダー」で使用される長さは、常にUDPヘッダーとデータを合わせた本当の長さであり、0ではありません（NOT）[RFC-1883, Section 8.1]。</t>
+      </aside>
+      <aside pn="section-2-4">
+        <t indent="0" pn="section-2-4.1">注2：長さが65,535を超えるUDPパケットを運ぶIPv6パケットは、必ずホップバイホップオプションヘッダーの中にジャンボペイロードオプションを含みます[RFC1883, Section 4.3])。ジャンボペイロードオプションの長さフィールドには、IPv6ヘッダーを除いたIPパケットの長さ、つまり、存在するすべての拡張ヘッダーの長さにUDPヘッダーとUDPデータを加えた長さが含まれます。IPv6ヘッダーの長さフィールドには、ジャンボペイロードオプションが存在することを示すために0が含まれます。</t>
+      </aside>
+      <t indent="0" pn="section-2-5">長さフィールドが0のUDPパケットを受信した場合、UDPパケットの長さは、ジャンボペイロードオプションの長さフィールドから、IPv6ヘッダーとUDPヘッダーの間に存在するすべての拡張ヘッダーの長さを引いて計算します。</t>
+    </section>
+    <section anchor="tcp-jumbograms" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-tcp-jumbograms">TCPジャンボグラム</name>
+      <t indent="0" pn="section-3-1">TCPヘッダーには長さフィールドがないため、個々のTCPパケットの長さを制限するものはありません。しかし、コネクションの開始時にネゴシエーションされるMSSの値によって、送信できる最大のTCPパケットが制限されます。また、緊急ポインター（Urgent Pointer）は65535バイトより先のデータを参照できません。</t>
+      <section anchor="tcp-mss" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-tcp-mss">TCP MSS</name>
+        <t indent="0" pn="section-3.1-1">送信するMSSの値を決めるとき、直接接続されたインターフェイスのMTUが65535を超える場合は、MSSの値を65535に設定します。</t>
+        <t indent="0" pn="section-3.1-2">65535というMSSの値を受信した場合は、それを無限大として扱います。実際のMSSは、送信インターフェイスのMTUを出発点として、MTU探索のコードによって決定されます。</t>
+      </section>
+      <section anchor="tcp-urgent-pointer" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-tcp-urgent-pointer">TCPの緊急ポインター</name>
+        <t indent="0" pn="section-3.2-1">緊急ポインターの問題は、TCP緊急ポインターオプションを追加することで解決できるかもしれません。しかし、ジャンボグラムを使用するアプリケーションが緊急ポインターも使用する可能性は低いため、MSSの変更と同様の、より影響の小さい変更で十分です。</t>
+        <t indent="0" pn="section-3.2-2">緊急ポインターを持つ（つまり、URGビットがセットされた）TCPパケットを送信する場合は、まずシーケンス番号から緊急ポインターまでのオフセットを計算します。オフセットが65535未満の場合は、緊急フィールドに値を入れ、通常のTCP処理を続けます。オフセットが65535を超え、かつオフセットがTCPデータの長さ以上の場合は、緊急ポインターに65535を入れ、通常のTCP処理を続けます。それ以外の場合は、TCPパケットを2つに分割しなければなりません。1つ目には、緊急ポインターが指すデータの手前まで（そのデータは含みません）のデータを入れ、緊急ポインターがこのパケットの終わりより先にあることを示すために緊急フィールドを65535に設定します。その後、2つ目は緊急フィールドを通常どおりに設定して送信できます。</t>
+        <aside pn="section-3.2-3">
+          <t indent="0" pn="section-3.2-3.1">注：1つ目に緊急ポインターまでのデータをすべて含める必要はありません。2つ目における緊急ポインターまでのオフセットが65535バイト未満になるように、緊急ポインターから65534バイト以内で終わってさえいれば、より短くてもかまいません。</t>
+        </aside>
+        <t indent="0" pn="section-3.2-4">TCPの入力処理では、URGビットがセットされ、緊急フィールドが65535であるTCPパケットを受信した場合、緊急ポインターは、緊急フィールドのオフセットではなく、TCPデータの長さに等しいオフセットを使って計算します。</t>
+        <t indent="0" pn="section-3.2-5">また、TCPウィンドウは16ビットしかありませんが、TCPウィンドウスケールオプション<xref target="Jacobson92" format="default" sectionFormat="of" derivedContent="Jacobson92"/>を使用することで、より大きなウィンドウを使用できることにも注意してください。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">これらの変更に関連する既知のセキュリティーの問題はありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="Jacobson92" quoteTitle="true" derivedAnchor="Jacobson92">
+        <front>
+          <title>TCP Extensions for High Performance</title>
+          <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+          <author fullname="R. Braden" initials="R." surname="Braden"/>
+          <author fullname="D. Borman" initials="D." surname="Borman"/>
+          <date year="1992" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="1323"/>
+        <refcontent>LBL, ISI and Cray Research</refcontent>
+      </reference>
+      <reference anchor="Deering95" quoteTitle="true" derivedAnchor="Deering95">
+        <front>
+          <title>Internet Protocol, Version 6 (IPv6) Specification</title>
+          <author fullname="S. Deering" initials="S." surname="Deering"/>
+          <author fullname="R. Hinden" initials="R." surname="Hinden"/>
+          <date year="1995" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="1883"/>
+        <refcontent>Xerox PARC and Ipsilon Networks</refcontent>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="David A. Borman" initials="D." surname="Borman">
+        <organization showOnFrontPage="true">Berkeley Software Design, Inc.</organization>
+        <address>
+          <postal>
+            <street>4719 Weston Hills Drive</street>
+            <city>Eagan</city>
+            <region>MN</region>
+            <code>55123</code>
+          </postal>
+          <phone>(612) 405-8194</phone>
+          <email>dab@bsdi.com</email>
+        </address>
+      </author>
+      <t indent="0" pn="section-appendix.a-1">メーリングリスト：ipng@sunroof.Eng.Sun.COM</t>
+    </section>
+  </back>
+</rfc>

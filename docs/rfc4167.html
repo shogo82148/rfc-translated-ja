@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 4167: グレースフルOSPFリスタートの実装報告（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc4167.html">RFC 4167</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc4167">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc4167">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 4167</h1>
+<h1 id="title-en">Graceful OSPF Restart Implementation Report</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 4167</h1>
+<h1 id="title-ja">グレースフルOSPFリスタートの実装報告</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">Graceful OSPF Restart, as specified in RFC 3623, provides a mechanism
+whereby an OSPF router can stay on the forwarding path even as its
+OSPF software is restarted.  This document provides an implementation
+report for this extension to the base OSPF protocol.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">RFC 3623で規定されているグレースフルOSPFリスタート（Graceful OSPF Restart）は、OSPFルーターのOSPFソフトウェアが再起動している間も、そのルーターがフォワーディングパス上にとどまれるようにする仕組みを提供します。この文書は、基本OSPFプロトコルに対するこの拡張の実装報告を提供します。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This memo provides information for the Internet community.  It does
+not specify an Internet standard of any kind.  Distribution of this
+memo is unlimited.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">このメモは、インターネットコミュニティーのための情報を提供します。このメモは、いかなる種類のインターネット標準も規定しません。このメモの配布は無制限です。</p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (C) The Internet Society (2005).</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (C) The Internet Society (2005).</p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-overview-en">Overview</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-implementation-experience-en">Implementation Experience</a></p>
+<ul id="section-toc.1-1.2.2-en">
+<li>
+              <p id="section-toc.1-1.2.1.1-en"><a href="#section-2.1-en">2.1</a>.  <a href="#name-implementation-differences-en">Implementation Differences</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-mib-reference-en">MIB Reference</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-authentication-mechanisms-en">Authentication Mechanisms</a></p>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-list-of-implementations-en">List of Implementations</a></p>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-test-scenarios-en">Test Scenarios</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-operational-experience-en">Operational Experience</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#section-11-en">11</a>.  <a href="#name-acknowledgments-en">Acknowledgments</a></p>
+</li>
+          <li id="section-toc.1-1.a-en">
+            <p id="section-toc.1-1.a.1-en"><a href="#name-authors-address-en">Author's Address</a></p>
+</li>
+          <li id="section-toc.1-1.b-en">
+            <p id="section-toc.1-1.b.1-en"><a href="#name-full-copyright-statement-en">Full Copyright Statement</a></p>
+</li>
+          <li id="section-toc.1-1.c-en">
+            <p id="section-toc.1-1.c.1-en"><a href="#name-intellectual-property-en">Intellectual Property</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-overview-ja">概要</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-implementation-experience-ja">実装経験</a></p>
+<ul id="section-toc.1-1.2.2-ja">
+<li>
+              <p id="section-toc.1-1.2.1.1-ja"><a href="#section-2.1-ja">2.1</a>.  <a href="#name-implementation-differences-ja">実装の違い</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-mib-reference-ja">MIBへの参照</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-authentication-mechanisms-ja">認証の仕組み</a></p>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-list-of-implementations-ja">実装の一覧</a></p>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-test-scenarios-ja">テストシナリオ</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-operational-experience-ja">運用経験</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#section-11-ja">11</a>.  <a href="#name-acknowledgments-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.a-ja">
+            <p id="section-toc.1-1.a.1-ja"><a href="#name-authors-address-ja">著者の連絡先</a></p>
+</li>
+          <li id="section-toc.1-1.b-ja">
+            <p id="section-toc.1-1.b.1-ja"><a href="#name-full-copyright-statement-ja">著作権表示全文</a></p>
+</li>
+          <li id="section-toc.1-1.c-ja">
+            <p id="section-toc.1-1.c.1-ja"><a href="#name-intellectual-property-ja">知的財産</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="overview-en"></span><span id="overview-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-overview-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-overview-en" class="section-name selfRef">Overview</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-overview-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-overview-ja" class="section-name selfRef">概要</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">Today, many Internet routers implement a separation of control and
+forwarding functions.  Certain processors are dedicated to control
+and management tasks such as OSPF routing, while other processors
+perform the data forwarding tasks.  This separation creates the
+possibility of maintaining a router's data forwarding capability
+while the router's control software is restarted/reloaded.  For the
+OSPF protocol <span>[<a href="#OSPF-en">OSPF</a>]</span>, the protocol mechanisms necessary to accomplish
+this are described in Graceful OSPF Restart <span>[<a href="#GRACE-en">GRACE</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">今日、多くのインターネットルーターは、制御機能とフォワーディング機能の分離を実装しています。特定のプロセッサーはOSPFルーティングなどの制御・管理タスク専用であり、別のプロセッサーがデータフォワーディングのタスクを実行します。この分離により、ルーターの制御ソフトウェアを再起動/再読み込みしている間も、ルーターのデータフォワーディング能力を維持できる可能性が生まれます。OSPFプロトコル<span>[<a href="#OSPF-ja">OSPF</a>]</span>について、これを実現するために必要なプロトコルの仕組みは、グレースフルOSPFリスタート<span>[<a href="#GRACE-ja">GRACE</a>]</span>で説明されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">This document satisfies the RFC 1264 <span>[<a href="#CRITERIA-en">CRITERIA</a>]</span> requirement for a
+report on implementation experience for Graceful OSPF Restart.
+Section 2 of this document contains the results of an implementation
+survey.  It also documents implementation differences between the
+vendors responding to the survey.  Section 3 contains a MIB
+reference.  Section 4 provide an authentication reference.  Section 5
+simply refers to the implementations listed in section 2.  Section 6
+includes a minimal set of test scenarios.  Finally, section 7
+includes a disclaimer with respect to operational experience.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">この文書は、グレースフルOSPFリスタートの実装経験に関する報告についてのRFC 1264 <span>[<a href="#CRITERIA-ja">CRITERIA</a>]</span>の要件を満たすものです。この文書のセクション2には、実装調査の結果が含まれています。また、調査に回答したベンダー間の実装の違いも記録しています。セクション3には、MIBへの参照が含まれています。セクション4は、認証への参照を提供します。セクション5は、単にセクション2に挙げた実装を参照します。セクション6には、最小限のテストシナリオが含まれています。最後に、セクション7には、運用経験に関する免責事項が含まれています。</p></div>
+</div></section><section><span id="section-2"></span><span id="implementation-experience-en"></span><span id="implementation-experience-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-experience-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-implementation-experience-en" class="section-name selfRef">Implementation Experience</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-experience-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-implementation-experience-ja" class="section-name selfRef">実装経験</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">Eleven vendors have implemented graceful OSPF and have completed the
+implementation survey.  These include Redback, Juniper, Motorola
+Computer Group (formerly Netplane Systems), Mahi Networks, Nexthop
+technologies, Force10 Networks, Procket, Alcatel, Laurel Networks,
+DCL (Data Connection Limited), and Ericsson.  All have implemented
+restart from the perspective of both a restarting and helper router.
+All but one vendor implemented both planned and unplanned restart.
+All implementations are original.  Seven successfully tested
+interoperability with Juniper.  Juniper successfully tested
+interoperability with Force10 Networks.  One vendor tested with John
+Moy's GNU Public License implementation <span>[<a href="#OSPFD-en">OSPFD</a>]</span>.  Two vendors had not
+tested interoperability at the time of the survey.</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">11のベンダーがグレースフルOSPFを実装し、実装調査に回答しました。これには、Redback、Juniper、Motorola Computer Group（旧Netplane Systems）、Mahi Networks、Nexthop technologies、Force10 Networks、Procket、Alcatel、Laurel Networks、DCL（Data Connection Limited）、Ericssonが含まれます。すべてのベンダーが、リスタートするルーターとヘルパールーターの両方の観点からリスタートを実装しています。1つのベンダーを除くすべてのベンダーが、計画的なリスタートと計画外のリスタートの両方を実装しました。すべての実装は独自のものです。7つのベンダーがJuniperとの相互運用性のテストに成功しました。JuniperはForce10 Networksとの相互運用性のテストに成功しました。1つのベンダーは、John MoyのGNU Public Licenseの実装<span>[<a href="#OSPFD-ja">OSPFD</a>]</span>を使ってテストしました。2つのベンダーは、調査の時点で相互運用性をテストしていませんでした。</p></div>
+</div>
+<section><span id="section-2.1"></span><span id="implementation-differences-en"></span><span id="implementation-differences-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-implementation-differences-en" lang="en">
+<a id="section-2.1-en" href="#section-2.1-en" class="section-number selfRef">2.1.</a> <a href="#name-implementation-differences-en" class="section-name selfRef">Implementation Differences</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-implementation-differences-ja" lang="ja">
+<a id="section-2.1-ja" href="#section-2.1-ja" class="section-number selfRef">2.1.</a> <a href="#name-implementation-differences-ja" class="section-name selfRef">実装の違い</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-1-en">The first difference was whether strict LSA checking was implemented
+and, if so, whether it was configurable.  In the context of graceful
+OSPF restart, strict LSA checking indicates whether a changed LSA
+will result in the termination of graceful restart by a helping
+router.  Four vendors made it configurable (three defaulted it to
+enabled and one to disabled), another made it a compile option
+(shipping with strict LSA checking disabled), another didn't
+implement it at all, and five implemented strict LSA checking with no
+configuration option to disable it.</p></div>
+<div lang="ja" class="col"><p id="section-2.1-1-ja">1つ目の違いは、厳密なLSAチェック（strict LSA checking）を実装しているかどうか、また実装している場合は設定可能かどうかでした。グレースフルOSPFリスタートの文脈では、厳密なLSAチェックは、LSAが変化した場合に、支援するルーターがグレースフルリスタートを終了させるかどうかを示します。4つのベンダーはこれを設定可能にし（3つはデフォルトで有効、1つはデフォルトで無効）、別のベンダーはコンパイルオプションにし（厳密なLSAチェックを無効にした状態で出荷）、さらに別のベンダーはまったく実装せず、5つのベンダーは、無効にする設定オプションなしで厳密なLSAチェックを実装しました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-2-en">The second was whether a received grace LSA would be taken to apply
+only to the adjacency on which it was received or to all adjacencies
+with the restarting router.  This is a rather subtle difference since
+it only applies to helping and restarting routers with more than one
+full adjacency at the time of restart.  Eight vendors implemented the
+option of the received grace LSA only applying to the adjacency on
+which it was received.  Three vendors applied the grace LSA to all
+adjacencies with the grace LSA originator (i.e., the restarting
+router).</p></div>
+<div lang="ja" class="col"><p id="section-2.1-2-ja">2つ目は、受信したグレースLSAを、それを受信した隣接関係（adjacency）だけに適用するとみなすか、リスタートするルーターとのすべての隣接関係に適用するとみなすかでした。これは、リスタートの時点で複数のフル隣接関係を持つ、支援するルーターとリスタートするルーターにしか当てはまらないため、かなり微妙な違いです。8つのベンダーは、受信したグレースLSAをそれを受信した隣接関係だけに適用する方式を実装しました。3つのベンダーは、グレースLSAの生成元（すなわち、リスタートするルーター）とのすべての隣接関係にグレースLSAを適用しました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-3-en">The final difference was in whether additional extensions were
+implemented to accommodate other features such as protocol
+redistribution or interaction with MPLS VPNs <span>[<a href="#VPN-en">VPN</a>]</span>.  Five vendors
+implemented extensions and six did not.  It should be noted that such
+extensions are beyond the scope of Graceful OSPF Restart <span>[<a href="#GRACE-en">GRACE</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-2.1-3-ja">最後の違いは、プロトコルの再配布やMPLS VPN <span>[<a href="#VPN-ja">VPN</a>]</span>との相互作用など、他の機能に対応するための追加の拡張を実装しているかどうかでした。5つのベンダーが拡張を実装し、6つのベンダーは実装しませんでした。そのような拡張はグレースフルOSPFリスタート<span>[<a href="#GRACE-ja">GRACE</a>]</span>の範囲外であることに注意してください。</p></div>
+</div></section></section><section><span id="section-3"></span><span id="mib-reference-en"></span><span id="mib-reference-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-mib-reference-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-mib-reference-en" class="section-name selfRef">MIB Reference</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-mib-reference-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-mib-reference-ja" class="section-name selfRef">MIBへの参照</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">MIB objects for the Graceful OSPF Restart have been added to the OSPF
+Version 2 Management Information Base <span>[<a href="#OSPFMIB-en">OSPFMIB</a>]</span>.  Additions include:</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">グレースフルOSPFリスタートのためのMIBオブジェクトが、OSPFバージョン2の管理情報ベース<span>[<a href="#OSPFMIB-ja">OSPFMIB</a>]</span>に追加されました。追加されたものは次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-3-2-en">
+<li id="section-3-2.1-en">Objects ospfRestartSupport, ospfRestartInterval, ospfRestartAge,
+ospfRestartExitReason, and ospfRestartStrictLsaChecking to
+ospfGeneralGroup.</li>
+        <li id="section-3-2.2-en">Objects ospfNbrRestartHelperStatus, ospfNbrRestartHelperAge, and
+ospfNbrRestartHelperExitReason to ospfNbrEntry.</li>
+        <li id="section-3-2.3-en">Objects ospfVirtNbrRestartHelperStatus,
+ospfVirtNbrRestartHelperAge, and
+ospfVirtNbrRestartHelperExitReason to ospfVirtNbrEntry.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-3-2-ja">
+<li id="section-3-2.1-ja">ospfGeneralGroupへのオブジェクトospfRestartSupport、ospfRestartInterval、ospfRestartAge、ospfRestartExitReason、ospfRestartStrictLsaCheckingの追加。</li>
+        <li id="section-3-2.2-ja">ospfNbrEntryへのオブジェクトospfNbrRestartHelperStatus、ospfNbrRestartHelperAge、ospfNbrRestartHelperExitReasonの追加。</li>
+        <li id="section-3-2.3-ja">ospfVirtNbrEntryへのオブジェクトospfVirtNbrRestartHelperStatus、ospfVirtNbrRestartHelperAge、ospfVirtNbrRestartHelperExitReasonの追加。</li>
+      </ul></div>
+</div></section><section><span id="section-4"></span><span id="authentication-mechanisms-en"></span><span id="authentication-mechanisms-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authentication-mechanisms-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-authentication-mechanisms-en" class="section-name selfRef">Authentication Mechanisms</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authentication-mechanisms-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-authentication-mechanisms-ja" class="section-name selfRef">認証の仕組み</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">The authentication mechanisms are the same as those implemented by
+the base OSPF protocol <span>[<a href="#OSPF-en">OSPF</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">認証の仕組みは、基本OSPFプロトコル<span>[<a href="#OSPF-ja">OSPF</a>]</span>で実装されているものと同じです。</p></div>
+</div></section><section><span id="section-5"></span><span id="list-of-implementations-en"></span><span id="list-of-implementations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-list-of-implementations-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-list-of-implementations-en" class="section-name selfRef">List of Implementations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-list-of-implementations-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-list-of-implementations-ja" class="section-name selfRef">実装の一覧</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">Refer to section 2.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">セクション2を参照してください。</p></div>
+</div></section><section><span id="section-6"></span><span id="test-scenarios-en"></span><span id="test-scenarios-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-test-scenarios-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-test-scenarios-en" class="section-name selfRef">Test Scenarios</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-test-scenarios-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-test-scenarios-ja" class="section-name selfRef">テストシナリオ</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">A router implementing graceful restart should test, at a minimum, the
+following scenarios as both a restarting and helping router.  For all
+scenarios, monitoring data plane traffic may be used to ensure that
+the restart is non-disruptive:</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">グレースフルリスタートを実装するルーターは、リスタートするルーターと支援するルーターの両方として、少なくとも次のシナリオをテストすべきです。すべてのシナリオで、リスタートが通信を中断させないことを確認するために、データプレーンのトラフィックを監視することもできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-6-2-en">
+<li id="section-6-2.1-en">Operation over a broadcast network.</li>
+        <li id="section-6-2.2-en">Operation over a P2P network.</li>
+        <li id="section-6-2.3-en">Operation over a virtual link.</li>
+        <li id="section-6-2.4-en">Operation using OSPF MD5 authentication.</li>
+        <li id="section-6-2.5-en">Early graceful restart termination when an LSA inconsistency is
+detected.</li>
+        <li id="section-6-2.6-en">Early graceful restart termination when a flooded LSA changes (if
+implemented).</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-6-2-ja">
+<li id="section-6-2.1-ja">ブロードキャストネットワーク上での動作。</li>
+        <li id="section-6-2.2-ja">P2Pネットワーク上での動作。</li>
+        <li id="section-6-2.3-ja">仮想リンク上での動作。</li>
+        <li id="section-6-2.4-ja">OSPF MD5認証を使った動作。</li>
+        <li id="section-6-2.5-ja">LSAの不整合が検出された場合の、グレースフルリスタートの早期終了。</li>
+        <li id="section-6-2.6-ja">フラッディングされたLSAが変化した場合の、グレースフルリスタートの早期終了（実装されている場合）。</li>
+      </ol></div>
+</div></section><section><span id="section-7"></span><span id="operational-experience-en"></span><span id="operational-experience-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-operational-experience-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-operational-experience-en" class="section-name selfRef">Operational Experience</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-operational-experience-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-operational-experience-ja" class="section-name selfRef">運用経験</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">Since OSPF graceful restart is configurable, it is difficult to gage
+operational experience at this juncture.  However, multiple service
+providers have tested and evaluated it.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">OSPFのグレースフルリスタートは設定可能なため、現時点で運用経験を評価するのは困難です。しかし、複数のサービスプロバイダーがこれをテストし、評価しています。</p></div>
+</div></section><section><span id="section-8"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">This document does not discuss implementation and interoperability
+aspects of the security mechanisms in great detail, as no new
+security mechanisms are introduced with Graceful OSPF Restart.
+Security considerations for the OSPF protocol are included in RFC
+2328 <span>[<a href="#OSPF-en">OSPF</a>]</span>.  Security considerations for Graceful OSPF Restart are
+included in <span>[<a href="#GRACE-en">GRACE</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">グレースフルOSPFリスタートでは新しいセキュリティーの仕組みを導入しないため、この文書では、セキュリティーの仕組みの実装と相互運用性の側面についてあまり詳しく議論しません。OSPFプロトコルのセキュリティーに関する考慮事項は、RFC 2328 <span>[<a href="#OSPF-ja">OSPF</a>]</span>に含まれています。グレースフルOSPFリスタートのセキュリティーに関する考慮事項は、<span>[<a href="#GRACE-ja">GRACE</a>]</span>に含まれています。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section id="normative-references-en"><h2 id="name-normative-references-en" lang="en">
+<span id="section-9-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="OSPF-en">[OSPF]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, </dd>
+<dt id="GRACE-en">[GRACE]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span class="refAuthor">Pillay-Esnault, P.</span>, and <span class="refAuthor">A. Lindem</span>, <span></span><span class="refTitle">"Graceful OSPF Restart"</span>, <span class="seriesInfo">RFC 3623</span>, <time datetime="2003-11" class="refDate">November 2003</time>, </dd>
+<dt id="CRITERIA-en">[CRITERIA]</dt>
+<dd class="break">
+<span class="refAuthor">Hinden, R.</span>, <span></span><span class="refTitle">"Internet Engineering Task Force Internet Routing Protocol Standardization Criteria"</span>, <span class="seriesInfo">RFC 1264</span>, <time datetime="1991-10" class="refDate">October 1991</time>, </dd>
+</dl></section></div>
+<div lang="ja" class="col"><section id="normative-references-ja"><h2 id="name-normative-references-ja" lang="ja">
+<span id="section-9-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+      </h2>
+<dl class="references">
+<dt id="OSPF-ja">[OSPF]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, </dd>
+<dt id="GRACE-ja">[GRACE]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span class="refAuthor">Pillay-Esnault, P.</span>, and <span class="refAuthor">A. Lindem</span>, <span></span><span class="refTitle">"Graceful OSPF Restart"</span>, <span class="seriesInfo">RFC 3623</span>, <time datetime="2003-11" class="refDate">November 2003</time>, </dd>
+<dt id="CRITERIA-ja">[CRITERIA]</dt>
+<dd class="break">
+<span class="refAuthor">Hinden, R.</span>, <span></span><span class="refTitle">"Internet Engineering Task Force Internet Routing Protocol Standardization Criteria"</span>, <span class="seriesInfo">RFC 1264</span>, <time datetime="1991-10" class="refDate">October 1991</time>, </dd>
+</dl></section></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><section id="informative-references-en"><h2 id="name-informative-references-en" lang="en">
+<span id="section-10-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+      </h2>
+<dl class="references">
+<dt id="VPN-en">[VPN]</dt>
+<dd class="break">
+<span class="refAuthor">Rosen, E.</span> and <span class="refAuthor">Y. Rekhter</span>, <span></span><span class="refTitle">"BGP/MPLS IP VPNs"</span>, <span class="refContent">Work in Progress</span>, <time datetime="2003-09" class="refDate">September 2003</time>, </dd>
+<dt id="OSPFD-en">[OSPFD]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Complete Implementation"</span>, <span class="refContent">Addison-Wesley</span>, <span class="seriesInfo">ISBN 0-201-30966-1</span>, <time datetime="1991" class="refDate">1991</time>, </dd>
+<dt id="OSPFMIB-en">[OSPFMIB]</dt>
+<dd class="break">
+<span class="refAuthor">Joyal, D.</span> and <span class="refAuthor">et al.</span>, <span></span><span class="refTitle">"OSPF Version 2 Management Information Base"</span>, <span class="refContent">Work in Progress</span>, <time datetime="2003-12" class="refDate">December 2003</time>, </dd>
+</dl></section></div>
+<div lang="ja" class="col"><section id="informative-references-ja"><h2 id="name-informative-references-ja" lang="ja">
+<span id="section-10-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<dl class="references">
+<dt id="VPN-ja">[VPN]</dt>
+<dd class="break">
+<span class="refAuthor">Rosen, E.</span> and <span class="refAuthor">Y. Rekhter</span>, <span></span><span class="refTitle">"BGP/MPLS IP VPNs"</span>, <span class="refContent">Work in Progress</span>, <time datetime="2003-09" class="refDate">September 2003</time>, </dd>
+<dt id="OSPFD-ja">[OSPFD]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Complete Implementation"</span>, <span class="refContent">Addison-Wesley</span>, <span class="seriesInfo">ISBN 0-201-30966-1</span>, <time datetime="1991" class="refDate">1991</time>, </dd>
+<dt id="OSPFMIB-ja">[OSPFMIB]</dt>
+<dd class="break">
+<span class="refAuthor">Joyal, D.</span> and <span class="refAuthor">et al.</span>, <span></span><span class="refTitle">"OSPF Version 2 Management Information Base"</span>, <span class="refContent">Work in Progress</span>, <time datetime="2003-12" class="refDate">December 2003</time>, </dd>
+</dl></section></div>
+</div>
+<section><span id="section-11"></span><span id="acknowledgments-en"></span><span id="acknowledgments-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgments-en" lang="en">
+<a id="section-11-en" href="#section-11-en" class="section-number selfRef">11.</a> <a href="#name-acknowledgments-en" class="section-name selfRef">Acknowledgments</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgments-ja" lang="ja">
+<a id="section-11-ja" href="#section-11-ja" class="section-number selfRef">11.</a> <a href="#name-acknowledgments-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-11-1-en">The author wishes to acknowledge the individuals/vendors who have
+completed the implementation survey.</p></div>
+<div lang="ja" class="col"><p id="section-11-1-ja">著者は、実装調査に回答してくれた以下の個人/ベンダーに感謝します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-11-2-en">
+<li id="section-11-2.1-en">Anand Oswal (Redback Networks)</li>
+        <li id="section-11-2.2-en">Padma Pillay-Esnault (Juniper Networks)</li>
+        <li id="section-11-2.3-en">Vishwas Manral (Motorola Computer Group, formerly Netplane
+System).</li>
+        <li id="section-11-2.4-en">Sriganesh Kini (Mahi Networks)</li>
+        <li id="section-11-2.5-en">Jason Chen (Force10 Networks)</li>
+        <li id="section-11-2.6-en">Daniel Gryniewicz (NextHop Technologies)</li>
+        <li id="section-11-2.7-en">Hasmit Grover (Procket Networks)</li>
+        <li id="section-11-2.8-en">Pramoda Nallur (Alcatel)</li>
+        <li id="section-11-2.9-en">Ardas Cilingiroglu (Laurel Networks)</li>
+        <li id="section-11-2.10-en">Philip Crocker (Data Connection Limited)</li>
+        <li id="section-11-2.11-en">Le-Vinh Hoang (Ericsson)</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-11-2-ja">
+<li id="section-11-2.1-ja">Anand Oswal（Redback Networks）</li>
+        <li id="section-11-2.2-ja">Padma Pillay-Esnault（Juniper Networks）</li>
+        <li id="section-11-2.3-ja">Vishwas Manral（Motorola Computer Group、旧Netplane System）。</li>
+        <li id="section-11-2.4-ja">Sriganesh Kini（Mahi Networks）</li>
+        <li id="section-11-2.5-ja">Jason Chen（Force10 Networks）</li>
+        <li id="section-11-2.6-ja">Daniel Gryniewicz（NextHop Technologies）</li>
+        <li id="section-11-2.7-ja">Hasmit Grover（Procket Networks）</li>
+        <li id="section-11-2.8-ja">Pramoda Nallur（Alcatel）</li>
+        <li id="section-11-2.9-ja">Ardas Cilingiroglu（Laurel Networks）</li>
+        <li id="section-11-2.10-ja">Philip Crocker（Data Connection Limited）</li>
+        <li id="section-11-2.11-ja">Le-Vinh Hoang（Ericsson）</li>
+      </ul></div>
+</div></section><section><span id="appendix-A"></span><span id="authors-address-en"></span><span id="authors-address-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-address-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-authors-address-en" class="section-name selfRef">Author's Address</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-address-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-authors-address-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Acee Lindem</div>
+<div class="author-org">Cisco Systems, Inc</div>
+<div class="author-postal"><span class="street-address">7025 Kit Creek Road</span></div>
+<div class="author-postal">
+<span class="locality">Research Triangle Park</span>, <span class="region">NC</span> <span class="postal-code">27709</span>
+</div>
+<div class="author-postal"><span class="country-name">USA</span></div>
+<div class="author-email"><a href="mailto:acee@cisco.com">acee@cisco.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Acee Lindem</div>
+<div class="author-org">Cisco Systems, Inc</div>
+<div class="author-postal"><span class="street-address">7025 Kit Creek Road</span></div>
+<div class="author-postal">
+<span class="locality">Research Triangle Park</span>, <span class="region">NC</span> <span class="postal-code">27709</span>
+</div>
+<div class="author-postal"><span class="country-name">USA</span></div>
+<div class="author-email"><a href="mailto:acee@cisco.com">acee@cisco.com</a></div>
+</address>
+    </div>
+</div></section><section><span id="appendix-B"></span><span id="full-copyright-statement-en"></span><span id="full-copyright-statement-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-full-copyright-statement-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-full-copyright-statement-en" class="section-name selfRef">Full Copyright Statement</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-full-copyright-statement-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-full-copyright-statement-ja" class="section-name selfRef">著作権表示全文</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-1-en">Copyright (C) The Internet Society (2005).</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-1-ja">Copyright (C) The Internet Society (2005).</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-2-en">This document is subject to the rights, licenses and restrictions
+contained in BCP 78, and except as set forth therein, the authors
+retain all their rights.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-2-ja">この文書は、BCP 78に含まれる権利、ライセンス、および制限にしたがうものとし、そこに定める場合を除き、著者はすべての権利を保持します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-3-en">This document and the information contained herein are provided on an
+"AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET
+ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE
+INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-3-ja">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供され、寄稿者、寄稿者が代表する組織または寄稿者を後援する組織（もしあれば）、インターネットソサエティー、およびインターネット技術タスクフォースは、ここに含まれる情報の使用がいかなる権利も侵害しないという保証、または商品性もしくは特定目的への適合性に関する黙示の保証を含め、明示的か黙示的かを問わず、一切の保証を否認します。</p></div>
+</div></section><section><span id="appendix-C"></span><span id="intellectual-property-en"></span><span id="intellectual-property-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-intellectual-property-en" lang="en">
+<span id="section-appendix.c-en"></span><a href="#name-intellectual-property-en" class="section-name selfRef">Intellectual Property</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-intellectual-property-ja" lang="ja">
+<span id="section-appendix.c-ja"></span><a href="#name-intellectual-property-ja" class="section-name selfRef">知的財産</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.c-1-en">The IETF takes no position regarding the validity or scope of any
+Intellectual Property Rights or other rights that might be claimed to
+pertain to the implementation or use of the technology described in
+this document or the extent to which any license under such rights
+might or might not be available; nor does it represent that it has
+made any independent effort to identify any such rights.  Information
+on the procedures with respect to rights in RFC documents can be
+found in BCP 78 and BCP 79.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.c-1-ja">IETFは、この文書に記載されている技術の実装または使用に関連すると主張される可能性のある知的財産権またはその他の権利の有効性や範囲、あるいはそのような権利に基づくライセンスが利用できるかどうかについて、いかなる立場も取りません。また、そのような権利を特定するための独自の取り組みを行ったことを表明するものでもありません。RFC文書における権利に関する手続きの情報は、BCP 78およびBCP 79に記載されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.c-2-en">Copies of IPR disclosures made to the IETF Secretariat and any
+assurances of licenses to be made available, or the result of an
+attempt made to obtain a general license or permission for the use of
+such proprietary rights by implementers or users of this
+specification can be obtained from the IETF on-line IPR repository at
+http://www.ietf.org/ipr.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.c-2-ja">IETF事務局に対して行われたIPR開示のコピー、および利用可能となるライセンスの保証、または実装者やこの仕様のユーザーがそのような専有権を使用するための一般的なライセンスや許可を得ようとした試みの結果は、IETFのオンラインIPRリポジトリーhttp://www.ietf.org/iprから入手できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.c-3-en">The IETF invites any interested party to bring to its attention any
+copyrights, patents or patent applications, or other proprietary
+rights that may cover technology that may be required to implement
+this standard.  Please address the information to the IETF at ietf-ipr@ietf.org.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.c-3-ja">IETFは、この標準を実装するために必要となる可能性のある技術を対象とする著作権、特許、特許出願、またはその他の専有権について、関係者が注意を喚起することを歓迎します。情報はIETF（ietf-ipr@ietf.org）宛てにお送りください。</p></div>
+</div></section><section><span id="appendix-D"></span><span id="acknowledgement-en"></span><span id="acknowledgement-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgement-en" lang="en">
+<span id="section-appendix.d-en"></span><a href="#name-acknowledgement-en" class="section-name selfRef">Acknowledgement</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgement-ja" lang="ja">
+<span id="section-appendix.d-ja"></span><a href="#name-acknowledgement-ja" class="section-name selfRef">謝辞</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.d-1-en">Funding for the RFC Editor function is currently provided by the
+Internet Society.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.d-1-ja">RFCエディターの機能に対する資金は、現在インターネットソサエティーによって提供されています。</p></div>
+</div></section>
+</body>
+</html>

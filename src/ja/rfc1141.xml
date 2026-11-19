@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" obsoletes="1071" indexInclude="true" number="1141" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1141" rel="alternate"/>
+  <front>
+    <title>インターネットチェックサムの差分更新</title>
+    <seriesInfo name="RFC" value="1141" stream="IETF"/>
+    <author fullname="T. Mallory" initials="T." surname="Mallory">
+      <organization showOnFrontPage="true">BBN Communications</organization>
+      <address/>
+    </author>
+    <author fullname="A. Kullberg" initials="A." surname="Kullberg">
+      <organization showOnFrontPage="true">BBN Communications</organization>
+      <address/>
+    </author>
+    <date year="1990" month="January"/>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1-1">このメモは、標準のインターネットチェックサムで使う差分更新（incremental update）の手順を正しく記述します。RFC 1071の差分更新（Incremental Update）の記述を置き換えることを意図しています。これは標準ではなく、実装上の手法です。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="description" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-description">説明</name>
+      <t indent="0" pn="section-unnumbered-1-1">RFC 1071の4ページと5ページには、IPヘッダー内のIPチェックサムを、チェックサムを完全に再計算することなく更新する方法が記述されています。具体的には、このRFCは、元のチェックサムCと、バイトmの古い値と新しい値から、更新後のチェックサムC'を計算する次の式を推奨しています：</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1-2"><![CDATA[
+C' = C + (-m) + m' = C + (m' - m)
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-1-3">上の式は正しいものの、差分更新にはあまり役に立ちません。上の式が更新するのはチェックサムCであり、チェックサムフィールドに格納される値であるチェックサムの1の補数~Cではないからです。さらに、この表記では、単項の符号反転を含むすべての演算を1の補数で行わなければならないことが明確に示されていないという問題もあり、動作するコードを作るのに使いにくくなっています。2の補数を使うマシンで役に立つ計算は次のとおりです：</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1-4"><![CDATA[
+~C' = ~(C + (-m) + m') = ~C + (m - m') = ~C + m + ~m'
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-1-5">よく取り上げられるIPのTTLフィールドを更新する場合では、TTLから1を引くことは、パケット内のチェックサムフィールドに、1の補数の加算を使って、適宜1または256を「加える」ことを意味します。ビッグエンディアンで移植性のないCでの実装の1つは、次のようになります：</t>
+      <sourcecode type="c" markers="false" pn="section-unnumbered-1-6"><![CDATA[
+unsigned long sum;
+ipptr->ttl--;                  /* ttlを1減らす */
+sum = ipptr->Checksum + 0x100;  /* チェックサムの上位バイトを増やす*/
+ipptr->Checksum = (sum + (sum>>16)) /* 桁上がりを加える */
+]]></sourcecode>
+      <t indent="0" pn="section-unnumbered-1-7">この特殊な場合は、さまざまな方法で最適化できます。たとえば、ttlの更新と確認をまとめて行うことができます。効果はコンパイラーによって異なるでしょう。次に示すのは、ttlをn秒だけ更新する、より汎用的で、おそらくより役に立つ例です：</t>
+      <sourcecode type="c" markers="false" pn="section-unnumbered-1-8"><![CDATA[
+UpdateTTL(iph,n)
+struct ip_hdr *ipptr;
+unsigned char n;
+{
+    unsigned long sum;
+    unsigned short old;
+
+    old = ntohs(*(unsigned short *)&ipptr->ttl);
+    ipptr->ttl -= n;
+    sum = old + (~ntohs(*(unsigned short *)&ipptr->ttl) & 0xffff);
+    sum += ntohs(ipptr->Checksum);
+    sum = (sum & 0xffff) + (sum>>16);
+    ipptr->Checksum = htons(sum + (sum>>16));
+}
+]]></sourcecode>
+    </section>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-unnumbered-2-1">このメモではセキュリティーの問題は扱いません。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Tracy Mallory" initials="T." surname="Mallory">
+        <organization showOnFrontPage="true">BBN Communications Corporation</organization>
+        <address>
+          <postal>
+            <street>50 Moulton Street</street>
+            <city>Cambridge</city>
+            <region>MA</region>
+            <code>02238</code>
+          </postal>
+          <phone>(617) 873-3193</phone>
+          <email>tmallory@CCV.BBN.COM</email>
+        </address>
+      </author>
+      <author fullname="A. Kullberg" initials="A." surname="Kullberg">
+        <organization showOnFrontPage="true">BBN Communications Corporation</organization>
+        <address>
+          <postal>
+            <street>50 Moulton Street</street>
+            <city>Cambridge</city>
+            <region>MA</region>
+            <code>02238</code>
+          </postal>
+          <phone>(617) 873-4000</phone>
+          <email>akullberg@BBN.COM</email>
+        </address>
+      </author>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="133" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc133" rel="alternate"/>
+  <front>
+    <title>ファイル転送とエラー回復</title>
+    <seriesInfo name="RFC" value="133" stream="IETF"/>
+    <author fullname="R. L. Sunberg" initials="R. L." surname="Sunberg">
+      <organization showOnFrontPage="true">Harvard University</organization>
+      <address/>
+    </author>
+    <date year="1971" month="April" day="27"/>
+  </front>
+  <middle>
+    <section anchor="file-transfer-protocol" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-file-transfer-protocol">ファイル転送プロトコル</name>
+      <section anchor="handshaking" numbered="false" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-1a-handshaking">1Aハンドシェイク</name>
+        <t indent="0" pn="section-1.1-1">Bhushan氏（RFC #114、NIC 5823）のトランザクションシーケンスの概念は、十分に厳格ではないと私は考えます。すべてのトランザクションは、その受信者からの応答を促すべきです（Kalinの木箱（crates）を思い出してください -- RFC #60、NIC 4762）。制御は、サーバーが終了するまで行ったり来たりすべきです。サーバーが_常に_最後の発言をします（エラー回復については後で詳しく述べます）。</t>
+        <t indent="0" pn="section-1.1-2">いくつかのやりとりの例を示します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.1-3"><![CDATA[
+    User                Server       Comments
+
+    <...>       ==>                  Establish a connection
+                <==     <...>
+    <I><...>    ==>                  Identify self
+                <==     <+>          Ok, ready
+
+    <R><...>    ==>                  Retrieval request
+                <==     <rs>         I've got your file
+    <rr>        ==>                  Send it
+                <==     <,><...>     Here's the first part
+    <rr>        ==>                  Got it
+                <==     <+>          All done
+
+    <S><...>    ==>                  Store request
+                <==     <rr>         Ok, go ahead
+    <#><...>    ==>                  Here's some protection stuff
+                <==     <rr>         Ok
+    <*><...>    ==>                  Here's the file
+                <==     <+>          Got it.  All done.
+]]></artwork>
+        <t indent="0" pn="section-1.1-4">エラー回復の例については、後述のセクション2Bを参照してください。</t>
+      </section>
+      <section anchor="extensions-to-the-file-transfer-protocol" numbered="false" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-1b-extensions-to-the-file-transfer-protocol">1Bファイル転送プロトコルの拡張</name>
+        <t indent="0" pn="section-1.2-1">ファイル転送プロトコルには、ファイルの個々のレコードにアクセスするための仕組みが必要です。これは、非常に大きなデータベースがネットワーク上に現れたときに特に役立つでしょう。次の定義をプロトコルに追加すべきです。</t>
+        <t indent="0" pn="section-1.2-2">格納（S）要求と取得（R）要求のデータフィールドは&lt;key&gt;という形式をとり、&lt;key&gt;は次の構文を持ちます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-3"><![CDATA[
+ <key>::=<devicename>RS<filename>US<keyname> | <filename>US<keyname>.
+                        --          --                      --
+]]></artwork>
+        <t indent="0" pn="section-1.2-4">&lt;pathname&gt;の構文は次のように変更されます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-5"><![CDATA[
+    <pathname>::=<devicename> | <filename> | <pathname>RS<filename>.
+                                                       --
+]]></artwork>
+        <t indent="0" pn="section-1.2-6">&lt;pathname&gt;構文ではなく&lt;key&gt;構文のデータフィールドを持つ取得（R）要求が与えられた場合、返されるデータは、一致する&lt;key&gt;に続くレコードから成ります。&lt;key&gt;構文のデータフィールドを持つ格納（S）要求が与えられた場合、供給されたデータは、一致する&lt;keyname&gt;に続くレコードを置き換えます。そのkeynameが存在しない場合、レコードは指定されたファイルに追加されます。&lt;keyname&gt;とそれが参照するレコードとの対応付けは、個々の設置サイトが提供しなければなりません。</t>
+        <t indent="0" pn="section-1.2-7">さらに、検索（L）要求は、ファイルに対するkeynameの一覧（またはkeynameを含むファイルの名前）を提供します。</t>
+        <t indent="0" pn="section-1.2-8">トランザクションコードF（ファイルディレクトリーの要求）は、利用可能なファイルの一覧を要求します。Fトランザクションのデータフィールドは次の形式です。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-9"><![CDATA[
+<pathname>GS<pathname>GS...
+          --          --
+]]></artwork>
+        <t indent="0" pn="section-1.2-10">サーバーシステム内のファイルのうち、与えられた&lt;pathname&gt;指定子の1つ以上に一致するものすべてが、返却ファイルに列挙されます。このファイルのデータフィールドの形式は次のとおりです。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-11"><![CDATA[
+<pathname>GS<pathname>GS...
+          --          --
+]]></artwork>
+        <t indent="0" pn="section-1.2-12">要求トランザクションの&lt;pathname&gt;フィールドに&lt;name&gt;フィールドが含まれていない場合、デフォルトは指定されたデバイス上のすべてのファイルです。いくつかの例を示します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-13"><![CDATA[
+    <F><DC1 DSK[62,50]] GS JOE>
+        ---             --
+]]></artwork>
+        <t indent="0" pn="section-1.2-14">この例は、[62,50]で指定されたディスク上のすべてのファイルと、JOEという名前のすべてのファイルの一覧を要求しています。応答のデータフィールドには、たとえば次の内容が含まれます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-15"><![CDATA[
+  <DC1 DSK[62,50] RS ALPHA RS BETA RS JOE GS DC1 DSK[10,50] RS JOE>
+   ---            --       --      --     -- ---            --
+]]></artwork>
+        <t indent="0" pn="section-1.2-16">このメッセージは、ディスクの[62,50]領域にファイルALPHA、BETA、JOEがあり、JOEはディスクの[10,50]領域にもあるファイルであることを示しています。</t>
+      </section>
+    </section>
+    <section anchor="error-recovery" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-error-recovery">エラー回復</name>
+      <t indent="0" pn="section-2-1">2Aこれまで、エラー回復の手順は著しく欠けていました。通常のやり方は、コネクションを閉じて最初からやり直すというものでした。Bhushan氏は第3レベルの中断（abort）を提案していますが、その実装については詳しく述べていません。私は、次のような多段階のエラー回復手順を提案します。</t>
+      <t indent="0" pn="section-2-2">2B第3レベルのトランザクション境界の喪失を引き起こさず、全二重コネクションの片側だけに影響するエラーが発生した場合は、トランザクションシーケンスの中断によって第3レベルの回復が可能です。例を示します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-3"><![CDATA[
+    User                Server          Comments
+
+    <R><...>    ==>                     Send me this file
+                <==     <rs>            Ok, I've got it
+    <rr>        ==>                     Ready
+                <==     <*><...error>   Here it is (with an error)
+    <-><D>      ==>                     No.  (data) error
+                <==     <-><D>          Sorry, forget it
+    <R><...>    ==>                     Send the file (again)
+                |<==    <rs>            Ready (doesn't get there)
+                ...                     (waiting)
+    <-><0>      ==>                     Error, timeout
+                <==     <-><0>          Sorry, forget it
+    <R><...>    ==>                     Send the file (third time)
+                <==     <rs>            Got it
+    <rr>        ==>                     Ready
+                <==     <*><...>        There it is
+    <rr>        ==>                     Got it
+                <==     <+>             Done (finally>
+]]></artwork>
+      <t indent="0" pn="section-2-4">通常の転送だけでなくエラーの状況でも、常にサーバーが最後の発言をすることに注意してください。</t>
+      <t indent="0" pn="section-2-5">2C上記の例はBhushanのトランザクションコードを用いて示していますが、この形式のエラー回復は、フラグ付きのブロッキングと全二重コネクションを使用するどのプロトコルでも実装できます。</t>
+      <t indent="0" pn="section-2-6">2D上記のようにエラーを回復できない場合は、リンクを完全にクリアして再同期するための何らかの手段が利用可能でなければなりません。私は、リンク上の割り込みのNCPメッセージ（INR、INS）に8ビットの引数を追加することを提案します。受信側は、ブロック境界が失われ、着信データをすべて破棄していることを示すために&lt;INR&gt;&lt;error&gt;を送信します。送信側は、INRを受信すると、キューに入っているすべての出力を破棄し、リンクがクリアされるのを待ちます。続いてNCPは&lt;INS&gt;&lt;newsync&gt;メッセージを送信し、それが受信されたとき（RFNMが返されたとき）に、リンク上で否定的な終了が送信されます。受信側は、INSを受信するとデータの受け付けを再開します。これは、どのプロセスも未送信のデータを破棄し、リンクがクリアされたことを検出できることを前提としています。この方法は、どの単方向コネクションでも使用できることに注意してください。</t>
+      <t indent="0" pn="section-2-7">2Eほかのすべてが失敗した場合は、障害のあるソケットを閉じるという手段に訴えることもできます。</t>
+    </section>
+    <section anchor="ncp-version-numbers" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-ncp-version-numbers">NCPのバージョン番号</name>
+      <t indent="0" pn="section-3-1">3A NCPにバージョン番号を与え、次のバージョンでは2つの新しいメッセージタイプを含めることを提案します。&lt;WRU&gt;（'Who aRe yoU?'）は受信側ホストにバージョン番号を要求し、&lt;IAM&gt;&lt;version&gt;（'I AM'）はその番号を提供します。</t>
+      <t indent="0" pn="section-3-2">3Bこれらのメッセージは、おそらく最初は「話しかけてもいいですか？」という意味で使われるか、まったく使われないかのどちらかでしょう。いずれは「何ができますか？」という意味を持つようになるでしょう。したがって、&lt;version&gt;フィールドは拡張のために大きく（32ビット？）すべきです。</t>
+      <t indent="0" pn="section-3-3">[このRFCは、Jose Tamayoによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。4/97]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="394" updates="381" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc394" rel="alternate"/>
+  <front>
+    <title>IMP-Hostプロトコルに対する2つの変更提案</title>
+    <seriesInfo name="RFC" value="394" stream="IETF"/>
+    <author fullname="John M. McQuillan" initials="J. M." surname="McQuillan">
+      <organization showOnFrontPage="true">Bolt Beranek and Newman Inc.</organization>
+      <address/>
+    </author>
+    <date year="1972" month="September" day="27"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このノートでは、BBN Report 1822で説明され、RFC 381で改訂されたIMP-Host通信プロトコルに対する2つの変更について説明します。1つ目は、IMPからHostへのインターフェイスと、IMPからHostへの各伝送に対する30秒のタイムアウトの仕組みに関するものです。2つ目は、HostからIMPへのインターフェイスに関するもので、新しいタイムアウトの仕組みを提案します。これらの変更は、記述の上でも実装の上でも互いに独立しています。それぞれの提案についてコメントをお寄せください。反対のコメントがなければ、これらの変更は10月10日（火曜日）にネットワークに導入されます（深刻な反対のコメントがあった場合は、実施を11月上旬まで延期します）。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="declaring-an-unresponsive-host-as-dead-to-the-network" numbered="false" removeInRFC="false" toc="exclude" pn="section-1">
+      <name slugifiedName="name-declaring-an-unresponsive-host-as-dead-to-the-network">1)  応答しないHostをネットワークに対してダウンと宣言する</name>
+      <t indent="0" pn="section-1-1">現在、Hostには、通常メッセージの各パケットを受け入れるのに30秒が与えられ、通常でないメッセージを受け入れるのにも30秒が与えられています。Hostがこの期間応答しない場合、IMPは次の動作を行います。</t>
+      <ol type="%c)" spacing="normal" indent="adaptive" start="1" pn="section-1-2">
+        <li pn="section-1-2.1">そのHost宛てに保持しているすべてのメッセージを破棄します。</li>
+        <li pn="section-1-2.2">破棄した各メッセージの送信元Hostに、タイプ9、サブタイプ0のメッセージ（Incomplete Transmission - Destination Host Tardy、不完全な伝送 - 宛先Hostの遅延）を送ります。</li>
+        <li pn="section-1-2.3">IMPのレディー線を下げてから、再び上げます。</li>
+        <li pn="section-1-2.4">Hostに、タイプ4のメッセージ（NOP）を3つ送ります。</li>
+        <li pn="section-1-2.5">Hostに、タイプ10のメッセージ（IMP-Host Interface Reset、IMP-Hostインターフェイスのリセット）を送ります。</li>
+      </ol>
+      <t indent="0" pn="section-1-3">私たちは、これに加えて、IMPがそのHostをネットワークに対してダウン（dead）と宣言することを提案します。IMPは、Hostから次のビットを受信したら、そのHostがアップ（alive）であると宣言し、Hostがアップになったという情報がネットワーク全体に伝搬する間、30秒の遅延を開始します。</t>
+      <t indent="0" pn="section-1-4">この変更は、IMPからのビットを受け入れられないときにもレディー線が上がっているHostによって生じるいくつかの問題を軽減しようとするものです。いくつかのHostがこれに該当します。レディー線が常にオンになるように配線されているHostもあります。端末を使うときや調査プログラムを実行するときに、Hostが応答していないことを知るために30秒待たなければならないのは煩わしいことです。また、システムのデバッグのために、一度に数分間「ブレークポイントモード」に入るHostもあります。そのときNCPソフトウェアは動作しておらず、メッセージはネットワーク内にたまって捨てられます。このようなHostは、IMPにメッセージ*を送るまではダウンと宣言しておき、通信しようとする送信元Hostには宛先Hostがダウンしていることをすぐに通知できるようにするのが望ましいと思われます。</t>
+      <t indent="0" pn="section-1-5">*したがって、Hostは、自分のIMPからタイプ10のメッセージを受信したときには必ず、そのIMPに少なくとも2つのNOP（または他のメッセージ）を送るべきです。</t>
+    </section>
+    <section anchor="timing-out-host-to-imp-messages-in-15-seconds" numbered="false" removeInRFC="false" toc="exclude" pn="section-2">
+      <name slugifiedName="name-timing-out-host-to-imp-messages-in-15-seconds">2) HostからIMPへのメッセージを15秒でタイムアウトさせる</name>
+      <t indent="0" pn="section-2-1">IMPは、Hostからメッセージを受信すると、そのメッセージを処理するためにいくつかの内部リソースを確保しなければなりません。メッセージ番号を割り当てたり、内部テーブルにエントリーを作成したりなどしなければなりません。これらのIMPのリソースのいずれかが利用できない場合、IMPは単にそれが利用できるようになるまで待ちます。その間はHostからそれ以上メッセージを受け取ることができないため、インターフェイスは停止します。この状態は通常は一時的なものですが、通常でない状況では、IMPが受け入れ始めたメッセージを何秒もの間処理できないことがあります。この状況は、半二重のインターフェイスを持つHostにとって特に厄介な問題を引き起こします。IMPがメッセージの処理に30秒かかると、1)で概説したIMPからHostへのタイムアウトが発動し、Hostは直近30秒間に自分宛てに送られたすべてのメッセージを失います。（半二重のインターフェイスはデッドロック（deadly embrace）の原因となりうることに注意してください。たとえば、IMPがあるメッセージを処理するのに必要なリソースを確保できない理由が、当該Hostのキューに複数のメッセージがあり、それらがストレージやメッセージ番号、テーブルのスロットを占有していることである場合があります。それ以上のメッセージをネットワークに投入できるようになるには、Hostがこれらのメッセージを受け入れなければなりません。）全二重のインターフェイスを持つHostであっても、この状況が起こると、他の有用な通信の妨げになるかもしれません。</t>
+      <t indent="0" pn="section-2-2">私たちは、IMPが受け入れ始めたメッセージの処理を続けられないときに、そのことをHostに通知することを提案します。IMPは15秒間メッセージの処理を試み、その後、Incomplete Transmission - Resources Unavailable（不完全な伝送 - リソース利用不可）として定義するタイプ9、サブタイプ4のメッセージ（ビット30、31、32 = 100）をHostに送ります。このような場合、IMPはメッセージのどの部分もネットワークに送ることができていません。IMPはメッセージの残りを取り込みます。その時点で、半二重のインターフェイスを持つHostはIMPからのメッセージを受け入れ始めるべきであり、全二重のインターフェイスを持つHostは何か別のメッセージを送信しようとしてもかまいません。Hostは、望ましければ、不完全なメッセージの再送を試みてもかまいません。</t>
+      <t indent="0" pn="section-2-3">[このRFCは、Alex McKenzieの指示のもと、BBN Corp.によって機械可読形式にされ、オンラインRFCアーカイブに登録されました。1/97]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

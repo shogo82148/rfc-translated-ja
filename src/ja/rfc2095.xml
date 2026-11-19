@@ -1,0 +1,208 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-klensin-cram-02" indexInclude="true" number="2095" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-klensin-cram-02" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2095" rel="alternate"/>
+  <front>
+    <title>単純なチャレンジ／レスポンスのためのIMAP/POP AUTHorize拡張</title>
+    <seriesInfo name="RFC" value="2095" stream="IETF"/>
+    <author fullname="J. Klensin" initials="J." surname="Klensin">
+      <organization showOnFrontPage="true">MCI</organization>
+      <address/>
+    </author>
+    <author fullname="R. Catoe" initials="R." surname="Catoe">
+      <organization showOnFrontPage="true">MCI</organization>
+      <address/>
+    </author>
+    <author fullname="P. Krumviede" initials="P." surname="Krumviede">
+      <organization showOnFrontPage="true">MCI</organization>
+      <address/>
+    </author>
+    <date year="1997" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">IMAP4は、RFC 1731で説明されているように、いくつもの強力な認証メカニズムをサポートしていますが、再利用可能なパスワードを平文のままネットワーク上に流すことがなく、かつ、大規模なセキュリティー基盤も、メールアクセスのたびにメールサーバーがメールシステム全体のユーザー認証ファイルを更新することも必要としないメカニズムは備えていません。この仕様は、IMAP4での使用に適した、単純なチャレンジレスポンス認証プロトコルを提供します。このプロトコルはKeyed-MD5ダイジェストを利用し、サーバー上に秘密を平文で保存する必要がないため、RFC 1734で規定されているPOP3向けのAPOPを改善するものにもなりえます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">既存の提案標準（Proposed Standard）は、IMAP4プロトコル向けのAUTHENTICATEメカニズム<xref target="IMAP" format="default" sectionFormat="of" derivedContent="IMAP"/> <xref target="IMAP-AUTH" format="default" sectionFormat="of" derivedContent="IMAP-AUTH"/>と、POP3プロトコル向けの対応するAUTHメカニズム<xref target="POP3-AUTH" format="default" sectionFormat="of" derivedContent="POP3-AUTH"/>を規定しています。AUTHENTICATEメカニズムは拡張可能であることを意図しています。<xref target="IMAP-AUTH" format="default" sectionFormat="of" derivedContent="IMAP-AUTH"/>で規定されている4つの方式はいずれもかなり強力で、サポートするには何らかのセキュリティー基盤が必要です。POP3の基本仕様<xref target="POP3" format="default" sectionFormat="of" derivedContent="POP3"/>にも、APOPと呼ばれる軽量なチャレンジレスポンスメカニズムがあります。APOPには、この種のプロトコルにつきもののリスクのほとんどがあります。特に、クライアントとサーバーの両方のマシンが、共有秘密に平文の形式でアクセスできる必要があります。CRAMは、「鍵付き（keyed）」の方式ではありますが、MD5だけを使うというAPOPのアルゴリズム上の単純さを保ちながら、このような平文での保存を避ける方法を提供します。</t>
+      <t indent="0" pn="section-1-2">現在のところ、IMAP <xref target="IMAP" format="default" sectionFormat="of" derivedContent="IMAP"/>にはAPOPに相当する機能がありません。<xref target="IMAP-AUTH" format="default" sectionFormat="of" derivedContent="IMAP-AUTH"/>で示されている強力なメカニズムの唯一の代替手段は、<xref target="IMAP" format="default" sectionFormat="of" derivedContent="IMAP"/>のLOGINコマンドでサポートされている、おそらくは平文のユーザー名とパスワードです。この文書は、APOPやPPP CHAP [PPP]に似た、IMAPで（そして原理的にはPOP3でも）使用できる単純なチャレンジレスポンスメカニズムを記述します。</t>
+      <t indent="0" pn="section-1-3">このメカニズムには、考えられるいくつかの代替手段と比べて、電子メールの「ログイン」に関する情報をサーバーがログインごとに保持する必要がないという利点もあります。そのようなログインごとの履歴記録を必要とするメカニズムはセキュリティーを強化できるかもしれませんが、IMAPのように、あるクライアントとサーバーの間で複数の接続をほぼ同時に開くことがあるプロトコルでは、その実装が特に難しくなることがあります。</t>
+    </section>
+    <section anchor="challenge-response-authentication-mechanism-cram" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-challenge-response-authentication-mechanism-cram">チャレンジレスポンス認証メカニズム（CRAM）</name>
+      <t indent="0" pn="section-2-1">CRAMに対応する認証タイプは「CRAM-MD5」です。</t>
+      <t indent="0" pn="section-2-2">最初のレディーレスポンスにエンコードされるデータには、任意と想定される乱数の数字列、タイムスタンプ、サーバーの完全修飾された主ホスト名が含まれます。エンコードされていない形式の構文は、<xref target="POP3" format="default" sectionFormat="of" derivedContent="POP3"/>で説明されているように、RFC 822の「msg-id」[RFC822]の構文に一致しなければなりません。</t>
+      <t indent="0" pn="section-2-3">クライアントはこのデータを記録し、ユーザー名、空白、「ダイジェスト（digest）」からなる文字列で応答します。ダイジェストは、<xref target="KEYED-MD5" format="default" sectionFormat="of" derivedContent="KEYED-MD5"/>の鍵付きMD5アルゴリズムを、共有秘密を鍵とし、（山括弧を含む）タイムスタンプをダイジェスト対象のテキストとして適用して計算します。</t>
+      <t indent="0" pn="section-2-4">この共有秘密は、クライアントとサーバーだけが知っている文字列です。「digest」パラメーター自体は16オクテットの値で、小文字のASCII文字を使った16進数形式で送信されます。</t>
+      <t indent="0" pn="section-2-5">サーバーは、このクライアントのレスポンスを受信すると、提示されたダイジェストを検証します。ダイジェストが正しければ、サーバーはクライアントが認証されたものとみなし、適切に応答すべきです。</t>
+      <t indent="0" pn="section-2-6">この用途に鍵付きMD5を選んだのは、短いメッセージの認証により高いセキュリティーをもたらすからです。さらに、<xref target="KEYED-MD5" format="default" sectionFormat="of" derivedContent="KEYED-MD5"/>で説明されている中間結果を事前計算する手法を使うと、共有秘密そのものを平文でサーバーシステムに保存する代わりに、「コンテキスト（context）」と呼ばれる中間結果を保存することで、共有秘密を明示的に平文で保存することを避けられます。</t>
+      <t indent="0" pn="section-2-7">CRAMは保護メカニズムをサポートしていません。</t>
+      <t indent="0" pn="section-2-8">例：</t>
+      <t indent="0" pn="section-2-9">この文書の例は、IMAP4 AUTHENTICATEコマンド<xref target="IMAP-AUTH" format="default" sectionFormat="of" derivedContent="IMAP-AUTH"/>でCRAMメカニズムを使う様子を示しています。チャレンジとレスポンスのbase64エンコーディングは、IMAP4 AUTHENTICATEコマンドの一部であり、CRAMの仕様自体の一部ではありません。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-10"><![CDATA[
+  S: * OK IMAP4 Server
+  C: A0001 AUTHENTICATE CRAM-MD5
+  S: + PDE4OTYuNjk3MTcwOTUyQHBvc3RvZmZpY2UucmVzdG9uLm1jaS5uZXQ+
+  C: dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
+  S: A0001 OK CRAM authentication successful
+]]></artwork>
+      <t indent="3" pn="section-2-11">この例では、共有秘密は文字列「tanstaaftanstaaf」です。したがって、鍵付きMD5ダイジェストは次の計算によって生成されます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-12"><![CDATA[
+     MD5((tanstaaftanstaaf XOR opad),
+         MD5((tanstaaftanstaaf XOR ipad),
+         <1896.697170952@postoffice.reston.mci.net>))
+]]></artwork>
+      <t indent="3" pn="section-2-13">ここで、ipadとopadは鍵付きMD5の作業中の文書（Work in Progress）<xref target="KEYED-MD5" format="default" sectionFormat="of" derivedContent="KEYED-MD5"/>で定義されているとおりであり、チャレンジに示されている文字列は&lt;1896.697170952@postoffice.reston.mci.net&gt;をbase64エンコードしたものです。共有秘密は、ヌル文字で64バイトの長さまでパディングされます。共有秘密が64バイトより長い場合は、共有秘密のMD5ダイジェストを、鍵付きMD5の計算への16バイトの入力として使います。</t>
+      <t indent="3" pn="section-2-14">これにより、（16進数で）次のダイジェスト値が得られます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-15"><![CDATA[
+        b913a602c7eda7a495b4e6e7334d3890
+]]></artwork>
+      <t indent="3" pn="section-2-16">次に、その前にユーザー名を付けて、次の文字列を作ります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-17"><![CDATA[
+        tim b913a602c7eda7a495b4e6e7334d3890
+]]></artwork>
+      <t indent="3" pn="section-2-18">そして、IMAP4 AUTHENTICATEコマンド（または同様のPOP3 AUTHコマンド）の要件を満たすためにこれをbase64エンコードすると、次のようになります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-19"><![CDATA[
+        dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
+]]></artwork>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-3">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="CHAP" quoteTitle="true" derivedAnchor="CHAP">
+        <front>
+          <title>PPP Authentication Protocols</title>
+          <author fullname="B. Lloyd" initials="B." surname="Lloyd"/>
+          <author fullname="W. Simpson" initials="W." surname="Simpson"/>
+          <date year="1992" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1334"/>
+      </reference>
+      <reference anchor="IMAP" quoteTitle="true" derivedAnchor="IMAP">
+        <front>
+          <title>Internet Message Access Protocol - Version 4rev1</title>
+          <author fullname="M. Crispin" initials="M." surname="Crispin">
+            <organization>University of Washington</organization>
+          </author>
+          <date year="1996" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2060"/>
+      </reference>
+      <reference anchor="IMAP-AUTH" quoteTitle="true" derivedAnchor="IMAP-AUTH">
+        <front>
+          <title>IMAP4 Authentication Mechanisms</title>
+          <author fullname="J. Myers" initials="J." surname="Myers">
+            <organization>Carnegie Mellon</organization>
+          </author>
+          <date year="1994" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="1731"/>
+      </reference>
+      <reference anchor="KEYED-MD5" quoteTitle="true" derivedAnchor="KEYED-MD5">
+        <front>
+          <title>HMAC-MD5: Keyed-MD5 for Message Authentication</title>
+          <author fullname="H. Krawczyk" initials="H." surname="Krawczyk"/>
+        </front>
+        <refcontent>Work in Progess</refcontent>
+      </reference>
+      <reference anchor="MD5" quoteTitle="true" derivedAnchor="MD5">
+        <front>
+          <title>The MD5 Message Digest Algorithm</title>
+          <author fullname="R. Rivest" initials="R." surname="Rivest">
+            <organization>MIT Laboratory for Computer Science</organization>
+          </author>
+          <date year="1992" month="April"/>
+        </front>
+        <seriesInfo name="RFC" value="1321"/>
+      </reference>
+      <reference anchor="POP3" quoteTitle="true" derivedAnchor="POP3">
+        <front>
+          <title>Post Office Protocol - Version 3</title>
+          <author fullname="J. Myers" initials="J." surname="Myers">
+            <organization>Carnegie Mellon</organization>
+          </author>
+          <author fullname="M. Rose" initials="M." surname="Rose"/>
+          <date year="1996" month="May"/>
+        </front>
+        <seriesInfo name="STD" value="53"/>
+        <seriesInfo name="RFC" value="1939"/>
+      </reference>
+      <reference anchor="POP3-AUTH" quoteTitle="true" derivedAnchor="POP3-AUTH">
+        <front>
+          <title>POP3 AUTHentication command</title>
+          <author fullname="J. Myers" initials="J." surname="Myers">
+            <organization>Carnegie Mellon</organization>
+          </author>
+          <date year="1994" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="1734"/>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">CRAM認証メカニズムを使うと、セッションに対して発信元の識別とリプレイ保護が得られると推測されます。したがって、平文パスワードのコマンドとこの認証タイプの両方を実装するサーバーは、ある1人のユーザーに両方のアクセス方法を許可すべきではありません。</t>
+      <t indent="0" pn="section-4-2">サーバー上に「コンテキスト」を保存すること（<xref target="challenge-response-authentication-mechanism-cram" format="default" sectionFormat="of" derivedContent="Section 2"/>を参照）は、CHAP <xref target="CHAP" format="default" sectionFormat="of" derivedContent="CHAP"/>やAPOP <xref target="POP3" format="default" sectionFormat="of" derivedContent="POP3"/>で必要とされるように共有秘密を平文で保存するよりはわずかに優れていますが、サーバー自体が侵害された場合に秘密を保護するには十分ではありません。そのため、秘密やコンテキストを保存するサーバーは、ユーザーのメールボックスやアイデンティティーが持ちうる情報価値に見合った水準で保護されなければなりません。</t>
+      <t indent="0" pn="section-4-3">共有秘密が長くなるほど、それを導き出すのは難しくなります。</t>
+      <t indent="0" pn="section-4-4">認証手順でMD5や鍵付きMD5を使うことの有効期間はおそらく限られている、という指摘が今では文献に見られますが、この手法は現在広く展開され、広く理解されています。この一般的な理解が、IMAPで現在使われている恒久的な平文パスワードをCRAM-MD5ですばやく置き換える助けになると考えられています。この文書は、SHA（あるいは今後登場する何らかの代替手段）が広く利用可能で十分に安全だとみなされるようになったときに、それを使うように容易にアップグレードできるよう、意図的に書かれています。</t>
+      <t indent="0" pn="section-4-5">CRAMを使っても、ユーザーは依然として能動的攻撃に対して脆弱です。ますます一般的になっている能動的攻撃の一例は、CERT Advisory CA-95:01 [CERT95]で説明されている「TCPセッションハイジャック（TCP Session Hijacking）」です。</t>
+      <t indent="0" pn="section-4-6">さらなる議論については、上記の<xref target="introduction" format="default" sectionFormat="of" derivedContent="Section 1"/>を参照してください。</t>
+    </section>
+    <section anchor="acknowledgements" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-5-1">このメモは、<xref target="POP3" format="default" sectionFormat="of" derivedContent="POP3"/>と[RFC-1731]からアイデアと一部の文章を自由に借用しており、それらの文書の著者に感謝します。Ran Atkinsonは、この文書に技術面と編集面で多くの貴重な貢献をしました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="John C. Klensin" initials="J." surname="Klensin">
+        <organization showOnFrontPage="true">MCI Telecommunications</organization>
+        <address>
+          <postal>
+            <street>800 Boylston St, 7th floor</street>
+            <city>Boston</city>
+            <region>MA</region>
+            <code>02199</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 617 960 1011</phone>
+          <email>klensin@mci.net</email>
+        </address>
+      </author>
+      <author fullname="Randy Catoe" initials="R." surname="Catoe">
+        <organization showOnFrontPage="true">MCI Telecommunications</organization>
+        <address>
+          <postal>
+            <street>2100 Reston Parkway</street>
+            <city>Reston</city>
+            <region>VA</region>
+            <code>22091</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 703 715 7366</phone>
+          <email>randy@mci.net</email>
+        </address>
+      </author>
+      <author fullname="Paul Krumviede" initials="P." surname="Krumviede">
+        <organization showOnFrontPage="true">MCI Telecommunications</organization>
+        <address>
+          <postal>
+            <street>2100 Reston Parkway</street>
+            <city>Reston</city>
+            <region>VA</region>
+            <code>22091</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 703 715 7251</phone>
+          <email>paul@mci.net</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

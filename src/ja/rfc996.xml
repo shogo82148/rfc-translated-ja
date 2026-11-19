@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="996" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc996" rel="alternate"/>
+  <front>
+    <title>統計サーバー</title>
+    <seriesInfo name="RFC" value="996" stream="IETF"/>
+    <author fullname="D.L. Mills" initials="D.L." surname="Mills">
+      <organization showOnFrontPage="true">University of Delaware</organization>
+      <address/>
+    </author>
+    <date year="1987" month="February"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このRFCは、ARPAインターネットコミュニティーのための標準を規定します。リモート統計監視機能を実装することを選んだDARPAインターネット上のホストとゲートウェイは、要求に応じて監視センターやデバッグ用ホストに統計データを送信するために、このプロトコルを使用できます。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="discussion" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-discussion">議論</name>
+      <t indent="0" pn="section-unnumbered-1-1">ホストやゲートウェイの実装の多くは、デバッグや性能評価のために、パケットカウンター、エラーカウンター、重要イベントのカウンターなどのトラフィック統計を記録する機能を備えています。単純なデータアクセスと整形のプログラムを使えば、これらの統計を接続の状態などとともに表示できます。さまざまなUnixシステムやFuzzballシステムを含むいくつかのオペレーティングシステムは、ローカルのユーザーやオペレーターのために、これらのデータを取得して表示する充実した機能をすでに提供しています。</t>
+      <t indent="0" pn="section-unnumbered-1-2">多くの場合、監視センターやデバッグ用ホストから、リモートのホストやゲートウェイの統計データを観察できると非常に便利です。実際、まさにこの目的のために、いくつかのプロトコルが実装され使用されてきました<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>-<xref target="ref-6" format="default" sectionFormat="of" derivedContent="6"/>。多くの場合、データはリモートログインやファイル転送といった従来のサービスを使って取得できます。しかし、こうした重量級の仕組みを定期的かつ頻繁に使用するのは扱いにくく、システムへの負担も大きくなります。また、既存のシステムに後から組み込む場合には、オペレーティングシステムに大幅に手を入れる必要が生じることがあります。</t>
+      <t indent="0" pn="section-unnumbered-1-3">統計サーバー（Statistics Server、STATSRV）プロトコルは、NETSTAT <xref target="ref-7" format="default" sectionFormat="of" derivedContent="7"/>と同様の考え方に基づく軽量な仕組みとして、NETSTATを補完するものとして意図されています。STATSRVは、既存のシステムやネットワークへの影響を最小限に抑えて統計データを取得するように設計されています。主に、既存のホストやゲートウェイで、手軽な監視やデバッグの目的で使用することを意図しています。たとえば、機械による分析に適した詳細で標準化されたレポートを提供する、完全な機能を備えた監視プロトコル<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>, <xref target="ref-5" format="default" sectionFormat="of" derivedContent="5"/>, <xref target="ref-6" format="default" sectionFormat="of" derivedContent="6"/>として意図したものではありませんが、そのような恒久的なシステムにつながる探索的な開発には役立つかもしれません。</t>
+      <t indent="0" pn="section-unnumbered-1-4">STATSRVのモデルは、統計の監視と表示に使われるホスト固有のコマンド言語に基づいています。クライアントはNULL終端のASCIIコマンドをサーバーに送信し、サーバーはプリンターやCRTディスプレイでの表示に適したNULL終端のASCII応答を返します。原理的にはSTATSRVをTCP上で使用することもできますが、UDP上で使用するほうが負担が少なく効率的です。UDPの場合、コマンドと応答は576オクテットの単一のIPデータグラムに収まらなければなりません。UDPとTCPのどちらでも、割り当てられたポート番号は（10進数で）133です。</t>
+      <t indent="0" pn="section-unnumbered-1-5">この種の他の軽量なサービス（NETSTAT、FINGERなど）では慣例となっているように、STATSRVにはアクセス制御や認証の規定はありません。必要であれば、気軽な悪用を防ぐために、各コマンドにパスワードやその他の仕組みを含めることもできます。</t>
+    </section>
+    <section anchor="example" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-example">例</name>
+      <t indent="0" pn="section-unnumbered-2-1">Fuzzballシステムには、内部のデータ構造を表示するためのローカルコマンドが多数あります。その中には、ネットワークデバイスごとに次のような表示（billboard）を生成するものがあります。この例では、ホスト「udel2.udel.edu」上の「dm0」の表示です。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-2"><![CDATA[
+     Process type: 000027  options: 040000
+     Subnet: DMV  status: 376  hello: 15  timeout: 2000
+     Foreign address: [192.5.39.87]  max size: 576
+     Input packets      3645    Output packets  3690
+       bad format       0       ICMP msgs       0
+       bad checksum     0       Input errors    0
+       returned         0       Output errors   0
+       dropped          2       No buffer       0
+       HELLO msgs       2286    Preempted       0
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-2-3">NULL終端のASCIIコマンド「dm0」をUDPデータグラムに入れてホストに送信すると、同じ表示がNULL終端のASCII文字列としてUDPデータグラムで返されます。システム内のほとんどのプロセスについて、同様の表示を生成できます。簡単なアドホックの監視機能を構築するために、このようなコマンドを選択したホストに定期的に送信するUnixプログラムやシェルスクリプトが作られています。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-3">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Gateway Monitoring Protocol</title>
+          <author fullname="D. Flood Page" initials="D." surname="Flood Page"/>
+          <date year="1980" month="February"/>
+        </front>
+        <seriesInfo name="IEN" value="131"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>Bolt Beranek and Newman</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>The CMCC Terminal Process</title>
+          <author fullname="D. Flood Page" initials="D." surname="Flood Page"/>
+          <date year="1980" month="February"/>
+        </front>
+        <seriesInfo name="IEN" value="132"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>Bolt Beranek and Newman</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>CMCC Performance Measurement Message Formats</title>
+          <author fullname="D. Flood Page" initials="D." surname="Flood Page"/>
+          <date year="1980" month="September"/>
+        </front>
+        <seriesInfo name="IEN" value="157"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>Bolt Beranek and Newman</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>A Proposal for Simple Measurement Support for Users</title>
+          <author fullname="R.G. Jones" initials="R.G." surname="Jones"/>
+          <date year="1980" month="November"/>
+        </front>
+        <seriesInfo name="IEN" value="161"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>University College London</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>A Host Monitoring Protocol</title>
+          <author fullname="B.M. Littauer" initials="B.M." surname="Littauer"/>
+          <author fullname="A.J. Huang" initials="A.J." surname="Huang"/>
+          <author fullname="R.M. Hinden" initials="R.M." surname="Hinden"/>
+          <date year="1981" month="September"/>
+        </front>
+        <seriesInfo name="IEN" value="197"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>Bolt Beranek and Newman</refcontent>
+      </reference>
+      <reference anchor="ref-6" quoteTitle="true" derivedAnchor="6">
+        <front>
+          <title>A Host Monitoring Protocol</title>
+          <author fullname="R.M. Hinden" initials="R.M." surname="Hinden"/>
+          <date year="1983" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="869"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>BBN Communications Corporation</refcontent>
+      </reference>
+      <reference anchor="ref-7" quoteTitle="true" derivedAnchor="7">
+        <front>
+          <title>Assigned Numbers</title>
+          <author fullname="J.K. Reynolds" initials="J.K." surname="Reynolds"/>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <date year="1986" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="990"/>
+        <refcontent>DARPA Network Working Group Report</refcontent>
+        <refcontent>USC Information Sciences Institute</refcontent>
+      </reference>
+    </references>
+  </back>
+</rfc>

@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="662" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc662" rel="alternate"/>
+  <front>
+    <title>MulticsからのARPANETファイル転送の性能改善</title>
+    <seriesInfo name="RFC" value="662" stream="IETF"/>
+    <author fullname="Raj Kanodia" initials="R." surname="Kanodia">
+      <organization showOnFrontPage="true">Project MAC, MIT</organization>
+      <address/>
+    </author>
+    <date year="1974" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">ARPAネットワークのコミュニティーでMulticsの利用が増えるにつれ、ユーザーはしばしば大量のデータをMulticsから他のシステムに転送する必要に迫られています。しかし、この分野におけるMulticsの性能は最適とはいえず、状況を改善する必要があることは明らかです。Project MACの内部でさえ、Multicsと他のProject MACのコンピューターシステムとの間で定期的にファイルをやり取りしているユーザーがいます。最近、ケンブリッジ情報システム研究所（CISL：Cambridge Information Systems Laboratory）の開発用MulticsシステムがARPAネットワークに接続されました。これにより、CSR（Computer Systems Research）グループとCISLグループのメンバーの間で、Multicsのファイル転送機能を使ってMulticsシステムテープ（MST：Multics System Tape）をあるMulticsシステムから別のMulticsシステムへ送信することに大きな関心が寄せられています。現在実現可能なデータ転送速度では、典型的なMST（約1200万ビット）の送信には約30分かかります。現在のファイル転送システムの有用性は、その低い帯域幅によって大きく制限されています。</t>
+      <t indent="0" pn="section-abstract-2">このように性能が低い理由の1つは、MulticsのIMP DIM（IMP Device Interface Manager）における出力バッファリングの戦略にあります。性能を大幅に改善することを期待して、私たちは最近IMP DIMのバッファリング戦略を変更しました。この変更の効果を評価するために、サービス用マシン（MIT Multics）と開発用マシン（CISL Multics）の間で実験を行いました。このメモでは、その実験と結果を報告します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="problem" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-problem">問題</name>
+      <t indent="0" pn="section-unnumbered-1-1">もはや歴史的な関心しか持たれないような理由により、IMP DIMの出力バッファーは非常に小さく、各バッファーには最大940ビットしか格納できません。72ビット長のヘッダーを加えると、結果として得られるメッセージの最大長は1012ビットとなり、これはネットワークの用語でいう単一パケットメッセージです。このバッファーサイズの制限のため、ネットワークは最大8096ビット長のメッセージを受け付けられるにもかかわらず、Multicsは単一パケットメッセージしか送信できません。その結果、大量のビットを送信する際の準備時間のオーバーヘッドが増加します。</t>
+      <t indent="0" pn="section-unnumbered-1-2">IMP-ホスト間プロトコルの古いバージョンでは、ホストは、前のメッセージに対する応答としてRFNM（Request-for-Next-Message）を受信するまで、ネットワークコネクション上で次のメッセージを送信してはならないと定めています。この制限は現在では緩和されていますが、同じコネクション上で複数のRFNMが保留されている間に発生した送信エラーから回復する方法を、プロトコルは何も規定していません。一度に1つのメッセージだけを送信するという制約を守れば、エラーが起きたときに少なくとも回復できる可能性はあります。信頼性を重視しているため、Multicsは古いプロトコルが課すこの制約を守っています。古いプロトコルに従うと、同じリンク上で連続するメッセージの送信に遅延が生じるため、コネクションあたりの全体的な帯域幅が減少します。</t>
+    </section>
+    <section anchor="solution" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-solution">解決策</name>
+      <t indent="0" pn="section-unnumbered-2-1">ファイル転送の帯域幅を改善する方法のうち、少なくとも1つは明白です。IMP DIMの出力バッファーのサイズを大きくすれば、かなり大きなメッセージを送信できるようになります&lt;s1&gt;s。これにより、RFNMと遅延が減り、帯域幅が向上します。ここでは2つの前提を置いています。1つ目の前提は、RFNMによって生じる遅延がメッセージのサイズとともに増加しないことです&lt;s2&gt;s。ネットワークに関する私たちの経験は、この前提を裏付ける傾向にあります。2つ目の前提は、メッセージの送信に実際にかかる時間が、メッセージのサイズに対してせいぜい線形にしか増加しないことです。この2つ目の前提は、負荷の高いネットワークでは成り立ちません。しかし、私たちの目的においては、おおむね正しいと見なしてかまわないでしょう。</t>
+      <t indent="0" pn="section-unnumbered-2-2">大きなメッセージを送信することには、もう1つの利点があります。一定量のデータについて、送信されるメッセージが減り、読み取るRFNMも減るため、チャネルドライバープログラムで費やされる時間が減少します。この時間の少なくとも一部ではチャネルがアイドル状態になっているため、チャネルのアイドル時間が減り、その結果チャネルの帯域幅が向上します。</t>
+      <t indent="0" pn="section-unnumbered-2-3">&lt;s1&gt;s大きなメッセージを送信できない状況が1つあります。ホストが特定のコネクション上で送信できるメッセージ数とビット数は、受信側ホストが与えるメッセージとビットの割り当てを超えてはなりません。受信側ホストが非常に小さなビット割り当てしか与えない場合、送信側ホストは非常に大きなメッセージを送信できません。Multicsは常に非常に大きな割り当てを与えるため、Multics同士のファイル転送では問題はないはずです。</t>
+      <t indent="0" pn="section-unnumbered-2-4">&lt;s2&gt;s RFNMのサイズは固定されており、メッセージのサイズによって変わらないことに注意してください。</t>
+    </section>
+    <section anchor="experiment" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-experiment">実験</name>
+      <t indent="0" pn="section-unnumbered-3-1">私たちは、IMP DIMを変更して2種類の出力バッファーを実装しました。1つ目の種類の出力バッファーは短く、単一パケットメッセージしか格納できません。もう1つの種類のバッファーは、当然ながら大きく、ネットワークが許容する最大のメッセージを格納できます。送信するビット数が少ない場合（対話型ユーザーの場合はほとんどがこれに当たります）は小さなバッファーを選択し、多い場合（たとえば、ファイル転送）は大きなバッファーを選択します。</t>
+      <t indent="0" pn="section-unnumbered-3-2">新しいIMP DIMは、CISLの開発用マシン上の実験的なMulticsシステムで使用しました。MITのサービス用マシンは古いバージョンのままでした。開発用システムからサービス用システムへ大きなファイルを送信し、ファイル転送速度を（実時間での）ビット毎秒で測定しました。性能の向上を見積もるため、サービス用システムから開発用システムへもファイルを送信し、従来のファイル転送速度を測定しました。どちらの実験でも、約250万ビット長の同じファイルを使用しました。ARPANETファイル転送プロトコルのBYTE-SIZEパラメーターとMODEパラメーターは、それぞれ36と「image」モードに設定しました。これは、ファイル転送において文字変換を一切行わなかったことを意味します。得られた結果を次の表に示します。</t>
+      <table align="center" pn="table-1">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1"></th>
+            <th align="right" colspan="1" rowspan="1">サービス用から開発用へ<br/>（旧システム）</th>
+            <th align="right" colspan="1" rowspan="1">開発用からサービス用へ<br/>（新システム）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">平均ファイル転送速度<br/>（ビット毎秒）</td>
+            <td align="right" colspan="1" rowspan="1">6,837</td>
+            <td align="right" colspan="1" rowspan="1">27,578</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-unnumbered-3-4">完全を期すため、実験の環境に関する次の情報を記しておきます。この実験の時点では、サービス用システムの負荷は軽いものでした（システム負荷は30.0から35.0の間で変動しました）。サービス用システムの構成は、CPU 2台と384Kの主記憶でした。開発用マシンの構成は、CPU 1台と256Kの主記憶でした。開発用システムの負荷は、ファイル転送プロセスとイニシャライザープロセスだけに限られていました。MIT Multicsは、かなり短いケーブル（長さ約100フィート）でIMP番号44（ポート0）に接続されています。CISL Multicsは、長さ約1500フィートのケーブルでIMP番号6（ポート0）に接続されています。両方のIMPは物理的に近い位置（約2000フィート）にあり、毎秒50キロビットの回線で互いに接続されています。上記の結果は、新しいIMP DIMによって性能がかなり向上したことを示しています。</t>
+      <t indent="0" pn="section-unnumbered-3-5">Multicsの開発コミュニティーでは、2つのシステム間でMulticsシステムテープを送信するためにファイル転送機能を使うことに大きな関心が寄せられているため、ここで現在のMSTの送信にかかる時間の見積もりを示します。MST 23.4-0Aには334,231ワードが含まれています。これに36（ビット単位のワード長）を掛けると、総ビット数は約1250万になります。ファイル転送速度を毎秒27,500ビットと仮定すると、システム23.4-0Aの送信には約7分30秒かかります。</t>
+      <t indent="0" pn="section-unnumbered-3-6">上で概説した実験では、2つのシステム間で一度に転送されるファイルは1つだけでした。複数のファイル転送が同時に行われる状況での性能を見積もるため、私たちはもう1つ実験を行いました。この実験では、開発用システムからサービス用システムへ、まず2つ、次に3つのファイル転送を同時に行いました。これらのファイル転送は、別々のコンソールからログインした異なるプロセスによって開始しました。これらのファイル転送は手動で開始したため、完全な同時性は得られず、得られた合計帯域幅の結果はあくまで概算です。2つのファイル転送を同時に行った場合、合計ビットレートは約毎秒40,000ビットで、各ファイル転送のビットレートは約毎秒20,000ビットでした。3つのファイル転送を同時に行った場合、合計ビットレートは約毎秒40,000ビットのままで、個々の転送のビットレートは約毎秒13,500ビットでした。</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-idr-bgp-route-refresh-01" indexInclude="true" number="2918" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-idr-bgp-route-refresh-01" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc2918" rel="alternate"/>
+  <front>
+    <title>BGP-4のためのルートリフレッシュ機能</title>
+    <seriesInfo name="RFC" value="2918" stream="IETF"/>
+    <author fullname="E. Chen" initials="E." surname="Chen">
+      <organization showOnFrontPage="true">Redback Networks</organization>
+      <address/>
+    </author>
+    <date year="2000" month="September"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、「ルートリフレッシュ機能（Route Refresh Capability）」と呼ぶ新しいボーダーゲートウェイプロトコル（BGP）の機能を定義します。この機能により、BGPスピーカー間でルートリフレッシュ要求を動的に交換し、それに続いて該当するAdj-RIB-Outを再広告できるようになります。この機能の用途の1つとして、ルーティングポリシーの変更を中断なしに行いやすくすることが考えられます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書は、インターネットコミュニティーのためのインターネット標準化過程（Internet Standards Track）のプロトコルを規定し、改善のための議論と提案を求めるものです。このプロトコルの標準化の状態とステータスについては、「Internet Official Protocol Standards」（STD 1）の最新版を参照してください。このメモの配布は無制限です。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2000).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">現在、BGP-4<xref target="BGP-4" format="default" sectionFormat="of" derivedContent="BGP-4"/>には、BGPピアにAdj-RIB-Outの再広告を動的に要求する仕組みがありません。あるピアに対する受信側のルーティングポリシーが変わった場合、そのピアからのすべてのプレフィックスを何らかの方法で利用できるようにし、新しいポリシーに照らして再検査しなければなりません。これを実現するためによく使われる「ソフト再構成（soft-reconfiguration）」と呼ばれる方法では、ルーティングポリシーが頻繁に変わるわけではない（通常は1日に数回以下）にもかかわらず、そのピアからのすべての経路の未変更のコピーを常に保存しておきます。これらの経路を維持するには、追加のメモリーとCPUが必要です。</t>
+      <t indent="0" pn="section-1-2">この文書は、この追加の維持コストを避ける代替の解決策を提案します。より具体的には、「ルートリフレッシュ機能」と呼ぶ新しいBGPの機能を定義します。この機能により、BGPスピーカー間でルートリフレッシュ要求を動的に交換し、それに続いて該当するAdj-RIB-Outを再広告できるようになります。</t>
+    </section>
+    <section anchor="route-refresh-capability" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-route-refresh-capability">ルートリフレッシュ機能</name>
+      <t indent="0" pn="section-2-1">ピアにルートリフレッシュ機能を広告するために、BGPスピーカーはBGP機能広告（BGP Capabilities Advertisement）<xref target="BGP-CAP" format="default" sectionFormat="of" derivedContent="BGP-CAP"/>を使います。この機能は、Capability code 2、Capability length 0を使って広告されます。</t>
+      <t indent="0" pn="section-2-2">ピアにルートリフレッシュ機能を広告することで、BGPスピーカーは、自身がそのピアから（セクション3で定義する）ROUTE-REFRESHメッセージを受信して適切に処理できることをピアに伝えます。</t>
+    </section>
+    <section anchor="route-refresh-message" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-route-refresh-message">Route-REFRESHメッセージ</name>
+      <t indent="0" pn="section-3-1">ROUTE-REFRESHメッセージは、次のように定義される新しいBGPメッセージタイプです。</t>
+      <t indent="0" pn="section-3-2">タイプ: 5 - ROUTE-REFRESH</t>
+      <t indent="0" pn="section-3-3">メッセージ形式: 次のように符号化された1つの&lt;AFI, SAFI&gt;</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-4">
+        0       7      15      23      31
+        +-------+-------+-------+-------+
+        |      AFI      | Res.  | SAFI  |
+        +-------+-------+-------+-------+
+</artwork>
+      <t indent="0" pn="section-3-5">この&lt;AFI, SAFI&gt;フィールドの意味、使い方、符号化は、<xref target="BGP-MP" sectionFormat="comma" section="7" format="default" derivedLink="https://rfc-editor.org/rfc/rfc2858#section-7" derivedContent="BGP-MP"/>で定義されているものと同じです。より具体的には次のとおりです。</t>
+      <dl newline="false" spacing="normal" indent="7" pn="section-3-6">
+        <dt pn="section-3-6.1">AFI</dt>
+        <dd pn="section-3-6.2">アドレスファミリー識別子（Address Family Identifier）（16ビット）。</dd>
+        <dt pn="section-3-6.3">Res.</dt>
+        <dd pn="section-3-6.4">予約済み（8ビット）フィールド。送信者は0に設定すべきであり、受信者は無視すべきです。</dd>
+        <dt pn="section-3-6.5">SAFI</dt>
+        <dd pn="section-3-6.6">後続アドレスファミリー識別子（Subsequent Address Family Identifier）（8ビット）。</dd>
+      </dl>
+    </section>
+    <section anchor="operation" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-operation">動作</name>
+      <t indent="0" pn="section-4-1">ピアからROUTE-REFRESHメッセージを受信する意思のあるBGPスピーカーは、BGP機能広告<xref target="BGP-CAP" format="default" sectionFormat="of" derivedContent="BGP-CAP"/>を使って、そのピアにルートリフレッシュ機能を広告すべきです。</t>
+      <t indent="0" pn="section-4-2">BGPスピーカーがピアにROUTE-REFRESHメッセージを送信してよいのは、そのピアからルートリフレッシュ機能を受信している場合だけです。そのようなメッセージで運ばれる&lt;AFI, SAFI&gt;は、セッション確立時にピアが機能広告によってスピーカーに広告した&lt;AFI, SAFI&gt;のいずれかであるべきです。</t>
+      <t indent="0" pn="section-4-3">セッション確立時に機能広告によってピアに広告していない&lt;AFI, SAFI&gt;を持つROUTE-REFRESHメッセージをピアから受信した場合、BGPスピーカーはそのメッセージを無視することになります。そうでなければ、BGPスピーカーは、自身の送信側の経路フィルタリングポリシーに基づいて、メッセージで運ばれた&lt;AFI, SAFI&gt;のAdj-RIB-Outをそのピアに再広告することになります。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">このBGPの拡張は、根底にあるセキュリティーの問題を変えるものではありません。</t>
+    </section>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-6-1">ここで提案したルートリフレッシュの概念は、IDRPで使われているものと似ています。</t>
+      <t indent="0" pn="section-6-2">著者は、レビューとコメントをいただいたYakov Rekhter、Ravi Chandra、Srihari Ramachandra、Bruce Coleに感謝します。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="BGP-4" quoteTitle="true" derivedAnchor="BGP-4">
+        <front>
+          <title>A Border Gateway Protocol 4 (BGP-4)</title>
+          <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+          <author fullname="T. Li" initials="T." surname="Li"/>
+          <date year="1995" month="March"/>
+        </front>
+        <seriesInfo name="RFC" value="1771"/>
+      </reference>
+      <reference anchor="BGP-MP" quoteTitle="true" derivedAnchor="BGP-MP">
+        <front>
+          <title>Multiprotocol Extensions for BGP-4</title>
+          <author fullname="T. Bates" initials="T." surname="Bates"/>
+          <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+          <author fullname="D. Katz" initials="D." surname="Katz"/>
+          <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+          <date year="2000" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="2858"/>
+      </reference>
+      <reference anchor="BGP-CAP" quoteTitle="true" derivedAnchor="BGP-CAP">
+        <front>
+          <title>Capabilities Advertisement with BGP-4</title>
+          <author fullname="R. Chandra" initials="R." surname="Chandra"/>
+          <author fullname="J. Scudder" initials="J." surname="Scudder"/>
+          <date year="2000" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="2842"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Enke Chen" initials="E." surname="Chen">
+        <organization showOnFrontPage="true">Redback Networks Inc.</organization>
+        <address>
+          <postal>
+            <street>350 Holger Way</street>
+            <city>San Jose</city>
+            <region>CA</region>
+            <code>95134</code>
+          </postal>
+          <email>enke@redback.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-full-copyright-statement">著作権表示全文</name>
+      <t indent="0" pn="section-9-1">Copyright (C) The Internet Society (2000).  All Rights Reserved.</t>
+      <t indent="0" pn="section-9-2">この文書およびその翻訳は、複製して他者に提供できます。また、この文書を論評もしくは説明する派生物、またはその実装を支援する派生物は、上記の著作権表示とこの段落をそのようなすべての複製物および派生物に含めることを条件として、いかなる制限もなく、その全部または一部を作成、複製、公開、配布できます。ただし、この文書自体は、著作権表示やインターネットソサエティー（Internet Society）その他のインターネット関連組織への言及を削除するなど、いかなる方法でも変更できません。例外は、インターネット標準を策定する目的で必要な場合（この場合は、インターネット標準化プロセスで定められた著作権の手続きに従う必要があります）と、英語以外の言語に翻訳するために必要な場合です。</t>
+      <t indent="0" pn="section-9-3">上記で付与された限定的な許諾は永続的なものであり、インターネットソサエティーまたはその承継人もしくは譲受人によって取り消されることはありません。</t>
+      <t indent="0" pn="section-9-4">この文書およびここに含まれる情報は「現状のまま（AS IS）」で提供されます。インターネットソサエティーおよびインターネット技術タスクフォース（IETF）は、ここに含まれる情報の使用がいかなる権利も侵害しないことの保証、および商品性または特定目的への適合性に関する黙示の保証を含め、ただしこれらに限らず、明示または黙示を問わず一切の保証を否認します。</t>
+    </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgement">謝辞</name>
+        <t indent="0" pn="section-appendix.a-1">RFCエディターの機能に対する資金は、現在インターネットソサエティーによって提供されています。</t>
+      </section>
+  </back>
+</rfc>

@@ -1,0 +1,153 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="165" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc165" rel="alternate"/>
+  <front>
+    <title>公式の初期接続プロトコルの提案</title>
+    <seriesInfo name="RFC" value="165" stream="IETF"/>
+    <author fullname="J. Postel" initials="J." surname="Postel">
+      <organization showOnFrontPage="true">UCLA - NMC</organization>
+      <address/>
+    </author>
+    <date year="1971" month="May" day="25"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、あるサイトのユーザープロセスを別のサイトのサーバープロセスに接続するために使う第3レベルのプロトコルを規定します。ある場合には、ユーザープロセスはTelnetで、サーバープロセスはロガー（Logger）ですが、それ以外の場合もあるでしょう。</t>
+      <t indent="0" pn="section-abstract-2">この文書では、任意のユーザープロセスと任意のサーバープロセスの間に1組の接続を確立するのに適した初期接続プロトコル（Initial Connection Protocol: ICP）の系統を説明し、さらにTelnetとロガーを接続するためのパラメーター値を説明します。説明は2つのレベル、つまり第3レベル（ユーザーレベル）と第2レベル（NCPレベル）で行います。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="third-level-description" numbered="false" removeInRFC="false" toc="exclude" pn="section-1">
+      <name slugifiedName="name-third-level-description">第3レベルの説明</name>
+      <section anchor="notation" numbered="false" removeInRFC="false" toc="exclude" pn="section-1.1">
+        <name slugifiedName="name-notation">表記法</name>
+        <t indent="0" pn="section-1.1-1">接続を開始・切断したり、データを送信させたりするシステムコールを記述するための標準的な表記法はないので、次の*場当たり的な*表記法を使います。</t>
+        <dl newline="true" spacing="normal" indent="3" pn="section-1.1-2">
+          <dt pn="section-1.1-2.1">Init (local = l, foreign = f, size = s)</dt>
+          <dd pn="section-1.1-2.2">
+            <t indent="0" pn="section-1.1-2.2.1">ローカルホストに、ローカルホストのソケットlとソケットfの間に、バイトサイズsの接続を確立するよう試みさせます。</t>
+            <t indent="0" pn="section-1.1-2.2.2">lは32ビットのローカルソケット番号です。<br/>
+fは40ビットの外部ソケット番号で、その上位8ビットが外部ホストを示します。<br/>
+sは0でない8ビットのバイトサイズです。</t>
+            <t indent="0" pn="section-1.1-2.2.3">lとfの和は奇数でなければなりません。</t>
+          </dd>
+          <dt pn="section-1.1-2.3">Listen (local = l, size = s)</dt>
+          <dd pn="section-1.1-2.4">
+            <t indent="0" pn="section-1.1-2.4.1">ローカルホストに、ローカルソケットlへのバイトサイズsの接続要求を待たせます。接続が確立されると、プロセスは起こされます。パラメーターlとsはInitと同じです。</t>
+          </dd>
+          <dt pn="section-1.1-2.5">Send  (socket = l, data = d)</dt>
+          <dd pn="section-1.1-2.6">
+            <t indent="0" pn="section-1.1-2.6.1">dで指定されたデータを、ローカルソケットlに結び付けられた接続を通じて送信します。lは、接続に結び付けられた送信ソケットでなければなりません。dはデータ領域の名前です。</t>
+          </dd>
+          <dt pn="section-1.1-2.7">Receive (socket = l, data = d)</dt>
+          <dd pn="section-1.1-2.8">
+            <t indent="0" pn="section-1.1-2.8.1">sendに対応する受信側の操作です。</t>
+          </dd>
+          <dt pn="section-1.1-2.9">Close (socket = l)</dt>
+          <dd pn="section-1.1-2.10">
+            <t indent="0" pn="section-1.1-2.10.1">ローカルソケットlに現在結び付けられている接続を切断します。</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="a-family-of-icps" numbered="false" removeInRFC="false" toc="exclude" pn="section-1.2">
+        <name slugifiedName="name-a-family-of-icps">ICPの系統</name>
+        <t indent="0" pn="section-1.2-1">簡単に言うと、あるサイトのサーバープロセスは、広く知られた送信ソケットLを結び付けて待ち受けます。ユーザープロセスは、自身の受信ソケットUからLへの接続を開始します。この接続のバイトサイズは32です。次にサーバープロセスは32ビットの偶数Sを送信し、接続を切断します。32ビットの数値Sとその次の数S+1が、サーバーが使用するソケット番号です。最後の手順として、サーバーサイトのソケットSとS+1を、ユーザーサイトのソケットU+3とU+2にそれぞれ接続します。</t>
+        <t indent="0" pn="section-1.2-2">この表記法を使うと、サーバーは次の手順を実行します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-3"><![CDATA[
+   Listen (socket = L, size = 32)
+   [Wait until a user connects]
+   Send (socket = L, data = S)
+   Close (socket = L)
+   Init (local = S, Foreign = U+3, size Bu)
+   Init (local = S+1, foreign = U+2, size Bs)
+]]></artwork>
+        <t indent="0" pn="section-1.2-4">ユーザーは次の手順を実行します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-5"><![CDATA[
+   Init (local = U, foreign = L, size = 32)
+   Receive (socket = U, data = S)
+   Optional Close (socket = U)
+   Listen or Init (local U+3, foreign = S, size = Bu)
+   Listen or Init (local = U+2, foreign = S+1, size = Bs)
+]]></artwork>
+        <t indent="0" pn="section-1.2-6">Lは送信ソケット（奇数）であり、SとUは受信ソケット（偶数）であることに注意してください。L、S、Uがlocalの値として使われる場合は32ビットの数値であり、foreignの値として使われる場合は40ビットの数値です。パラメーターBsとBuは、それぞれサーバーとユーザーが送信するバイトサイズです。ユーザー側がソケットUを切断しない場合、それは第2レベルで自動的に処理されなければなりません（4ページを参照）。</t>
+        <t indent="0" pn="section-1.2-7">上記の手順を調べると、ICPは3つの数値L、Bs、Buによって特徴付けられ、次の制約を満たさなければならないことがわかります。</t>
+        <ol type="%c)" spacing="normal" indent="adaptive" start="1" pn="section-1.2-8">
+          <li pn="section-1.2-8.1">Lは送信ソケットである。</li>
+          <li pn="section-1.2-8.2">BsとBuは正当なバイトサイズである。</li>
+          <li pn="section-1.2-8.3">各Lに対して、関連付けられるバイトサイズの組は1つだけである。</li>
+        </ol>
+        <t indent="0" pn="section-1.2-9">最後の制約は、2つの異なるサービスが同じソケットを通じて提供され、バイトサイズだけで区別されるという事態を防ぐためのものです。</t>
+      </section>
+    </section>
+    <section anchor="second-level-description" numbered="false" removeInRFC="false" toc="exclude" pn="section-2">
+      <name slugifiedName="name-second-level-description">第2レベルの説明</name>
+      <section anchor="notation-2" numbered="false" removeInRFC="false" toc="exclude" pn="section-2.1">
+        <name slugifiedName="name-notation-2">表記法</name>
+        <t indent="0" pn="section-2.1-1">ICPで使うNCP制御コマンドには、次の表記法を使います。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-2.1-2"><![CDATA[
+        STR (_ls_, _fs_, _s_)
+                _ls_ = local send socket
+                _fs_ = foreign receive socket
+                _s_ = byte size
+
+        RTS (_ls_, _fs_, _l_)
+                _ls_ = local receive socket
+                _fs_ = foreign send socket
+                _l_ = link
+
+        ALL (_l_, _m_, _b_)
+                _l_ = link
+                _m_ = message allocation
+                _b_ = bit allocation
+
+        CLS (_ls_, _fs_)
+                _ls_  = local socket
+                _fs_ = foreign socket
+]]></artwork>
+        <t indent="0" pn="section-2.1-3">ここで、同じICPの系統をもう一度説明します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-2.1-4"><![CDATA[
+Server                          User
+
+S1: listening on socket L.      U1: RTS (U, L, _l1_)
+
+S2: Wait for match.             U2: Wait for match.
+
+S3: STR (L, U, _s1_)
+
+S4: Wait for allocation.        U3: All (_l1_, _m1_, _b1_)
+
+S5: Send data S in_s1_ bit      U4: Receive data S in s1 bit bytes.
+    bytes as allowed by             _s1_ bit bytes.
+    allocation m1_, _b1_).
+
+S6: CLS (L, U)                  U5: CLS (U, L)
+
+S7: RTS (S, U+3, _l2_)          U6: STR (U+3, S, _s2_)
+
+S8: STR (S+1, U+2, _s3_)        U7: RTS (U+2, S+1, _l3_)
+]]></artwork>
+        <t indent="0" pn="section-2.1-5">ここでのラベルは、ホスト間プロトコル（Host-Host Protocol）が要求する順序以外の順序を意味しません。手順S7とS8は逆にしてもよく、U6とU7も同様であることに注意してください。また、サーバーはS2以降のいつでも、手順S3からS6と並行して手順S7とS8を開始でき、ユーザーはU4以降のいつでも、手順U5と並行して手順U6とU7を開始できることにも注意してください。</t>
+        <t indent="0" pn="section-2.1-6">以上に続いてALLコマンドが交換され、データ転送を開始できます。</t>
+        <t indent="0" pn="section-2.1-7">このレベルでは、上記のICPの系統のパラメーターは、L、_m1_、_b1_、_s1_、_s2_、_s3_、_l1_、_l2_、_l3_です。</t>
+        <t indent="0" pn="section-2.1-8">Lは広く知られたソケット番号で、サービスの種類ごとに規定されます。</t>
+        <t indent="0" pn="section-2.1-9">m1とb1は、ソケット番号を転送するための割り当て量です。</t>
+        <t indent="3" pn="section-2.1-10">_m1_は1と規定します。<br/>
+_b1_は32と規定します。<br/>
+_s1_、_s2_、_s3_はバイトサイズです。_s2_と_s3_は関係するプロセスに任せるので、規定するのは_s1_だけです。<br/>
+_s1_は32と規定します。</t>
+        <t indent="3" pn="section-2.1-11">_l1_、_l2_、_l3_はリンクであり、規定しません。</t>
+        <t indent="0" pn="section-2.1-12">注: 現在、32ビットのバイトを送信するのが難しいホストもあります。そのため、一時的に、ソケット番号Sを1つのメッセージ内の4つの8ビットバイトとして送信することを認めます。</t>
+        <t indent="0" pn="section-2.1-13">NCPが、対応するローカルのInitやListenが発行される前にRTSやSTRを受信することは正当です。したがって、アイドル状態のソケットへの接続要求は、時間と空間の制限が許す範囲でキューに入れることを提案します。</t>
+      </section>
+    </section>
+    <section anchor="telnet-logger-icp" numbered="false" removeInRFC="false" toc="exclude" pn="section-3">
+      <name slugifiedName="name-telnet-logger-icp">Telnet - ロガーICP</name>
+      <t indent="0" pn="section-3-1">Telnetプロセスとロガープロセスを接続する場合、ICPのパラメーターはL=1、Bu、_s2_、Bs = _s3_ = 8です（必要なソケット番号を明確にしておくと、L = X'00000001'です）。</t>
+    </section>
+    <section anchor="formalities" numbered="false" removeInRFC="false" toc="exclude" pn="section-4">
+      <name slugifiedName="name-formalities">正式な手続き</name>
+      <t indent="0" pn="section-4-1">この公式プロトコルの提案は、71年6月2日までに重大な異議が出なければ公式なものとなります。その日までに、Jon Postelがネットワーク連絡担当者（Network Liaison）への電話調査を実施します。異議が出なければ、ワーキンググループの議長がこのプロトコルを公式なものと宣言します。</t>
+      <t indent="0" pn="section-4-2">* この文書は、S. CrockerによるRFC 123と、ICP委員会での議論に基づいています。</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

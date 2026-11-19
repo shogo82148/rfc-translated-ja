@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" indexInclude="true" number="1282" obsoletes="1258" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1282" rel="alternate"/>
+  <front>
+    <title>BSD Rlogin</title>
+    <seriesInfo name="RFC" value="1282" stream="IETF"/>
+    <author fullname="Brian Kantor" initials="B." surname="Kantor">
+      <organization showOnFrontPage="true">Univ. of Calif San Diego</organization>
+      <address/>
+    </author>
+    <date year="1991" month="December"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットで広く使われている既存のプロトコルと一般的な実装を記述したものです。このメモは、インターネットコミュニティーに情報を提供するものです。インターネット標準を規定するものではありません。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="protocol-description" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-protocol-description">プロトコルの説明</name>
+      <t indent="0" pn="section-unnumbered-1-1">rlogin機能は、リモートエコーで、ローカルでフロー制御を行い、出力を適切にフラッシュする仮想端末を提供します<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>。rloginはUnixホストの間で広く使われています。Telnetプロトコルよりも多くのUnix端末環境のセマンティクスを伝えられること、また多くのUnixホストでは、信頼できるホストから接続した場合にユーザーにパスワードの入力を求めないように設定できることがその理由です。</t>
+      <t indent="0" pn="section-unnumbered-1-2">rloginプロトコルはTCPの使用を必要とします。接続先のポートは513です。8ビット透過なストリームを前提とします。</t>
+    </section>
+    <section anchor="connection-establishment" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-connection-establishment">接続の確立</name>
+      <t indent="0" pn="section-unnumbered-2-1">接続が確立すると、クライアントはヌル終端の文字列を4つサーバーに送ります。1つ目は空文字列（つまり、ゼロのバイト1つだけからなるもの）で、その後に空でない文字列が3つ続きます。それぞれ、クライアントのユーザー名、サーバーのユーザー名、端末の種類と速度です。より明確に示すと次のとおりです。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-2"><![CDATA[
+        <null>
+        client-user-name<null>
+        server-user-name<null>
+        terminal-type/speed<null>
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-2-3">例:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-4"><![CDATA[
+        <null>
+        bostic<null>
+        kbostic<null>
+        vt100/9600<null>
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-2-5">サーバーは、これらの文字列を受け取ってデータ転送モードに入ったことを示すために、ゼロのバイトを返します。この最初のやり取りの後に、ウィンドウサイズのネゴシエーションが続くことがあります（後述）。</t>
+    </section>
+    <section anchor="from-client-to-server-and-flow-control" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-from-client-to-server-and-f">クライアントからサーバーへ（およびフロー制御）</name>
+      <t indent="0" pn="section-unnumbered-3-1">クライアントは、最初は（「raw」モードに対して）「cooked」モードで動作を始めます。このモードでは、START文字とSTOP文字（通常はASCIIのDC1とDC3）をクライアントが横取りして解釈し、リモートサーバーからローカル端末への出力を開始・停止します。それ以外の文字はすべて、受け取ったとおりにリモートホストへ送信します。（ただし、ローカルエスケープ文字の扱いについては後述を参照してください。）</t>
+      <t indent="0" pn="section-unnumbered-3-2">「raw」モードでは、START文字とSTOP文字はローカルでは処理されず、ほかの文字と同様にリモートサーバーへ送られます。したがって、「raw」モードでのSTART文字とSTOP文字のセマンティクスはサーバーが決めます。これらの文字は、フロー制御に使われることもあれば、クライアントでの通常の用途とは無関係のまったく異なる意味を持つこともあります。</t>
+    </section>
+    <section anchor="screen-window-size" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-screen-window-size">スクリーン／ウィンドウのサイズ</name>
+      <t indent="0" pn="section-unnumbered-4-1">リモートサーバーは、接続の確立とユーザー識別情報のやり取りの直後に（帯域外データとして）ウィンドウサイズメッセージを要求することで、ウィンドウサイズの変更情報を受け付けられることをクライアントに示します。クライアントは、この要求に対して現在のウィンドウサイズで応答すべきです。</t>
+      <t indent="0" pn="section-unnumbered-4-2">リモートサーバーがクライアントのウィンドウサイズの変更を受け付けられることを示していて、クライアントのウィンドウのサイズやスクリーンの寸法が変わった場合、クライアントのウィンドウの現在の寸法を示す12バイトの特別なシーケンスをリモートサーバーに送ります。サーバーで動作しているユーザープロセスは、必要であればその情報を利用できます。</t>
+      <t indent="0" pn="section-unnumbered-4-3">ウィンドウ変更の制御シーケンスは12バイト長です。マジッククッキー（16進数のFFが2バイト連続したもの）の後に、小文字のASCII「s」を含む2バイトが続き、その後に、文字の行数、1行あたりの文字数、X方向のピクセル数、Y方向のピクセル数を表す16ビットの値を含む8バイトがネットワークバイトオーダーで続きます。つまり次のようになります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-4-4"><![CDATA[
+        FF FF s s rr cc xp yp
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-4-5">将来、ほかのインバンド制御メッセージのために「ss」以外のフラグが使われる可能性があります。現在定義されているものはありません。</t>
+    </section>
+    <section anchor="from-server-to-client" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-from-server-to-client">サーバーからクライアントへ</name>
+      <t indent="0" pn="section-unnumbered-5-1">リモートサーバーからのデータは、文字のストリームとしてクライアントに送られます。通常のデータは単純にクライアントのディスプレイに送られますが、実際に表示する前に処理（タブの展開など）されることがあります。</t>
+      <t indent="0" pn="section-unnumbered-5-2">サーバーは、データのストリームに制御バイトを挿入し、TCPの「緊急データ（urgent-data）」ポインターがその制御バイトを指すようにすることで、データストリームに1バイトの制御メッセージを埋め込めます。クライアントがTCPの緊急データポインターを受け取ると、TCPストリームの緊急バイトまでのデータは、制御バイトを処理した後で表示できるようにバッファーに保持されます。そして、ポインターが指す制御バイトを受け取り、次のように解釈します。</t>
+      <dl newline="false" spacing="normal" indent="5" pn="section-unnumbered-5-3">
+        <dt pn="section-unnumbered-5-3.1">02</dt>
+        <dd pn="section-unnumbered-5-3.2">16進数の02の制御バイトは、サーバーから受信してバッファーに保持しているデータのうち、まだクライアントユーザーのスクリーンに書き出していないものをすべて破棄させます。</dd>
+        <dt pn="section-unnumbered-5-3.3">10</dt>
+        <dd pn="section-unnumbered-5-3.4">16進数の10の制御バイトは、クライアントに「raw」モードへの切り替えを命じます。このモードでは、START文字とSTOP文字はクライアントで処理されず、普通のデータとして扱われます。</dd>
+        <dt pn="section-unnumbered-5-3.5">20</dt>
+        <dd pn="section-unnumbered-5-3.6">16進数の20の制御バイトは、STARTとSTOPのフロー制御文字の横取りとローカルでの処理を再開するようクライアントに命じます。</dd>
+        <dt pn="section-unnumbered-5-3.7">80</dt>
+        <dd pn="section-unnumbered-5-3.8">クライアントは、前述のとおり現在のウィンドウサイズを送って応答します。</dd>
+      </dl>
+      <t indent="0" pn="section-unnumbered-5-4">緊急データの制御バイトのそれ以外の値はすべて無視されます。いずれの場合も、緊急データポインターが指すバイトはクライアントユーザーのディスプレイに書き出されません（NOT）。</t>
+    </section>
+    <section anchor="connection-closure" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-6">
+      <name slugifiedName="name-connection-closure">接続の終了</name>
+      <t indent="0" pn="section-unnumbered-6-1">TCP接続がどちらかの方向で閉じられたとき、それに気づいたクライアントまたはサーバーのプロセスは、もう一方の方向の接続を閉じる前に、端末モードを元に戻し、ユーザーやプロセスに切断を通知して、秩序だったシャットダウンを行うべきです。</t>
+    </section>
+    <section anchor="implementation-notes" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-7">
+      <name slugifiedName="name-implementation-notes">実装上の注意</name>
+      <t indent="0" pn="section-unnumbered-7-1">クライアントは、クライアントエスケープ文字（慣習的にはチルダ「~」）を定めます。この文字は、行の先頭で最初に入力された文字である場合にだけ特別に扱われます。（行の先頭とは、改行（CRまたはLF）文字の後、行取り消し文字の後、中断したクライアントセッションの再開後、または接続の開始後に、クライアントユーザーが最初に入力した文字と定義します。）</t>
+      <t indent="0" pn="section-unnumbered-7-2">クライアントエスケープ文字は、その次の文字を調べ終えるまでサーバーに送信されません。次の文字が定義済みのクライアントエスケープシーケンスの1つであれば、クライアントエスケープ文字もその次の文字も送信されません。そうでなければ、クライアントエスケープ文字とその次の文字の両方を、通常のユーザー入力としてサーバーに送ります。</t>
+      <t indent="0" pn="section-unnumbered-7-3">クライアントエスケープ文字の次の文字がドット「.」か、クライアントが定めるファイル終端文字（通常はcontrol-D）であれば、接続を閉じます。サーバーは通常、これを秩序だったログアウトではなく、切断として扱います。</t>
+      <t indent="0" pn="section-unnumbered-7-4">ほかの文字（クライアントが定めるもので、通常はcontrol-Zとcontrol-Y）は、ホストにその能力がある場合に、rloginクライアントを一時的に中断するために使います。一方の文字はリモートの入力と出力の両方を中断し、もう一方はリモートの入力を中断しますが、リモートの出力はローカルクライアントの端末に引き続き送られるようにします。</t>
+      <t indent="0" pn="section-unnumbered-7-5">ほとんどのクライアント実装には、クライアントシステムでの通常の出力処理を無効にしたり、サーバーから切り替えの通知があってもクライアントをrawモードのままにしたりする起動オプションがあります。</t>
+    </section>
+    <section anchor="a-cautionary-tale-2" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-8">
+      <name slugifiedName="name-a-cautionary-tale-2">教訓<xref target="ref-2" format="default" sectionFormat="of" derivedContent="2"/></name>
+      <t indent="0" pn="section-unnumbered-8-1">（一般的な実装の）rloginプロトコルでは、ユーザーは、パスワードを入力せずに本人としてログオンできる、信頼できるユーザーやホストの集合を設定できます。これはきわめて便利ですが、セキュリティーを弱めるものであり、過去のインターネットへの攻撃で実際に悪用されています。rloginサービスのパスワード省略機能を使いたい場合は、それによってどのような侵害が起こりうるかを理解しておくことが不可欠です。</t>
+      <t indent="0" pn="section-unnumbered-8-2">信頼できるホストからのパスワード認証を省略すると、そのように設定したシステムの1つが侵害されただけで、そのすべて（ALL）のシステムが開かれてしまいます。アクセスできるすべてのシステムで同じパスワードを使うと、悪人がアクセスできるあらゆる場所に入り込めるようになるのと同じように、すべてのシステムの間でパスワードなしのログインを許すと、侵入者がいずれかのシステムに入り込んだ時点で、広い活動範囲を与えることになります。利便性とセキュリティーの間で実用的なバランスが取れると多くの人が考えている妥協案は、1つ（ONE）のワークステーションから使用中のほかのシステムへのパスワード省略だけを許し、それらのシステムの間では許さない（NOT）ことです。この方法により、危険にさらされる範囲を実用的な最小限に抑えられるでしょう。</t>
+      <t indent="0" pn="section-unnumbered-8-3">信頼できるホストの指定は、通常はホスト名で行います。組織のドメインネームサーバーが侵害されたり、ネットワーク自体が侵害されたりすると、悪人が信頼できないホストを信頼できるシステムになりすまさせることができます。この形態の攻撃に対してユーザーができることはほとんどありません。幸いなことに、これまでそのような攻撃はまれであり、多くの場合ネットワークに十分な混乱を引き起こすため、試みはすぐに気づかれます。</t>
+      <t indent="0" pn="section-unnumbered-8-4">ユーザーの信頼できるログインの一覧を含むファイルが、不注意でほかのユーザーから書き込み可能なままになっていると、信頼できない項目が追加されるおそれがあります。</t>
+      <t indent="0" pn="section-unnumbered-8-5">rloginプロトコルに対する安全な認証の拡張（Kerberosなど）は、パスワード入力を省略できる利便性を保ちながら、侵害の可能性を大幅に減らせます。それらがインターネットコミュニティーでより広く展開されるにつれて、rloginの危険性は減っていくでしょう。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>UNIX Network Programming</title>
+          <author fullname="W. Stevens" initials="W." surname="Stevens"/>
+        </front>
+        <refcontent>ISBN 0-13-949876-1</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Practical Unix Security</title>
+          <author fullname="Garfinkel" surname="Garfinkel"/>
+          <author fullname="Spafford" surname="Spafford"/>
+        </front>
+        <refcontent>ISBN 0-937175-72-2</refcontent>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-10">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-unnumbered-10-1">前述の「教訓（A Cautionary Tale）」のセクションを参照してください。</t>
+    </section>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-11">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Brian Kantor" initials="B." surname="Kantor">
+        <organization showOnFrontPage="true">University of California at San Diego</organization>
+        <address>
+          <postal>
+            <street>Network Operations C-024</street>
+            <city>La Jolla</city>
+            <region>CA</region>
+            <code>92093-0214</code>
+          </postal>
+          <phone>(619) 534-6865</phone>
+          <email>brian@UCSD.EDU</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

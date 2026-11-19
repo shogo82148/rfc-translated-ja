@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="103" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc103" rel="alternate"/>
+  <front>
+    <title>割り込みキーの実装</title>
+    <seriesInfo name="RFC" value="103" stream="IETF"/>
+    <author fullname="R B Kalin" initials="R B" surname="Kalin">
+      <organization showOnFrontPage="true">MIT Lincoln Laboratory</organization>
+      <address/>
+    </author>
+    <date year="1971" month="February" day="24"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">現在のプロトコル仕様には、プログラム割り込み機能の実装に深刻な論理的誤りがあります。この文書では、その問題について議論し、実装が簡単な解決策を提示します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="the-problem" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-the-problem">問題</name>
+      <t indent="0" pn="section-unnumbered-1-1">ほとんどのタイムシェアリングシステムに見られるように、プログラム割り込みキー（ブレークキーやヘルプ要求ボタンとも呼ばれます）には2つの機能があります。実行中のユーザープロセスを一時的に中断することと、キーボードの入力ストリームを休止中の監視プロセス（supervisory process）に切り替えることです。割り込み要求の前に入力されてまだ受け付けられていない入力は、中断されたユーザープロセスのためにバッファーに残ります。その後の入力は監視ルーチンに送られます。</t>
+      <t indent="0" pn="section-unnumbered-1-2">現在のNCPプロトコルは、この機能の半分しか実装していません。NCPプロトコルは、INSとINRの制御メッセージを使ってリモートプロセスを中断する手段を提供していますが、どの時点でデータストリームを切り替えるべきかをリモートホストに通知する仕組みはありません。INRとINSのメッセージは制御リンクを介して送られ、このリンク上のメッセージはユーザーのキーボード入力リンク上のメッセージと並行して伝わるので、受信ホストは相対的な到着時刻を同期情報の源として当てにできません。そのような情報がなければ、リモートのNCPは、どの入力文字がユーザープロセス向けで、どの入力文字が監視ルーチン向けなのかを知ることができません。</t>
+      <t indent="0" pn="section-unnumbered-1-3">この問題に対して一部のシステムで見られる解決策は、割り込み信号を文字セットの何らかのコード（典型的にはASCIIのcontrol-C）に対応付けることです。残念ながら、これはARPAネットワーク内で使えるほど汎用的ではありません。MULTICSなどの一部のシステムは、利用できるすべてのASCIIコードを他の目的に使っており、そのような割り当てに使えるコードはありません。仮にそのような割り当てができたとしても、割り込み文字をリモートホストに認識させるという問題があります。そのユーザーリンクのバッファーがいっぱいになっていて、送信ホストが割り込みコードを含むメッセージを送信できないかもしれません。リモートのユーザープロセスがデータを受け付けずにループしている場合、その入力バッファーがいつまでも空かず、メッセージがいつまでも届かない可能性があります。</t>
+      <t indent="0" pn="section-unnumbered-1-4">部分的な答えは、常に入力を欲しがっているテレタイプスキャナープロセスをサービス提供側に用意することです。すべての入力メッセージがただちに消費されるので、バッファーは利用可能なままとなり、割り込みコードが届くようになります。残念ながら、これは時には文字を捨てなければならないことを意味します。スキャンしたあと、それらの文字のためのバッファー領域がないかもしれません。コンソールでの対話中には致命的ではありませんが（ユーザーはプログラムが入力を求めたときにしか入力できません）、この欠陥のために、スキャナーをテキストファイルから駆動することができません。</t>
+    </section>
+    <section anchor="a-solution" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-a-solution">解決策</name>
+      <t indent="0" pn="section-unnumbered-2-1">以下では、ASCIIデータストリームの場合について、この問題の解決策を定義します。</t>
+      <ol spacing="normal" type="%d)" indent="adaptive" start="1" pn="section-unnumbered-2-2">
+        <li pn="section-unnumbered-2-2.1" derivedCounter="1)">文字メッセージは、各文字コードに8ビットのフィールドを使うべきです。</li>
+        <li pn="section-unnumbered-2-2.2" derivedCounter="2)">定義されているすべてのASCII文字コードについて、8ビットのフィールドの最も左のビットはゼロとします。</li>
+        <li pn="section-unnumbered-2-2.3" derivedCounter="3)">割り込み同期文字（便宜上、8進数で200というコードを与えます）を、入力の並びの正しい位置でデータストリームに置くべきです。</li>
+        <li pn="section-unnumbered-2-2.4" derivedCounter="4)">8進数で201から377までのすべてのコードは、受信ホストが無視するものと公式に定めます。これらのコードは、必要になった場合の追加の制御情報のために予約します。これらを追加の文字コードとして使おうとすると、文字を内部で7ビットのフィールドに詰め込むPDP-10のシステムからの抵抗にあうでしょう。割り込み同期文字はシステムによって取り除かれ、ユーザーの入力バッファーに現れることはないので、割り込み同期文字に対してはこの反論は当たらないことに注意してください。</li>
+        <li pn="section-unnumbered-2-2.5" derivedCounter="5)">割り込み同期文字を含むユーザーメッセージを送れるだけの割り当てがない可能性があるので、現在定義されているINR/INSの仕組みは残さなければなりません。割り込み同期文字がテキストストリームに入れられた時点で、INS制御メッセージを送るべきです。外部ホストがこれを受信したら、接続されているプロセスをただちに中断し、関連する入力ストリームをスキャンすべきです。可能であれば、割り込み同期文字までのすべての入力を、中断されたプロセスのためにバッファーに入れるべきです。同期文字が見つかったら、ストリームを新たに起動された監視プロセスに切り替えるべきです。ユーザープロセスの入力をすべてバッファーに入れることができない場合は、それを捨てて、監視プロセスがユーザーにエラーメッセージを返してもかまいません。いずれの場合も、未処理の入力が消費され、保留中の文字メッセージを送れるようにメッセージバッファーが解放されることを保証しなければなりません。</li>
+        <li pn="section-unnumbered-2-2.6" derivedCounter="6)">対応するINSより前に割り込み同期文字を受信した場合は、ユーザープロセスを中断し、NCPはINSを待ってから処理を進めるべきです。</li>
+        <li pn="section-unnumbered-2-2.7" derivedCounter="7)">上記の議論におけるNCPの機能は、もちろん、TELNETプロセスなどの別のモジュールに委ねることもできます。そうすれば、NCPはメッセージの内容に対して透過的でいられます。</li>
+      </ol>
+    </section>
+    <section anchor="commentary" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-commentary">論評</name>
+      <t indent="0" pn="section-unnumbered-3-1">ここで述べた第2レベルのプロトコルへの変更案は、一般的な解決策を意図したものではなく、致命的な誤りを正すことを目的とした、現在のNCPの設計に対する特定のパッチです。より明らかな欠点は次のとおりです。</t>
+      <ol spacing="normal" type="%d)" indent="adaptive" start="1" pn="section-unnumbered-3-2">
+        <li pn="section-unnumbered-3-2.1" derivedCounter="1)">7ビットのコードの文字ストリームでしか機能しません。EBCDIC、ASCII-8、その他の大きな文字セットへの拡張は認められません。文字ストリームのないプロセスに割り込むための規定はありません。ただし、筆者の知る限り、その場合に割り込みという概念がコネクションを閉じること以上の意味を持つ例はありません。</li>
+        <li pn="section-unnumbered-3-2.2" derivedCounter="2)">割り込み可能なコネクションを介して届くすべてのデータを、システムがスキャンする必要があります。おそらくこれは、コネクションを作成する時点で、このスキャンを行うことを受信ホストに伝えなければならないことを意味します。暗黙的なものと明示的なものの両方を含め、さまざまな手法が使えるでしょう。</li>
+        <li pn="section-unnumbered-3-2.3" derivedCounter="3)">この手法は、メッセージ内の文字境界が失われることに対処できず、対応する同期文字のないINS制御メッセージや、その逆にも耐えられません。</li>
+        <li pn="section-unnumbered-3-2.4" derivedCounter="4)">INSと、割り込み同期文字を含むテキストメッセージのどちらも、リモートホストに届けられないかもしれません。考えられる理由としては、ユーザーのコンソールの障害、ローカルホストの障害、ネットワークの障害、制御リンクのブロック、割り当ての不足などがあります。そのような状況では、リモートプロセスはいつまでもループし続けるかもしれません。</li>
+      </ol>
+      <t indent="0" pn="section-unnumbered-3-3">割り込みの同期の問題に対して知られている包括的な解決策、つまり上記の困難を回避する解決策は、いずれも現在のNCPプロトコルにわずかな変更を加える以上のものを必要とします。より単純な答えが提案されない限り、その実装は次の大きな設計改訂まで延期せざるをえません。</t>
+      <t indent="0" pn="section-unnumbered-3-4">[このRFCは、Gert Doeringによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。4/97]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

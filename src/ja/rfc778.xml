@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="778" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc778" rel="alternate"/>
+  <front>
+    <title>DCNETインターネット時刻サービス</title>
+    <seriesInfo name="RFC" value="778" stream="IETF"/>
+    <author fullname="D.L. Mills" initials="D.L." surname="Mills">
+      <organization showOnFrontPage="true">COMSAT Laboratories</organization>
+      <address/>
+    </author>
+    <date year="1981" month="April" day="18"/>
+    <abstract pn="section-abstract">
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-unnumbered-1-1">以下は、すべてのDCNETホストが提供するインターネット時刻サービス（Internet Clock Service、ICS）の説明です。このサービスは、主に協力関係にあるインターネットホストとの間の時計の同期と片方向遅延の測定を目的としたもので、提案中のインターネット制御メッセージプロトコル（Internet Control Message Protocol、ICMP）のTimestampメッセージとTimestamp Replyメッセージを使って提供されます。加えて、現行のシステムとの互換性を保つため、このサービスはしばらくの間、ゲートウェイ間プロトコル（Gateway-Gateway Protocol、GGP）のEchoメッセージとEcho Replyメッセージを使っても提供されます。</t>
+      <t indent="0" pn="section-unnumbered-1-2">ICMPやGGPのデータグラムは、通常、インターネットプロトコル（IP）そのものと密接に結び付いたものとみなされ、たとえばTOPS-20システムのユーザーが直接アクセスすることはできないことを理解しておいてください。これらのデータグラムは、ゲートウェイやDCNETホストの内部のキューイング機構の一部を迂回する点で、ユーザーのデータグラムとは多少異なる扱いを受けます。そのため、これらは最も正確で安定した時刻基準を提供するのに役立つ道具になりえます。このノートの主な動機は、ほかのインターネットホストやゲートウェイでのこのサービスの開発を促し、コミュニティー全体でこれを使うことの実現可能性を評価できるようにすることです。</t>
+    </section>
+    <section anchor="ics-datagrams-and-timestamps" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-ics-datagrams-and-timestamps">ICSデータグラムとタイムスタンプ</name>
+      <t indent="0" pn="section-unnumbered-2-1">現在、ICSはICMPデータグラムかGGPデータグラムのどちらかを使って提供されています。両者の唯一の違いは、ICMPがプロトコル番号1を、GGPがプロトコル番号3を使うことです。以下では、これらを区別せずにICSデータグラムと呼びます。ICSデータグラムは、インターネットヘッダーと、それに続く次の形式のICSヘッダーで構成されます。</t>
+      <figure align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-ics-datagram-format">ICSデータグラムの形式</name>
+        <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-2.1"><![CDATA[
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|      Type     |     Code      |            Sequence           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Originate Timestamp                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Receive Timestamp                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Transmit Timestamp                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-unnumbered-2-3">送信元は、データグラムをネットに転送する直前に、3つのタイムスタンプフィールドをすべて埋めます。これらのフィールドにはいずれも送信時のローカル時刻が入ります。後ろの2つは冗長ですが、これによってタイムスタンプ機能を持たないリモートホストを使って往復遅延を測定できます。「Type」フィールドは8（GGP Echo）か13（ICMP Timestamp）のどちらかです。「Code」フィールドは0にすべきです。「Sequence」フィールドには、0か、ユーザーが指定する任意のシーケンス番号を入れられます。したがって、データグラムの長さは、20オクテットのインターネットヘッダーを含み、ローカルネットワークのリーダーを含まずに36オクテットになります。</t>
+      <t indent="0" pn="section-unnumbered-2-4">ICSデータグラムを受信したホストまたはゲートウェイは、ネットからデータグラムを受信した時点で「Receive Timestamp」フィールドを埋め、送信者に送り返す時点で「Transmit Timestamp」を埋めます。また、「Type」フィールドを、元の値が8であれば0（GGP Echo Reply）に、13であれば14（ICMP Timestamp Reply）に設定します。残りのフィールドは変更しません。</t>
+      <t indent="0" pn="section-unnumbered-2-5">タイムスタンプの値はUTの午前0時からのミリ秒数で、上に示した32ビットのフィールドに右詰めで格納されます。通常、時刻の計算はすべて、ミリ秒単位で24時間を法として行います。これは、午前0時からのティック数でシステムクロックを保持しているオペレーティングシステムにとって都合のよい対応になっています。タイムスタンプの単位をミリ秒と定めたのは、既存の電波時計の精度や、タイムスタンプを付ける処理自体で予想される誤差に見合うものです。</t>
+    </section>
+    <section anchor="delay-measurements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-delay-measurements">遅延の測定</name>
+      <t indent="0" pn="section-unnumbered-3-1">上記の形式のICSデータグラムをDCNETホストに送り、その応答を処理するだけで、どのDCNETホストとの間でも遅延を測定できます。応答の3つのタイムスタンプフィールドを順にt1、t2、t3とし、元の送信者への到着時刻をt4とします。すると、DCNETホスト内部の処理を除いた遅延は、DCNETホストへの往路が(t2 - t1)、復路が(t4 - t3)、往復が(t2 - t1) + (t4 - t3)となります。往復の場合は、送信ホストとDCNETホストの間の時計のずれが相殺されることに注意してください。</t>
+      <t indent="0" pn="section-unnumbered-3-2">ICSデータグラムは、そのホストがその時点で使用しているほかの接続にかかわらず、すべてのDCNETホストから返されますが、最も役に立つホストはおそらく、インターネットアドレス[29,0,9,2]にあるCOMSAT-WWV仮想ホストでしょう。これは、以前COMSAT-ECHと呼ばれていたインターネットエコー仮想ホストでもあります。この仮想ホストは、インターネットアドレス[29,0,1,2]にあるCOMSAT-GAT物理ホストに常駐しています。COMSAT-GATは、COMSAT Gateway、Clarksburg SIMP、BBNのIMP 71への4800bpsの回線を経由してARPANETに接続されています。この経路でのCOMSAT-GATホストとBBN Gatewayの間の往復遅延は、ICSデータグラムで測ると通常550ミリ秒です。</t>
+      <t indent="0" pn="section-unnumbered-3-3">すべてのDCNETホストと同様に、COMSAT-WWV仮想ホストがダウンしている場合（この場合、それが起こるのはSpectracomの電波時計がダウンしているか異常動作している場合だけです）、「host not reachable」のGGPデータグラムが返されます。まれな状況では、「net not reachable」や「source quench」のGGPデータグラムが返されることもあります。ここでの「GGP」は、将来の適当な時期に「ICMP」と読み替えられることに注意してください。</t>
+    </section>
+    <section anchor="local-offset-corrections" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-local-offset-corrections">ローカルなずれの補正</name>
+      <t indent="0" pn="section-unnumbered-4-1">DCNETのタイムスタンプはすべて、インターネットアドレス[29,0,9,2]にあるCOMSAT-WWV（ほかに何と呼べましょう？）という指定の仮想ホストを基準にしています。このホストにはSpectracomの電波時計が備わっており、通常は1ミリ秒以内の精度でWWVBの時刻と日付を提供します。時計の同期機構は、ほかのホストに対して、このホストを基準としたずれとドリフトの補正を提供します。しかし、一部のマシンでは電源周波数を使うクロックでの追従が難しいため、1秒のかなりの割合に及ぶずれが日常的に生じます。現在のずれの表は、次の手順で取得できます。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-4-2">
+        <li pn="section-unnumbered-4-2.1" derivedCounter="1.">TELNETとローカルエコーを使って、インターネットアドレス[29,0,1,2]にあるCOMSAT-GATホストに接続します。</li>
+        <li pn="section-unnumbered-4-2.2" derivedCounter="2.">SET HOST HOSTコマンドを送ります。DCNETホストごとに1行の表が返されるはずです。WWVホストの「Offset」列の項目に注目してください。これには、COMSAT-GATホストまたはCOMSAT-WWVホストが生成したすべてのタイムスタンプに加算すべきミリ秒単位のずれが入っており、加算するとWWVBで放送される正しい時刻が得られます。</li>
+        <li pn="section-unnumbered-4-2.3" derivedCounter="3.">
+          <t indent="0" pn="section-unnumbered-4-2.3.1">SET WWV SHOWコマンドを送ります。データグラムのトラフィックの概要が、「NBS time.」というラベルの付いた項目とともに返されます。これに続く文字列は、Spectracomの装置から受信した最後の応答で、次の形式をしています。</t>
+          <artwork name="" type="" align="left" alt="" pn="section-unnumbered-4-2.3.2"><![CDATA[
+                  <code>  DDD HH:MM:SS  TZ=00
+]]></artwork>
+          <t indent="0" pn="section-unnumbered-4-2.3.3">ここで&lt;code&gt;は、通常、WWVBの信号を正しく受信している場合は&lt;SP&gt;、そうでない場合は?です。DDDは年内の通算日を、HH:MM:SSはUTの午前0時からの時刻を表します。TZ=に続く2桁はタイムゾーンを表し、ここではUTを表す00です。</t>
+        </li>
+        <li pn="section-unnumbered-4-2.4" derivedCounter="4.">接続を閉じます（お願いします！）。</li>
+      </ol>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-5">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Internet Control Message Protocol</title>
+          <author fullname="J. Postel" initials="J." surname="Postel">
+            <organization>USC/Information Sciences Institute</organization>
+          </author>
+          <date year="1981" month="April"/>
+        </front>
+        <seriesInfo name="RFC" value="777"/>
+        <annotation>ICMP</annotation>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>How to Build a Gateway</title>
+          <author fullname="V. Strazisar" initials="V." surname="Strazisar">
+            <organization>Bolt Beranek and Newman</organization>
+          </author>
+          <date year="1979" month="August"/>
+        </front>
+        <seriesInfo name="IEN" value="109"/>
+        <annotation>GGP</annotation>
+      </reference>
+    </references>
+    <section anchor="ics-header-in-pdp11-code" numbered="false" removeInRFC="false" toc="exclude" pn="section-unnumbered-6">
+      <t indent="0" pn="section-unnumbered-6-1">以下は、ICSヘッダーをPDP11のコードで規定したものです。</t>
+      <sourcecode type="" markers="false" pn="section-unnumbered-6-2"><![CDATA[
+;
+; GGP/ICMPヘッダー
+;
+ .       =       0
+GH.TYP:  .BLKB   1               ;メッセージタイプ
+GC.RPY   =       0               ;エコー応答
+GC.UPD   =       1               ;ルーティング更新
+GC.ACK   =       2               ;肯定応答
+GC.DNR   =       3               ;宛先到達不能
+GC.SQN   =       4               ;送信元抑制
+GC.RDR   =       5               ;リダイレクト
+GC.ECH   =       10              ;エコー
+GC.STA   =       11              ;ネットインターフェイスの状態
+GC.NAK   =       12              ;否定応答
+GC.TIM   =       15              ;タイムスタンプ
+GC.TRP   =       16              ;タイムスタンプ応答
+GH.COD:  .BLKB   1               ;メッセージコード
+GH.SEQ:  .BLKW   1               ;シーケンス番号
+GH.HDR   =       .               ;元のインターネットヘッダーの
+                                 ;先頭
+GH.ORG:  .BLKW   2               ;送信時のタイムスタンプ
+GH.REC:  .BLKW   2               ;受信時のタイムスタンプ
+GH.XMT:  .BLKW   2               ;転送時のタイムスタンプ
+GH.LEN   =       .               ;タイムスタンプヘッダーの終わり
+]]></sourcecode>
+      <t indent="0" pn="section-unnumbered-6-3">PDP11のワードのフィールド（上記の.BLKW）はすべて「バイトスワップ」されていることに注意してください。つまり、バイトの送信順序は、PDP11のワードの上位バイトの後に下位バイトが続く順になります。</t>
+    </section>
+  </back>
+</rfc>

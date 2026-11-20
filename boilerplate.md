@@ -6,6 +6,30 @@
 
 ライセンス名（Simplified BSD License / Revised BSD License など）と、コードコンポーネントの文があるかどうかは、原文に合わせてください。
 
+### 2008年11月10日より前の素材を含む場合（pre-RFC5378）
+
+原文:
+
+```xml
+This document may contain material from IETF Documents or IETF
+Contributions published or made publicly available before November
+10, 2008. The person(s) controlling the copyright in some of this
+material may not have granted the IETF Trust the right to allow
+modifications of such material outside the IETF Standards Process.
+Without obtaining an adequate license from the person(s)
+controlling the copyright in such materials, this document may not
+be modified outside the IETF Standards Process, and derivative
+works of it may not be created outside the IETF Standards Process,
+except to format it for publication as an RFC or to translate it
+into languages other than English.
+```
+
+和訳:
+
+```xml
+この文書には、2008年11月10日より前に公開または一般利用可能となったIETF文書またはIETF Contributionsに由来する素材が含まれている場合があります。これらの素材の一部について著作権を管理する者は、そのような素材をIETF Standards Processの外で改変することを許可する権利をIETFトラストに付与していない可能性があります。そのような素材の著作権を管理する者から適切な許諾を得ない限り、この文書はIETF Standards Processの外で改変してはならず、英語以外の言語への翻訳、またはRFCとして公開するための整形を除き、IETF Standards Processの外でこの文書の派生物を作成してはなりません。
+```
+
 ## Status of This Memo
 
 `<section anchor="status-of-memo">` の訳です。

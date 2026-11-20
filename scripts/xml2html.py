@@ -497,21 +497,24 @@ class HtmlWriter:
         h.append(parent)
         parent.set('class', 'row')
 
+        # 見出しは文書タイトル（h1）の直下で、「このメモのステータス」などの
+        # トップレベルのセクションと同じ h2 にする（xml2rfc の HTML 出力と同じ）
+
         # 英語
         div_en = build('div', lang='en')
         div_en.set('class', 'col')
         parent.append(div_en)
-        h1_en = build('h1')
-        h1_en.text = 'Abstract'
-        div_en.append(h1_en)
+        h2_en = build('h2')
+        h2_en.text = 'Abstract'
+        div_en.append(h2_en)
 
         # 日本語
         div_ja = build('div', lang='ja')
         div_ja.set('class', 'col')
         parent.append(div_ja)
-        h1_ja = build('h1')
-        h1_ja.text = '概要'
-        div_ja.append(h1_ja)
+        h2_ja = build('h2')
+        h2_ja.text = '概要'
+        div_ja.append(h2_ja)
 
         # 概要本文
         abstract = build('section')

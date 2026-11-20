@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="831" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc831" rel="alternate"/>
+  <front>
+    <title>SATNETのヨーロッパ側へのバックアップアクセス</title>
+    <seriesInfo name="RFC" value="831" stream="IETF"/>
+    <author fullname="R. Braden" initials="R." surname="Braden">
+      <organization showOnFrontPage="true">University College London</organization>
+      <address/>
+    </author>
+    <date year="1982" month="December"/>
+    <note removeInRFC="false" pn="section-note.1">
+      <name slugifiedName="name-discussion">議論</name>
+      <t indent="0" pn="section-note.1-1">このRFCの目的は、インターネットの特定の問題、すなわちSATNETが分断されたときに使う、インターネットのヨーロッパ地区のソフトウェア保守のためのバックアップ経路に議論を集中させることです。私たちは、IPのSource Routingオプションに基づいて、VAN GatewayとUCLを経由してヨーロッパのインターネットサイトに到達するメカニズムを提案します。</t>
+      <t indent="0" pn="section-note.1-2">この提案は、現時点では標準として意図されたものではありません。</t>
+    </note>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">これまでのいくつかのSATNET会議で、SATNETの直接の接続性が失われたときに、BBNがVAN Gatewayを経由して間接的にSATNETのヨーロッパ側にアクセスできると便利だろうということが指摘されてきました。この短い論文では、IPのソースルーティングオプションを使った、そのような「バックアップ」アクセスのための1つの可能なアプローチを提案します。</t>
+      <t indent="0" pn="section-1-2">図1は、私たちが解決したい問題を示しています。米国のホストHは、SATNETのSIMPであるS1とS2、ゲートウェイBとG、およびUCLのTAC（図には示していませんが、Gに接続されています）の診断と制御に使われます。</t>
+      <figure align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-us-uk-connectivity-with-partitioned-satnet">SATNETが分断された状態での米国と英国の接続性</name>
+        <artwork name="" type="" align="left" alt="" pn="section-1-3.1"><![CDATA[
+                          SATNET
+                        (partitioned)
+ ARPANET/SATNET          __     __               UCL
+ Gateway           Simp (   \  \  )  Simp        Gateway
+            ____    ___(    /  /   )____          ____
+           | B  |__| S1 |   \  \   | S2 |________| G  |_____ rsre
+           |____|  |____|   /  /   |____|        |____|
+             |         (    \  \   )                |
+             |          (__ /  /__)          _______|____
+     ________|____                          (             )
+    (             )                        (               )
+   (   ARPANET     )                      (     UCL NET     )
+   (               )                       (                 )
+    (_____________)                         (               )
+     |        |                              (_____________)
+   __|_       |            VAN/                     .
+  | H  |      |         Public Data Nets            .
+  |____|      |          _____________              .
+ Diagnostic   |         (             )             .
+ Host       __|__      (    VANNET     )           _.___
+           | VAN |* * (* * * * * * * * *)*  * * * |     |
+           | gw------(--- IP Tunnel -----)--------|  U  |
+           |_____|* * (* * * * * * * * *)*  * *   |_____|
+       VAN             (               )
+       Gateway          (_____________)
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-1-4">VANgwはVAN Gatewayであり、VAN/PTTの仮想回線で送信するために、IPデータグラムをX25パケットにカプセル化します。UCLが「IPトンネル」と呼ぶこれらの経路の集まりは、インターネットからはVANNETという1つの独立したネットワークとしてアドレス指定されます。</t>
+      <t indent="0" pn="section-1-5">UはUCLのホストであるTerminal Protocol Converterで、英国のX25ネットワークへの経路を提供します。しかし、インターネットの世界からはUはVANNET上のホストに見えるので、UからUCLNETへの経路（点線で示したもの）は存在しないように見えます。</t>
+      <t indent="0" pn="section-1-6">ここで、SATNETがS1とS2の間で分断されたとします。このとき、ホストHが次の「裏口」の経路を通じてS2とIPデータグラムを交換できるようにしたいと考えます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-1-7"><![CDATA[
+  H - Internet - VANgw - VANNET - U - UCLNET - G - S2
+]]></artwork>
+      <t indent="0" pn="section-1-8">ただし、このゲームにはいくつかの重要なルールがあります。</t>
+      <ol type="(%d)" indent="adaptive" spacing="normal" start="1" pn="section-1-9">
+        <li pn="section-1-9.1" derivedCounter="(1)">
+          <t indent="0" pn="section-1-9.1.1">Uはホストでなければならず、ゲートウェイであってはなりません。</t>
+          <t indent="0" pn="section-1-9.1.2">これは、インターネットの「すべての」トラフィック（たとえば、SATNETを使う必要があるrsreのトラフィックやUCLのトラフィック）がIPトンネル経由でルーティングされるのは望ましくないからです。そのため、VAN Gateway（VANgw）が、Uを通じてUCLNETに到達できることを発見してはなりません。</t>
+        </li>
+        <li pn="section-1-9.2" derivedCounter="(2)">
+          <t indent="0" pn="section-1-9.2.1">S2への裏口の経路を実装するために、HやUに特別なコードを入れることはいといませんが、G、S2、VANgwには入れません。</t>
+          <t indent="0" pn="section-1-9.2.2">注: Jack Havertyはこの前提を破ってもかまいませんが、彼がそうしたいと思うことはないでしょう。しかし、私たちはこの前提を守らなければなりません。</t>
+        </li>
+      </ol>
+      <t indent="0" pn="section-1-10">これらの制約のもとでは、唯一可能な解決策は、UCLでIPデータグラムのヘッダーを「書き換える（mung）」ことだと私たちは主張します。SATNETが分断されているとき、次のようになるからです。</t>
+      <ol type="(%d)" indent="adaptive" spacing="normal" start="1" pn="section-1-11">
+        <li pn="section-1-11.1" derivedCounter="(1)">S2、G、UCLのTACのIPアドレスには、米国のどのゲートウェイからも到達できません。したがって、Hがこれらの宛先のいずれかに宛てたパケットを送信すると、そのパケットは破棄され、ICMPのunreachableメッセージが返されます。</li>
+        <li pn="section-1-11.2" derivedCounter="(2)">同様に、英国側からはHのIPアドレスに到達できません。そのため、英国のホストのXNETデバッガーがHに宛てた返送パケットを送出すると、そのパケットは破棄されます。</li>
+      </ol>
+      <t indent="0" pn="section-1-12">したがって、SATNETのUCL側（S2またはG）に到達するためには、Hからの各パケットの宛先アドレスを変更する必要があります。また、返送パケットがHに到達できるように、これらの各パケットの送信元アドレスも変更する必要があります。この目的のために、書き換え（Munger）ホストMを導入します（図2を参照）。</t>
+      <figure align="left" suppress-title="false" pn="figure-2">
+        <name slugifiedName="name-introduction-of-header-munger-at-ucl">UCLへのヘッダー書き換え器（Header Munger）の導入</name>
+        <artwork name="" type="" align="left" alt="" pn="section-1-13.1"><![CDATA[
+                           SATNET
+                        (partitioned)
+         BBN             __     __               UCL
+         Gateway   Simp (   \  \  )  Simp        Gateway
+            ____    ___(    /  /   )____          ____
+           | B  |__| S1 |   \  \   | S2 |________| G  |_____ rsre
+           |____|  |____|   /  /   |____|        |____|
+             |         (    \  \   )                |
+             |          (__ /  /__)          _______|____
+     ________|____                          (             )
+    (             )                        (               )
+   (   ARPANET     )                     (     UCL NET     )
+   (               )                      (                 )
+    (_____________)                        (               )
+     |        |                             (_____________)
+   __|_       |                                         |
+  | H  |      |        Public Data Nets                 |
+  |____|      |          _______________               _|___
+ Diagnostic   |         (               )             | M1  |
+ Host       __|__      (                 )            |:::::|
+           | VAN |* * (* * * * * * * * * *) * *       |:::::|
+           | gw------(--- IP Tunnel -----)------------| M2  |
+           |_____|* * (* * * * * * * * * *) * *       |_____|
+       VAN             (   VANNET        )              M
+       Gateway          (_______________)             "Header
+                                                       Munger"
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-1-14">ホスト「M」（M1/M2）はマルチホームであり、VANNET上ではホストM2として、UCLNET上ではホストM1として見えます。ホストU（図1に示したもの）と同様に、ホストM2はIPトンネルの端点であり、X25の仮想呼を介してVANgwと通信します。</t>
+      <t indent="0" pn="section-1-15">たとえば、ホストHがSIMPであるS2のXNETデバッガーに到達したいとします。Hは宛先アドレスをM1としてパケットを送信しなければなりません。これらのパケットは、VANgwとIPトンネルを経由してM1にルーティングされます。ホストMは、これらのデータグラムのヘッダーを、送信元アドレスがM1で宛先がS2となるように変更します。S2はパケットをM1に返送し、M1はそれをM2-&gt;Hのパケットに戻して、VANNETを通じてHへ送り返します。</t>
+      <t indent="0" pn="section-1-16">Mは、ヘッダーをどのように変更すればよいかをどうやって知るのでしょうか。</t>
+      <ol type="(%d)" indent="adaptive" spacing="normal" start="1" pn="section-1-17">
+        <li pn="section-1-17.1" derivedCounter="(1)">MがM1とM2のアドレスの範囲に応答し、固定の対応表を持つ方法が考えられます。</li>
+        <li pn="section-1-17.2" derivedCounter="(2)">
+          <t indent="0" pn="section-1-17.2.1">私たちは代わりに、データグラムでSOURCE ROUTINGオプションを使うことを提案します。これは、Hがソースルーティングされたデータグラムを組み立てることができ、経路の中間ホストがゲートウェイでなくても問題が起きないことを前提としています。</t>
+          <t indent="0" pn="section-1-17.2.2">さらに、GとS2のIP層がソースルートと返送ルートを扱えると仮定すれば、作業は単純です。Mは、ゲートウェイのソースルーティングのアルゴリズムを備えていなければなりませんが、それ以外の点では2つのホストとして動作します（ルーティングの更新などは行いません）。</t>
+        </li>
+        <li pn="section-1-17.3" derivedCounter="(3)">
+          <t indent="0" pn="section-1-17.3.1">Gはソースルーティングをサポートしていますが、S2とTACはサポートしていないかもしれません。その場合、S2とTACは、受信したパケットの返送ルートを認識して、応答として送信するパケットのソースルートとして使うことができません。</t>
+          <t indent="0" pn="section-1-17.3.2">この可能性のために、Mには(1)と(2)を組み合わせた、さらなる複雑さが必要になります。</t>
+          <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-1-17.3.3">
+            <li pn="section-1-17.3.3.1">米国 -&gt; 英国の方向では、Source Routingオプションを使います。</li>
+            <li pn="section-1-17.3.3.2">逆方向（英国 -&gt; 米国）では、データグラムのアドレスの対応付けをMの表によって制御します。</li>
+          </ul>
+          <t indent="0" pn="section-1-17.3.4">私たちは、MがHからS2へパケットを届けるためにソースルーティングを使い、同時にこの対応付けを示す「ソフトステート」の表を作ることを提案します。ソースルーティングを使わないパケットがS2から届いたとき、Mはこのソフトステートの表を参照して、再びHに到達するためにアドレスをどのように変更すればよいかを調べます。この方法では、ある時点で特定のSATNETホストにアクセスできる米国のホストは1つだけになりますが、それは制約にはならないはずです。</t>
+        </li>
+      </ol>
+      <t indent="0" pn="section-1-18">実際には、M2とUは異なるIPトンネルを持ち、したがって異なるDTEアドレスを持つべきです。X25の料金は発信者が支払うので、U用のIPトンネルは通常UCLだけが開きます。一方、M2へのIPトンネルは米国側から開かれます。UCLにはPSS回線が1本しかないので、別々のX25サブアドレスを使う必要があります。VAN Gatewayは、12桁のアドレスに加えて、14桁のX121アドレスも扱わなければなりません。</t>
+    </section>
+    <section anchor="acknowledgment" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-acknowledgment">謝辞</name>
+      <t indent="0" pn="section-2-1">UCLのRobert Coleは、この論文の内容に大きく貢献しました。特に、Source Routingオプションの使用は彼の提案によるものです。</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

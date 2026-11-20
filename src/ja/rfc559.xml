@@ -1,0 +1,140 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="559" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc559" rel="alternate"/>
+  <front>
+    <title>新しいTELNETプロトコルとその実装に関するコメント</title>
+    <seriesInfo name="RFC" value="559" stream="IETF"/>
+    <author fullname="Abhay K. Bushan" initials="A. K." surname="Bushan">
+      <organization showOnFrontPage="true">MIT Project MAC</organization>
+      <address/>
+    </author>
+    <date year="1973" month="August" day="15"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">私たちMIT-DNは、新しいTELNETプロトコルを（サーバーとユーザーの両方について）実装しました。
+このRFCでは、その実装の経験（特にGO AHEADの使用について）と、新しいユーザーTELNETおよびサーバーTELNETを運用に移した際の経験を説明します（新しいTELNETは古いものと互換性がありません）。
+ここでは、ほかの実装者の助けとなり、新しいプロトコルへの移行をより円滑にするはずのいくつかの提案を示します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="our-telnet-server-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-i-our-telnet-server-implementation">I. 私たちのTELNETサーバーの実装</name>
+      <t indent="0" pn="section-unnumbered-1-1">私たちの新しいサーバーTELNETは、「古い」TELNETの「制御シーケンス」と「新しい」TELNETの「制御シーケンス」の両方を受け付けます。
+現在、ECHOオプションと「Suppress Go Ahead」オプションを実装しており、Interrupt Process（IP）、Erase Character（EC）、Abort Output（AO）、Are You There（AYT）、Break、Synchの各文字シーケンスについても、程度の差はあれ「正しいこと」を行います。</t>
+      <section anchor="the-echo-option" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.1">
+        <name slugifiedName="name-a-the-echo-option">A. ECHOオプション</name>
+        <t indent="0" pn="section-unnumbered-1.1-1">TELNETサーバーは、デフォルトのローカルエコーモードで起動し、古いTELNETの制御シーケンスと新しいTELNETの制御シーケンスの両方を受け付けます。
+サーバーは、「IAC WILL ECHO」というシーケンスを送信することでリモートエコー（サーバーによるエコー）のネゴシエーションを開始しますが、エコーモードを変更するのは、肯定の「IAC DO ECHO」を受信したときだけです。
+古いプロトコルの打ち切り日以降は、古いTELNETの制御シーケンスを「受け入れる」のをやめる予定です。</t>
+      </section>
+      <section anchor="the-go-ahead-and-suppress-ga-option" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.2">
+        <name slugifiedName="name-b-the-go-ahead-and-suppress-ga-option">B. Go AheadとSuppress GAオプション</name>
+        <t indent="0" pn="section-unnumbered-1.2-1">サーバーは、GAを送信するモードで起動し、GAを送信する必要があると判断したときにはいつでも、要求されている「IAC GA」シーケンスを送信します。
+なお、私たちのGA送信の方式は、ほとんどの場合には機能しますが、常に機能するわけではありません。</t>
+        <t indent="0" pn="section-unnumbered-1.2-2">私たちのサーバーTELNETには、プロセスが実際にネットワークからの入力を待っている時点を知る確実な方法がまったくありません。
+私たちのシステムでは、サーバーTELNETはユーザーのプロセスを「制御」しておらず、TTYレベルの端末ハンドラーとして動作するだけです。</t>
+        <t indent="0" pn="section-unnumbered-1.2-3">簡単に調査したところ、上記の（GAを確実に送信するという）問題はITSオペレーティングシステムだけに限らないことがわかりました。
+実際、TENEX（Ray Tomlinsonとの会話による）やDEC-10（HarvardのEd Taftとの会話による）のシステムも、同様の問題に直面するでしょう。</t>
+        <t indent="0" pn="section-unnumbered-1.2-4">GA送信の問題に対する私たちの解決策は、出力を送信した後、さらに送信すべき出力があるかどうかを確かめるために、サーバーに2.5秒間待たせるというものでした。
+サーバーが「出力送信済み（output-sent）」状態で2.5秒を超えて「アイドル」状態であれば、GAを送信し、I/O待ち状態（入力または出力を待つ状態）に入ります。
+この方式はほとんどの場合（ただし常にとは保証されません）に機能し、目立った遅延も生じません。
+サーバーが余分なGAを送信してしまうことはあり得ます。
+実験の結果、この「アイドル時間定数」は1〜5秒が適切な範囲であることがわかりました。</t>
+        <t indent="0" pn="section-unnumbered-1.2-5">私たちは「suppress GA」オプションを実装しており、それをネゴシエートしてGAを送らないことに同意したホストにはGAを送信しません。
+私たちのサーバーは、このsuppress GAオプションのネゴシエーションを試みます。</t>
+      </section>
+      <section anchor="other-options-and-telnet-control-sequences" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.3">
+        <name slugifiedName="name-c-other-options-and-telnet-control-sequences">C. その他のオプションとTELNET制御シーケンス</name>
+        <t indent="0" pn="section-unnumbered-1.3-1">私たちのサーバーは、適切なDONTとWONTを送信することで、それ以外のすべてのオプションを拒否します。
+ECHOオプションとSuppress GAオプションに加えて、次のTELNETの「制御シーケンス」を認識します。</t>
+        <ol type="1" spacing="normal" indent="adaptive" start="1" pn="section-unnumbered-1.3-2">
+          <li pn="section-unnumbered-1.3-2.1" derivedCounter="1.">Interrupt Process（IP） - サーバーはこれを、システム全体の割り込み文字&lt;control-Z&gt;（ACII SUB）に置き換えます。この文字は直ちにプロセスに割り込み、制御をすぐ上位のプロセスに移します。
+ユーザーがプロセスツリーの何階層も下にいる場合は、最上位に到達するためにIPを何回か送信しなければならないことがあります。
+なお、IPは、&lt;control-G&gt;がmuddleに割り込むような意味で実行中のプロセスに割り込むわけではなく、制御を上位に渡すだけです。</li>
+          <li pn="section-unnumbered-1.3-2.2" derivedCounter="2.">Erase Character（EC） - サーバーはこれを、システム全体の標準の消去文字&lt;rubout&gt;（ACII DEL）に置き換えます。
+ただし、削除を行うのはサーバーではなく、受信側のプロセスです。
+（ユーザーTELNETのように）ECを受信しても何もしないプロセスもあり得ます。
+ほとんどのプロセスは、削除された文字をエコーします。
+ECを複数回送ると、その数だけ直前の文字が削除されます。
+（コンソールがIMLACであると宣言されている場合は、削除された文字が画面から消去されます。）</li>
+          <li pn="section-unnumbered-1.3-2.3" derivedCounter="3.">
+            <t indent="0" pn="section-unnumbered-1.3-2.3.1">Abort Output（AO） - サーバーはこれを、文字&lt;control-S&gt;（ACII DC3）に置き換えます。
+control-Sの慣例には、私たちのプログラムの多くが従っていますが、すべてではありません。
+AOを受信したときの動作は、プログラムによって異なります。</t>
+            <t indent="0" pn="section-unnumbered-1.3-2.3.2">通常は、出力と現在のコマンドが（必ずしも完了まで進むことなく）中断されます。
+多くのプログラムでは、IPを送信して下位のプロセスを「強制終了」する以外に、出力を止める方法がありません。</t>
+          </li>
+          <li pn="section-unnumbered-1.3-2.4" derivedCounter="4.">Are You There（AYT） - サーバーは、AYTを受信すると、前後にCRLFを付けて「****connections still open*****」というメッセージを表示します。
+将来的には、ユーザーのジョブの状態も報告するかもしれません。</li>
+          <li pn="section-unnumbered-1.3-2.5" derivedCounter="5.">Erase Line（EL） - 私たちのシステムは1文字ずつ処理するシステムなので、ELにはほとんど意味がなく、（直前のIACとともに）破棄します。</li>
+          <li pn="section-unnumbered-1.3-2.6" derivedCounter="6.">Break（BRK） - BRKを受信すると、3つのNULに置き換えます。
+この慣例は、ローカルのテレタイプで「Break」キーを押したときに起こることと一致しています。
+プログラムは一般に、breakを受信しても（「|@|@|@」とエコーする以外に）有用なことは何もしませんが、BRKを送信するとプログラムが奇妙な反応をすることがあるので注意してください。</li>
+          <li pn="section-unnumbered-1.3-2.7" derivedCounter="7.">Synch - サーバーは、synchのINSを受信すると、DMを受信するまで、注目すべき文字（制御シーケンス）以外のすべての文字を破棄します。
+また、SYNCHを受信すると、暗黙的にIPも発生させます。</li>
+          <li pn="section-unnumbered-1.3-2.8" derivedCounter="8.">EOLとCRの送信には、それぞれCRLFとCRNULの慣例に従います。</li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="our-user-telnet-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-ii-our-user-telnet-implementation">II. 私たちのユーザーTELNETの実装</name>
+      <t indent="0" pn="section-unnumbered-2-1">新しいユーザーTELNET（新しい「TELCOM」サブルーチンを使用してCALICO NETWORKに実装したもの）は、ECHOオプションとsuppress GAオプションのネゴシエーションを受け付けます。
+このプログラムは、GAを受信しないようにネゴシエートを試み、そのホストの設定ファイルがリモートエコーを示している場合にはECHOのネゴシエーションを試みます。
+EC、EL、AO、AYT、BRK、SYNCH、IP、およびコマンドレベルに戻るためのESCAPE文字には、特殊文字と記号が定義されています。
+これらの記号にはデフォルトの文字値があり、ユーザーは、NETWRKのコマンドレベルで記号に続けて新しい文字値を入力することで、それを変更できます。
+EC、ELなどを送信するには、ユーザーはその機能に対応する特殊文字を入力するだけで済みます。
+さらに、NETWRKのコマンドレベルでsend.specialコマンドを使用して、これらの文字を送信することもできます。
+「行モード」では、ECとELはリモートホストに送信されず、「ローカル」で文字と行の消去を行います。
+TELNETにおける「特殊」文字のデフォルト値は次のとおりです。</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-unnumbered-2-2">
+        <dt pn="section-unnumbered-2-2.1">ESCAPE -</dt>
+        <dd pn="section-unnumbered-2-2.2">バックスラッシュ</dd>
+        <dt pn="section-unnumbered-2-2.3">EC -</dt>
+        <dd pn="section-unnumbered-2-2.4">&lt;DEL&gt;</dd>
+        <dt pn="section-unnumbered-2-2.5">EL -</dt>
+        <dd pn="section-unnumbered-2-2.6">&lt;CAN&gt;または|X</dd>
+        <dt pn="section-unnumbered-2-2.7">AO -</dt>
+        <dd pn="section-unnumbered-2-2.8">|S</dd>
+        <dt pn="section-unnumbered-2-2.9">IP -</dt>
+        <dd pn="section-unnumbered-2-2.10">|R</dd>
+        <dt pn="section-unnumbered-2-2.11">AYT -</dt>
+        <dd pn="section-unnumbered-2-2.12">|T</dd>
+        <dt pn="section-unnumbered-2-2.13">Synch -</dt>
+        <dd pn="section-unnumbered-2-2.14">|Y</dd>
+        <dt pn="section-unnumbered-2-2.15">Break -</dt>
+        <dd pn="section-unnumbered-2-2.16">あらかじめ割り当てられた値はありません。</dd>
+      </dl>
+      <t indent="0" pn="section-unnumbered-2-3">ユーザーは、NETWRKのコマンドレベルにエスケープして「echo.local」または「echo.remote」コマンドを使用することで、エコーモードを変更できます。
+なお、モードが変更されるのは、モード変更のネゴシエーションが成功した場合だけです。
+いずれの場合も、ネゴシエーションの結果がユーザーに通知されます。</t>
+    </section>
+    <section anchor="installing-the-new-telnets" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-iii-installing-the-new-telnets">III. 新しいTELNETの導入</name>
+      <t indent="0" pn="section-unnumbered-3-1">7月2日の月曜日に、ユーザーTELNETとサーバーTELNETを短時間立ち上げてみたところ、ほとんどのホストがIACを「認識」せず、新しいプロトコルに従っていないことがわかりました。
+残念なことに、私たちのサーバーTELNETとユーザーTELNETの利用はどちらも混乱を極めました。
+そのため、新しいユーザーTELNETとサーバーTELNETの導入は見送り、古いTELNETを運用し続けています。</t>
+      <t indent="0" pn="section-unnumbered-3-2">新しいTELNETと古いTELNETには、明らかに互換性がありません。
+サーバーは、GAを送信しないようにネゴシエートし、またエコーを送信するようにネゴシエートしようとします（そして、そうすべきです）。
+このネゴシエーションは、「旧式」のユーザーTELNETで問題を引き起こします。
+また、Suppress GAのネゴシエーションが成功しなかった場合（「古い」ユーザーTELNETではそうなります）、サーバーは適切な時点でIAC GAを送信し続けます。
+私たちの「新しい」サーバーを「古い」ユーザーTELNETと互換にするために見つけた解決策の1つは、オプションのネゴシエーションを一切開始せず、要求されない限りGAを送信しないモード（すなわち、デフォルトでGAを抑制するモード）で起動することでした。
+前に述べたように、サーバーは古い「TELNET制御」シーケンスも受け付けます。
+この解決策により、サーバーは古いユーザーTELNETと新しいユーザーTELNETの両方と互換になります（ただし、GAを送信しないという点でプロトコルに違反します）。
+私たちは、このサーバーをソケット1に導入することを提案します。</t>
+      <t indent="0" pn="section-unnumbered-3-3">新しいTELNETプロトコルでの実験を促進するために、新しいサーバーTELNETをソケット60（8進数で105）に導入しました。
+この新しいサーバーは、新しいプロトコルに従い（すなわちGAを送信し）、リモートエコーとsuppress GAについて自発的にネゴシエーションを開始します。
+ほかのホストの実装者は、このサービスを使って自身のユーザーTELNET（および私たちのサーバー）をデバッグすることが推奨されます。
+新しいTELNETサーバーを実験用のソケットで立ち上げれば、新しいプロトコルへの移行はより円滑になると私たちは考えています。
+私たちも、私たちのユーザーTELNETを使ってほかのサーバーのデバッグを喜んで手伝います。</t>
+      <t indent="0" pn="section-unnumbered-3-4">最後に、（ソケット1で動いている私たちの現在のサーバーのように）suppress GAをデフォルトにすることを働きかけたいと思います。
+GAを必要とするホストはごく少数（AMES-67とUCLA-CON）のようです。
+現在のプロトコルの仕様でGAの送信がデフォルトになっている理由は、関係するホストの代表者がGAの実装を望んだからだと私は考えています。
+彼らにとっては、リモートサーバーにGAを送信させることができる限り、GAの送信とsuppress GAのどちらがデフォルトであってもかまいません。
+プロトコルは、すべての実装者に「send GAオプション」の実装を要求するように規定することもできます。
+「suppress GA」をデフォルトにすれば、大多数の場合で不要なネゴシエーションを省けるという利点があります。
+もう1つの利点は、GAを送信しないことで、新しいサーバーが古いユーザーTELNETと新しいユーザーTELNETの両方と互換になることです。</t>
+      <t indent="0" pn="section-unnumbered-3-5">[このRFCは、Serge Hallynによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。9/97]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

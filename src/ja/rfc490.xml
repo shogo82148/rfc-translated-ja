@@ -1,0 +1,169 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="490" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc490" rel="alternate"/>
+  <front>
+    <title>UCLA-CCNのための代理RJS</title>
+    <seriesInfo name="RFC" value="490" stream="IETF"/>
+    <author fullname="John R. Pickens" initials="J. R." surname="Pickens">
+      <organization showOnFrontPage="true">UCSB</organization>
+      <address/>
+    </author>
+    <date year="1973" month="March" day="6"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">UCSBのネットワーク標準RJS*を使うことで、ユーザーはUCLAのプロトコルに変換することなく、UCLA-CCNのRJSにアクセスできるようになりました。さらに、中間ホストでファイルを使用したり作成したりする必要もなくなります。たとえば、TIPのユーザーは、UCSBのリモートジョブサーバー（Remote Job Server）を通じて、ホットカードリーダーやプリンターを操作し、ジョブをUCLA-CCNで実行させることができます。UCLAに直接接続する場合と比べたこの方式の欠点は、次のとおりです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-abstract-2">
+        <li pn="section-abstract-2.1" derivedCounter="1.">ジョブをUCSBからUCLAへ回送するために、少量の追加のJCLが必要です。</li>
+        <li pn="section-abstract-2.2" derivedCounter="2.">UCSBのバッチアカウントを開設しなければなりません。</li>
+        <li pn="section-abstract-2.3" derivedCounter="3.">ターンアラウンド時間には、UCSBのバッチキューでの待ち時間が含まれます。</li>
+        <li pn="section-abstract-2.4" derivedCounter="4.">現在の実装では、投入と取得を別々の手順で行う必要があります。</li>
+        <li pn="section-abstract-2.5" derivedCounter="5.">UCLA-CCNで投入や取得に使用するRJS端末には、UCSBとの間のすべての転送が完了するまで、オンラインでアクセスすべきではありません。</li>
+      </ol>
+      <t indent="0" pn="section-abstract-3">これらの欠点を、標準RJSへの便利なインターフェイスという利点が上回ることを期待しています。</t>
+      <t indent="0" pn="section-abstract-4">UCLA-CCNにアクセスするためのこの手順を説明する文書を添付します。</t>
+      <aside pn="section-abstract-5">
+        <t indent="0" pn="section-abstract-5.1">*RFC #436はUCSBでのRJSを発表しており、RFC #477はその使い方を説明しています。</t>
+      </aside>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="ucla-remote-job-submission-from-ucsb" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-ucla-remote-job-submission-from-ucsb">UCSBからのUCLAへのリモートジョブ投入</name>
+      <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.1">
+        <name slugifiedName="name-introduction">はじめに</name>
+        <t indent="0" pn="section-unnumbered-1.1-1">UCSBのIBM 360/75のユーザーは、UCLA-CCN（IBM 360/91）との間でジョブを回送できるようになりました。UCSBで扱うのは読み取り、印刷、穿孔だけであり、スケジューリング、資源の割り当て、実行はUCLAで扱います。以下で説明するプログラムは、ARPAネットワークを通じてUCLAのリモートジョブサービス（Remote Job Service）とのオペレーター接続とデータ接続を確立し、オペレーターコマンドを発行してジョブの投入と取得を制御することで動作します。このため、ユーザーはUCLAにいるのとほとんど同じようにUCLAの360/91でジョブを実行できます。</t>
+      </section>
+      <section anchor="procedure" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.2">
+        <name slugifiedName="name-procedure">手順</name>
+        <t indent="0" pn="section-unnumbered-1.2-1">投入と取得は2つの別々のフェーズであり、ユーザーはUCLA宛ての各ジョブについてそれぞれを開始しなければなりません。通常、1つのUCLAのジョブの2つのフェーズのために、2つのUCSBのジョブが必要になります。例外は、以下で説明するBATCHオプションを使う場合と、UCLAでの高速なターンアラウンドが保証されているジョブ（たとえばQUICKRUNジョブ）の場合です。</t>
+        <t indent="0" pn="section-unnumbered-1.2-2">コマンドはJCLを通じてローカルプロセスに発行され、その結果の動作とメッセージは、ユーザーのリストに出力されるRJSシステムログに記録されます。ユーザーはコマンドのタイミングに注意しなければなりません。たとえば、特定のジョブの印刷出力を取得する要求は、そのジョブがUCLAで実行を終えていなければエラー状態になります。使用できるコマンドは、READ、PRINT、PUNCH、STATUS、TERMIDです。</t>
+        <t indent="0" pn="section-unnumbered-1.2-3">ユーザーにかなりわかりやすいエラー診断を提供するよう努めましたが、常に可能とは限りません。エラー状態については「ERRORS」の節で説明します。</t>
+      </section>
+      <section anchor="job-submission" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.3">
+        <name slugifiedName="name-job-submission">ジョブの投入</name>
+        <t indent="0" pn="section-unnumbered-1.3-1">READコマンドは、ジョブをUCLAへ送るために使います。ほかのコマンドが指定されていない場合は、これがデフォルトのコマンドです。UCLAのジョブは、1回の読み取り操作でまとめてバッチにできます。後続のUCLA以外のジョブが誤ってUCLAに送られないように、正しい区切り文字（以下のDDカードを参照）でバッチを終了するよう十分に注意すべきです。キャンパスのコンピューターセンターからジョブを投入する場合に推奨する手順は、ジョブ投入カードに意図した宛先を示しておくことです。ジョブがUCLAに受け付けられると、ジョブ名と受け取ったカードの枚数を示すUCLAからのメッセージが記録されます。</t>
+      </section>
+      <section anchor="single-job-retrieval" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.4">
+        <name slugifiedName="name-single-job-retrieval">単一ジョブの取得</name>
+        <t indent="0" pn="section-unnumbered-1.4-1">PRINT (JOBNAME)とPUNCH (JOBNAME)は、それぞれ印刷出力と穿孔出力を明示的に取り出すために使います。UCLAのRESETコマンドは、すべてのジョブの優先度を同じにしたうえで、指定したジョブの優先度を最高値に設定するために使います。未知のコマンドであるHEREIAMは、同期の目的にだけ使います。指定したジョブの出力の準備ができていない場合、ローカルプロセスはタイムアウトエラーで終了します（現在のタイマーは1分に設定されています）。</t>
+      </section>
+      <section anchor="multiple-job-retrieval" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.5">
+        <name slugifiedName="name-multiple-job-retrieval">複数ジョブの取得</name>
+        <t indent="0" pn="section-unnumbered-1.5-1">PRINT (*)とPUNCH (*)は、待機中のすべての出力を取り出すために使います。これらのコマンドの前には、常にTERMIDコマンドを置くべきです。自分専用のRJS端末を割り当てられているユーザーは、このモードを使うことになるでしょう。</t>
+      </section>
+      <section anchor="ucsb-job-control-cards" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.6">
+        <name slugifiedName="name-ucsb-job-control-cards">UCSBのジョブ制御カード</name>
+        <t indent="0" pn="section-unnumbered-1.6-1">EXECカード</t>
+        <t indent="0" pn="section-unnumbered-1.6-2">実行するカタログ式プロシージャーの名前はUCLARJSです。どの機能を実行するかは、パラメーターで指定します。実行カードの一般的な形式は次のとおりです。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1.6-3"><![CDATA[
+    //anyname EXEC UCLARJS, PARM.RJS-'...functions...'
+]]></artwork>
+      </section>
+      <section anchor="parm-field" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.7">
+        <name slugifiedName="name-parm-field">PARMフィールド</name>
+        <t indent="0" pn="section-unnumbered-1.7-1">次の一覧は、使用できるパラメーターとその機能を定義します。すべてのパラメーターは順番に実行され、コンマで区切ります。</t>
+        <dl newline="false" spacing="normal" indent="11" pn="section-unnumbered-1.7-2">
+          <dt pn="section-unnumbered-1.7-2.1">READ</dt>
+          <dd pn="section-unnumbered-1.7-2.2">リーダーチャネルを開き、SYSINデータセットから80桁のレコードを送ります。</dd>
+          <dt pn="section-unnumbered-1.7-2.3">PRINT(JOBNAME)</dt>
+          <dd pn="section-unnumbered-1.7-2.4">指定したジョブの優先度を最高値に設定し、印刷出力をSYSPRINTデータセットに取得します。132文字を超えるレコードは次の行に折り返されます。</dd>
+          <dt pn="section-unnumbered-1.7-2.5">PRINT (*)</dt>
+          <dd pn="section-unnumbered-1.7-2.6">すべての印刷ジョブを取得します。</dd>
+          <dt pn="section-unnumbered-1.7-2.7">PUNCH(JOBNAME)</dt>
+          <dd pn="section-unnumbered-1.7-2.8">指定したジョブの優先度を最高値に設定し、80桁の穿孔出力をSYSPUNCHデータセットに取得します。</dd>
+          <dt pn="section-unnumbered-1.7-2.9">PUNCH (*)</dt>
+          <dd pn="section-unnumbered-1.7-2.10">すべての穿孔ジョブを取得します。</dd>
+          <dt pn="section-unnumbered-1.7-2.11">STATUS</dt>
+          <dd pn="section-unnumbered-1.7-2.12">このRJS端末に割り当てられたすべてのジョブの状態をUCLAに問い合わせます。</dd>
+          <dt pn="section-unnumbered-1.7-2.13">TERMID(NAME-PASSWORD)</dt>
+          <dd pn="section-unnumbered-1.7-2.14">指定した名前のRJS端末としてサインオンします。PASSWORDは省略可能であり、端末にパスワードがある場合にだけ宣言すべきです。ローカルプロセスは、最初は常にNETUCSBとしてサインオンします。</dd>
+        </dl>
+      </section>
+      <section anchor="dd-cards" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.8">
+        <name slugifiedName="name-dd-cards">DDカード</name>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-1.8-1">
+          <li pn="section-unnumbered-1.8-1.1" derivedCounter="1.">
+            <t indent="0" pn="section-unnumbered-1.8-1.1.1">リーダー - JCLと/*カードを送れるようにするために、SYSINデータセットは次の形式にすべきです。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1.8-1.1.2"><![CDATA[
+   // RJS.SYSIN DD DATA,DLM=$$,DCB=(RECFM=F,LRECL=80,BLKSIZE=80)
+                   .
+                   .
+                   .
+                job(s)
+                   .
+                   .
+                   .
+   $$ (note, this special delimiter is required)
+]]></artwork>
+          </li>
+          <li pn="section-unnumbered-1.8-1.2" derivedCounter="2.">プリンター - デフォルトのRJS.SYSPRINTデータセットはSYSOUT=Aと指定されています。</li>
+          <li pn="section-unnumbered-1.8-1.3" derivedCounter="3.">穿孔 - デフォルトのRJS.SYSPUNCHデータセットはSYSOUT=Bと指定されています。</li>
+          <li pn="section-unnumbered-1.8-1.4" derivedCounter="4.">RJSログ - デフォルトのRJS.MESSAGESデータセットはSYSYOUT=Aと指定されています。</li>
+        </ol>
+      </section>
+      <section anchor="problems-and-errors" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.9">
+        <name slugifiedName="name-problems-and-errors">問題とエラー</name>
+        <t indent="0" pn="section-unnumbered-1.9-1">遭遇する問題のほとんどは、次のいずれかの分類に当てはまります。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-1.9-2">
+          <li pn="section-unnumbered-1.9-2.1" derivedCounter="1.">
+            <t indent="0" pn="section-unnumbered-1.9-2.1.1">UCLA-CCNまたはARPANETが停止している。</t>
+            <t indent="0" pn="section-unnumbered-1.9-2.1.2">この状態は、通常、ローカルプロセスがUCLAとの接続を試みたときに判明します。エラーメッセージは通常「INITIAL CONNECTION OPEN ERROR.」です。</t>
+          </li>
+          <li pn="section-unnumbered-1.9-2.2" derivedCounter="2.">
+            <t indent="0" pn="section-unnumbered-1.9-2.2.1">RJS端末がUCSBのジョブショップ以外のプロセスによって使用されている。</t>
+            <t indent="0" pn="section-unnumbered-1.9-2.2.2">これは、ユーザーがジョブを投入したものの、ローカルのバッチプロセスが実行に入る前に自分のUCLAのRJS端末にオンラインでサインオンした場合に起こりえます。この状態は、通常、完了コード252とともに「FAILURE OR TIMEOUT IN OPERATOR, PRINT OR PUNCH CHANNEL」が現れることで判明します。</t>
+          </li>
+          <li pn="section-unnumbered-1.9-2.3" derivedCounter="3.">
+            <t indent="0" pn="section-unnumbered-1.9-2.3.1">ジョブを取得する準備ができていない。</t>
+            <t indent="0" pn="section-unnumbered-1.9-2.3.2">ローカルプロセスは指定されたジョブの優先度を設定しようとしますが、成功の応答を受け取れません。この状態も、完了コード252とともに「FAILURE OR TIMEOUT IN OPERATOR, PRINT OR PUNCH CHANNEL」が現れることで判明します。</t>
+          </li>
+          <li pn="section-unnumbered-1.9-2.4" derivedCounter="4.">
+            <t indent="0" pn="section-unnumbered-1.9-2.4.1">古くからあるバグのために、UCLAが出力を取得できない。</t>
+            <t indent="0" pn="section-unnumbered-1.9-2.4.2">残念ながら、この状態はごく少量の出力でも起こりえます。通常、「BEGINNING RETRIEVAL OF」に続いて「(PROBABLE UCLA BUG)..  PREVIOUSLY GOOD CONNECTION NOW HAS STATUS = 8」というメッセージが出ることで判明します。この場合、出力は通常失われます。</t>
+          </li>
+        </ol>
+        <t indent="0" pn="section-unnumbered-1.9-3">ケース1から3は、待ってから再試行することで解決します。その他のエラーメッセージについては、NETWORK USER GUIDEを参照するか、コンピューターセンターまたはコンピューターシステム研究室の職員に相談する必要がある場合があります。</t>
+      </section>
+      <section anchor="examples" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.10">
+        <name slugifiedName="name-examples">例</name>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-1.10-1">
+          <li pn="section-unnumbered-1.10-1.1" derivedCounter="1.">
+            <t indent="0" pn="section-unnumbered-1.10-1.1.1">RJS端末NETUCSBを通じてUCLA-CCNにジョブを投入します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1.10-1.1.2"><![CDATA[
+//SUBMIT JOB (0000,ROBERTS),'PSYCH BOX'
+//STEP1 EXEC UCLARJS
+//RJS.SYSIN DD DATA,DLM=$$,DCB=(RECFM=F,LRECL=80,BLKSIZE=80
+//AAA000IC JOB......
+            .
+            .
+            .
+            .
+            .
+
+$$
+//
+]]></artwork>
+          </li>
+          <li pn="section-unnumbered-1.10-1.2" derivedCounter="2.">
+            <t indent="0" pn="section-unnumbered-1.10-1.2.1">端末NETUCSBから印刷ジョブAAA000ICを取得します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1.10-1.2.2"><![CDATA[
+//RETR JOB (0000,ROBERTS),'PSYCH BOX'
+//STEP1 EXEC UCLARJS,PARM.RJS='PRINT(AAA000IC)'
+//
+]]></artwork>
+          </li>
+          <li pn="section-unnumbered-1.10-1.3" derivedCounter="3.">
+            <t indent="0" pn="section-unnumbered-1.10-1.3.1">端末NETRAND0からすべての印刷ジョブを取得します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1.10-1.3.2"><![CDATA[
+//RETR JOB (0000, ROBERTS),'PSYCH BOX'
+//STEP1 EXEC UCLARJS,'TERMID(NETRAND0),PRINT(*),STATUS'
+//
+]]></artwork>
+          </li>
+        </ol>
+        <t indent="0" pn="section-unnumbered-1.10-2">[このRFCは、GTE（旧BBN Corp.）の支援を受けて、Alex McKenzieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。9/99]</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

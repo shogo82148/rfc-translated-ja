@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="642" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc642" rel="alternate"/>
+  <front>
+    <title>レディー線の考え方と実装</title>
+    <seriesInfo name="RFC" value="642" stream="IETF"/>
+    <author fullname="Jerry Burchfiel" initials="J." surname="Burchfiel">
+      <organization showOnFrontPage="true">BBN</organization>
+      <address/>
+    </author>
+    <date year="1974" month="July" day="5"/>
+    <abstract pn="section-abstract">
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-i-introduction">I. はじめに</name>
+      <t indent="0" pn="section-unnumbered-1-1">BBN Report #1822「Specifications for the Interconnection of a Host and an IMP」は、ホストとIMPのインターフェイスの完全な仕様を示しています。しかし、この文書の著者たちは、ホストインターフェイスの実装者に対して恣意的で独断的な指示を出すことを避けようと、大変な努力を払いました。彼らはIMPの実装を記述し、ホスト側にも同様の動作を提案することで、この目標をみごとに達成しました。</t>
+      <t indent="0" pn="section-unnumbered-1-2">ARPAは、私、SCRLのDave Retz、MIT Lincoln LabsのYuval Peduelからなる、PDP-11ローカルホストインターフェイス標準化委員会を任命しました。ARPAコミュニティーが設計したさまざまなインターフェイスをレビューする中で、推奨されるホストインターフェイスの実装について、まったくの混沌、混乱、誤解があることがわかりました。</t>
+      <t indent="0" pn="section-unnumbered-1-3">このノートは、Report #1822に暗黙的に含まれている推奨事項を明示しようとする試みです。このノートは、よくある問題領域ですべきこと・すべきでないことの推奨事項一式を含む、インターフェイス実装者向けの手引きを提供します。この文書は、BBNのIMPグループによってレビューされ、承認されています。</t>
+    </section>
+    <section anchor="ready-line-philosophy" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-ii-ready-line-philosophy">II. レディー線の考え方</name>
+      <t indent="0" pn="section-unnumbered-2-1">以下は、次の目的のもとで、IMPのレディー線とホストのレディー線を運用するための一貫した計画を詳しく説明する試みです。</t>
+      <ol spacing="normal" type="1." indent="adaptive" start="1" pn="section-unnumbered-2-2">
+        <li pn="section-unnumbered-2-2.1" derivedCounter="1.">一時的なサービスの中断と、どちらかのシステムによる状態情報の喪失の可能性があった後に、確実に再同期して伝送を再開すること。</li>
+        <li pn="section-unnumbered-2-2.2" derivedCounter="2.">ホストインターフェイスのプログラミングをできるだけ単純にすること。これにより、バグを最小限に抑え、小さなROMのネットワークブートストラップローダーを作れるようになります。</li>
+      </ol>
+      <t indent="0" pn="section-unnumbered-2-3">まず、IMPのレディー線について考えます。IMPのレディー線が落ちたとき、IMPは状態を失った可能性があるので、IMPからホストへ転送中のメッセージ（もしあれば）は不完全である可能性が高いです。同様に、ホストからIMPへ転送中のメッセージ（もしあれば）も不完全である可能性が高いです。ホストとIMPはどちらも、捨てられることを意図したメッセージ*（これは現在のメッセージに付加されることもあります）を送信し、現在受信中のメッセージを捨てることによって、このことを明示的に認識しなければなりません。（ホストからIMPへのメッセージと、IMPからホストへのメッセージの両方です。）</t>
+      <t indent="0" pn="section-unnumbered-2-4">ホストのインターフェイスドライバーの最も単純な構成は、一方がメッセージを送信し、もう一方がメッセージを受信する、一対のプロセスです。このIMPのレディー線の低下は、エラーステータスビットとして各プロセスに提供されなければなりません。しかし、2つのプロセスはこの状態を独立にクリアする必要があります。最も単純な実装は、入力エラー（Input Error）フロップと出力エラー（Output Error）フロップを設けることです。どちらのフロップもIMPのレディー線の低下によってセットされ、プログラムの制御のもとで独立にクリアされます。</t>
+      <t indent="0" pn="section-unnumbered-2-5">IMPがレディー線を上げると、接点のバウンスが起こるたびに、ホストのインターフェイスのエラーフロップが再びセットされます。この間にメッセージがインターフェイスを流れないようにするため、IMPのレディー線が安定したことを保証できるまで、「there's your IMP bit」と「ready for next host bit」の信号のアサートは、IMP内で十分に遅延されます。</t>
+    </section>
+    <section anchor="programming" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-iii-programming">III. プログラミング</name>
+      <t indent="0" pn="section-unnumbered-3-1">インターフェイスドライバーのプロセスは、次のように簡単に記述できます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3-2"><![CDATA[
+INPUT:  Wait until an input buffer is available
+        Wait until IMP ready
+        Start input
+        Wait until input is complete
+        IF Input Error
+        THEN clear Input Error  // Flush smashed message.  Input
+                                // buffer will be reused.
+        ELSE queue message on input queue
+        GOTO INPUT
+
+OUTPUT: Wait until a message is present on output queue
+        Wait until IMP ready
+        Start output
+        Wait until output is complete
+        IF Output Error
+        THEN clear Output Error  // smashed message is flushed
+        ELSE deque message from output queue  // Free up
+                                              // output buffer
+        GOTO 0UTPUT
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-3-3">*標準的な慣例では、ホストとIMPの間のNOPメッセージを使用します。</t>
+      <t indent="0" pn="section-unnumbered-3-4">システムの起動時または再起動時に必要な初期化は、ホストのREADYフロップをクリアし、1/2秒待ってから、ホストのREADYフロップをセットすることだけです。上記のプロセスを単に開始（または再開）するだけで、ホストとIMPの通信は適切に再同期されます。RFC #636で説明されているように、IMPのレディー線（とエラーフロップ）は、上記の2つのプロセスにだけ影響を与えるべきです。この再同期はNCPからは見えないようにすべきであり、接続データベースに影響を与えるべきではありません。NCPは、IMPからホストへのタイプ10のメッセージ「interface was reset」によって再同期または再初期化されます。</t>
+      <t indent="0" pn="section-unnumbered-3-5">実際には、入力エラーと出力エラーをソフトウェアのフラグとして実装することで、入力プロセスと出力プロセスの間で1つのエラーフロップを共有できます。エラーを調べるプロセスは、エラーフロップと自分のフラグの両方を調べなければなりません。一度に1つのプロセスだけがフラグを調べて変更することを保証するために、インターロック（たとえば、相互排除セマフォー）が必要です。エラーフロップがセットされている場合、プロセスは、そのフロップと自分のフラグをクリアする前に、エラーフロップの値をもう一方のプロセスのフラグにコピーしなければなりません。</t>
+    </section>
+    <section anchor="host-ready-line-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-iv-host-ready-line-implementation">IV. ホストのレディー線の実装</name>
+      <t indent="0" pn="section-unnumbered-4-1">ホストがレディー線を下げて上げると、IMPは上で概説したのと対称的な形で動作します。もちろん、このレディー線の低下は、ホストのインターフェイスドライバーの状態と、現在送受信中のメッセージが失われている可能性が高いことを示します。適切な動作は、ホストインターフェイスの1つまたは複数のエラーフロップをセットすることで引き起こされ、上で規定したプロセスが両方向のメッセージの流れを正しく再同期します。もちろん、ホストのレディー線で接点のバウンスが起きている間にメッセージがインターフェイスを流れないことを保証するため、ホストはレディー線が安定するまで伝送を遅らせなければなりません。これには2つの方法があります。</t>
+      <dl newline="false" spacing="normal" indent="3" pn="section-unnumbered-4-2">
+        <dt pn="section-unnumbered-4-2.1">ハードウェア:</dt>
+        <dd pn="section-unnumbered-4-2.2">ホストのレディー線のフロップによって駆動される積分型ワンショットを、「there's your host bit」および「ready for next IMP bit」とANDすることで、レディーフロップがオンになってから1/2秒経つまでメッセージ転送が始まらないことを保証します。</dd>
+        <dt pn="section-unnumbered-4-2.3">ソフトウェア:</dt>
+        <dd pn="section-unnumbered-4-2.4">初期化プログラムは、ホストのレディーフロップをセットした後、入力や出力の開始を許可する前に1/2秒待機します。</dd>
+      </dl>
+    </section>
+    <section anchor="summary" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-v-summary">V. まとめ</name>
+      <t indent="0" pn="section-unnumbered-5-1">これにより、ホストのIMPに対するインターフェイスのREADYライン制御の仕様が決まります。</t>
+      <ol spacing="normal" type="1." indent="adaptive" start="1" pn="section-unnumbered-5-2">
+        <li pn="section-unnumbered-5-2.1" derivedCounter="1.">IMPへのリレーを閉じる駆動を行う、プログラムでセット・クリア可能なホストのREADYフロップを持ちます。</li>
+        <li pn="section-unnumbered-5-2.2" derivedCounter="2.">IMPのレディー信号を、プログラムで読み取り可能なステータス条件として検出します。（ただし、割り込み条件ではありません）</li>
+        <li pn="section-unnumbered-5-2.3" derivedCounter="3.">ホストのREADYフロップがオフか、IMPのレディー信号がオフのときにセットされる、1つまたは2つのERRORフロップを持ちます。このフロップ（複数の場合はそれら）は、プログラムで読み取り可能かつプログラムでクリア可能なステータス条件です。（ただし、割り込み条件ではありません。）これらのステータスフロップは、システムの初期化によってクリアされてはなりません。</li>
+        <li pn="section-unnumbered-5-2.4" derivedCounter="4.">ホストのREADYラインのハードウェアによる安定化を提供する場合、それはホストのREADYフロップによって駆動される1/2秒の積分型ワンショットです。この信号は、「there's your host bit」および「ready for next IMP bit」とANDされます。</li>
+      </ol>
+      <t indent="0" pn="section-unnumbered-5-3">[このRFCは、GTE（旧BBN Corp.）の支援を受けて、Alex McKenzieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。2/2000]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

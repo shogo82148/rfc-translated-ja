@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="387" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc387" rel="alternate"/>
+  <front>
+    <title>ネットワークグラフィックスプロトコルレベル0の実装経験</title>
+    <seriesInfo name="RFC" value="387" stream="IETF"/>
+    <author fullname="Karl C. Kelley" initials="K.C." surname="Kelley">
+      <organization showOnFrontPage="true"/>
+      <address/>
+    </author>
+    <author fullname="Jaacov Meir" initials="J." surname="Meir">
+      <organization showOnFrontPage="true"/>
+      <address/>
+    </author>
+    <date year="1972" month="August" day="10"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">私たちは、いくつかのホストでNGP-0を実装しているところです。当面は、リモートホストを「最後の知的なマシン（last intelligent machine）」とみなさざるを得ません。私たちは、NGP-0をComputekディスプレイ用のマシン依存のコードに変換しようとしています。リモートホストはCCN、UCSD、そして近いうちにRANDCSGです。その作業については、今後のRFCでさらに述べる予定です。このRFCの関心事は次の2つです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-abstract-2">
+        <li pn="section-abstract-2.1" derivedCounter="1.">座標の数値体系を明確にすること。</li>
+        <li pn="section-abstract-2.2" derivedCounter="2.">
+          <t indent="0" pn="section-abstract-2.2.1">次のどちらも行わずに、TEXTR文字列をどのように実行するかを検討すること。</t>
+          <ol spacing="normal" type="a" indent="adaptive" start="1" pn="section-abstract-2.2.2">
+            <li pn="section-abstract-2.2.2.1" derivedCounter="a.">現在位置を読み取り、テキスト文字列を出力している間それを保存しておくこと</li>
+            <li pn="section-abstract-2.2.2.2" derivedCounter="b.">NGPコマンドごとにビームの位置を監視し、その情報をどこかに保存しておくこと</li>
+          </ol>
+        </li>
+      </ol>
+      <t indent="0" pn="section-abstract-3">このRFCの付録では、NGPの座標系からPDP-1Oの浮動小数点演算への変換の概要を示します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="the-coordinate-data" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-the-coordinate-data">座標データ</name>
+      <t indent="0" pn="section-unnumbered-1-1">NGP-0の文書（RFC 292）は、コマンドが絶対モードであっても相対モードであっても座標データの形式が同じであるとは明記していません。書かれているのは、座標データが2の補数表記で、最も左のビットが符号ビットであるということだけです。2の補数の方式としては、次の2つを使うことができます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-1-2"><![CDATA[
+           System A                            System B
+    (Absolute Coordinates)              (Relative Coordinates)
+
+  -1 -2 -3                 -16         0 -1 -2                 -15
+ -2  2  2  ...          ...2         -2  2  2  ...             2
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ |  |  |  |  |         |  |  |       |  |  |  |  |         |  |  |
+ +--+--+--+--+---------+--+--+       +--+--+--+--+---------+--+--+
+ ^                                      ^
+
+
+ .0111 ...............11 = +1/2-e    0.11 ..............11 = 1-e
+
+ .00 .................01 = +e        0.100 .............00 = 1/2
+
+ .00 .................0 = 0          0.00...............01 = e
+
+ .111 ................11 = -e        0.00 ..............00 = 0
+
+ .100 ................   = 1/2       1.11 ..............11 = -e
+
+                                     1.10 ..............00 = -1/2
+
+                                     1.00 ..............01 = -1+e = -(1-e)
+
+                                     1.00 ..............00 = -1
+
+
+               -16                               -15
+ Where:    e = 2                     Where:  e = 2
+
+                          -16                           -15
+ Range:    -1/2 to +1/2 - 2          Range:  -1 to +1 - 2
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-1-3">絶対座標データは-1/2から+1/2 - eの範囲になければならないという要件は、2つの異なる数値体系を使うべきだという意味に解釈できると私は考えます。その考え方に沿えば、System Aには、範囲外の数値を渡されることがないので、範囲チェックの心配が減るという利点があります。また、精度もまるまる1ビット高くなります。</t>
+      <t indent="0" pn="section-unnumbered-1-4">さらに私は、2つの体系を扱わなければならないのは問題を分かりにくくするだけで、余分なコーディングも必要になると考えます。上記のSystem Bだけを使うほうが理にかなっています。System Bを使う利点には次のものがあります。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-1-5">
+        <li pn="section-unnumbered-1-5.1" derivedCounter="1.">単一の体系で絶対座標と相対座標の両方を扱えます。</li>
+        <li pn="section-unnumbered-1-5.2" derivedCounter="2.">絶対座標が範囲を超えた場合、符号ビットを強制的にオンにするだけで、うまく折り返し（wrap-around）が起きます。</li>
+        <li pn="section-unnumbered-1-5.3" derivedCounter="3.">この表現は、たいていのマシンの浮動小数点数の仮数と同じです。ただし、正規化された浮動小数点数の仮数は、絶対座標の範囲には収まらないことに注意してください。プログラムは、指数が0になるまで仮数をシフトする必要があります。</li>
+      </ol>
+      <t indent="0" pn="section-unnumbered-1-6">NGPの文書を、2つの数値体系が必要だという意味に解釈した人はほとんどいないかもしれません。もしそうなら、なおさら好都合です。いずれにせよ、反対の論理の圧倒的な力によってこの立場から揺り動かされるまでは、私たちはすべての実装で、絶対座標と相対座標の両方に上記のSystem Bを使います。</t>
+    </section>
+    <section anchor="the-textr-command" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-the-textr-command">TEXTRコマンド</name>
+      <t indent="0" pn="section-unnumbered-2-1">RFC 292の4ページの最後の段落には、「……コマンドは、その出力が現在のコマンドと、コマンド開始時点の現在の『ビーム位置』だけの関数である場合にのみ含める。言い換えれば、レベル0のインタープリターは『モード』やプッシュダウンスタックのための内部記憶域を持つ必要がない。」と書かれています。</t>
+      <t indent="0" pn="section-unnumbered-2-2">Computekディスプレイの場合、NGPコマンドのほとんどはデバイスの機能に対応しています。唯一の例外がTEXTRコマンドです。文字列を表示したあとに戻るべきビーム位置を知る方法は2つあります。1つ目の方法は、文字列を出力する直前にディスプレイからカーソル位置を読み取ることです。しかし、これはデバイスからの読み取りが必要になるので（入力プロトコルが実装されるまでは、それはできません）、うまくいきません。また、このデバイスでは、カーソル位置の精度はスコープの4ポイント以内でしかありません。</t>
+      <t indent="0" pn="section-unnumbered-2-3">戻るべきビーム位置を知る2つ目の方法は、ビームのすべての動きをソフトウェアで監視することです。そこで、私たちのNGP-0からComputekへの変換の実装では、ソフトウェアのXレジスターとYレジスターを使います。絶対コマンドでは、レジスターはそのコマンドの座標に設定されます。相対コマンドでは、座標データがレジスターに加算されます。ピクチャーの開始時と終了時には、これらのレジスターは0に設定されます。</t>
+      <t indent="0" pn="section-unnumbered-2-4">TEXTRコマンドも、これらのソフトウェアのビームレジスターを変更します。つまり、ディスプレイ自体で起きていることに対応させるために、文字列の各文字ごとにXレジスターをインクリメントします。</t>
+    </section>
+    <section anchor="appendix" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-appendix">付録</name>
+      <section anchor="ngp-0-to-pdp-10-floating-point" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3.1">
+        <name slugifiedName="name-ngp-0-to-pdp-10-floating-point">NGP-0からPDP-10の浮動小数点へ</name>
+        <t indent="0" pn="section-unnumbered-3.1-1">NGP-0は、すべてのデータの数値（XパラメーターとYパラメーター）を、次の形式（1つの数値あたり16ビット）の小数とみなします。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3.1-2"><![CDATA[
+             +--+--+--+--+--+--+-----------------+--+--+--+--+
+             |  |  |  |  |  |  | ...         ... |  |  |  |  |
+             +--.--+--+--+--+--+-----------------+--+--+--+--+
+Bit position   0  1  2  3 ......                        14 15
+]]></artwork>
+        <t indent="0" pn="section-unnumbered-3.1-3">ここで、2進小数点はビット0とビット1の間にあるものとします。ビット0は符号ビットで、負の数はすべて2の補数で表します。PDP-10のマシンコードにおける浮動小数点の小数（仮数部）の表現は上記とよく似ているので（ただし、-1という数値だけは例外です）、変換は移動と置換という2つの操作だけで行えます。</t>
+      </section>
+      <section anchor="data-xy-conversion" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3.2">
+        <name slugifiedName="name-data-xy-conversion">データ（X,Y）の変換</name>
+        <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3.2-1"><![CDATA[
+   NGP (extreme points)                    Floating Point (PDP-10)
+
+        (16 bits)                                 (36 bits)
+                                           exp   mantissa
+
+1/2   0.1000 . . . . . .0              0 10000000  10 . . . . . .0
+
+-1/2  1.1000 . . . . . .0              1 01111111  10 . . . . . .0
+
+-1    1.00   . . . . . .0              1 01111101  10 . . . . . .0
+                                                        Special case
+
+1-e   0.11   . . . . . .1              0 10000000  1111 . . . . .1
+]]></artwork>
+        <t indent="0" pn="section-unnumbered-3.2-2">PDP-1OにおけるNGPから浮動小数点への変換：</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-unnumbered-3.2-3">
+          <li pn="section-unnumbered-3.2-3.1" derivedCounter="1.">符号ビット（最も左のビット）を符号ビットに移します。</li>
+          <li pn="section-unnumbered-3.2-3.2" derivedCounter="2.">小数部（15ビット）を仮数部に移します（左詰めにし、右側は0で埋めます）。</li>
+          <li pn="section-unnumbered-3.2-3.3" derivedCounter="3.">
+            <t indent="0" pn="section-unnumbered-3.2-3.3.1">指数部（8ビット）を次のように埋めます。</t>
+            <ol spacing="normal" type="a" indent="adaptive" start="1" pn="section-unnumbered-3.2-3.3.2">
+              <li pn="section-unnumbered-3.2-3.3.2.1" derivedCounter="a.">正の数の場合：exp = 10000000 = (80) hex</li>
+              <li pn="section-unnumbered-3.2-3.3.2.2" derivedCounter="b.">負の数の場合：exp = 01111111 = (7F) hex</li>
+              <li pn="section-unnumbered-3.2-3.3.2.3" derivedCounter="c.">
+                <t indent="0" pn="section-unnumbered-3.2-3.3.2.3.1"><em>ただ1つの</em>数値だけの例外</t>
+                <t indent="0" pn="section-unnumbered-3.2-3.3.2.3.2">NGPにおける-1（符号が負で、小数部がすべて0）</t>
+                <ol spacing="normal" type="(%d)" indent="adaptive" start="1" pn="section-unnumbered-3.2-3.3.2.3.3">
+                  <li pn="section-unnumbered-3.2-3.3.2.3.3.1" derivedCounter="(1)">仮数は-1/2と同じになります</li>
+                  <li pn="section-unnumbered-3.2-3.3.2.3.3.2" derivedCounter="(2)">指数は(82) hexの1の補数、つまり(7D) hexになります</li>
+                </ol>
+              </li>
+            </ol>
+          </li>
+        </ol>
+        <t indent="0" pn="section-unnumbered-3.2-4">NGPの小数に使うビット数が（24ビットまでの）何ビットであっても、変換の方法は変わりません。</t>
+        <t indent="0" pn="section-unnumbered-3.2-5">[このRFCは、GTE（旧BBN Corp.）の支援を受けて、Alex McKenzieによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。9/99]</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

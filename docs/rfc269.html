@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 269: ファイル転送に関するいくつかの経験（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>UNKNOWN</dd>
+<dt>更新:</dt>
+<dd><span>RFC122</span></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc269.html">RFC 269</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc269">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc269">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 269</h1>
+<h1 id="title-en">Some Experience with File Transfer</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 269</h1>
+<h1 id="title-ja">ファイル転送に関するいくつかの経験</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">At UCLA-NMC we have recently completed implementation of a program which
+utilizes UCSB's storage capability via their Simple Minded File System
+(See RFC #122 by Jim White for a description of SMFS).  The use of the
+program is detailed in Appendix A.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">UCLA-NMCでは最近、UCSBのSimple Minded File System（SMFSの説明については、Jim WhiteによるRFC #122を参照してください）を介してUCSBの記憶領域を利用するプログラムの実装を完了しました。このプログラムの使い方は付録Aで詳しく説明します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">We learned a number of things in the implementation effort and
+subsequent usage.  We think a number of these apply towards the
+development of a net- word-wide File Transfer Protocol, and we hope to
+stimulate further dis- cussion of these issues.  We discovered some
+things in the UCSB protocol that we would like to see included in the
+network-wide protocol, and we see some things that are in the currently
+proposed net protocol and are unfortunately absent from the UCSB
+protocol.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">私たちは、実装作業とその後の利用を通じて多くのことを学びました。そのうちのいくつかは、ネットワーク全体のファイル転送プロトコルの開発に当てはまると考えており、これらの問題についてさらなる議論が促されることを願っています。UCSBのプロトコルには、ネットワーク全体のプロトコルにも取り入れてほしいと思うものがいくつか見つかりました。また、現在提案されているネットワークのプロトコルにはあるものの、残念ながらUCSBのプロトコルにはないものもいくつかあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-3-en">In the first category, is the UCSB file retrieval procedure.  The user
+specifies among other things, a bit count of the number of bits to be
+retrieved in the current request.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-3-ja">前者に当てはまるのが、UCSBのファイル取得手順です。ユーザーは、特に、現在の要求で取得するビット数を表すビットカウントを指定します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-4-en">Successive RTF commands yield successive pieces of the file.  Portions
+of the file can be spaced over by use of the SPF command.  We think that
+the ability of the user to specify the size of the "chunks" of the file
+he is about to receive, along with the ability to access any part of the
+file without having to get the entire file, is definitely an advantage.
+It makes the user programs easier to write since the problem of parsing
+the input stream virtually disappears, as the user program knows exactly
+what to expect at all times.  In addition, the one request, one response
+nature of the protocol avoids the problem of sending a request and then
+receiving pieces of data of unpredictable size at unknown intervals.
+The response to each RTF gives the comforting knowledge that "they're
+still listening".  This leads us to believe that there is much to be
+gained by the adoption of a one request, one response type of protocol.
+We might point out that for any significant file transfer, this does not
+seriously cut down on the overall data transfer rate, since a
+"defaulting" type of approach, as SMFS uses can be used to keep the
+request messages very small.  We also have found the mandatory password
+scheme of UCSB quite easily used, and any server site, (i.e. a site
+specifically advertising file storage) can reasonably be expected, in
+our opinion, to require passwords (see also RFC #238 by R. Braden).</p></div>
+<div lang="ja" class="col"><p id="section-abstract-4-ja">RTFコマンドを続けて発行すると、ファイルの続きの部分が順に得られます。SPFコマンドを使えば、ファイルの一部を読み飛ばすことができます。これから受け取るファイルの「かたまり（chunk）」のサイズをユーザーが指定できることと、ファイル全体を取得しなくてもファイルの任意の部分にアクセスできることは、明らかに利点であると考えています。ユーザープログラムは常に何が来るかを正確に把握しているので、入力ストリームを解析する問題が事実上なくなり、ユーザープログラムを書きやすくなります。さらに、このプロトコルは1つの要求に1つの応答を返す性質を持つため、要求を送信した後に、予測できないサイズのデータ片を不明な間隔で受信するという問題を避けられます。各RTFへの応答によって、「相手はまだ聞いている」と安心できます。このことから、1要求1応答型のプロトコルを採用することで得られるものは大きいと考えています。また、SMFSが使用しているような「デフォルト値を用いる」方式を使えば要求メッセージを非常に小さく保てるので、相当な量のファイル転送であっても、全体のデータ転送速度が大きく低下することはないことも指摘しておきます。さらに、UCSBのパスワード必須の方式は非常に使いやすいことがわかりました。私たちの意見では、どのサーバーサイト（つまり、ファイルの格納を特に宣伝しているサイト）でも、パスワードを要求するのが当然であると考えられます（R. BradenによるRFC #238も参照してください）。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-5-en">Almost immediately after starting to use SMFS we found a serious lack in
+one area.  There is no way for a user to ask "what files do I have
+there?"  As a matter of fact, the author suspects that there are already
+several files there which he has "forgotten" about!  It is reasonable,
+perhaps even necessary, for any server to supply a nicely formatted
+character string describing the files stored there for this password, or
+user, or whatever division is used.  The listing should also contain
+other pertinent information, such as date created, size etc.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-5-ja">SMFSを使い始めてほとんどすぐに、ある部分に重大な欠落があることに気づきました。ユーザーが「そこにはどのファイルがあるのか？」と問い合わせる方法がないのです。実のところ、著者は、自分が「忘れてしまった」ファイルがすでにいくつかそこにあるのではないかと疑っています！どのサーバーも、このパスワード、ユーザー、あるいはどのような区分であれ、それに対して格納されているファイルを説明する、きれいに整形された文字列を提供するのが妥当であり、おそらく必要でさえあります。その一覧には、作成日やサイズなど、その他の関連情報も含めるべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-6-en">In the meantime, UCSB is providing the SEX system with valuable "out-of-line
+on-line" storage, and we look forward to the development of a
+widely accepted file transfer protocol, implemented on a large number of
+server sites, hopefully equipped with low cost bulk storage.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-6-ja">当面の間、UCSBはSEXシステムに価値ある「回線外のオンライン（out-of-line on-line）」記憶領域を提供しています。私たちは、広く受け入れられるファイル転送プロトコルが開発され、願わくは低コストの大容量記憶装置を備えた多数のサーバーサイトに実装されることを期待しています。</p></div>
+</div></section><section><span id="appendix-A"></span><span id="fxfer-en"></span><span id="fxfer-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-fxfer-en" lang="en">
+<span id="section-appendix.a-en"></span><a id="appendix-A-en" href="#appendix-A-en" class="section-number selfRef">Appendix A.</a> <a href="#name-fxfer-en" class="section-name selfRef">FXFER</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-fxfer-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a id="appendix-A-ja" href="#appendix-A-ja" class="section-number selfRef">付録A.</a> <a href="#name-fxfer-ja" class="section-name selfRef">FXFER</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">SEX Notebook, Section 23.29, 3 December 71</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">SEX Notebook、セクション23.29、1971年12月3日</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-2-en">FXFER is a re-entrant program written in Symbol which is used to send a
+receive file from UCSB, using their Simple Minded File System.  For the
+description of the Network interface to SMFS, see RFC #122 by Jim White.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-2-ja">FXFERは、Symbolで書かれた再入可能なプログラムで、UCSBのSimple Minded File Systemを使って、UCSBとの間でファイルを送受信するために使います。SMFSへのネットワークインターフェイスの説明については、Jim WhiteによるRFC #122を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-3-en">Files are stored there in a paged format identical to the paged format
+that the tape process uses: &lt;header&gt;&lt;data page&gt;&lt;data page&gt;...  Thus a
+file which Master lists as having n pages will take 2048 n bytes of
+storage at UCSB.  The user's sign-on initials are used as both the
+access and modification passwords, so that if a file is sent under on
+user's sign-on, they can only be retrieved or deleted by him.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-3-ja">ファイルは、テーププロセスが使用するページ形式と同一のページ形式でそこに格納されます: &lt;header&gt;&lt;data page&gt;&lt;data page&gt;... したがって、Masterがnページあると表示するファイルは、UCSBで2048 nバイトの記憶領域を占めます。ユーザーのサインオンのイニシャルが、アクセス用と変更用の両方のパスワードとして使われます。そのため、あるユーザーのサインオンでファイルが送信された場合、そのファイルを取得したり削除したりできるのはそのユーザーだけです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-4-en">Commands</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-4-ja">コマンド</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-appendix.a-5-en">
+<dt id="section-appendix.a-5.1-en">PA</dt>
+        <dd id="section-appendix.a-5.2-en">Increments "print All" counter.  Different settings of this
+counter yield different levels of program trace output on
+the console.</dd>
+        <dt id="section-appendix.a-5.3-en">NP</dt>
+        <dd id="section-appendix.a-5.4-en">No print.  This sets the "Print All" counter to zero.</dd>
+        <dt id="section-appendix.a-5.5-en">DF FOO</dt>
+        <dd id="section-appendix.a-5.6-en">This deletes the file "FOO" located at UCSB.</dd>
+        <dt id="section-appendix.a-5.7-en">PF FOO</dt>
+        <dd id="section-appendix.a-5.8-en">This sends the file "FOO", pointed to by the user's root
+directory, to UCSB.  Only read access is needed to "FOO".</dd>
+        <dt id="section-appendix.a-5.9-en">GF FOO</dt>
+        <dd id="section-appendix.a-5.10-en">The file "FOO" located at UCSB is retrieved and put in the
+user's root (with write access).  Note that it must have been
+sent by the user to have the right password.</dd>
+        <dt id="section-appendix.a-5.11-en">RN FOO BAR</dt>
+        <dd id="section-appendix.a-5.12-en">Rename the file "FOO" at UCSB to "BAR".  The same password
+restrictions as with PF and GF apply.  (Not yet implemented)</dd>
+        <dt id="section-appendix.a-5.13-en">ST</dt>
+        <dd id="section-appendix.a-5.14-en">Status.  Tells what program is doing and how much its done.</dd>
+        <dt id="section-appendix.a-5.15-en">X</dt>
+        <dd id="section-appendix.a-5.16-en">Exit Program.</dd>
+      </dl></div>
+<div lang="ja" class="col"><dl id="section-appendix.a-5-ja">
+<dt id="section-appendix.a-5.1-ja">PA</dt>
+        <dd id="section-appendix.a-5.2-ja">「print All」カウンターを増やします。このカウンターの設定値によって、コンソールに出力されるプログラムのトレースのレベルが変わります。</dd>
+        <dt id="section-appendix.a-5.3-ja">NP</dt>
+        <dd id="section-appendix.a-5.4-ja">印字なし（No print）。「Print All」カウンターを0に設定します。</dd>
+        <dt id="section-appendix.a-5.5-ja">DF FOO</dt>
+        <dd id="section-appendix.a-5.6-ja">UCSBにあるファイル「FOO」を削除します。</dd>
+        <dt id="section-appendix.a-5.7-ja">PF FOO</dt>
+        <dd id="section-appendix.a-5.8-ja">ユーザーのルートディレクトリーが指すファイル「FOO」をUCSBに送信します。「FOO」には読み取りアクセス権だけが必要です。</dd>
+        <dt id="section-appendix.a-5.9-ja">GF FOO</dt>
+        <dd id="section-appendix.a-5.10-ja">UCSBにあるファイル「FOO」を取得し、（書き込みアクセス権付きで）ユーザーのルートに置きます。正しいパスワードを持つためには、そのファイルがそのユーザーによって送信されたものでなければならないことに注意してください。</dd>
+        <dt id="section-appendix.a-5.11-ja">RN FOO BAR</dt>
+        <dd id="section-appendix.a-5.12-ja">UCSBにあるファイル「FOO」の名前を「BAR」に変更します。PFやGFと同じパスワードの制限が適用されます。（未実装）</dd>
+        <dt id="section-appendix.a-5.13-ja">ST</dt>
+        <dd id="section-appendix.a-5.14-ja">状態（Status）。プログラムが何をしていて、どこまで進んだかを示します。</dd>
+        <dt id="section-appendix.a-5.15-ja">X</dt>
+        <dd id="section-appendix.a-5.16-ja">プログラムを終了します。</dd>
+      </dl></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-6-en">If the system and/or UCSB is particularly slow, then UCSBFIL may type a
+time-out message.  At this point the user has the option of continuing,
+or exiting the program.  The message is self-explanatory, as are most of
+the program's messages.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-6-ja">システムとUCSBのいずれかまたは両方が特に遅い場合、UCSBFILはタイムアウトメッセージを出力することがあります。この時点で、ユーザーは続行するかプログラムを終了するかを選べます。このメッセージは、プログラムのほとんどのメッセージと同様に、説明を読まなくても意味がわかるものです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-7-en">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Nick Christenson 10/97]</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-7-ja">[このRFCは、Nick Christensonによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。10/97]</p></div>
+</div></section>
+</body>
+</html>

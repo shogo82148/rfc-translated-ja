@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="64" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc64" rel="alternate"/>
+  <front>
+    <title>マーキングの廃止</title>
+    <seriesInfo name="RFC" value="64" stream="IETF"/>
+    <author fullname="M. Elie" initials="M." surname="Elie">
+      <organization showOnFrontPage="true">UCLA</organization>
+      <address/>
+    </author>
+    <date year="1970" month="July"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この改善を実装するにはおそらくやや遅すぎることは承知していますが、私たちはマーキング（marking）よりも良い解決策があると考えており、マーキングを不要にするIMP-HOSTインターフェイスの簡単な修正を提案します。</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="the-harm" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-the-harm">弊害</name>
+      <t indent="0" pn="section-1-1">マーキングは、メッセージのテキストをワード境界から始められるようにするため、送信ホストの都合に合わせて導入されました。しかし、ワード長が異なる受信ホストにとっては都合がよくありません。さらに、マーキングはメッセージに無駄なビットを持ち込みます。私たちの32ビットマシンであるSigma 7を例にとって、このことを説明します。</t>
+      <section anchor="inefficiency-in-computation" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-inefficiency-in-computation">計算の非効率性</name>
+        <t indent="0" pn="section-1.1-1">18ビットマシンから、いずれネットワークの標準になるであろう8ビットのASCII文字で符号化されたメッセージを受け取ったとします（図1.1）。たとえば、このメッセージを私たちの内部コードであるEBCDICに変換するためには、</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.1-2"><![CDATA[
+0                        17           0                           31
+--------------------------            ------------------------------
+|        leader          |            |           leader           |
+--------------------------            ------------------------------
+|               | 0 0 0 1|            | 0 0 0 1 |                  |
+--------------------------            -----------                  |
+|                        |            |                            |
+|                        |            |                            |
+|                        |            |                            |
+| message                |            | message                    |
+|                        |            |                            |
+|                        |            |                            |
+|                        |            |                            |
+|                        |            |                            |
+|                        |            |                            |
+|                        |            |                            |
+
+                            figure 1.1
+]]></artwork>
+        <t indent="0" pn="section-1.1-3">まずメッセージ全体をシフトしなければなりません。リーダーに続く最初の1を検出し、そこからメッセージを4ビット左にシフトしなければならないと判断する必要があります。これにはダブルワードあたり約12µsecかかり、最大長の通常メッセージ1つあたりでは1.5msecになります。これは大きな値ではありませんが、それでもメッセージを内部コードに変換するのにかかる時間の約3分の1にあたります。</t>
+      </section>
+      <section anchor="inefficiency-in-transmission" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-inefficiency-in-transmission">伝送の非効率性</name>
+        <t indent="0" pn="section-1.2-1">より重要なのは、メッセージに不要なビットを追加することによる非効率性です。1文字のメッセージが使われるようになった場合は特にそうです。図1.2は、Sigma 7が1文字のテキストを送信する例を示しています。この場合、8ビットの情報を運ぶために112ビットを送信することになり、効率は0.07になります。マーキングを廃止すると、</t>
+        <artwork name="" type="" align="left" alt="" pn="section-1.2-2"><![CDATA[
+                         -----------------------------------
+Sigma 7                  |           leader                |
+                         -----------------------------------
+Message                  |00000000000000000000000000000001 |
+                         -----------------------------------
+                         | text | 000000000000000000000000 |
+                         -----------------------------------
+16 bits of padding       | 1000000000000000 |
+added by sending IMP     --------------------
+
+                             figure 1.2
+]]></artwork>
+        <t indent="0" pn="section-1.2-3">この効率は0.10に向上します。32ビットのテキスト（一部の制御コマンドの長さ）では、効率は0.28から0.4に向上します。1パケットのメッセージでも、効率はやはり3%向上します。</t>
+      </section>
+    </section>
+    <section anchor="a-remedy" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-a-remedy">改善策</name>
+      <t indent="0" pn="section-2-1">以下は、Host-Impユーザーインターフェイスの修正の提案で、BBN 1822レポートから抜き出した図の上に試験的にスケッチしたものです。</t>
+      <section anchor="host-to-imp" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-host-to-imp">ホストからImpへ</name>
+        <t indent="0" pn="section-2.1-1">この修正では、32まで数えるカウンターを追加します。このカウンターはメッセージの始まりで有効になり、IMPにビットが渡されるたびに1つ増えます。カウンターが32に達すると、「ワード完了（word complete）」信号を強制的に発生させて、シフトレジスターに新しいワードを要求し、ワード長カウンターをリセットします。こうすることで、リーダーの最後のワードの未使用ビットは送信されず、メッセージは次のワードから始まります（図2.1を参照）。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-2.1-2"><![CDATA[
+0                                       23
+------------------------------------------
+|             leader                     |
+|                   ----------------------
+|                   | XXXXXXXXXXXXXXXX   | <- contents of
+|-----------------------------------------    sending Host memory
+|                                        |    (24 bits)
+|            Message                     |
+|                                        |
+
+Corresponding message in the sending IMP memory
+
+
+0                             15
+--------------------------------
+|                              |
+|                              |
+|         leader               |
+|                              |
+--------------------------------
+|                              |
+|   message                    |
+|                              |
+
+
+                             figure 2.1
+]]></artwork>
+      </section>
+      <section anchor="imp-to-host" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-imp-to-host">Impからホストへ</name>
+        <t indent="0" pn="section-2.2-1">この修正では、32まで数えるカウンターを追加します。新しいメッセージの始まりでImpから32ビットがシフトレジスターに入ると、このカウンターは、Impから新しいビットを入れずに、レジスターが満杯になる（これはワード長カウンターで検出されます）までレジスターをシフトさせます。</t>
+        <t indent="0" pn="section-2.2-2">こうすることで、メッセージの次のビット、つまりテキストの最初のビットは、次のワードの最初のビットとして入ります（図2.2を参照）。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-2.2-3"><![CDATA[
+Message in receiving IMP memory  Contents of receiving Host memory (35
+bits)
+
+0                        15      0                                   35
+------------------------------   --------------------------------------
+|                            |   |                                    |
+|       leader               |   |     leader                  | 0000 |
+------------------------------   --------------------------------------
+|                            |   |                                    |
+| message                    |   | message                            |
+|                            |   |                                    |
+|                            |   |                                    |
+
+                               figure 2.2
+]]></artwork>
+        <t indent="0" pn="section-2.2-4">ネットワーク上で送られる無駄なマーキングビットのコストと、受信したテキストを整形し直す計算のコストを積み重ねると、この修正はおそらく検討する価値があるでしょう。しかし、この決定は私たちの権限の及ぶところではなく、私たちはマーキングよりも良い解決策を提案したかっただけです。</t>
+        <t indent="0" pn="section-2.2-5">5ページと6ページには、「IMP to Host」「Host's special Interface」の配線図があります。</t>
+        <t indent="0" pn="section-2.2-6">[このRFCは、Gottfried Janikによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。2/98]</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

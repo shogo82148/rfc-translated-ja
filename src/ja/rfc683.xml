@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="683" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc683" rel="alternate"/>
+  <front>
+    <title>FTPSRV - ページ化されたファイルのためのTENEXのFTP拡張</title>
+    <seriesInfo name="RFC" value="683" stream="IETF"/>
+    <author fullname="R. Clements" initials="R." surname="Clements">
+      <organization showOnFrontPage="true">BBN</organization>
+      <address/>
+    </author>
+    <date year="1975" month="April" day="3"/>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">TENEXのページ化されたファイル（paged file）をFTPでネットワーク越しに転送できるようにすることが以前から必要とされていたことを受けて、TENEXのFTP実装を拡張しました。</t>
+      <t indent="0" pn="section-1-2">この実装は、「旧（OLD）」プロトコル（RFC 354）に対する拡張です。Postel、Neigusらとの有益な議論を経て作成しました。彼らがこの実装を正しいと認めたとほのめかすつもりはありませんし、それをいうなら私自身もこれが正しいとは思っていません。「正しい」実装は、その作業のための資金が得られれば、「新（NEW）」プロトコル（RFC 542）において交渉のうえで実装されることになるでしょう。</t>
+    </section>
+    <section anchor="the-problem(s)" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-the-problem(s)">問題</name>
+      <t indent="0" pn="section-2-1">この拡張は、2つの別々の問題に取り組みます。ネットワークの信頼性と、TENEXのディスクファイル形式がFTPと互換性を持たないことです。私の考えでは、チェックサムとブロックのシーケンス番号を伴う転送モードがぜひとも必要です。このモードでは、データ圧縮もできるようにすべきです。</t>
+      <t indent="0" pn="section-2-2">また、ページ化された、穴のある（holey）TENEXファイルを扱う必要もあります。後者の問題はNLSのためにぜひとも必要なものであり、今回の拡張の動機となっています。</t>
+      <t indent="0" pn="section-2-3">前者の問題は、正しく対処するならば、新しいMODEコマンドを必要とします。チェックサムに加えてデータ圧縮もできるようにするには、おそらく2つのMODEが必要でしょう。実のところ、これは追加のモードの種類に応じて2**Nで増えていく氷山の一角だと思うので、何らかのモードの組み合わせの仕組みを考え出す必要があるかもしれません。AN、AT、AC、EN、ET、ECの各TYPEを参照してください。また、望むなら、MODE BとMODE Cを併用して（NEWプロトコル）、圧縮と再開の両方の機能を得られるようにすべきです。</t>
+      <t indent="0" pn="section-2-4">2つ目の問題であるTENEXファイルは、おそらく新しい種類のSTRUcture（構造）です。しかし、紙テープをディスクファイルに送ったり、その逆を行ったりする際に、転送がページ化されたファイルのように見えることも可能であるべきです。そうであれば、扱っているのはデータ表現のTYPEなのかもしれません。とはいえ、この議論はやや無理があるので、ページ化されたSTRUctureというのがおそらく正しいでしょう。何がMODEで、何がTYPEで、何がSTRUctureなのか、正直なところ私にはよくわかりません。</t>
+    </section>
+    <section anchor="the-(incorrect)-choices-made" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-the-(incorrect)-choices-made">（正しくない）選択</name>
+      <t indent="0" pn="section-3-1">新しいMODEとSTRUctureが必要だと判断しておきながら、私は代わりに全体を1つの新しいTYPEとして実装しました。結局のところ、ネットワーク上のデータにチェックサムを付けること（MODE）と、処理システムにおいてデータをチェックサム付きのTYPEとして表現することは、ネットワークとデータの間の仮想的な線をどこに引くかの違いにすぎない、と私は理屈をつけています。また、新しいTYPEコマンドを1つにすることで、FTPのユーザープログラムとサーバープログラムに必要な手術の規模を小さくできました。</t>
+    </section>
+    <section anchor="implementation-details" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-implementation-details">実装の詳細</name>
+      <t indent="0" pn="section-4-1">新しいTYPEの名前は「XTP」です。私はこれを、FTPコマンドのキー文字（Key Letter）クラスすべてに対する標準として提案します。「X」は「実験的（experimental）」を表し、協力するサイト間で合意されたものです。「X」の次の文字は、特定のシステムの実装者がプロトコルの神様から借り受けるものです。この場合、「T」はTENEXを表します。それに続く文字は、FTPコマンドの複数ありうる独自の値を区別します。ここでの「P」は「ページ化（Paged）」タイプです。</t>
+      <t indent="0" pn="section-4-2">TYPE XTPは、STRU F、BYTE 36、MODE Sの場合にのみ実装されています。</t>
+      <t indent="0" pn="section-4-3">TYPE XTPの情報は、ヘッダーといくらかのデータからなるチャンク（chunk）単位で転送されます（RECORDやBLOCKという語は意図的に避けています）。チャンク内のデータは、転送されるファイルのデータ部分の一部である場合もあれば、そのファイルに関連付けられたFDB（ファイル記述子ブロック、File Descriptor Block）である場合もあります。</t>
+    </section>
+    <section anchor="diversion:-the-tenex-disk-file" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-diversion:-the-tenex-disk-file">余談：TENEXのディスクファイル</name>
+      <t indent="0" pn="section-5-1">TENEXのファイルシステムになじみのない方のために、実装の残りの部分が意味をなすよう、ここで簡単に説明します。</t>
+      <t indent="0" pn="section-5-2">TENEXのディスクファイルは、パス名、ページテーブル、（空の場合もある）ページの集合、属性の集合の4つで構成されます。</t>
+      <t indent="0" pn="section-5-3">パス名はRETRまたはSTORの動詞で指定されます。パス名には、ディレクトリー名、ファイル名、ファイル名の拡張子、バージョン番号が含まれます。</t>
+      <t indent="0" pn="section-5-4">ページテーブルは最大2**18個のエントリーを持ちます。各エントリーは空（EMPTY）であるか、またはページを指します。空でない場合は、ページ固有のアクセスビットもいくつかあります。ファイルのすべてのページが同じアクセス保護を持つ必要はありません。</t>
+      <t indent="0" pn="section-5-5">ページは、36ビットのワード512個からなる連続した集合です。</t>
+      <t indent="0" pn="section-5-6">FDBにあるファイルの属性には、作成時刻、書き込み時刻、読み込み時刻、書き込み側のバイトサイズ、ファイル終端ポインター、読み込みと書き込みの回数、バックアップシステムのテープ番号などが含まれます。</t>
+      <t indent="0" pn="section-5-7">注：ページテーブル内のページが連続している必要はまったくありません。使用中のスロットの間に空のページテーブルのスロットがあってもかまいません。また、ファイル終端ポインターは単なる数値です。それが実際にファイル内の「最後の」データを指している必要はありません。TENEXの通常の逐次I/O呼び出しでは、ファイル終端ポインターは最後に書き込まれたデータの後ろに置かれますが、特定のプログラミングシステムが必要とする場合は、ほかの操作によってそうならないこともあります。</t>
+      <t indent="0" pn="section-5-8">実際、これらの特殊なケース、つまり「穴のある」ファイルと、ファイルの終わりにないファイル終端ポインターは、どちらもNLSのデータファイルで発生します。これらのファイルが新しいTYPEの動機となりました。</t>
+    </section>
+    <section anchor="meanwhile,-back-at-the-implementation,..." numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-meanwhile,-back-at-the-implementation,...">さて、実装の話に戻ると……</name>
+      <t indent="0" pn="section-6-1">情報の各チャンクにはヘッダーがあります。チャンクの最初のバイトは（TYPE XTPはBYTE 36の場合にのみ実装されているので）最初のワードでもあり、小さな数値（現在は6）です。これは、それに続くワードのうちヘッダーに含まれるものの数です。次にその6つのワードが続き、その後にいくつかのデータワードが続きます。</t>
+      <t indent="0" pn="section-6-2">6つのヘッダーワードは次のとおりです。</t>
+      <dl newline="false" spacing="normal" indent="3" pn="section-6-3">
+        <dt pn="section-6-3.1">ワード1：</dt>
+        <dd pn="section-6-3.2">チェックサム。6つのヘッダーワードとそれに続くデータワード（先頭の「6」自体は含まない）の1の補数和（絶対値と循環桁上げ（end-around carry）による）です。チェックサムを含むすべてのワードの和は、+0または-0にならなければなりません。</dd>
+        <dt pn="section-6-3.3">ワード2：</dt>
+        <dd pn="section-6-3.4">シーケンス番号。最初のチャンクは1番、2番目は2番、というようになります。</dd>
+        <dt pn="section-6-3.5">ワード3：</dt>
+        <dd pn="section-6-3.6">NDW。ヘッダーに続く、このチャンク内のデータワードの数です。したがって、チャンクの全長は1（NHEADを含むワード）+ NHEAD + NDWです。チェックサムは、これらのうち最初のもの以外のすべてを検査します。</dd>
+        <dt pn="section-6-3.7">ワード4：</dt>
+        <dd pn="section-6-3.8">ページ番号。データがディスクファイルのページである場合、これはファイルのページマップにおけるそのページの番号です。ファイル内の空のページ（穴）は単に送信されません。穴はゼロで埋められたページと同じではないことに注意してください。</dd>
+        <dt pn="section-6-3.9">ワード5：</dt>
+        <dd pn="section-6-3.10">ACCESS。ファイルのページマップにおいてそのページに関連付けられたアクセスビットです。（このフルワードの値は、ネットワークからディスクへ読み込むプログラムによって、SPACSのAC2に入れられます。）</dd>
+        <dt pn="section-6-3.11">ワード6：</dt>
+        <dd pn="section-6-3.12">TYPE。これがどの種類のチャンクであるかを示すコードです。現在のところ、データページを表すタイプ0と、FDBを表すタイプ-3だけが送信されます。</dd>
+      </dl>
+      <t indent="0" pn="section-6-4">ヘッダーの後には、NDW個のデータワードが続きます。NDWは現在のところ、データページでは8進数で1000、FDBでは8進数で25のいずれかです。ディスクファイルのページ末尾のゼロはまもなく破棄されるようになり、その場合NDWは1000未満になります。FTPのサーバーとユーザーの受信側の部分は、これらの短縮されたページを受け付けます。送信側は、たまたままだそのような送り方をしていません。</t>
+      <t indent="0" pn="section-6-5">検証は、次のいずれかに当てはまる場合にエラーを報告するように行われます。</t>
+      <ul bare="false" empty="true" indent="3" spacing="compact" pn="section-6-6">
+        <li pn="section-6-6.1">チェックサムが合わない。</li>
+        <li pn="section-6-6.2">シーケンス番号が正しくない。</li>
+        <li pn="section-6-6.3">NDWが、そのチャンクの種類に対して妥当でない。</li>
+        <li pn="section-6-6.4">ネットワーク上のファイルが、FDBチャンクのデータ部分の直後以外の位置で終わっている。</li>
+      </ul>
+    </section>
+    <section anchor="closing-comments" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-closing-comments">結びのコメント</name>
+      <t indent="0" pn="section-7-1">このFTPサーバーとユーザーは、BBNのすべてのシステムとほかのいくつかのサイトで稼働しています。ユーザープロセスに独自の変更を加えたサイトは少ないので、ユーザーのほうがより広く配布されています。</t>
+      <t indent="0" pn="section-7-2">チェックサムとシーケンス番号付けの問題は、「NEW」プロトコルで取り組まれるべきだと考えます。TENEXファイルについての説明が、ほかのシステムのユーザーの役に立てば幸いです。たとえば、私が「レコード」という概念を理解していない理由がこれでわかるかもしれません。TENEXファイルは、ページテーブルが指すワードの集まりにすぎません。それらのワードにCRLFが含まれていてもかまいませんが、それはTENEXにとって「レコード」を意味しません。このRFCは、ネットワークのデータ転送がタマネギの層のように実装されていることも明確に示していると思います。いくつかの文字が行にまとめられます。いくつかの行がファイルにまとめられます。ファイルは、転送のために扱いやすい別の単位に分割されます。それらの単位には圧縮が適用されます。単位には再開マーカーで印が付けられることもあります（実際にそれを行った人はいるのでしょうか）。圧縮された単位には、チェックサム、シーケンス番号、日時のスタンプが付けられ、速達の印が付けられることもあります。受信側では、この処理が逆に行われます。MODE、TYPE、STRUでは、この状況を十分に記述できていないのかもしれません。このRFCは、新しいFTPサーバーを導入したTENEXサイトで、実装者がそのサーバーとやりとりできるようにするために書かれました。また、これはほかのいくつかの問題についてのコメントの依頼（request for comments）でもあります。</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

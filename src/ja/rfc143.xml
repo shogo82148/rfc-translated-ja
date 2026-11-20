@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="143" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc143" rel="alternate"/>
+  <front>
+    <title>提示された公式ICPについて</title>
+    <seriesInfo name="RFC" value="143" stream="IETF"/>
+    <author fullname="W. Naylor" initials="W." surname="Naylor">
+      <organization showOnFrontPage="true">UCLA - NMC</organization>
+      <address/>
+    </author>
+    <author fullname="J. Wong" initials="J." surname="Wong">
+      <organization showOnFrontPage="true">UCLA - NMC</organization>
+      <address/>
+    </author>
+    <author fullname="C. Kline" initials="C." surname="Kline">
+      <organization showOnFrontPage="true">UCLA - NMC</organization>
+      <address/>
+    </author>
+    <author fullname="J. Postel" initials="J." surname="Postel">
+      <organization showOnFrontPage="true">UCLA - NMC</organization>
+      <address/>
+    </author>
+    <date year="1971" month="May" day="3"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">NWG/RFC #123で提案されたICPに見つかった競合状態（race condition）について意見を述べたいと思います。この問題は、最初のコネクションがまだクローズされていないうちに、サーバーがユーザーの受信ソケットへの2番目のコネクションを開始しようとしたときに生じます。NWG/RFC #123と同様の表記を使い、次の表で、提示された（proferred）ICPと私たちが提案する（proposed）ICPにおける一連のイベントを示します。最後の2列は、その動作を開始する前に、どの動作が完了していなければならないかを示します。UserとServerは第3レベルのプログラムで、UNCPとSNCPはそれぞれユーザーのNCPとサーバーのNCPです。アロケート（Allocate）は議論に何も付け加えないので含めていません。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-2"><![CDATA[
+                                               Required Predecessors
+                                               ---------------------
+Reference #   Action              Initiator   "Proferred"   Proposed
+-----------   ------              ---------   -----------   --------
+    1         Listen(L,32)        Server           --          --
+
+    2         Init(U,L,32)        User             --          --
+
+    3         RTS(U,L,'l')        UNCP             2           2
+
+    4         STR(L,U,32)         SNCP          1 and 3     1 and 3
+
+    5         Send(L,S)           Server           4           4
+
+    6         SEND('l',S)         SNCP             5           5
+
+    7         RECEIVE('l',S)      UNCP             6           6
+
+    8         Receive(U,S)        User             7           7
+
+    9         Close(L)            Server           5           5
+
+   10         CLS(L,U)            SNCP          9 and 7     9 and 7
+
+   11         Close(U)            User             8        not used
+
+   12         CLS(U,L)            UNCP            11          10
+]]></artwork>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-3"><![CDATA[
+                                               Required Predecessors
+                                               ---------------------
+Reference #   Action              Initiator   "Proferred"   Proposed
+-----------   ------              ---------   -----------   --------
+
+   13         Init(S,U+1,B )      Server           9           9
+                          u
+
+   14         RTS(S,U+1,'l' )     SNCP            13          13
+                           2
+
+   15         Init(S+1,U,B )      Server          13        14 and 18
+                          s
+
+   16         STR(S+1,U,B )       SNCP            15          15
+                         s
+
+   17         Init(U+1,S,B )      User            11          12
+                          u
+
+   18         STR(U+1,S,B )       UNCP            17          17
+                         u
+
+   19         Init(U,S+1,B )      User            17          17
+                          s
+
+   20         RTS(U,S+1,'l' )     UNCP            19          19
+                           3
+]]></artwork>
+      <t indent="0" pn="section-abstract-4">「Proferred」の順序の列では、16が12より前に起こりうることに注意してください。その場合、UNCPはソケットUが使用中であることに気づき、おそらくCLS (U,S+1)を返すでしょう。するとServerは、おそらくUserが会話を終えたものとみなすでしょう。</t>
+      <t indent="0" pn="section-abstract-5">上記の問題は、一方の側からCloseをなくし、その側がInitを行う前に相手側からのCLSを待つようにすることで解決します。私たちは、ユーザーのClose (U)をなくすのが最善の解決策であると提案します（もちろん、ユーザーのNCPは、サーバーのNCPが送ったCLSに応答してCLSを返さなければなりません）。</t>
+      <t indent="0" pn="section-abstract-6">サーバーのClose (L)によって、ソケットLをより早く再利用でき、したがって別のユーザーにより早くサービスを提供できます。</t>
+      <t indent="0" pn="section-abstract-7">一見わかりにくいかもしれない上記の議論を明確にするために、RFC #123の記法でこの問題を示してみましょう。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-8"><![CDATA[
+          Server                              User
+          ------                              ----
+     (S1) Listen(L,32)                   (U1) Init(U,L,32)
+
+     (S2) [Wait for match]               (U2)
+
+     (S3) Send(L,S)                      (U3) Receive(U,S)
+
+     (S4) Close(L)                       (U4) Close(U)
+
+     (S5) Init(S,U+1,B )                 (U5) Init(U+1,S,B )
+                      u                                   u
+
+     (S6) Init(S+1,U,B )                 (U6) Init(U,S+1,B )
+                      s                                   s
+]]></artwork>
+      <t indent="0" pn="section-abstract-9">サーバーとユーザーは独立している（おそらく別のホストにある）ため、ユーザーが(U4)を実行する前にサーバーが(S6)を実行し、ユーザーのNCPからソケットUが使用中であるというエラーを受け取る可能性があることに注意してください。同様に、サーバーが(S4)を実行する前にユーザーが(U6)を実行し、自分のNCPからソケットUがまだクローズされていないというエラーを受け取る可能性があります（CLSが一致するまでソケットを使用中のままにする実装を想定しています）。</t>
+      <t indent="0" pn="section-abstract-10">この問題を解決するために、ICPにはさまざまな修正を加えることができます。私たちは次のICPを提案します。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-abstract-11"><![CDATA[
+          Server                              User
+          ------                              ----
+          Listen(L,32)                        Init(U,L,32)
+
+          [Wait for match]
+
+          Send(L,S)                           Receive(U,S)
+
+          Close(L)                            [Wait for CLS]
+
+          Init(S,U+1,B )                      Init(U+1,S,B )
+                      u                                   u
+
+          [Wait for match]                    Init(U,S+1,B )
+                                                          s
+
+          Init(S+1,U,B )
+                      s
+]]></artwork>
+      <t indent="0" pn="section-abstract-12">このICPは次のことを前提としています。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-abstract-13">
+        <li pn="section-abstract-13.1" derivedCounter="1.">ユーザーは、自分のコネクションの1つがクローズされたことを問い合わせることができるか、またはそのことを通知されます。</li>
+        <li pn="section-abstract-13.2" derivedCounter="2.">サーバーは、自分がInit（またはListen）を行ったコネクションがオープンしたことを問い合わせることができるか、またはそのことを通知されます。</li>
+      </ol>
+      <t indent="0" pn="section-abstract-14">上記はどちらも、どのようなNCPとユーザーのインターフェイスにとっても基本的なことだと思われます。</t>
+      <t indent="0" pn="section-abstract-15">RFC #36の動的再接続（dynamic reconnection）の機能がNCPプロトコルに取り入れられ、このICPで動的再接続が使われていれば、この競合状態の問題は存在しなかったでしょう。</t>
+      <t indent="0" pn="section-abstract-16">[このRFCは、Walter Pienciakによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。1/98]</t>
+    </abstract>
+  </front>
+  <middle>
+  </middle>
+  <back>
+  </back>
+</rfc>

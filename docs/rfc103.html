@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 103: 割り込みキーの実装（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>UNKNOWN</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc103.html">RFC 103</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc103">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc103">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 103</h1>
+<h1 id="title-en">Implementation of Interrupt Keys</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 103</h1>
+<h1 id="title-ja">割り込みキーの実装</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h1>Abstract</h1></div>
+<div lang="ja" class="col"><h1>概要</h1></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">The current protocol specifications contain a serious logical
+error in the implementation of the program interrupt function.  This
+paper discusses the problem and offers a solution that is simple to
+implement.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">現在のプロトコル仕様には、プログラム割り込み機能の実装に深刻な論理的誤りがあります。この文書では、その問題について議論し、実装が簡単な解決策を提示します。</p></div>
+</div></section><section><span id="section-unnumbered-1"></span><span id="the-problem-en"></span><span id="the-problem-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-problem-en" lang="en">
+<span id="section-unnumbered-1-en"></span><a href="#name-the-problem-en" class="section-name selfRef">THE PROBLEM</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-problem-ja" lang="ja">
+<span id="section-unnumbered-1-ja"></span><a href="#name-the-problem-ja" class="section-name selfRef">問題</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-1-en">As found on most time-sharing systems the program interrupt key,
+elsewhere known as the break key, or help request button, has two
+functions.  It suspends temporarily the user process being run, and it
+switches the keyboard input stream to a dormant supervisory process.
+Unaccepted input typed prior to the interrupt request remains buffered
+for the suspended user process.  Subsequent typing is sent to a
+supervisory routine.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-1-ja">ほとんどのタイムシェアリングシステムに見られるように、プログラム割り込みキー（ブレークキーやヘルプ要求ボタンとも呼ばれます）には2つの機能があります。実行中のユーザープロセスを一時的に中断することと、キーボードの入力ストリームを休止中の監視プロセス（supervisory process）に切り替えることです。割り込み要求の前に入力されてまだ受け付けられていない入力は、中断されたユーザープロセスのためにバッファーに残ります。その後の入力は監視ルーチンに送られます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-2-en">The current NCP protocol implements only half this function.  It
+pprovides, through use of INS and INR control messages, for the
+suspension of a remote process, but it offers no mechanism for
+notifying the remote host at what time the data stream should be
+switched.  INR and INS messages are sent via the control link and
+because messages on this link travel concurrently with those on the
+user's keyboard input link, the receiving host can not rely on
+relative arrival times as a source of synchronizing information.
+Without such information the remote NCP can not know which input
+characters are meant for the user process and which are meant for the
+supervisory routine.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-2-ja">現在のNCPプロトコルは、この機能の半分しか実装していません。NCPプロトコルは、INSとINRの制御メッセージを使ってリモートプロセスを中断する手段を提供していますが、どの時点でデータストリームを切り替えるべきかをリモートホストに通知する仕組みはありません。INRとINSのメッセージは制御リンクを介して送られ、このリンク上のメッセージはユーザーのキーボード入力リンク上のメッセージと並行して伝わるので、受信ホストは相対的な到着時刻を同期情報の源として当てにできません。そのような情報がなければ、リモートのNCPは、どの入力文字がユーザープロセス向けで、どの入力文字が監視ルーチン向けなのかを知ることができません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-3-en">A solution found on some systems to this problem is that of
+mapping the interrupt signal into some code from the character set --
+typically an ASCII control-C.  Unfortunately, this is not general
+enough to be used within the ARPA network.  Some systems, eg. MULTICS,
+make use of all available ASCII codes for other purposes, none are
+available for such an assignment.  Even if such an assignment could be
+made, there is the problem of getting the interrupt character to be
+recognized by the remote host.  Buffers on that user link may be full
+and the sending host may be unable to transmit the message containing
+the interrupt code.  If the remote user process loops without
+accepting data, there is the possibility that its input buffers will
+never become free and that the message will never get through.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-3-ja">この問題に対して一部のシステムで見られる解決策は、割り込み信号を文字セットの何らかのコード（典型的にはASCIIのcontrol-C）に対応付けることです。残念ながら、これはARPAネットワーク内で使えるほど汎用的ではありません。MULTICSなどの一部のシステムは、利用できるすべてのASCIIコードを他の目的に使っており、そのような割り当てに使えるコードはありません。仮にそのような割り当てができたとしても、割り込み文字をリモートホストに認識させるという問題があります。そのユーザーリンクのバッファーがいっぱいになっていて、送信ホストが割り込みコードを含むメッセージを送信できないかもしれません。リモートのユーザープロセスがデータを受け付けずにループしている場合、その入力バッファーがいつまでも空かず、メッセージがいつまでも届かない可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-1-4-en">A partial answer is that of providing at the serving end a
+teletype scanner process that is always hungry for input.  Because all
+input messages are immediately consumed, buffers remain available and
+interrupt codes can get through.  Unfortunately, this implies that at
+times characters must be thrown away.  After being scanned there may
+be no buffer space available for them.  While not critical during
+console interactions -- users can type only when the program demands
+input -- this defect prevents the scanner from being driven from a
+text file.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-1-4-ja">部分的な答えは、常に入力を欲しがっているテレタイプスキャナープロセスをサービス提供側に用意することです。すべての入力メッセージがただちに消費されるので、バッファーは利用可能なままとなり、割り込みコードが届くようになります。残念ながら、これは時には文字を捨てなければならないことを意味します。スキャンしたあと、それらの文字のためのバッファー領域がないかもしれません。コンソールでの対話中には致命的ではありませんが（ユーザーはプログラムが入力を求めたときにしか入力できません）、この欠陥のために、スキャナーをテキストファイルから駆動することができません。</p></div>
+</div></section><section><span id="section-unnumbered-2"></span><span id="a-solution-en"></span><span id="a-solution-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-a-solution-en" lang="en">
+<span id="section-unnumbered-2-en"></span><a href="#name-a-solution-en" class="section-name selfRef">A SOLUTION</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-a-solution-ja" lang="ja">
+<span id="section-unnumbered-2-ja"></span><a href="#name-a-solution-ja" class="section-name selfRef">解決策</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-2-1-en">The following defines a solution to this problem for the case of
+ASCII data streams.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-2-1-ja">以下では、ASCIIデータストリームの場合について、この問題の解決策を定義します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-unnumbered-2-2-en">
+<li style='list-style-type: "1) "' id="section-unnumbered-2-2.1-en">Character messages should use eight bit fields for each character
+code.</li>
+        <li style='list-style-type: "2) "' id="section-unnumbered-2-2.2-en">For all of the defined ASCII character codes the left most bit in
+the eight bit field shall be zero.</li>
+        <li style='list-style-type: "3) "' id="section-unnumbered-2-2.3-en">An interrupt sync character ( arbitrarilly given the code octal 200
+) should be placed in the data stream at the correct point in the
+typing sequence.</li>
+        <li style='list-style-type: "4) "' id="section-unnumbered-2-2.4-en">All codes from octal 201 to octal 377 are officially to be ignored
+by a receiving host.  Their use is reserved for additional control
+information, should it become necessary.  Attempts to use them as
+additional character codes will meet with resistance from PDP-10
+systems that internally pack characters into seven bit fields.  Note
+that this objection can not be made against the interrupt sync
+character because it is filtered out by the system and never appears
+in a user's input buffer.</li>
+        <li style='list-style-type: "5) "' id="section-unnumbered-2-2.5-en">Because of the possibility that there may be an insufficient
+allocation to allow the user message containing the interrupt sync
+character to be sent, the INR/INS mechanism currently defined must be
+kept.  An INS control message should be sent at the time an interrupt
+sync character is entered into a text stream. Upon its reception by
+the foreign host, the attached process should be immediately suspended
+and the associated input stream should be scanned.  If possible, all
+input up to the interrupt sync character should be buffered for the
+suspended process.  Once the sync character is found, the stream
+should be switched to the newly activated supervisory process.  If it
+is not possible to buffer all of the user process's input, it can be
+thrown away, and a error message returned to the user by the
+supervisory process.  In either event it must be guaranteed that
+outstanding input will be consumed and message buffers will be freed
+so that pending character messages can be sent.</li>
+        <li style='list-style-type: "6) "' id="section-unnumbered-2-2.6-en">In the event that an interrupt sync character is received before
+the matching INS, the user process should be suspended and the NCP
+should wait for the INS before proceeding.</li>
+        <li style='list-style-type: "7) "' id="section-unnumbered-2-2.7-en">The function of the NCP is the above discussion can, of course, be
+delegated a separate modulo, eg. a TELNET process.  If this is done,
+the NCP can be transparent to message content.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-unnumbered-2-2-ja">
+<li style='list-style-type: "1) "' id="section-unnumbered-2-2.1-ja">文字メッセージは、各文字コードに8ビットのフィールドを使うべきです。</li>
+        <li style='list-style-type: "2) "' id="section-unnumbered-2-2.2-ja">定義されているすべてのASCII文字コードについて、8ビットのフィールドの最も左のビットはゼロとします。</li>
+        <li style='list-style-type: "3) "' id="section-unnumbered-2-2.3-ja">割り込み同期文字（便宜上、8進数で200というコードを与えます）を、入力の並びの正しい位置でデータストリームに置くべきです。</li>
+        <li style='list-style-type: "4) "' id="section-unnumbered-2-2.4-ja">8進数で201から377までのすべてのコードは、受信ホストが無視するものと公式に定めます。これらのコードは、必要になった場合の追加の制御情報のために予約します。これらを追加の文字コードとして使おうとすると、文字を内部で7ビットのフィールドに詰め込むPDP-10のシステムからの抵抗にあうでしょう。割り込み同期文字はシステムによって取り除かれ、ユーザーの入力バッファーに現れることはないので、割り込み同期文字に対してはこの反論は当たらないことに注意してください。</li>
+        <li style='list-style-type: "5) "' id="section-unnumbered-2-2.5-ja">割り込み同期文字を含むユーザーメッセージを送れるだけの割り当てがない可能性があるので、現在定義されているINR/INSの仕組みは残さなければなりません。割り込み同期文字がテキストストリームに入れられた時点で、INS制御メッセージを送るべきです。外部ホストがこれを受信したら、接続されているプロセスをただちに中断し、関連する入力ストリームをスキャンすべきです。可能であれば、割り込み同期文字までのすべての入力を、中断されたプロセスのためにバッファーに入れるべきです。同期文字が見つかったら、ストリームを新たに起動された監視プロセスに切り替えるべきです。ユーザープロセスの入力をすべてバッファーに入れることができない場合は、それを捨てて、監視プロセスがユーザーにエラーメッセージを返してもかまいません。いずれの場合も、未処理の入力が消費され、保留中の文字メッセージを送れるようにメッセージバッファーが解放されることを保証しなければなりません。</li>
+        <li style='list-style-type: "6) "' id="section-unnumbered-2-2.6-ja">対応するINSより前に割り込み同期文字を受信した場合は、ユーザープロセスを中断し、NCPはINSを待ってから処理を進めるべきです。</li>
+        <li style='list-style-type: "7) "' id="section-unnumbered-2-2.7-ja">上記の議論におけるNCPの機能は、もちろん、TELNETプロセスなどの別のモジュールに委ねることもできます。そうすれば、NCPはメッセージの内容に対して透過的でいられます。</li>
+      </ol></div>
+</div></section><section><span id="section-unnumbered-3"></span><span id="commentary-en"></span><span id="commentary-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-commentary-en" lang="en">
+<span id="section-unnumbered-3-en"></span><a href="#name-commentary-en" class="section-name selfRef">COMMENTARY</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-commentary-ja" lang="ja">
+<span id="section-unnumbered-3-ja"></span><a href="#name-commentary-ja" class="section-name selfRef">論評</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-1-en">The proposed change to the second level protocol described herein
+is not meant as a general solution, but rather as a specific patch to
+the current NCP design with the intent of correcting a critical error.
+Its more obvious deficiencies are...</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-1-ja">ここで述べた第2レベルのプロトコルへの変更案は、一般的な解決策を意図したものではなく、致命的な誤りを正すことを目的とした、現在のNCPの設計に対する特定のパッチです。より明らかな欠点は次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-unnumbered-3-2-en">
+<li style='list-style-type: "1) "' id="section-unnumbered-3-2.1-en">It only works with seven bit code character streams.  No extensions
+are allowed for EBCDIC, ASCII-8, or other large character sets.  No
+provision is made for interrupting a process to which there is no
+character stream, although the author knows of no case in which the
+concept means more than closing the connection.</li>
+        <li style='list-style-type: "2) "' id="section-unnumbered-3-2.2-en">It requires the system to scan all data coming over an
+interruptable connection.  Presumably this means that at the time the
+connection is created, the receiving host must be told that this scan
+is to be done.  Various techniques, both implicit and explicit, could
+be used.</li>
+        <li style='list-style-type: "3) "' id="section-unnumbered-3-2.3-en">The technique is not immune to loss character boundaries within a
+message nor can it tolerate INS control messages that do not have
+matching sync characters, or vis versa.</li>
+        <li style='list-style-type: "4) "' id="section-unnumbered-3-2.4-en">It may not possible to get either the INS or the text message
+containing the interrupt sync character to a remote host.  Possible
+reasons include user console failure, local host failure, network
+failure, blocked control link, insufficient allocation etc.  Under
+such circumstances the remote process may loop indefinitely.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-unnumbered-3-2-ja">
+<li style='list-style-type: "1) "' id="section-unnumbered-3-2.1-ja">7ビットのコードの文字ストリームでしか機能しません。EBCDIC、ASCII-8、その他の大きな文字セットへの拡張は認められません。文字ストリームのないプロセスに割り込むための規定はありません。ただし、筆者の知る限り、その場合に割り込みという概念がコネクションを閉じること以上の意味を持つ例はありません。</li>
+        <li style='list-style-type: "2) "' id="section-unnumbered-3-2.2-ja">割り込み可能なコネクションを介して届くすべてのデータを、システムがスキャンする必要があります。おそらくこれは、コネクションを作成する時点で、このスキャンを行うことを受信ホストに伝えなければならないことを意味します。暗黙的なものと明示的なものの両方を含め、さまざまな手法が使えるでしょう。</li>
+        <li style='list-style-type: "3) "' id="section-unnumbered-3-2.3-ja">この手法は、メッセージ内の文字境界が失われることに対処できず、対応する同期文字のないINS制御メッセージや、その逆にも耐えられません。</li>
+        <li style='list-style-type: "4) "' id="section-unnumbered-3-2.4-ja">INSと、割り込み同期文字を含むテキストメッセージのどちらも、リモートホストに届けられないかもしれません。考えられる理由としては、ユーザーのコンソールの障害、ローカルホストの障害、ネットワークの障害、制御リンクのブロック、割り当ての不足などがあります。そのような状況では、リモートプロセスはいつまでもループし続けるかもしれません。</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-3-en">The only comprehensive solution known to the interrupt
+synchronization problem, those that avoid the above difficulties,
+require more than minor changes to the current NCP protocol.  Unless
+simpler answers are suggested, their implementation must be postponed
+until the next major design revision.</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-3-ja">割り込みの同期の問題に対して知られている包括的な解決策、つまり上記の困難を回避する解決策は、いずれも現在のNCPプロトコルにわずかな変更を加える以上のものを必要とします。より単純な答えが提案されない限り、その実装は次の大きな設計改訂まで延期せざるをえません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-unnumbered-3-4-en">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Gert Doering 4/97 ]</p></div>
+<div lang="ja" class="col"><p id="section-unnumbered-3-4-ja">[このRFCは、Gert Doeringによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。4/97]</p></div>
+</div></section>
+</body>
+</html>

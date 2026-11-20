@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 133: ファイル転送とエラー回復（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>UNKNOWN</dd>
+<dt>更新:</dt>
+<dd><span>RFC114</span></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc133.html">RFC 133</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc133">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc133">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 133</h1>
+<h1 id="title-en">File Transfer and Error Recovery</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 133</h1>
+<h1 id="title-ja">ファイル転送とエラー回復</h1>
+</div>
+</div>
+<section><span id="section-1"></span><span id="file-transfer-protocol-en"></span><span id="file-transfer-protocol-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-file-transfer-protocol-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-file-transfer-protocol-en" class="section-name selfRef">FILE TRANSFER PROTOCOL</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-file-transfer-protocol-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-file-transfer-protocol-ja" class="section-name selfRef">ファイル転送プロトコル</a>
+      </h2></div>
+</div>
+<section><span id="section-1.1"></span><span id="handshaking-en"></span><span id="handshaking-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-1a-handshaking-en" lang="en">
+<span id="section-1.1-en"></span><a href="#name-1a-handshaking-en" class="section-name selfRef">1A   Handshaking</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-1a-handshaking-ja" lang="ja">
+<span id="section-1.1-ja"></span><a href="#name-1a-handshaking-ja" class="section-name selfRef">1Aハンドシェイク</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-1-en">I think that Mr Bhushan(RFC #114, NIC 5823) is not strict enough in
+his concept of a transaction sequence.  Every transaction should
+prompt a response from its recipient (recall Kalin's crates --
+RFC #60, NIC 4762).  Control should pass back and forth until the
+server terminates.  The server _always_ gets the last word (more on
+error recovery later).</p></div>
+<div lang="ja" class="col"><p id="section-1.1-1-ja">Bhushan氏（RFC #114、NIC 5823）のトランザクションシーケンスの概念は、十分に厳格ではないと私は考えます。すべてのトランザクションは、その受信者からの応答を促すべきです（Kalinの木箱（crates）を思い出してください -- RFC #60、NIC 4762）。制御は、サーバーが終了するまで行ったり来たりすべきです。サーバーが_常に_最後の発言をします（エラー回復については後で詳しく述べます）。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-2-en">Some sample interchanges are given.</p></div>
+<div lang="ja" class="col"><p id="section-1.1-2-ja">いくつかのやりとりの例を示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.1-3-en"><pre tabindex="0" role="region" aria-label="Figure">
+    User                Server       Comments
+
+    &lt;...&gt;       ==&gt;                  Establish a connection
+                &lt;==     &lt;...&gt;
+    &lt;I&gt;&lt;...&gt;    ==&gt;                  Identify self
+                &lt;==     &lt;+&gt;          Ok, ready
+
+    &lt;R&gt;&lt;...&gt;    ==&gt;                  Retrieval request
+                &lt;==     &lt;rs&gt;         I've got your file
+    &lt;rr&gt;        ==&gt;                  Send it
+                &lt;==     &lt;,&gt;&lt;...&gt;     Here's the first part
+    &lt;rr&gt;        ==&gt;                  Got it
+                &lt;==     &lt;+&gt;          All done
+
+    &lt;S&gt;&lt;...&gt;    ==&gt;                  Store request
+                &lt;==     &lt;rr&gt;         Ok, go ahead
+    &lt;#&gt;&lt;...&gt;    ==&gt;                  Here's some protection stuff
+                &lt;==     &lt;rr&gt;         Ok
+    &lt;*&gt;&lt;...&gt;    ==&gt;                  Here's the file
+                &lt;==     &lt;+&gt;          Got it.  All done.
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.1-3-ja"><pre tabindex="0" role="region" aria-label="図">
+    User                Server       Comments
+
+    &lt;...&gt;       ==&gt;                  Establish a connection
+                &lt;==     &lt;...&gt;
+    &lt;I&gt;&lt;...&gt;    ==&gt;                  Identify self
+                &lt;==     &lt;+&gt;          Ok, ready
+
+    &lt;R&gt;&lt;...&gt;    ==&gt;                  Retrieval request
+                &lt;==     &lt;rs&gt;         I've got your file
+    &lt;rr&gt;        ==&gt;                  Send it
+                &lt;==     &lt;,&gt;&lt;...&gt;     Here's the first part
+    &lt;rr&gt;        ==&gt;                  Got it
+                &lt;==     &lt;+&gt;          All done
+
+    &lt;S&gt;&lt;...&gt;    ==&gt;                  Store request
+                &lt;==     &lt;rr&gt;         Ok, go ahead
+    &lt;#&gt;&lt;...&gt;    ==&gt;                  Here's some protection stuff
+                &lt;==     &lt;rr&gt;         Ok
+    &lt;*&gt;&lt;...&gt;    ==&gt;                  Here's the file
+                &lt;==     &lt;+&gt;          Got it.  All done.
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-4-en">See section 2B, below, for examples of error recovery.</p></div>
+<div lang="ja" class="col"><p id="section-1.1-4-ja">エラー回復の例については、後述のセクション2Bを参照してください。</p></div>
+</div></section><section><span id="section-1.2"></span><span id="extensions-to-the-file-transfer-protocol-en"></span><span id="extensions-to-the-file-transfer-protocol-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-1b-extensions-to-the-file-transfer-protocol-en" lang="en">
+<span id="section-1.2-en"></span><a href="#name-1b-extensions-to-the-file-transfer-protocol-en" class="section-name selfRef">1B  Extensions to the file transfer protocol</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-1b-extensions-to-the-file-transfer-protocol-ja" lang="ja">
+<span id="section-1.2-ja"></span><a href="#name-1b-extensions-to-the-file-transfer-protocol-ja" class="section-name selfRef">1Bファイル転送プロトコルの拡張</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-1-en">The file transfer protocol needs a mechanism for accessing individual
+records of a file.  This will be particularly useful when very large
+data bases appear on the network.  The following definitions should
+be added to the protocol:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-1-ja">ファイル転送プロトコルには、ファイルの個々のレコードにアクセスするための仕組みが必要です。これは、非常に大きなデータベースがネットワーク上に現れたときに特に役立つでしょう。次の定義をプロトコルに追加すべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-2-en">The store(S) and retrieve(R) requests have the data field format
+&lt;key&gt;, where &lt;key&gt; has the syntax:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-2-ja">格納（S）要求と取得（R）要求のデータフィールドは&lt;key&gt;という形式をとり、&lt;key&gt;は次の構文を持ちます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-3-en"><pre tabindex="0" role="region" aria-label="Figure">
+ &lt;key&gt;::=&lt;devicename&gt;RS&lt;filename&gt;US&lt;keyname&gt; | &lt;filename&gt;US&lt;keyname&gt;.
+                        --          --                      --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-3-ja"><pre tabindex="0" role="region" aria-label="図">
+ &lt;key&gt;::=&lt;devicename&gt;RS&lt;filename&gt;US&lt;keyname&gt; | &lt;filename&gt;US&lt;keyname&gt;.
+                        --          --                      --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-4-en">The &lt;pathname&gt; syntax is changed to:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-4-ja">&lt;pathname&gt;の構文は次のように変更されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-5-en"><pre tabindex="0" role="region" aria-label="Figure">
+    &lt;pathname&gt;::=&lt;devicename&gt; | &lt;filename&gt; | &lt;pathname&gt;RS&lt;filename&gt;.
+                                                       --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-5-ja"><pre tabindex="0" role="region" aria-label="図">
+    &lt;pathname&gt;::=&lt;devicename&gt; | &lt;filename&gt; | &lt;pathname&gt;RS&lt;filename&gt;.
+                                                       --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-6-en">If a retrieve(R) request is given with a data field with &lt;key&gt;
+syntax rather than &lt;pathname&gt; syntax, then the returned data will
+consist of the record following the matching &lt;key&gt;.  If a store(S)
+request is given with a data field of &lt;key&gt; syntax, then the
+supplied data will replace the record following the matching
+&lt;keyname&gt;.  If the keyname does not exist, the record will be
+appended to the named file.  The individual installation must
+provide the linkage between the &lt;keyname&gt; and the record it
+references.</p></div>
+<div lang="ja" class="col"><p id="section-1.2-6-ja">&lt;pathname&gt;構文ではなく&lt;key&gt;構文のデータフィールドを持つ取得（R）要求が与えられた場合、返されるデータは、一致する&lt;key&gt;に続くレコードから成ります。&lt;key&gt;構文のデータフィールドを持つ格納（S）要求が与えられた場合、供給されたデータは、一致する&lt;keyname&gt;に続くレコードを置き換えます。そのkeynameが存在しない場合、レコードは指定されたファイルに追加されます。&lt;keyname&gt;とそれが参照するレコードとの対応付けは、個々の設置サイトが提供しなければなりません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-7-en">In addition, the lookup(L) request will provide a list of keynames
+into a file (or the name of a file which contains the keynames).</p></div>
+<div lang="ja" class="col"><p id="section-1.2-7-ja">さらに、検索（L）要求は、ファイルに対するkeynameの一覧（またはkeynameを含むファイルの名前）を提供します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-8-en">Transaction code F (request File directory) requests a listing of
+available files.  The data field of the F transaction is of the
+form:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-8-ja">トランザクションコードF（ファイルディレクトリーの要求）は、利用可能なファイルの一覧を要求します。Fトランザクションのデータフィールドは次の形式です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-9-en"><pre tabindex="0" role="region" aria-label="Figure">
+&lt;pathname&gt;GS&lt;pathname&gt;GS...
+          --          --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-9-ja"><pre tabindex="0" role="region" aria-label="図">
+&lt;pathname&gt;GS&lt;pathname&gt;GS...
+          --          --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-10-en">All files in the server system
+which match one or more of the given &lt;pathname&gt; specifiers are
+listed in a return file.  The format of the data fields of this
+file is:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-10-ja">サーバーシステム内のファイルのうち、与えられた&lt;pathname&gt;指定子の1つ以上に一致するものすべてが、返却ファイルに列挙されます。このファイルのデータフィールドの形式は次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-11-en"><pre tabindex="0" role="region" aria-label="Figure">
+&lt;pathname&gt;GS&lt;pathname&gt;GS...
+          --          --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-11-ja"><pre tabindex="0" role="region" aria-label="図">
+&lt;pathname&gt;GS&lt;pathname&gt;GS...
+          --          --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-12-en">If a &lt;pathname&gt; field in
+the request transaction does not include a &lt;name&gt; field, the
+default is all files on the given device.  Some examples are given:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-12-ja">要求トランザクションの&lt;pathname&gt;フィールドに&lt;name&gt;フィールドが含まれていない場合、デフォルトは指定されたデバイス上のすべてのファイルです。いくつかの例を示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-13-en"><pre tabindex="0" role="region" aria-label="Figure">
+    &lt;F&gt;&lt;DC1 DSK[62,50]] GS JOE&gt;
+        ---             --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-13-ja"><pre tabindex="0" role="region" aria-label="図">
+    &lt;F&gt;&lt;DC1 DSK[62,50]] GS JOE&gt;
+        ---             --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-14-en">This example requests a list of all files on the disk specified by
+[62,50] plus all files named JOE.  The response could contain in
+the data field:</p></div>
+<div lang="ja" class="col"><p id="section-1.2-14-ja">この例は、[62,50]で指定されたディスク上のすべてのファイルと、JOEという名前のすべてのファイルの一覧を要求しています。応答のデータフィールドには、たとえば次の内容が含まれます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-1.2-15-en"><pre tabindex="0" role="region" aria-label="Figure">
+  &lt;DC1 DSK[62,50] RS ALPHA RS BETA RS JOE GS DC1 DSK[10,50] RS JOE&gt;
+   ---            --       --      --     -- ---            --
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-1.2-15-ja"><pre tabindex="0" role="region" aria-label="図">
+  &lt;DC1 DSK[62,50] RS ALPHA RS BETA RS JOE GS DC1 DSK[10,50] RS JOE&gt;
+   ---            --       --      --     -- ---            --
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.2-16-en">This message states that in the [62,50] area of the disk there are
+files ALPHA, BETA, and JOE, and that JOE is also a file in the
+[10,50] area of the disk.</p></div>
+<div lang="ja" class="col"><p id="section-1.2-16-ja">このメッセージは、ディスクの[62,50]領域にファイルALPHA、BETA、JOEがあり、JOEはディスクの[10,50]領域にもあるファイルであることを示しています。</p></div>
+</div></section></section><section><span id="section-2"></span><span id="error-recovery-en"></span><span id="error-recovery-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-error-recovery-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-error-recovery-en" class="section-name selfRef">ERROR RECOVERY</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-error-recovery-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-error-recovery-ja" class="section-name selfRef">エラー回復</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">2A   Error recovery procedures have been noticeably lacking to date.
+The usual approach has been to close the connection and start from
+scratch.  Mr Bhushan proposes a third level abort but doesn't
+really detail the implementation.  I propose a multilevel error
+recovery procedure as follows.</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">2Aこれまで、エラー回復の手順は著しく欠けていました。通常のやり方は、コネクションを閉じて最初からやり直すというものでした。Bhushan氏は第3レベルの中断（abort）を提案していますが、その実装については詳しく述べていません。私は、次のような多段階のエラー回復手順を提案します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-2-en">2B   If an error occurs which does not cause a loss of third level
+transaction boundaries and only affects one side of a duplex
+connection, a third level recovery is possible via a transaction
+sequence abort.  An example is given:</p></div>
+<div lang="ja" class="col"><p id="section-2-2-ja">2B第3レベルのトランザクション境界の喪失を引き起こさず、全二重コネクションの片側だけに影響するエラーが発生した場合は、トランザクションシーケンスの中断によって第3レベルの回復が可能です。例を示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-2-3-en"><pre tabindex="0" role="region" aria-label="Figure">
+    User                Server          Comments
+
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send me this file
+                &lt;==     &lt;rs&gt;            Ok, I've got it
+    &lt;rr&gt;        ==&gt;                     Ready
+                &lt;==     &lt;*&gt;&lt;...error&gt;   Here it is (with an error)
+    &lt;-&gt;&lt;D&gt;      ==&gt;                     No.  (data) error
+                &lt;==     &lt;-&gt;&lt;D&gt;          Sorry, forget it
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send the file (again)
+                |&lt;==    &lt;rs&gt;            Ready (doesn't get there)
+                ...                     (waiting)
+    &lt;-&gt;&lt;0&gt;      ==&gt;                     Error, timeout
+                &lt;==     &lt;-&gt;&lt;0&gt;          Sorry, forget it
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send the file (third time)
+                &lt;==     &lt;rs&gt;            Got it
+    &lt;rr&gt;        ==&gt;                     Ready
+                &lt;==     &lt;*&gt;&lt;...&gt;        There it is
+    &lt;rr&gt;        ==&gt;                     Got it
+                &lt;==     &lt;+&gt;             Done (finally&gt;
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-2-3-ja"><pre tabindex="0" role="region" aria-label="図">
+    User                Server          Comments
+
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send me this file
+                &lt;==     &lt;rs&gt;            Ok, I've got it
+    &lt;rr&gt;        ==&gt;                     Ready
+                &lt;==     &lt;*&gt;&lt;...error&gt;   Here it is (with an error)
+    &lt;-&gt;&lt;D&gt;      ==&gt;                     No.  (data) error
+                &lt;==     &lt;-&gt;&lt;D&gt;          Sorry, forget it
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send the file (again)
+                |&lt;==    &lt;rs&gt;            Ready (doesn't get there)
+                ...                     (waiting)
+    &lt;-&gt;&lt;0&gt;      ==&gt;                     Error, timeout
+                &lt;==     &lt;-&gt;&lt;0&gt;          Sorry, forget it
+    &lt;R&gt;&lt;...&gt;    ==&gt;                     Send the file (third time)
+                &lt;==     &lt;rs&gt;            Got it
+    &lt;rr&gt;        ==&gt;                     Ready
+                &lt;==     &lt;*&gt;&lt;...&gt;        There it is
+    &lt;rr&gt;        ==&gt;                     Got it
+                &lt;==     &lt;+&gt;             Done (finally&gt;
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-4-en">Note that the server always gets the last word in error situations
+as well as normal transmission.</p></div>
+<div lang="ja" class="col"><p id="section-2-4-ja">通常の転送だけでなくエラーの状況でも、常にサーバーが最後の発言をすることに注意してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-5-en">2C   Although the above examples are given in terms of Bhushan's
+transaction codes, this form of error recovery is implementable in
+any protocol which uses flagged blocking and duplex connections.</p></div>
+<div lang="ja" class="col"><p id="section-2-5-ja">2C上記の例はBhushanのトランザクションコードを用いて示していますが、この形式のエラー回復は、フラグ付きのブロッキングと全二重コネクションを使用するどのプロトコルでも実装できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-6-en">2D   If errors cannot be recovered as above, then some means must be
+available to clear the link completely and resynchronize.  I
+suggest that an 8-bit argument be appended to the interrupt-on-link
+NCP message (INR, INS).  The receiver would send &lt;INR&gt;&lt;error&gt; to
+indicate that the block boundaries were lost and all incoming data
+is being discarded.  The sender, upon receiving the INR, would
+flush all queued output and wait for the link to clear.  The NCP
+would then send a &lt;INS&gt;&lt;newsync&gt; message and, when it was received
+(RFNM returned), a negative termination would be sent on the link.
+The receiver begins accepting data again when the INS is received.
+This assumes that any process can flush untransmitted data and
+detect a clear link.  Note that this method is useable on any
+simplex connection.</p></div>
+<div lang="ja" class="col"><p id="section-2-6-ja">2D上記のようにエラーを回復できない場合は、リンクを完全にクリアして再同期するための何らかの手段が利用可能でなければなりません。私は、リンク上の割り込みのNCPメッセージ（INR、INS）に8ビットの引数を追加することを提案します。受信側は、ブロック境界が失われ、着信データをすべて破棄していることを示すために&lt;INR&gt;&lt;error&gt;を送信します。送信側は、INRを受信すると、キューに入っているすべての出力を破棄し、リンクがクリアされるのを待ちます。続いてNCPは&lt;INS&gt;&lt;newsync&gt;メッセージを送信し、それが受信されたとき（RFNMが返されたとき）に、リンク上で否定的な終了が送信されます。受信側は、INSを受信するとデータの受け付けを再開します。これは、どのプロセスも未送信のデータを破棄し、リンクがクリアされたことを検出できることを前提としています。この方法は、どの単方向コネクションでも使用できることに注意してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-7-en">2E  If all else fails, one can resort to closing the faulty socket.</p></div>
+<div lang="ja" class="col"><p id="section-2-7-ja">2Eほかのすべてが失敗した場合は、障害のあるソケットを閉じるという手段に訴えることもできます。</p></div>
+</div></section><section><span id="section-3"></span><span id="ncp-version-numbers-en"></span><span id="ncp-version-numbers-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-ncp-version-numbers-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-ncp-version-numbers-en" class="section-name selfRef">NCP VERSION NUMBERS</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-ncp-version-numbers-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-ncp-version-numbers-ja" class="section-name selfRef">NCPのバージョン番号</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">3A  I suggest that the NCP be given a version number and the next
+version include two new message types: &lt;WRU&gt; ('Who aRe yoU?')
+requests a version number from the receiving host and &lt;IAM&gt;&lt;version&gt;
+('I AM') supplies that number.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">3A NCPにバージョン番号を与え、次のバージョンでは2つの新しいメッセージタイプを含めることを提案します。&lt;WRU&gt;（'Who aRe yoU?'）は受信側ホストにバージョン番号を要求し、&lt;IAM&gt;&lt;version&gt;（'I AM'）はその番号を提供します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">3B  The messages would probably be initially used in a 'can I talk to
+you?' sense or not at all.  Eventually, it would take on a 'what
+can you do?' meaning.  Accordingly, the &lt;version&gt; field should be
+large (32 bits?) for expansion.</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">3Bこれらのメッセージは、おそらく最初は「話しかけてもいいですか？」という意味で使われるか、まったく使われないかのどちらかでしょう。いずれは「何ができますか？」という意味を持つようになるでしょう。したがって、&lt;version&gt;フィールドは拡張のために大きく（32ビット？）すべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-3-en">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Jose Tamayo 4/97 ]</p></div>
+<div lang="ja" class="col"><p id="section-3-3-ja">[このRFCは、Jose Tamayoによって機械可読形式にされ、オンラインRFCアーカイブに登録されました。4/97]</p></div>
+</div></section>
+</body>
+</html>

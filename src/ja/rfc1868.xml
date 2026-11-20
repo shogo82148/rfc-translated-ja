@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-malkin-unarp-00" indexInclude="true" number="1868" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-malkin-unarp-00" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc1868" rel="alternate"/>
+  <front>
+    <title>ARPの拡張 - UNARP</title>
+    <seriesInfo name="RFC" value="1868" stream="IETF"/>
+    <author fullname="G. Malkin" initials="G." surname="Malkin">
+      <organization showOnFrontPage="true">Xylogics, Inc.</organization>
+      <address/>
+    </author>
+    <date year="1995" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">アドレス解決プロトコル（Address Resolution Protocol）は、IPノードがブロードキャストネットワーク上の隣接ノードのハードウェア（データリンク）アドレスを決定できるようにします。このプロトコルは、古いARPエントリーを期限切れにするのにタイマーに依存しています。この文書は、ARPのメカニズムに対するささいな変更を規定します（パケット形式は変更しません）。この変更により、ノードはネットワークから離脱することと、ほかのすべてのノードがそれに応じてARPテーブルを変更すべきことを告知できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">このメモは、インターネットコミュニティーのための実験的なプロトコルを定義します。いかなる種類のインターネット標準も規定するものではありません。改善のための議論と提案を求めます。このメモの配布は無制限です。</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-unnumbered-1-1">この文書をレビューし、後方互換性のメカニズムを提案してくれたJames Carlson/Xylogicsに感謝します。</t>
+    </section>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1"><xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>で定義されているアドレス解決プロトコルの主な目的は、ノードのネットワークアドレス（ARPの用語ではプロトコルアドレス）に基づいて、そのノードのハードウェアアドレスを決定することです。ARPプロトコルは、ノードが自身の存在を定期的に広告すべきではないと明確に述べています。その理由は2つあります。1つ目は、そうするとネットワークのトラフィックとテーブルの維持管理のオーバーヘッドが大量に発生すること、2つ目は、すべてのノードがほかのすべてのノードと通信する必要がある可能性は非常に低いことです。ノードは自身の存在を広告しないので、自身の離脱が差し迫っていることも広告しません。ほとんどのARP実装は古いエントリーを期限切れにするためのタイマーを維持しており、いずれにせよ離脱するノードが行儀よく離脱することはめったにないので、これは深刻な問題ではありません。</t>
+      <t indent="0" pn="section-1-2">時が経つにつれ、ARPには追加の用途が見いだされました。Proxy ARPです。Proxy ARPを悪いものだと考える人もいますが、Proxy ARPは目的を果たしています。つまり、元のIPアーキテクチャーでは考慮されていなかった方法での通信を可能にします。たとえば、ダイヤルインのホストが、IPアドレス空間を大量に消費することなくネットワークに接続できるようにします（つまり、すべてのホストが、そのサブネットアドレスに関連付けられた物理ネットワークに直接接続されていなくても、同じサブネット上のアドレスを持ちます）。この文書で扱う問題を生み出すのは、このProxy ARPの使い方です。</t>
+    </section>
+    <section anchor="the-problem" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-the-problem">問題</name>
+      <t indent="0" pn="section-2-1">次のトポロジーを考えます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-2"><![CDATA[
+                 +--------+
+                 | Host A |
+                 +--------+
+                     |
+   ======================================== LAN
+       |                             |
+   +--------+                    +--------+
+   |  CS1   |   comm. servers    |  CS2   |
+   +--------+                    +--------+
+     |    |                        |    |
+    +-+  +-+                      +-+  +-+
+    | |  | |       modems         | |  | |
+    +-+  +-+                      +-+  +-+
+]]></artwork>
+      <t indent="0" pn="section-2-3">すべてのモデムが同じロータリー（rotary）上にあると仮定します。つまり、リモートホストがダイヤルインすると、どちらの通信サーバーのモデムが割り当てられる可能性もあります。さらに、アドレス空間を節約するために、リモートホストのIPアドレスはすべて、サーバーやHost Aと同じサブネットアドレスを持つと仮定します。</t>
+      <t indent="0" pn="section-2-4">まず、リモートホストがCS1にダイヤルインし、Host Aと通信しようとします。Host Aは、サブネットマスクに基づいて、リモートホストが実際にLANに接続されていると仮定し、そのハードウェアアドレスを決定するためにARP Requestを発行します。当然、リモートホストにはこのリクエストは聞こえません。CS1はこれを知っているので、リモートホストの代わりに自身のハードウェアアドレスで応答します。Host AはARP Replyを受信すると、CS1を透過的に経由してリモートホストと通信するようになります。ここまでは何も問題ありません。</t>
+      <t indent="0" pn="section-2-5">ここで、リモートホストが切断し、Host AがARPキャッシュを期限切れにする前に、CS2を経由して再接続したとします。ここに問題があります。Host Aは、リモートホストにパケットを送ろうとするたびに、パケットをCS1に送ります。Host Aは、自身のARPキャッシュのエントリーが無効であることを知ることができないからです。リモートホストが切断するときに、そのホストが接続していたサーバーが、プロトコルアドレスとハードウェアアドレスの対応付けがもはや有効ではないことをLAN上のほかのノードに通知できれば、この問題は起こりません。</t>
+    </section>
+    <section anchor="the-solution" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-the-solution">解決策</name>
+      <t indent="0" pn="section-3-1">上で説明したようなサーバーは、Proxy ARPに応答したことのあるリモートホストとの接続を切断するときに、UNARPをブロードキャストします。UNARPは、次のフィールド値を持つ、要求されていない（unsolicited）ARP Replyです。</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-3-2">
+        <dt pn="section-3-2.1">Hardware Address Space</dt>
+        <dd pn="section-3-2.2">適宜</dd>
+        <dt pn="section-3-2.3">Protocol Address Space</dt>
+        <dd pn="section-3-2.4">0x800（IP）</dd>
+        <dt pn="section-3-2.5">Hardware Address Length</dt>
+        <dd pn="section-3-2.6">0（「後方互換性」を参照）</dd>
+        <dt pn="section-3-2.7">Protocol Address Length</dt>
+        <dd pn="section-3-2.8">4（IPアドレスの長さ）</dd>
+        <dt pn="section-3-2.9">Opcode</dt>
+        <dd pn="section-3-2.10">2（Reply）</dd>
+        <dt pn="section-3-2.11">Source Hardware Address</dt>
+        <dd pn="section-3-2.12">含めない</dd>
+        <dt pn="section-3-2.13">Source Protocol Address</dt>
+        <dd pn="section-3-2.14">離脱するホストのIPアドレス</dd>
+        <dt pn="section-3-2.15">Target Hardware Address</dt>
+        <dd pn="section-3-2.16">含めない</dd>
+        <dt pn="section-3-2.17">Target Protocol Address</dt>
+        <dd pn="section-3-2.18">255.255.255.255（IPブロードキャスト）</dd>
+      </dl>
+      <t indent="0" pn="section-3-3">注：これは16バイトのパケットです（MACヘッダーを含まない）。</t>
+      <t indent="0" pn="section-3-4">UNARPを受信したノードは、そのIPアドレスに関連付けられたARPキャッシュのエントリーを削除します。</t>
+      <t indent="0" pn="section-3-5">サーバーが実際にProxy ARP Replyを送信したかどうかについての状態情報を保持することは、厳密には必要ありません。リモートホストが切断したときに、サーバーが常にUNARPを送信すれば十分でしょう。</t>
+      <t indent="0" pn="section-3-6">もちろん、LANから行儀よく離脱するホストが、自分自身のためにUNARPを送信してはいけない理由はありません。これは、再接続したときに異なるハードウェアアドレスを持つ可能性がある場合に特に役立つでしょう。</t>
+    </section>
+    <section anchor="backwards-compatibility" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-backwards-compatibility">後方互換性</name>
+      <t indent="0" pn="section-4-1">UNARPをサポートするための変更はささいなものなので、広くサポートされることが大いに期待されます。もちろん、UNARPをサポートするノードとサポートしないノードが共存する期間はあるでしょう。UNARPを知らないノードが、ハードウェアアドレスが0の不正なARPキャッシュのエントリーを追加しないように、UNARPパケットではハードウェアアドレスの長さとして0を指定します。これは、UNARPをサポートしないノードによって拒否されるはずです。その結果、（前述のとおり）UNARPパケットには送信元と宛先のハードウェアアドレスのフィールドが存在しません。</t>
+      <t indent="0" pn="section-4-2">一部のベンダーのARP実装が省略されたUNARPパケット形式を受け付けない場合に備えて、実装者はUNARPを無効にする設定スイッチを用意することを推奨します。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">このメモでは、セキュリティーの問題については論じません。</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-2">
+      <name slugifiedName="name-references">参考文献</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>An Ethernet Address Resolution Protocol</title>
+          <author fullname="D. Plummer" initials="D." surname="Plummer">
+            <organization showOnFrontPage="true">MIT</organization>
+          </author>
+          <date year="1982" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="37"/>
+        <seriesInfo name="RFC" value="826"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-authors-address">著者の連絡先</name>
+      <author fullname="Gary Scott Malkin" initials="G." surname="Malkin">
+        <organization showOnFrontPage="true">Xylogics, Inc.</organization>
+        <address>
+          <postal>
+            <street>53 Third Avenue</street>
+            <city>Burlington</city>
+            <region>MA</region>
+            <code>01803</code>
+          </postal>
+          <phone>(617) 272-8140</phone>
+          <email>gmalkin@xylogics.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

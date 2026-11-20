@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8316: サービスレベル合意（SLA）違反の分散検出のための自律ネットワーキングのユースケース（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8316.html">RFC 8316</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8316">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8316">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8316</h1>
+<h1 id="title-en">Autonomic Networking Use Case for Distributed Detection of Service Level Agreement (SLA) Violations</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8316</h1>
+<h1 id="title-ja">サービスレベル合意（SLA）違反の分散検出のための自律ネットワーキングのユースケース</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document describes an experimental use case that employs
+autonomic networking for the monitoring of Service Level Agreements
+(SLAs).  The use case is for detecting violations of SLAs in a
+distributed fashion.  It strives to optimize and dynamically adapt
+the autonomic deployment of active measurement probes in a way that
+maximizes the likelihood of detecting service-level violations with a
+given resource budget to perform active measurements.  This
+optimization and adaptation should be done without any outside
+guidance or intervention.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書は、サービスレベル合意（SLA）の監視に自律ネットワーキングを用いる実験的なユースケースについて説明します。このユースケースは、SLA違反を分散方式で検出するためのものです。このユースケースでは、アクティブ測定を行うための所与のリソース予算のもとで、サービスレベル違反を検出する可能性が最大になるように、アクティブ測定プローブの自律的な展開を最適化し、動的に適応させることを目指します。この最適化と適応は、外部からの指示や介入なしに行われるべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">This document is a product of the IRTF Network Management Research
+Group (NMRG).  It is published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">この文書は、IRTF Network Management Research Group（NMRG）の成果物です。この文書は、情報提供のために公開されています。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1-1-en">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1-1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1-2-en">This document is a product of the Internet Research Task Force
+(IRTF).  The IRTF publishes the results of Internet-related research
+and development activities.  These results might not be suitable for
+deployment.  This RFC represents the consensus of the Network
+Management Research Group of the Internet Research Task Force (IRTF).
+Documents approved for publication by the IRSG are not candidates for
+any level of Internet Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1-2-ja">この文書は、インターネット研究タスクフォース（IRTF）の成果物です。IRTFは、インターネットに関連する研究開発活動の成果を公開しています。これらの成果は、展開に適していない場合があります。このRFCは、インターネット研究タスクフォース（IRTF）のNetwork Management Research Groupのコンセンサスを代表するものです。IRSGによって発行が承認された文書は、いかなるレベルのインターネット標準の候補でもありません。RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1-3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8316" class="eref">https://www.rfc-editor.org/info/rfc8316</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1-3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<span><a href="https://www.rfc-editor.org/info/rfc8316" class="eref">https://www.rfc-editor.org/info/rfc8316</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-definitions-and-acronyms-en">Definitions and Acronyms</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-current-approaches-en">Current Approaches</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-use-case-description-en">Use Case Description</a></p>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-a-distributed-autonomic-solution-en">A Distributed Autonomic Solution</a></p>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-intended-user-experience-en">Intended User Experience</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-implementation-considerations-en">Implementation Considerations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-en"><a href="#section-7.1-en">7.1</a>.  <a href="#name-device-based-self-knowledge-and-decisions-en">Device-Based Self-Knowledge and Decisions</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-en">
+              <p id="section-toc.1-1.7.2.1-en"><a href="#section-7.2-en">7.2</a>.  <a href="#name-interaction-with-other-devices-en">Interaction with Other Devices</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-comparison-with-current-solutions-en">Comparison with Current Solutions</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-related-ietf-work-en">Related IETF Work</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#section-11-en">11</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.12-en">
+            <p id="section-toc.1-1.12.1-en"><a href="#section-12-en">12</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+          <li id="section-toc.1-1.13-en">
+            <p id="section-toc.1-1.13.1-en"><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.14-en">
+            <p id="section-toc.1-1.14.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-definitions-and-acronyms-ja">定義と略語</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-current-approaches-ja">現在のアプローチ</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-use-case-description-ja">ユースケースの説明</a></p>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-a-distributed-autonomic-solution-ja">分散型の自律的な解決策</a></p>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-intended-user-experience-ja">想定するユーザー体験</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-implementation-considerations-ja">実装に関する考慮事項</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-ja"><a href="#section-7.1-ja">7.1</a>.  <a href="#name-device-based-self-knowledge-and-decisions-ja">デバイスベースの自己知識と決定</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-ja">
+              <p id="section-toc.1-1.7.2.1-ja"><a href="#section-7.2-ja">7.2</a>.  <a href="#name-interaction-with-other-devices-ja">他のデバイスとのやり取り</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-comparison-with-current-solutions-ja">現在の解決策との比較</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-related-ietf-work-ja">関連するIETFの作業</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#section-11-ja">11</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.12-ja">
+            <p id="section-toc.1-1.12.1-ja"><a href="#section-12-ja">12</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+          <li id="section-toc.1-1.13-ja">
+            <p id="section-toc.1-1.13.1-ja"><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.14-ja">
+            <p id="section-toc.1-1.14.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">The Internet has been growing dramatically in terms of size,
+capacity, and accessibility in recent years.  Communication
+requirements of distributed services and applications running on top
+of the Internet have become increasingly demanding.  Some examples
+are real-time interactive video or financial trading.  Providing such
+services involves stringent requirements in terms of acceptable
+latency, loss, and jitter.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">インターネットは近年、規模、容量、アクセスしやすさの点で劇的に成長してきました。インターネット上で動作する分散サービスやアプリケーションの通信要件は、ますます厳しくなっています。その例としては、リアルタイムの対話型ビデオや金融取引があります。このようなサービスを提供するには、許容できる遅延、損失、ジッターについて厳しい要件が伴います。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">Performance requirements lead to the articulation of Service Level
+Objectives (SLOs) that must be met.  Those SLOs are part of Service
+Level Agreements (SLAs) that define a contract between the provider
+and the consumer of a service.  SLOs, in effect, constitute a
+service-level guarantee that the consumer of the service can expect
+to receive (and often has to pay for).  Likewise, the provider of a
+service needs to ensure that the service-level guarantee and
+associated SLOs are met.  Some examples of clauses that relate to
+SLOs can be found in <span>[<a href="#RFC7297-en">RFC7297</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">性能要件から、満たさなければならないサービスレベル目標（SLO: Service Level Objective）が明文化されます。これらのSLOは、サービスの提供者と利用者の間の契約を定めるサービスレベル合意（SLA: Service Level Agreement）の一部です。SLOは、事実上、サービスの利用者が受けられると期待できる（そして多くの場合、対価を支払わなければならない）サービスレベルの保証を構成します。同様に、サービスの提供者は、サービスレベルの保証とそれに関連するSLOが満たされていることを確実にする必要があります。SLOに関連する条項の例は、<span>[<a href="#RFC7297-ja">RFC7297</a>]</span>にあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">Violations of SLOs can be associated with significant financial loss,
+which can by divided into two categories.  First, there is the loss
+that can be incurred by the user of a service when the agreed service
+levels are not provided.  For example, a financial brokerage's stock
+orders might suffer losses when it is unable to execute stock
+transactions in a timely manner.  An electronic retailer may lose
+customers when its online presence is perceived by customers as
+sluggish.  An online gaming provider may not be able to provide fair
+access to online players, resulting in frustrated players who are
+lost as customers.  In each case, the failure of a service provider
+to meet promised service-level guarantees can have a substantial
+financial impact on users of the service.  Second, there is the loss
+that is incurred by the provider of a service who is unable to meet
+promised SLOs.  Those losses can take several forms, such as
+penalties for violating the service level agreement and even loss of
+future revenue due to reduced customer satisfaction (which, in many
+cases, is more serious).  Hence, SLOs are a key concern for the
+service provider.  In order to ensure that SLOs are not being
+violated, service levels need to be continuously monitored at the
+network infrastructure layer in order to know, for example, when
+mitigating actions need to be taken.  To that end, service-level
+measurements must take place.</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">SLOの違反は、重大な金銭的損失につながる可能性があり、その損失は2つのカテゴリーに分けられます。1つ目は、合意されたサービスレベルが提供されない場合に、サービスの利用者が被る可能性のある損失です。たとえば、金融仲介業者の株式注文は、株式取引をタイムリーに実行できない場合に損失を被る可能性があります。電子小売業者は、自社のオンラインでの存在が顧客に遅いと受け取られると、顧客を失う可能性があります。オンラインゲームの提供者は、オンラインのプレイヤーに公平なアクセスを提供できないかもしれず、その結果、不満を抱いたプレイヤーを顧客として失うことになります。いずれの場合も、サービス提供者が約束したサービスレベルの保証を満たせないと、サービスの利用者に大きな金銭的影響を及ぼす可能性があります。2つ目は、約束したSLOを満たせないサービスの提供者が被る損失です。これらの損失には、サービスレベル合意に違反したことに対する違約金や、さらには顧客満足度の低下による将来の収益の損失（多くの場合、こちらのほうが深刻です）など、いくつかの形態があります。したがって、SLOはサービス提供者にとって重要な関心事です。SLOに違反していないことを確実にするには、たとえば、緩和策を講じる必要があるのはいつかを知るために、ネットワークインフラストラクチャー層でサービスレベルを継続的に監視する必要があります。そのためには、サービスレベルの測定を行わなければなりません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">Network measurements can be performed using active or passive
+measurement techniques.  In passive measurements, production traffic
+is observed, and no monitoring traffic is created by the measurement
+process itself.  That is, network conditions are checked in a
+non-intrusive way.  In the context of IP Flow Information Export
+(IPFIX), several documents were produced that define how to export
+data associated with flow records, i.e., data that is collected as
+part of passive measurement mechanisms, generally applied against
+flows of production traffic (e.g., <span>[<a href="#RFC7011-en">RFC7011</a>]</span>).  In addition, it is
+possible to collect real data traffic (not just summarized flow
+records) with time-stamped packets, possibly sampled (e.g., per
+<span>[<a href="#RFC5474-en">RFC5474</a>]</span>), as a means of measuring and inferring service levels.
+Active measurements, on the other hand, are more intrusive to the
+network in the sense that they involve injecting synthetic test
+traffic into the network to measure network service levels, as
+opposed to simply observing production traffic.  The IP Performance
+Metrics (IPPM) Working Group produced documents that describe active
+measurement mechanisms such as the One-Way Active Measurement
+Protocol (OWAMP) <span>[<a href="#RFC4656-en">RFC4656</a>]</span>, the Two-Way Active Measurement Protocol
+(TWAMP) <span>[<a href="#RFC5357-en">RFC5357</a>]</span>, and the Cisco Service-Level Assurance Protocol
+<span>[<a href="#RFC6812-en">RFC6812</a>]</span>.  In addition, there are some mechanisms that do not
+cleanly fit into either active or passive categories, such as
+Performance and Diagnostic Metrics (PDM) Destination Option
+techniques <span>[<a href="#RFC8250-en">RFC8250</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">ネットワークの測定は、アクティブまたはパッシブな測定技術を用いて行うことができます。パッシブ測定では、本番トラフィックを観測し、測定プロセス自体は監視用のトラフィックを生成しません。つまり、ネットワークの状態を非侵入的な方法で確認します。IP Flow Information Export（IPFIX）の文脈では、フローレコードに関連するデータ、すなわち、一般に本番トラフィックのフローに対して適用されるパッシブ測定メカニズムの一部として収集されるデータをエクスポートする方法を定義した文書がいくつか作成されました（例: <span>[<a href="#RFC7011-ja">RFC7011</a>]</span>）。さらに、サービスレベルを測定し推測する手段として、（要約されたフローレコードだけでなく）実際のデータトラフィックを、タイムスタンプ付きのパケットとして、場合によってはサンプリングして（例: <span>[<a href="#RFC5474-ja">RFC5474</a>]</span>に従って）収集することもできます。一方、アクティブ測定は、単に本番トラフィックを観測するのではなく、ネットワークのサービスレベルを測定するためにネットワークへ合成テストトラフィックを注入するという意味で、ネットワークに対してより侵入的です。IP Performance Metrics（IPPM）ワーキンググループは、One-Way Active Measurement Protocol（OWAMP）<span>[<a href="#RFC4656-ja">RFC4656</a>]</span>、Two-Way Active Measurement Protocol（TWAMP）<span>[<a href="#RFC5357-ja">RFC5357</a>]</span>、Cisco Service-Level Assurance Protocol <span>[<a href="#RFC6812-ja">RFC6812</a>]</span>などのアクティブ測定メカニズムを記述した文書を作成しました。さらに、Performance and Diagnostic Metrics（PDM）Destination Optionの技術<span>[<a href="#RFC8250-ja">RFC8250</a>]</span>のように、アクティブとパッシブのどちらのカテゴリーにもきれいに当てはまらないメカニズムもあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-5-en">Active measurement mechanisms offer a high level of control over what
+and how to measure.  They do not require inspecting production
+traffic.  Because of this, active measurements usually offer better
+accuracy and privacy than passive measurement mechanisms.  Traffic
+encryption and regulations that limit the amount of payload
+inspection that can occur are non-issues.  Furthermore, active
+measurement mechanisms are able to detect end-to-end network
+performance problems in a fine-grained way (e.g., simulating the
+traffic that must be handled considering specific SLOs).  As a
+result, active measurements are often preferred over passive
+measurement for SLA monitoring.  Measurement probes must be hosted in
+network devices and measurement sessions must be activated to compute
+the current network metrics (for example, metrics such as the ones
+described in <span>[<a href="#RFC4148-en">RFC4148</a>]</span>, although note that <span>[<a href="#RFC4148-en">RFC4148</a>]</span> was obsoleted by
+<span>[<a href="#RFC6248-en">RFC6248</a>]</span>).  This activation should be dynamic in order to follow
+changes in network conditions, such as those related to routes being
+added or new customer demands.</p></div>
+<div lang="ja" class="col"><p id="section-1-5-ja">アクティブ測定メカニズムでは、何をどのように測定するかを高度に制御できます。また、本番トラフィックを検査する必要がありません。このため、アクティブ測定は通常、パッシブ測定メカニズムよりも優れた正確さとプライバシーを提供します。トラフィックの暗号化や、行えるペイロード検査の量を制限する規制は問題になりません。さらに、アクティブ測定メカニズムは、エンドツーエンドのネットワーク性能の問題をきめ細かく検出できます（例: 特定のSLOを考慮して処理しなければならないトラフィックを模擬する）。その結果、SLAの監視には、パッシブ測定よりもアクティブ測定が好まれることがよくあります。現在のネットワークメトリクス（たとえば、<span>[<a href="#RFC4148-ja">RFC4148</a>]</span>に記述されているようなメトリクス。ただし、<span>[<a href="#RFC4148-ja">RFC4148</a>]</span>は<span>[<a href="#RFC6248-ja">RFC6248</a>]</span>によって廃止されていることに注意してください）を計算するには、測定プローブをネットワークデバイスにホストし、測定セッションを有効化しなければなりません。この有効化は、経路の追加や新たな顧客の需要に関連するものなど、ネットワーク状況の変化に追従するために動的であるべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-6-en">While offering many advantages, active measurements are expensive in
+terms of network resource consumption.  Active measurements generally
+involve measurement probes that generate synthetic test traffic that
+is directed at a responder.  The responder needs to timestamp test
+traffic it receives and reflect it back to the originating
+measurement probe.  The measurement probe subsequently processes the
+returned packets along with time-stamping information in order to
+compute service levels.  Accordingly, active measurements consume
+substantial CPU cycles as well as memory of network devices to
+generate and process test traffic.  In addition, synthetic traffic
+increases network load.  Thus, active measurements compete for
+resources with other functions, including routing and switching.</p></div>
+<div lang="ja" class="col"><p id="section-1-6-ja">アクティブ測定は多くの利点を提供する一方で、ネットワークリソースの消費という点ではコストがかかります。アクティブ測定は一般に、レスポンダーに向けた合成テストトラフィックを生成する測定プローブを伴います。レスポンダーは、受信したテストトラフィックにタイムスタンプを付け、送信元の測定プローブに反射して返す必要があります。測定プローブはその後、サービスレベルを計算するために、返されたパケットをタイムスタンプの情報とともに処理します。したがって、アクティブ測定は、テストトラフィックを生成して処理するために、ネットワークデバイスのメモリーだけでなく、かなりのCPUサイクルも消費します。さらに、合成トラフィックはネットワークの負荷を増加させます。そのため、アクティブ測定は、ルーティングやスイッチングを含む他の機能とリソースを奪い合うことになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-7-en">The resources required and traffic generated by the active
+measurement sessions are, in a large part, a function of the number
+of measured network destinations.  (In addition, the amount of
+traffic generated for each measurement plays a role that, in turn,
+influences the accuracy of the measurement.)  When more destinations
+are measured, a greater number of resources are consumed and more
+traffic is needed to perform the measurements.  Thus, to have better
+monitoring coverage, it is necessary to deploy more sessions, which
+consequently increases consumed resources.  Otherwise, enabling the
+observation of just a small subset of all network flows can lead to
+insufficient coverage.</p></div>
+<div lang="ja" class="col"><p id="section-1-7-ja">アクティブ測定セッションが必要とするリソースや生成するトラフィックは、大部分が、測定されるネットワークの宛先の数に応じて決まります。（加えて、各測定で生成されるトラフィックの量も一定の役割を果たし、それがひいては測定の正確さに影響します。）より多くの宛先を測定すると、より多くのリソースが消費され、測定を行うためにより多くのトラフィックが必要になります。そのため、より良い監視カバレッジを得るには、より多くのセッションを展開する必要があり、その結果、消費されるリソースが増加します。そうしないと、すべてのネットワークフローのうちごく一部しか観測できなくなり、カバレッジが不十分になる可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-8-en">Furthermore, while some end-to-end service levels can be determined
+by adding up the service levels observed across different path
+segments, the same is not true for all service levels.  For example,
+the end-to-end delay or packet loss from a node A to a node C routed
+via a node B can often be computed simply by adding delays (or loss)
+from A to B and from B to C.  This allows the decomposition of a
+large set of end-to-end measurements into a much smaller set of
+segment measurements.  However, end-to-end jitter and mean opinion
+scores cannot be decomposed as easily and, for higher accuracy, must
+be measured end-to-end.</p></div>
+<div lang="ja" class="col"><p id="section-1-8-ja">さらに、エンドツーエンドのサービスレベルの中には、異なる経路セグメントで観測されたサービスレベルを合計することで決定できるものもありますが、すべてのサービスレベルについてそうなるわけではありません。たとえば、ノードAからノードBを経由してノードCにルーティングされる場合のエンドツーエンドの遅延やパケット損失は、多くの場合、AからBまでとBからCまでの遅延（または損失）を足し合わせるだけで計算できます。これにより、エンドツーエンドの測定の大きな集合を、はるかに小さなセグメント測定の集合に分解できます。しかし、エンドツーエンドのジッターや平均オピニオン評点（mean opinion score）は、それほど簡単には分解できず、より高い正確さを得るにはエンドツーエンドで測定しなければなりません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-9-en">Hence, the decision about how to place measurement probes becomes an
+important management activity.  The goal is to obtain the maximum
+benefits of service-level monitoring with a limited amount of
+measurement overhead.  Specifically, the goal is to maximize the
+number of service-level violations that are detected with a limited
+number of resources.</p></div>
+<div lang="ja" class="col"><p id="section-1-9-ja">したがって、測定プローブをどのように配置するかの決定は、重要な管理活動になります。目標は、限られた量の測定オーバーヘッドで、サービスレベル監視の利点を最大限に得ることです。具体的には、限られた量のリソースで検出されるサービスレベル違反の数を最大化することが目標です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-10-en">The use case and the solution approach described in this document
+address an important practical issue.  They are intended to provide a
+basis for further experimentation to lead to solutions for wider
+deployment.  This document represents the consensus of the IRTF's
+Network Management Research Group (NMRG).  It was discussed
+extensively and received three separate in-depth reviews.</p></div>
+<div lang="ja" class="col"><p id="section-1-10-ja">この文書で説明するユースケースと解決策のアプローチは、重要な実務上の問題に取り組むものです。これらは、より広い展開に向けた解決策につながる、さらなる実験の基礎を提供することを意図しています。この文書は、IRTFのNetwork Management Research Group（NMRG）のコンセンサスを代表するものです。この文書は広範に議論され、3つの個別の詳細なレビューを受けました。</p></div>
+</div></section><section><span id="section-2"></span><span id="definitions-and-acronyms-en"></span><span id="definitions-and-acronyms-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-definitions-and-acronyms-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-definitions-and-acronyms-en" class="section-name selfRef">Definitions and Acronyms</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-definitions-and-acronyms-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-definitions-and-acronyms-ja" class="section-name selfRef">定義と略語</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-2-1-en">
+<dt id="section-2-1.1-en">Active Measurements:</dt>
+        <dd id="section-2-1.2-en">Techniques to measure service levels that
+   involve generating and observing synthetic test traffic</dd>
+        <dt id="section-2-1.3-en">Passive Measurements:</dt>
+        <dd id="section-2-1.4-en">Techniques used to measure service levels based
+   on observation of production traffic</dd>
+        <dt id="section-2-1.5-en">Autonomic Network:</dt>
+        <dd id="section-2-1.6-en">A network containing exclusively autonomic nodes,
+   requiring no configuration, and deriving all required information
+   through self-knowledge, discovery, or intent.</dd>
+        <dt id="section-2-1.7-en">Autonomic Service Agent (ASA):</dt>
+        <dd id="section-2-1.8-en">An agent implemented on an autonomic
+   node that implements an autonomic function, either in part (in the
+   case of a distributed function, as in the context of this
+   document) or whole</dd>
+        <dt id="section-2-1.9-en">Measurement Session:</dt>
+        <dd id="section-2-1.10-en">A communications association between a probe and
+   a responder used to send and reflect synthetic test traffic for
+   active measurements</dd>
+        <dt id="section-2-1.11-en">Probe:</dt>
+        <dd id="section-2-1.12-en">The source of synthetic test traffic in an active measurement</dd>
+        <dt id="section-2-1.13-en">Responder:</dt>
+        <dd id="section-2-1.14-en">The destination for synthetic test traffic in an active
+   measurement</dd>
+        <dt id="section-2-1.15-en">SLA:</dt>
+        <dd id="section-2-1.16-en">Service Level Agreement</dd>
+        <dt id="section-2-1.17-en">SLO:</dt>
+        <dd id="section-2-1.18-en">Service Level Objective</dd>
+        <dt id="section-2-1.19-en">P2P:</dt>
+        <dd id="section-2-1.20-en">Peer-to-Peer</dd>
+      </dl></div>
+<div lang="ja" class="col"><dl id="section-2-1-ja">
+<dt id="section-2-1.1-ja">アクティブ測定（Active Measurements）：</dt>
+        <dd id="section-2-1.2-ja">合成テストトラフィックの生成と観測を伴う、サービスレベルを測定するための技術</dd>
+        <dt id="section-2-1.3-ja">パッシブ測定（Passive Measurements）：</dt>
+        <dd id="section-2-1.4-ja">本番トラフィックの観測に基づいてサービスレベルを測定するために用いられる技術</dd>
+        <dt id="section-2-1.5-ja">自律ネットワーク（Autonomic Network）：</dt>
+        <dd id="section-2-1.6-ja">自律ノードのみを含むネットワークで、設定を必要とせず、必要なすべての情報を自己知識、発見、またはインテントによって導出するもの。</dd>
+        <dt id="section-2-1.7-ja">自律サービスエージェント（ASA: Autonomic Service Agent）：</dt>
+        <dd id="section-2-1.8-ja">自律機能の一部（この文書の文脈のように分散機能の場合）または全体を実装する、自律ノード上に実装されたエージェント</dd>
+        <dt id="section-2-1.9-ja">測定セッション（Measurement Session）：</dt>
+        <dd id="section-2-1.10-ja">アクティブ測定のための合成テストトラフィックを送信して反射するために用いられる、プローブとレスポンダーの間の通信上の関連付け</dd>
+        <dt id="section-2-1.11-ja">プローブ（Probe）：</dt>
+        <dd id="section-2-1.12-ja">アクティブ測定における合成テストトラフィックの送信元</dd>
+        <dt id="section-2-1.13-ja">レスポンダー（Responder）：</dt>
+        <dd id="section-2-1.14-ja">アクティブ測定における合成テストトラフィックの宛先</dd>
+        <dt id="section-2-1.15-ja">SLA：</dt>
+        <dd id="section-2-1.16-ja">サービスレベル合意（Service Level Agreement）</dd>
+        <dt id="section-2-1.17-ja">SLO：</dt>
+        <dd id="section-2-1.18-ja">サービスレベル目標（Service Level Objective）</dd>
+        <dt id="section-2-1.19-ja">P2P：</dt>
+        <dd id="section-2-1.20-ja">ピアツーピア（Peer-to-Peer）</dd>
+      </dl></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-2-en">(Note: The definitions for "Autonomic Network" and "Autonomic Service
+Agent" are borrowed from <span>[<a href="#RFC7575-en">RFC7575</a>]</span>).</p></div>
+<div lang="ja" class="col"><p id="section-2-2-ja">（注：「自律ネットワーク」と「自律サービスエージェント」の定義は<span>[<a href="#RFC7575-ja">RFC7575</a>]</span>から借用しています。）</p></div>
+</div></section><section><span id="section-3"></span><span id="current-approaches-en"></span><span id="current-approaches-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-current-approaches-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-current-approaches-en" class="section-name selfRef">Current Approaches</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-current-approaches-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-current-approaches-ja" class="section-name selfRef">現在のアプローチ</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">For feasible deployments of active measurement solutions to
+distribute the available measurement sessions along the network, the
+current best practice consists of relying entirely on the human
+administrator's expertise to infer the best location to activate such
+sessions.  This is done through several steps.  First, it is
+necessary to collect traffic information in order to grasp the
+traffic matrix.  Then, the administrator uses this information to
+infer the best destinations for measurement sessions.  After that,
+the administrator activates sessions on the chosen subset of
+destinations, taking the available resources into account.  This
+practice, however, does not scale well because it is still labor
+intensive and error-prone for the administrator to determine which
+sessions should be activated given the set of critical flows that
+needs to be measured.  Even worse, this practice completely fails in
+networks where the most critical flows change rapidly, resulting in
+dynamic changes to what would be the most important destinations.
+For example, this can be the case in modern cloud environments.  This
+is because fast reactions are necessary to reconfigure the sessions,
+and administrators are just not quick enough in computing and
+activating the new set of required sessions every time the network
+traffic pattern changes.  Finally, the current practice for active
+measurements usually covers only a fraction of the network flows that
+should be observed, which invariably leads to the damaging
+consequence of undetected SLA violations.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">利用可能な測定セッションをネットワーク全体に分散させるアクティブ測定ソリューションを実現可能な形で展開するための現在のベストプラクティスは、そのようなセッションを有効化する最適な場所の推定を、人間の管理者の専門知識に全面的に頼ることです。これはいくつかのステップで行われます。まず、トラフィック行列を把握するために、トラフィック情報を収集する必要があります。次に、管理者はこの情報を用いて、測定セッションの最適な宛先を推定します。その後、管理者は利用可能なリソースを考慮しながら、選択した宛先のサブセットに対してセッションを有効化します。しかし、測定する必要のある重要なフローの集合が与えられたとき、どのセッションを有効化すべきかを管理者が決定するのは依然として手間がかかり、誤りも起こりやすいため、このやり方はうまくスケールしません。さらに悪いことに、このやり方は、最も重要なフローが急速に変化し、その結果、最も重要な宛先となるものが動的に変化するネットワークでは、まったく機能しません。たとえば、現代のクラウド環境ではこれが当てはまる可能性があります。これは、セッションを再設定するには迅速な対応が必要ですが、ネットワークのトラフィックパターンが変化するたびに、必要なセッションの新しい集合を計算して有効化するには、管理者では単純に速さが足りないからです。最後に、アクティブ測定の現在のやり方は通常、観測すべきネットワークフローの一部しかカバーしておらず、それが必ず、SLA違反が検出されないという有害な結果につながります。</p></div>
+</div></section><section><span id="section-4"></span><span id="use-case-description-en"></span><span id="use-case-description-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-use-case-description-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-use-case-description-en" class="section-name selfRef">Use Case Description</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-use-case-description-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-use-case-description-ja" class="section-name selfRef">ユースケースの説明</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">The use case involves a service-level provider that needs to monitor
+the network to detect service-level violations using active service-level
+measurements and wants to be able to do so with minimal human
+intervention.  The goal is to conduct the measurements in an
+effective manner to maximize the percentage of detected service-level
+violations.  The service-level provider has a bounded resource budget
+with regard to measurements that can be performed, specifically the
+number of measurements that can be conducted concurrently from any
+one network device and possibly the total amount of measurement
+traffic on the network.  However, while at any one point in time the
+number of measurements conducted is limited, it is possible for a
+device to change which destinations to measure over time.  This can
+be exploited to achieve a balance of eventually covering all possible
+destinations using a reasonable amount of "sampling" where
+measurement coverage of a destination cannot be continuous.  The
+solution needs to be dynamic and able to cope with network conditions
+that may change over time.  The solution should also be embeddable
+inside network devices that control the deployment of active
+measurement mechanisms.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">このユースケースには、アクティブなサービスレベル測定を用いてサービスレベル違反を検出するためにネットワークを監視する必要があり、それを最小限の人間の介入で行えるようにしたいと考えるサービスレベル提供者が関わります。目標は、検出されるサービスレベル違反の割合を最大化するように、効果的な方法で測定を行うことです。サービスレベル提供者には、実行できる測定に関して限られたリソース予算があります。具体的には、任意の1つのネットワークデバイスから同時に実行できる測定の数と、場合によってはネットワーク上の測定トラフィックの総量です。しかし、ある時点で実行される測定の数は限られていても、デバイスがどの宛先を測定するかを時間とともに変えることは可能です。これを利用すると、ある宛先の測定カバレッジを連続的にできない場合に、妥当な量の「サンプリング」を用いて、最終的にはすべての可能な宛先をカバーするというバランスを実現できます。解決策は動的である必要があり、時間とともに変化する可能性のあるネットワーク状況に対処できる必要があります。また、解決策は、アクティブ測定メカニズムの展開を制御するネットワークデバイスの内部に組み込めるべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">The goal is to conduct the measurements in a smart manner that
+ensures that the network is broadly covered and that the likelihood
+of detecting service-level violations is maximized.  In order to
+maximize that likelihood, it is reasonable to focus measurement
+resources on destinations that are more likely to incur a violation,
+while spending fewer resources on destinations that are more likely
+to be in compliance.  In order to do this, there are various aspects
+that can be exploited, including past measurements (destinations
+close to a service-level threshold requiring more focus than
+destinations farther from it), complementation with passive
+measurements such as flow data (to identify network destinations that
+are currently popular and critical), and observations from other
+parts of the network.  In addition, measurements can be coordinated
+among different network devices to avoid hitting the same destination
+at the same time and to share results that may be useful in future
+probe placement.</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">目標は、ネットワークが広くカバーされ、サービスレベル違反を検出する可能性が最大化されることを保証するような、賢い方法で測定を行うことです。その可能性を最大化するには、違反が発生する可能性が高い宛先に測定リソースを集中させ、準拠している可能性が高い宛先にはより少ないリソースを費やすのが合理的です。これを行うために利用できる側面は多数あり、過去の測定（サービスレベルのしきい値に近い宛先には、しきい値から遠い宛先よりも重点を置く必要があります）、フローデータなどのパッシブ測定による補完（現在よく使われていて重要なネットワークの宛先を特定するため）、ネットワークの他の部分からの観測などが含まれます。さらに、同じ宛先に同時にアクセスするのを避け、将来のプローブ配置に役立つ可能性のある結果を共有するために、異なるネットワークデバイス間で測定を調整することもできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-3-en">Clearly, static solutions will have severe limitations.  At the same
+time, human administrators cannot be in the loop for continuous
+dynamic reconfigurations of measurement probes.  Thus, an automated
+solution, or ideally an autonomic solution, is needed so that network
+measurements are automatically orchestrated and dynamically
+reconfigured from within the network.  This can be accomplished using
+an autonomic solution that is distributed, using ASAs that are
+implemented on nodes in the network.</p></div>
+<div lang="ja" class="col"><p id="section-4-3-ja">明らかに、静的な解決策には深刻な限界があります。同時に、測定プローブの継続的かつ動的な再設定のループに、人間の管理者が加わり続けることはできません。したがって、ネットワークの測定がネットワーク内部から自動的にオーケストレーションされ、動的に再設定されるように、自動化された解決策、理想的には自律的な解決策が必要です。これは、ネットワーク内のノード上に実装されたASAを用いる、分散型の自律的な解決策によって実現できます。</p></div>
+</div></section><section><span id="section-5"></span><span id="a-distributed-autonomic-solution-en"></span><span id="a-distributed-autonomic-solution-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-a-distributed-autonomic-solution-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-a-distributed-autonomic-solution-en" class="section-name selfRef">A Distributed Autonomic Solution</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-a-distributed-autonomic-solution-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-a-distributed-autonomic-solution-ja" class="section-name selfRef">分散型の自律的な解決策</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">The use of Autonomic Networking (AN) <span>[<a href="#RFC7575-en">RFC7575</a>]</span> can help such
+detection through an efficient activation of measurement sessions.
+Such an approach, along with a detailed assessment confirming its
+viability, is described in <span>[<a href="#P2PBNM-Nobre-2012-en">P2PBNM-Nobre-2012</a>]</span>.  The problem to be
+solved by AN in the present use case is how to steer the process of
+measurement session activation by a complete solution that sets all
+necessary parameters for this activation to operate efficiently,
+reliably, and securely, with no required human intervention other
+than setting overall policy.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">自律ネットワーキング（AN: Autonomic Networking）<span>[<a href="#RFC7575-ja">RFC7575</a>]</span>を用いると、測定セッションを効率的に有効化することで、このような検出を支援できます。そのようなアプローチは、その実現可能性を確認する詳細な評価とともに、<span>[<a href="#P2PBNM-Nobre-2012-ja">P2PBNM-Nobre-2012</a>]</span>で説明されています。このユースケースにおいてANで解決すべき問題は、全体的なポリシーの設定以外には人間の介入を必要とせずに、この有効化が効率的、確実、かつ安全に動作するために必要なすべてのパラメーターを設定する完全な解決策によって、測定セッションの有効化のプロセスをどのように制御するかです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-2-en">When a node first comes online, it has no information about which
+measurements are more critical than others.  In the absence of
+information about past measurements and information from measurement
+peers, it may start with an initial set of measurement sessions,
+possibly randomly seeding a set of starter measurements and perhaps
+taking a round-robin approach for subsequent measurement rounds.
+However, as measurements are collected, a node will gain an
+increasing amount of information that it can utilize to refine its
+strategy of selecting measurement targets going forward.  For one, it
+may take note of which targets returned measurement results very
+close to service-level thresholds; these targets may require closer
+scrutiny compared to others.  Second, it may utilize observations
+that are made by its measurement peers in order to conclude which
+measurement targets may be more critical than others and to ensure
+that proper overall measurement coverage is obtained (so that not
+every node incidentally measures the same targets, while other
+targets are not measured at all).</p></div>
+<div lang="ja" class="col"><p id="section-5-2-ja">ノードは、最初にオンラインになったとき、どの測定が他の測定よりも重要であるかについての情報を持っていません。過去の測定に関する情報や測定ピアからの情報がない場合、ノードは測定セッションの初期セットから開始してもよく、場合によっては開始用の測定のセットをランダムに選んで初期化し、その後の測定ラウンドではラウンドロビン方式を採るかもしれません。しかし、測定結果が集まるにつれて、ノードは、今後の測定対象の選択戦略を洗練させるために利用できる情報を、ますます多く得ることになります。1つには、どの対象がサービスレベルのしきい値に非常に近い測定結果を返したかを記録できます。これらの対象は、他の対象と比べてより綿密な精査が必要になる可能性があります。2つ目に、どの測定対象が他の対象よりも重要である可能性があるかを判断し、全体として適切な測定カバレッジが得られることを確実にする（つまり、すべてのノードが偶然同じ対象を測定し、他の対象がまったく測定されないということがないようにする）ために、測定ピアが行った観測を利用できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-3-en">We advocate for embedding P2P technology in network devices in order
+to use autonomic control loops to make decisions about measurement
+sessions.</p></div>
+<div lang="ja" class="col"><p id="section-5-3-ja">私たちは、自律的な制御ループを用いて測定セッションについての決定を行うために、ネットワークデバイスにP2P技術を組み込むことを提唱します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-4-en">Specifically, we advocate for network devices to implement an
+autonomic function that monitors service levels for violations of
+SLOs and that determines which measurement sessions to set up at any
+given point in time based on current and past observations of the
+node and of other peer nodes.</p></div>
+<div lang="ja" class="col"><p id="section-5-4-ja">具体的には、私たちは、SLO違反がないかサービスレベルを監視し、そのノードおよび他のピアノードの現在と過去の観測に基づいて、任意の時点でどの測定セッションを確立するかを決定する自律機能を、ネットワークデバイスが実装することを提唱します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-5-en">By performing these functions locally and autonomically on the device
+itself, which measurements to conduct can be modified quickly based
+on local observations while taking local resource availability into
+account.  This allows a solution to be more robust and react more
+dynamically to rapidly changing service levels than a solution that
+has to rely on central coordination.  However, in order to optimize
+decisions about which measurements to conduct, a node will need to
+communicate with other nodes.  This allows a node to take into
+account other nodes' observations in addition to its own in its
+decisions.</p></div>
+<div lang="ja" class="col"><p id="section-5-5-ja">これらの機能をデバイス自体の上でローカルかつ自律的に実行することで、ローカルのリソースの可用性を考慮しながら、ローカルの観測に基づいて、どの測定を行うかをすばやく変更できます。これにより、中央での調整に頼らなければならない解決策よりも、解決策がより堅牢になり、急速に変化するサービスレベルにより動的に対応できるようになります。しかし、どの測定を行うかの決定を最適化するには、ノードは他のノードと通信する必要があります。これにより、ノードは、自身の観測に加えて他のノードの観測も考慮して決定を下せるようになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-6-en">For example, remote destinations whose observed service levels are on
+the verge of violating stated objectives may require closer
+monitoring than remote destinations that are comfortably within a
+range of tolerance.  A distributed autonomic solution also allows
+nodes to coordinate their probing decisions to collectively achieve
+the best possible measurement coverage.  Because the number of
+resources available for monitoring, exchanging measurement data, and
+coordinating with other nodes is limited, a node may be interested in
+identifying other nodes whose observations are similar to and
+correlated with its own.  This helps a node prioritize and decide
+which other nodes to coordinate and exchange data with.  All of this
+requires the use of a P2P overlay.</p></div>
+<div lang="ja" class="col"><p id="section-5-6-ja">たとえば、観測されたサービスレベルが定められた目標に違反する寸前にあるリモートの宛先は、許容範囲内に余裕をもって収まっているリモートの宛先よりも、綿密な監視が必要になる可能性があります。また、分散型の自律的な解決策では、ノードがプロービングの決定を調整し、全体として可能な限り最良の測定カバレッジを実現できます。監視、測定データの交換、他のノードとの調整に利用できるリソースの量は限られているため、ノードは、観測が自身の観測と類似し相関している他のノードを特定することに関心を持つかもしれません。これは、ノードが、どの他のノードと調整しデータを交換するかについて優先順位を付けて決定するのに役立ちます。これらすべてには、P2Pオーバーレイの使用が必要です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-7-en">A P2P overlay is essential for several reasons:</p></div>
+<div lang="ja" class="col"><p id="section-5-7-ja">P2Pオーバーレイは、いくつかの理由で不可欠です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5-8-en">
+<li id="section-5-8.1-en">It makes it possible for nodes (or more specifically, the ASAs
+   that are deployed on those nodes) in the network to autonomically
+   set up measurement sessions without having to rely on a central
+   management system or controller to perform configuration
+   operations associated with configuring measurement probes and
+   responders.</li>
+        <li id="section-5-8.2-en">It facilitates the exchange of data between different nodes to
+   share measurement results so that each node can refine its
+   measurement strategy based not just on its own observations, but
+   also on observations from its peers.</li>
+        <li id="section-5-8.3-en">It allows nodes to coordinate their measurements to obtain the
+   best possible test coverage and avoid measurements that have a
+   very low likelihood of detecting service-level violations.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-5-8-ja">
+<li id="section-5-8.1-ja">P2Pオーバーレイにより、ネットワーク内のノード（より具体的には、それらのノード上に展開されたASA）が、測定プローブとレスポンダーの設定に関連する設定操作を行うための中央の管理システムやコントローラーに頼ることなく、自律的に測定セッションを確立できるようになります。</li>
+        <li id="section-5-8.2-ja">P2Pオーバーレイは、異なるノード間でのデータ交換を容易にして測定結果を共有させ、各ノードが自身の観測だけでなくピアからの観測にも基づいて測定戦略を洗練できるようにします。</li>
+        <li id="section-5-8.3-ja">P2Pオーバーレイにより、ノードは測定を調整して、可能な限り最良のテストカバレッジを得るとともに、サービスレベル違反を検出する可能性が非常に低い測定を避けることができます。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-9-en">The provisioning of the P2P overlay should be transparent for the
+network administrator.  An Autonomic Control Plane such as defined in
+<span>[<a href="#ACP-en">ACP</a>]</span> provides an ideal candidate for the P2P overlay to run on.</p></div>
+<div lang="ja" class="col"><p id="section-5-9-ja">P2Pオーバーレイのプロビジョニングは、ネットワーク管理者にとって透過的であるべきです。<span>[<a href="#ACP-ja">ACP</a>]</span>で定義されているような自律コントロールプレーン（Autonomic Control Plane）は、P2Pオーバーレイを動作させる基盤として理想的な候補となります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-10-en">An autonomic solution for the distributed detection of SLA violations
+provides several benefits.  First, it provides efficiency; this
+solution should optimize the resource consumption and avoid resource
+starvation on the network devices.  A device that is "self-aware" of
+its available resources will be able to adjust measurement activities
+rapidly as needed, without requiring a separate control loop
+involving resource monitoring by an external system.  Second, placing
+logic about where to conduct measurements into the node enables rapid
+control loops that allow devices to react instantly to observations
+and adjust their measurement strategy.  For example, a device could
+decide to adjust the amount of synthetic test traffic being sent
+during the measurement itself depending on results observed so far on
+this and other concurrent measurement sessions.  As a result, the
+solution could decrease the time necessary to detect SLA violations.
+Adaptivity features of an autonomic loop could capture the network
+dynamics faster than a human administrator or even a central
+controller.  Finally, the solution could help to reduce the workload
+of human administrators.</p></div>
+<div lang="ja" class="col"><p id="section-5-10-ja">SLA違反の分散検出のための自律的な解決策は、いくつかの利点をもたらします。第1に、効率性をもたらします。この解決策は、リソースの消費を最適化し、ネットワークデバイス上でのリソース枯渇を回避するはずです。利用可能なリソースを「自己認識」しているデバイスは、外部システムによるリソース監視を含む別個の制御ループを必要とせずに、必要に応じて測定活動をすばやく調整できるようになります。第2に、どこで測定を行うかに関するロジックをノード内に置くことで、デバイスが観測に即座に反応して測定戦略を調整できる、迅速な制御ループが可能になります。たとえば、デバイスは、このセッションおよび他の同時に行われている測定セッションでそれまでに観測された結果に応じて、測定中に送信する合成テストトラフィックの量を調整すると決定できるかもしれません。その結果、この解決策は、SLA違反の検出に必要な時間を短縮できる可能性があります。自律的なループの適応性機能は、人間の管理者や中央のコントローラーよりも速く、ネットワークの動態を捉えられる可能性があります。最後に、この解決策は、人間の管理者の作業負荷を減らすのに役立つ可能性があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-11-en">In practice, these factors combine to maximize the likelihood of SLA
+violations being detected while operating within a given resource
+budget, allowing a continuous measurement strategy that takes into
+account past measurement results to be conducted, observations of
+other measures such as link utilization or flow data, measurement
+results shared between network devices, and future measurement
+activities coordinated among nodes.  Combined, this can result in
+efficient measurement decisions that achieve a golden balance between
+offering broad network coverage and honing in on service-level "hot
+spots".</p></div>
+<div lang="ja" class="col"><p id="section-5-11-ja">実際には、これらの要因が組み合わさることで、所与のリソース予算の範囲内で動作しながら、SLA違反が検出される可能性が最大化されます。そして、過去の測定結果、リンク使用率やフローデータなどの他の尺度の観測、ネットワークデバイス間で共有される測定結果、ノード間で調整される将来の測定活動を考慮した、継続的な測定戦略を実施できるようになります。これらを組み合わせると、ネットワークを広くカバーすることと、サービスレベルの「ホットスポット」に焦点を絞ることの間で、最適なバランスを実現する効率的な測定の決定につながります。</p></div>
+</div></section><section><span id="section-6"></span><span id="intended-user-experience-en"></span><span id="intended-user-experience-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-intended-user-experience-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-intended-user-experience-en" class="section-name selfRef">Intended User Experience</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-intended-user-experience-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-intended-user-experience-ja" class="section-name selfRef">想定するユーザー体験</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">The autonomic solution should not require any human intervention in
+the distributed detection of SLA violations.  By virtue of the
+solution being autonomic, human users will not have to plan which
+measurements to conduct in a network, which is often a very labor-intensive
+task that requires detailed analysis of traffic matrices
+and network topologies and is not prone to easy dynamic adjustment.
+Likewise, they will not have to configure measurement probes and
+responders.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">自律的な解決策は、SLA違反の分散検出において、人間の介入を一切必要とすべきではありません。解決策が自律的であることにより、人間のユーザーは、ネットワーク内でどの測定を行うかを計画する必要がなくなります。これは多くの場合、トラフィック行列やネットワークトポロジーの詳細な分析を必要とし、動的に調整するのも容易ではない、非常に手間のかかる作業です。同様に、ユーザーは測定プローブやレスポンダーを設定する必要もなくなります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-2-en">There are some ways in which a human administrator may still interact
+with the solution.  First, the human administrator will, of course,
+be notified and obtain reports about service-level violations that
+are observed.  Second, a human administrator may set policies
+regarding how closely to monitor the network for service-level
+violations and how many resources to spend.  For example, an
+administrator may set a resource budget that is assigned to network
+devices for measurement operations.  With that given budget, the
+number of SLO violations that are detected will be maximized.
+Alternatively, an administrator may set a target for the percentage
+of SLO violations that must be detected, i.e., a target for the ratio
+between the number of detected SLO violations and the number of total
+SLO violations that are actually occurring (some of which might go
+undetected).  In that case, the solution will aim to minimize the
+resources spent (i.e., the amount of test traffic and number of
+measurement sessions) that are required to achieve that target.</p></div>
+<div lang="ja" class="col"><p id="section-6-2-ja">それでも人間の管理者が解決策とやり取りする方法はいくつかあります。第1に、人間の管理者は当然、観測されたサービスレベル違反について通知を受け、レポートを入手します。第2に、人間の管理者は、サービスレベル違反がないかネットワークをどの程度綿密に監視するか、どれだけのリソースを費やすかに関するポリシーを設定できます。たとえば、管理者は、測定の運用のためにネットワークデバイスに割り当てるリソース予算を設定できます。その所与の予算で、検出されるSLO違反の数が最大化されます。あるいは、管理者は、検出しなければならないSLO違反の割合の目標、すなわち、検出されたSLO違反の数と、実際に発生しているSLO違反（その一部は検出されないかもしれません）の総数との比率の目標を設定することもできます。その場合、解決策は、その目標を達成するのに必要な、費やすリソース（すなわち、テストトラフィックの量と測定セッションの数）を最小化することを目指します。</p></div>
+</div></section><section><span id="section-7"></span><span id="implementation-considerations-en"></span><span id="implementation-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-considerations-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-implementation-considerations-en" class="section-name selfRef">Implementation Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-considerations-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-implementation-considerations-ja" class="section-name selfRef">実装に関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">The active measurement model assumes that a typical infrastructure
+will have multiple network segments, multiple Autonomous Systems
+(ASes), and a reasonably large number of routers.  It also considers
+that multiple SLOs can be in place at a given time.  Since
+interoperability in a heterogeneous network is a goal, features found
+on different active measurement mechanisms (e.g., OWAMP, TWAMP, and
+Cisco Service Level Assurance Protocol) and device programmability
+interfaces (such as Juniper's Junos API or Cisco's Embedded Event
+Manager) could be used for the implementation.  The autonomic
+solution should include and/or reference specific algorithms,
+protocols, metrics, and technologies for the implementation of
+distributed detection of SLA violations as a whole.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">アクティブ測定モデルは、典型的なインフラストラクチャーには、複数のネットワークセグメント、複数の自律システム（AS: Autonomous System）、そしてかなり多数のルーターがあることを想定しています。また、ある時点で複数のSLOが適用されうることも考慮しています。異種混在のネットワークにおける相互運用性が目標であるため、実装には、さまざまなアクティブ測定メカニズム（例: OWAMP、TWAMP、Cisco Service Level Assurance Protocol）やデバイスのプログラマビリティーインターフェイス（JuniperのJunos APIやCiscoのEmbedded Event Managerなど）に見られる機能を使用できるでしょう。自律的な解決策は、SLA違反の分散検出の全体的な実装のための具体的なアルゴリズム、プロトコル、メトリクス、および技術を含めるか参照する（またはその両方を行う）べきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-2-en">Finally, it should be noted that there are multiple deployment
+scenarios, including deployment scenarios that involve physical
+devices hosting autonomic functions or virtualized infrastructure
+hosting the same.  Co-deployment in conjunction with Virtual Network
+Functions (VNFs) is a possibility for further study.</p></div>
+<div lang="ja" class="col"><p id="section-7-2-ja">最後に、展開シナリオは複数あることに注意すべきです。これには、自律機能をホストする物理デバイスを伴う展開シナリオや、同じものをホストする仮想化インフラストラクチャーを伴う展開シナリオが含まれます。仮想ネットワーク機能（VNF: Virtual Network Function）と組み合わせた共同展開は、今後の検討課題となる可能性があります。</p></div>
+</div>
+<section><span id="section-7.1"></span><span id="device-based-self-knowledge-and-decisions-en"></span><span id="device-based-self-knowledge-and-decisions-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-device-based-self-knowledge-and-decisions-en" lang="en">
+<a id="section-7.1-en" href="#section-7.1-en" class="section-number selfRef">7.1.</a> <a href="#name-device-based-self-knowledge-and-decisions-en" class="section-name selfRef">Device-Based Self-Knowledge and Decisions</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-device-based-self-knowledge-and-decisions-ja" lang="ja">
+<a id="section-7.1-ja" href="#section-7.1-ja" class="section-number selfRef">7.1.</a> <a href="#name-device-based-self-knowledge-and-decisions-ja" class="section-name selfRef">デバイスベースの自己知識と決定</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-1-en">Each device has self-knowledge about the local SLA monitoring.  This
+could be in the form of historical measurement data and SLOs.
+Besides that, the devices would have algorithms that could decide
+which probes should be activated at a given time.  The choice of
+which algorithm is better for a specific situation would be also
+autonomic.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-1-ja">各デバイスは、ローカルのSLA監視についての自己知識を持ちます。これは、過去の測定データとSLOという形を取ることがありえます。それに加えて、デバイスは、ある時点でどのプローブを有効化すべきかを決定できるアルゴリズムを持つことになるでしょう。特定の状況にどのアルゴリズムがより適しているかの選択も、自律的に行われることになるでしょう。</p></div>
+</div></section><section><span id="section-7.2"></span><span id="interaction-with-other-devices-en"></span><span id="interaction-with-other-devices-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-interaction-with-other-devices-en" lang="en">
+<a id="section-7.2-en" href="#section-7.2-en" class="section-number selfRef">7.2.</a> <a href="#name-interaction-with-other-devices-en" class="section-name selfRef">Interaction with Other Devices</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-interaction-with-other-devices-ja" lang="ja">
+<a id="section-7.2-ja" href="#section-7.2-ja" class="section-number selfRef">7.2.</a> <a href="#name-interaction-with-other-devices-ja" class="section-name selfRef">他のデバイスとのやり取り</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.2-1-en">Network devices should share information about service-level
+measurement results.  This information can speed up the detection of
+SLA violations and increase the number of detected SLA violations.
+For example, if one device detects that a remote destination is in
+danger of violating an SLO, other devices may conduct additional
+measurements to the same destination or other destinations in its
+proximity.  For any given network device, the exchange of data may be
+more important with some devices (for example, devices in the same
+network neighborhood or devices that are "correlated" by some other
+means) than with others.  Defining the network devices that exchange
+measurement data (i.e., management peers) creates a new topology.
+Different approaches could be used to define this topology (e.g.,
+correlated peers <span>[<a href="#P2PBNM-Nobre-2012-en">P2PBNM-Nobre-2012</a>]</span>).  To bootstrap peer selection,
+each device should use its known neighbors (e.g., FIB and RIB tables)
+as initial seeds to identify possible peers.  It should be noted that
+a solution will benefit if topology information and network discovery
+functions are provided by the underlying autonomic framework.  A
+solution will need to be able to discover measurement peers as well
+as measurement targets, specifically measurement targets that support
+active measurement responders and that will be able to respond to
+measurement requests and reflect measurement traffic as needed.</p></div>
+<div lang="ja" class="col"><p id="section-7.2-1-ja">ネットワークデバイスは、サービスレベルの測定結果についての情報を共有すべきです。この情報により、SLA違反の検出を速め、検出されるSLA違反の数を増やすことができます。たとえば、あるデバイスが、リモートの宛先がSLOに違反するおそれがあることを検出した場合、他のデバイスは、同じ宛先やその近くにある他の宛先に対して追加の測定を行うことがあります。任意のネットワークデバイスにとって、データの交換は、一部のデバイス（たとえば、同じネットワーク近隣にあるデバイスや、何らかの他の手段で「相関」しているデバイス）との間で、他のデバイスとの間よりも重要になることがあります。測定データを交換するネットワークデバイス（すなわち、管理ピア）を定めると、新しいトポロジーが形成されます。このトポロジーを定めるには、さまざまなアプローチを使用できるでしょう（例: 相関ピア<span>[<a href="#P2PBNM-Nobre-2012-ja">P2PBNM-Nobre-2012</a>]</span>）。ピア選択をブートストラップするために、各デバイスは、既知の近隣（例: FIBテーブルやRIBテーブル）を、可能なピアを特定するための初期シードとして使用すべきです。トポロジー情報とネットワーク発見機能が基盤となる自律フレームワークによって提供されれば、解決策にとって有益であることに注意すべきです。解決策は、測定ピアだけでなく測定対象、具体的には、アクティブ測定のレスポンダーをサポートし、必要に応じて測定要求に応答して測定トラフィックを反射できる測定対象も、発見できる必要があります。</p></div>
+</div></section></section><section><span id="section-8"></span><span id="comparison-with-current-solutions-en"></span><span id="comparison-with-current-solutions-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-comparison-with-current-solutions-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-comparison-with-current-solutions-en" class="section-name selfRef">Comparison with Current Solutions</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-comparison-with-current-solutions-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-comparison-with-current-solutions-ja" class="section-name selfRef">現在の解決策との比較</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">There is no standardized solution for distributed autonomic detection
+of SLA violations.  Current solutions are restricted to ad hoc
+scripts running on a per-node fashion to automate some administrator
+actions.  There are some proposals for passive probe activation
+(e.g., DECON <span>[<a href="#DECON-en">DECON</a>]</span> and CSAMP <span>[<a href="#CSAMP-en">CSAMP</a>]</span>), but these do not focus on
+autonomic features.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">SLA違反の分散型の自律的な検出のための標準化された解決策はありません。現在の解決策は、管理者の一部の操作を自動化するためにノードごとに実行されるアドホックなスクリプトに限られています。パッシブプローブの有効化についてはいくつかの提案（例: DECON <span>[<a href="#DECON-ja">DECON</a>]</span>やCSAMP <span>[<a href="#CSAMP-ja">CSAMP</a>]</span>）がありますが、これらは自律的な機能に焦点を当てていません。</p></div>
+</div></section><section><span id="section-9"></span><span id="related-ietf-work-en"></span><span id="related-ietf-work-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-related-ietf-work-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-related-ietf-work-en" class="section-name selfRef">Related IETF Work</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-related-ietf-work-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-related-ietf-work-ja" class="section-name selfRef">関連するIETFの作業</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">This section discusses related IETF work and is provided for
+reference.  This section is not exhaustive; rather, it provides an
+overview of the various initiatives and how they relate to autonomic
+distributed detection of SLA violations.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">このセクションでは、関連するIETFの作業について述べます。このセクションは参考のために提供するものです。このセクションは網羅的なものではなく、さまざまな取り組みと、それらがSLA違反の自律的な分散検出とどのように関連するかの概要を示すものです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-9-2-en">
+<li id="section-9-2.1-en">LMAP: The Large-Scale Measurement of Broadband Performance
+    Working Group standardizes the LMAP measurement system for
+    performance management of broadband access devices.  The
+    autonomic solution could be relevant to LMAP because it deploys
+    measurement probes and could be used for screening for SLA
+    violations.  Besides that, a solution to decrease the workload of
+    human administrators in service providers is probably highly
+    desirable.</li>
+        <li id="section-9-2.2-en">IPFIX: IP Flow Information Export (IPFIX) Working Group (now
+    concluded) aimed to standardize IP flows (i.e., netflows).  IPFIX
+    uses measurement probes (i.e., metering exporters) to gather flow
+    data.  In this context, the autonomic solution for the activation
+    of active measurement probes could possibly be extended to also
+    address passive measurement probes.  Besides that, flow
+    information could be used in making decisions regarding probe
+    activation.</li>
+        <li id="section-9-2.3-en">ALTO: The Application-Layer Traffic Optimization Working Group
+    aims to provide topological information at a higher abstraction
+    layer, which can be based upon network policy, and with
+    application-relevant service functions located in it.  Their work
+    could be leveraged to define the topology for network devices
+    that exchange measurement data.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-9-2-ja">
+<li id="section-9-2.1-ja">LMAP: Large-Scale Measurement of Broadband Performanceワーキンググループは、ブロードバンドアクセスデバイスの性能管理のためのLMAP測定システムを標準化しています。自律的な解決策は、測定プローブを展開し、SLA違反のスクリーニングに使用できるため、LMAPに関連する可能性があります。それに加えて、サービスプロバイダーにおける人間の管理者の作業負荷を減らす解決策は、おそらく非常に望ましいものです。</li>
+        <li id="section-9-2.2-ja">IPFIX: IP Flow Information Export（IPFIX）ワーキンググループ（現在は終了）は、IPフロー（すなわち、ネットフロー）を標準化することを目指していました。IPFIXは、フローデータを収集するために測定プローブ（すなわち、メータリングエクスポーター）を使用します。この文脈では、アクティブ測定プローブを有効化するための自律的な解決策を拡張して、パッシブ測定プローブにも対応できる可能性があります。それに加えて、フロー情報をプローブの有効化に関する決定に使用できるでしょう。</li>
+        <li id="section-9-2.3-ja">ALTO: Application-Layer Traffic Optimizationワーキンググループは、ネットワークポリシーに基づくことができ、アプリケーションに関連するサービス機能が配置された、より高い抽象化レイヤーでトポロジー情報を提供することを目指しています。その作業は、測定データを交換するネットワークデバイスのトポロジーを定めるのに活用できるでしょう。</li>
+      </ol></div>
+</div></section><section><span id="section-10"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-10-en" href="#section-10-en" class="section-number selfRef">10.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-10-ja" href="#section-10-ja" class="section-number selfRef">10.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10-1-en">This document has no IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-10-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><section><span id="section-11"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-11-en" href="#section-11-en" class="section-number selfRef">11.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-11-ja" href="#section-11-ja" class="section-number selfRef">11.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-11-1-en">The security of this solution hinges on the security of the network
+underlay, i.e., the Autonomic Control Plane.  If the Autonomic
+Control Plane were to be compromised, an attacker could undermine the
+effectiveness of measurement coordination by reporting fraudulent
+measurement results to peers.  This would cause measurement probes to
+be deployed in an ineffective manner that would increase the
+likelihood that violations of SLOs go undetected.</p></div>
+<div lang="ja" class="col"><p id="section-11-1-ja">この解決策のセキュリティーは、ネットワークのアンダーレイ、すなわち自律コントロールプレーンのセキュリティーにかかっています。自律コントロールプレーンが侵害された場合、攻撃者は、不正な測定結果をピアに報告することによって、測定の調整の有効性を損なうことができます。これにより、測定プローブが効果的でない形で展開され、SLOの違反が検出されない可能性が高まります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-11-2-en">Likewise, the security of the solution hinges on the security of the
+deployment mechanism for autonomic functions (in this case, the
+autonomic function that conducts the service-level measurements).  If
+an attacker were able to hijack an autonomic function, it could try
+to exhaust or exceed the resources that should be spent on autonomic
+measurements in order to deplete network resources, including network
+bandwidth due to higher-than-necessary volumes of synthetic test
+traffic generated by measurement probes.  Again, it could also lead
+to reporting of misleading results; among other things, this could
+result in non-optimal selection of measurement targets and, in turn,
+an increase in the likelihood that service-level violations go
+undetected.</p></div>
+<div lang="ja" class="col"><p id="section-11-2-ja">同様に、この解決策のセキュリティーは、自律機能（この場合は、サービスレベルの測定を行う自律機能）の展開メカニズムのセキュリティーにかかっています。攻撃者が自律機能を乗っ取ることができた場合、攻撃者は、測定プローブが生成する必要以上の量の合成テストトラフィックによるネットワーク帯域幅を含むネットワークリソースを枯渇させるために、自律的な測定に費やされるべきリソースを使い果たしたり、超過させたりしようとするかもしれません。また、誤解を招く結果の報告につながる可能性もあります。とりわけ、これにより測定対象の選択が最適でなくなり、ひいてはサービスレベル違反が検出されない可能性が高まるおそれがあります。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-informative-references-en" lang="en">
+<span id="section-12-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+      </h2>
+<dl class="references">
+<dt id="ACP-en">[ACP]</dt>
+<dd class="break">
+<span class="refAuthor">Eckert, T., Ed.</span>, <span class="refAuthor">Behringer, M., Ed.</span>, and <span class="refAuthor">S. Bjarnason</span>, <span></span><span class="refTitle">"An Autonomic Control Plane (ACP)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-anima-autonomic-control-plane-13</span>, <time datetime="2017-12" class="refDate">December 2017</time>, </dd>
+<dt id="CSAMP-en">[CSAMP]</dt>
+<dd class="break">
+<span class="refAuthor">Sekar, V.</span>, <span class="refAuthor">Reiter, M.</span>, <span class="refAuthor">Willinger, W.</span>, <span class="refAuthor">Zhang, H.</span>, <span class="refAuthor">Kompella, R.</span>, and <span class="refAuthor">D. Andersen</span>, <span></span><span class="refTitle">"CSAMP: A System for Network-Wide Flow Monitoring"</span>, <span class="refContent">NSDI USENIX Symposium Networked Systems Design and Implementation</span>, <time datetime="2008-04" class="refDate">April 2008</time>, </dd>
+<dt id="DECON-en">[DECON]</dt>
+<dd class="break">
+<span class="refAuthor">di Pietro, A.</span>, <span class="refAuthor">Huici, F.</span>, <span class="refAuthor">Costantini, D.</span>, and <span class="refAuthor">S. Niccolini</span>, <span></span><span class="refTitle">"DECON: Decentralized Coordination for Large-Scale Flow Monitoring"</span>, <span class="refContent">IEEE INFOCOM Workshops</span>, <span class="seriesInfo">DOI 10.1109/INFCOMW.2010.5466642</span>, <time datetime="2010-03" class="refDate">March 2010</time>, </dd>
+<dt id="P2PBNM-Nobre-2012-en">[P2PBNM-Nobre-2012]</dt>
+<dd class="break">
+<span class="refAuthor">Nobre, J.</span>, <span class="refAuthor">Granville, L.</span>, <span class="refAuthor">Clemm, A.</span>, and <span class="refAuthor">A. Gonzalez Prieto</span>, <span></span><span class="refTitle">"Decentralized Detection of SLA Violations Using P2P Technology, 8th International Conference Network and Service Management (CNSM)"</span>, <span class="refContent">8th International Conference on Network and Service Management (CNSM)</span>, <time datetime="2012" class="refDate">2012</time>, <span>&lt;<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6379997">http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6379997</a>&gt;</span>
+</dd>
+<dt id="RFC4148-en">[RFC4148]</dt>
+<dd class="break">
+<span class="refAuthor">Stephan, E.</span>, <span></span><span class="refTitle">"IP Performance Metrics (IPPM) Metrics Registry"</span>, <span class="seriesInfo">BCP 108</span>, <span class="seriesInfo">RFC 4148</span>, <span class="seriesInfo">DOI 10.17487/RFC4148</span>, <time datetime="2005-08" class="refDate">August 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4148">https://www.rfc-editor.org/info/rfc4148</a>&gt;</span>
+</dd>
+<dt id="RFC4656-en">[RFC4656]</dt>
+<dd class="break">
+<span class="refAuthor">Shalunov, S.</span>, <span class="refAuthor">Teitelbaum, B.</span>, <span class="refAuthor">Karp, A.</span>, <span class="refAuthor">Boote, J.</span>, and <span class="refAuthor">M. Zekauskas</span>, <span></span><span class="refTitle">"A One-way Active Measurement Protocol (OWAMP)"</span>, <span class="seriesInfo">RFC 4656</span>, <span class="seriesInfo">DOI 10.17487/RFC4656</span>, <time datetime="2006-09" class="refDate">September 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4656">https://www.rfc-editor.org/info/rfc4656</a>&gt;</span>
+</dd>
+<dt id="RFC5357-en">[RFC5357]</dt>
+<dd class="break">
+<span class="refAuthor">Hedayat, K.</span>, <span class="refAuthor">Krzanowski, R.</span>, <span class="refAuthor">Morton, A.</span>, <span class="refAuthor">Yum, K.</span>, and <span class="refAuthor">J. Babiarz</span>, <span></span><span class="refTitle">"A Two-Way Active Measurement Protocol (TWAMP)"</span>, <span class="seriesInfo">RFC 5357</span>, <span class="seriesInfo">DOI 10.17487/RFC5357</span>, <time datetime="2008-10" class="refDate">October 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5357">https://www.rfc-editor.org/info/rfc5357</a>&gt;</span>
+</dd>
+<dt id="RFC5474-en">[RFC5474]</dt>
+<dd class="break">
+<span class="refAuthor">Duffield, N., Ed.</span>, <span class="refAuthor">Chiou, D.</span>, <span class="refAuthor">Claise, B.</span>, <span class="refAuthor">Greenberg, A.</span>, <span class="refAuthor">Grossglauser, M.</span>, and <span class="refAuthor">J. Rexford</span>, <span></span><span class="refTitle">"A Framework for Packet Selection and Reporting"</span>, <span class="seriesInfo">RFC 5474</span>, <span class="seriesInfo">DOI 10.17487/RFC5474</span>, <time datetime="2009-03" class="refDate">March 2009</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5474">https://www.rfc-editor.org/info/rfc5474</a>&gt;</span>
+</dd>
+<dt id="RFC6248-en">[RFC6248]</dt>
+<dd class="break">
+<span class="refAuthor">Morton, A.</span>, <span></span><span class="refTitle">"RFC 4148 and the IP Performance Metrics (IPPM) Registry of Metrics Are Obsolete"</span>, <span class="seriesInfo">RFC 6248</span>, <span class="seriesInfo">DOI 10.17487/RFC6248</span>, <time datetime="2011-04" class="refDate">April 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6248">https://www.rfc-editor.org/info/rfc6248</a>&gt;</span>
+</dd>
+<dt id="RFC6812-en">[RFC6812]</dt>
+<dd class="break">
+<span class="refAuthor">Chiba, M.</span>, <span class="refAuthor">Clemm, A.</span>, <span class="refAuthor">Medley, S.</span>, <span class="refAuthor">Salowey, J.</span>, <span class="refAuthor">Thombare, S.</span>, and <span class="refAuthor">E. Yedavalli</span>, <span></span><span class="refTitle">"Cisco Service-Level Assurance Protocol"</span>, <span class="seriesInfo">RFC 6812</span>, <span class="seriesInfo">DOI 10.17487/RFC6812</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6812">https://www.rfc-editor.org/info/rfc6812</a>&gt;</span>
+</dd>
+<dt id="RFC7011-en">[RFC7011]</dt>
+<dd class="break">
+<span class="refAuthor">Claise, B., Ed.</span>, <span class="refAuthor">Trammell, B., Ed.</span>, and <span class="refAuthor">P. Aitken</span>, <span></span><span class="refTitle">"Specification of the IP Flow Information Export (IPFIX) Protocol for the Exchange of Flow Information"</span>, <span class="seriesInfo">STD 77</span>, <span class="seriesInfo">RFC 7011</span>, <span class="seriesInfo">DOI 10.17487/RFC7011</span>, <time datetime="2013-09" class="refDate">September 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7011">https://www.rfc-editor.org/info/rfc7011</a>&gt;</span>
+</dd>
+<dt id="RFC7297-en">[RFC7297]</dt>
+<dd class="break">
+<span class="refAuthor">Boucadair, M.</span>, <span class="refAuthor">Jacquenet, C.</span>, and <span class="refAuthor">N. Wang</span>, <span></span><span class="refTitle">"IP Connectivity Provisioning Profile (CPP)"</span>, <span class="seriesInfo">RFC 7297</span>, <span class="seriesInfo">DOI 10.17487/RFC7297</span>, <time datetime="2014-07" class="refDate">July 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7297">https://www.rfc-editor.org/info/rfc7297</a>&gt;</span>
+</dd>
+<dt id="RFC7575-en">[RFC7575]</dt>
+<dd class="break">
+<span class="refAuthor">Behringer, M.</span>, <span class="refAuthor">Pritikin, M.</span>, <span class="refAuthor">Bjarnason, S.</span>, <span class="refAuthor">Clemm, A.</span>, <span class="refAuthor">Carpenter, B.</span>, <span class="refAuthor">Jiang, S.</span>, and <span class="refAuthor">L. Ciavaglia</span>, <span></span><span class="refTitle">"Autonomic Networking: Definitions and Design Goals"</span>, <span class="seriesInfo">RFC 7575</span>, <span class="seriesInfo">DOI 10.17487/RFC7575</span>, <time datetime="2015-06" class="refDate">June 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7575">https://www.rfc-editor.org/info/rfc7575</a>&gt;</span>
+</dd>
+<dt id="RFC8250-en">[RFC8250]</dt>
+<dd class="break">
+<span class="refAuthor">Elkins, N.</span>, <span class="refAuthor">Hamilton, R.</span>, and <span class="refAuthor">M. Ackermann</span>, <span></span><span class="refTitle">"IPv6 Performance and Diagnostic Metrics (PDM) Destination Option"</span>, <span class="seriesInfo">RFC 8250</span>, <span class="seriesInfo">DOI 10.17487/RFC8250</span>, <time datetime="2017-09" class="refDate">September 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8250">https://www.rfc-editor.org/info/rfc8250</a>&gt;</span>
+</dd>
+</dl></section></div>
+<div lang="ja" class="col"><section><h2 id="name-informative-references-ja" lang="ja">
+<span id="section-12-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<dl class="references">
+<dt id="ACP-ja">[ACP]</dt>
+<dd class="break">
+<span class="refAuthor">Eckert, T., Ed.</span>, <span class="refAuthor">Behringer, M., Ed.</span>, and <span class="refAuthor">S. Bjarnason</span>, <span></span><span class="refTitle">"An Autonomic Control Plane (ACP)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-anima-autonomic-control-plane-13</span>, <time datetime="2017-12" class="refDate">December 2017</time>, </dd>
+<dt id="CSAMP-ja">[CSAMP]</dt>
+<dd class="break">
+<span class="refAuthor">Sekar, V.</span>, <span class="refAuthor">Reiter, M.</span>, <span class="refAuthor">Willinger, W.</span>, <span class="refAuthor">Zhang, H.</span>, <span class="refAuthor">Kompella, R.</span>, and <span class="refAuthor">D. Andersen</span>, <span></span><span class="refTitle">"CSAMP: A System for Network-Wide Flow Monitoring"</span>, <span class="refContent">NSDI USENIX Symposium Networked Systems Design and Implementation</span>, <time datetime="2008-04" class="refDate">April 2008</time>, </dd>
+<dt id="DECON-ja">[DECON]</dt>
+<dd class="break">
+<span class="refAuthor">di Pietro, A.</span>, <span class="refAuthor">Huici, F.</span>, <span class="refAuthor">Costantini, D.</span>, and <span class="refAuthor">S. Niccolini</span>, <span></span><span class="refTitle">"DECON: Decentralized Coordination for Large-Scale Flow Monitoring"</span>, <span class="refContent">IEEE INFOCOM Workshops</span>, <span class="seriesInfo">DOI 10.1109/INFCOMW.2010.5466642</span>, <time datetime="2010-03" class="refDate">March 2010</time>, </dd>
+<dt id="P2PBNM-Nobre-2012-ja">[P2PBNM-Nobre-2012]</dt>
+<dd class="break">
+<span class="refAuthor">Nobre, J.</span>, <span class="refAuthor">Granville, L.</span>, <span class="refAuthor">Clemm, A.</span>, and <span class="refAuthor">A. Gonzalez Prieto</span>, <span></span><span class="refTitle">"Decentralized Detection of SLA Violations Using P2P Technology, 8th International Conference Network and Service Management (CNSM)"</span>, <span class="refContent">8th International Conference on Network and Service Management (CNSM)</span>, <time datetime="2012" class="refDate">2012</time>, <span>&lt;<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6379997">http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6379997</a>&gt;</span>
+</dd>
+<dt id="RFC4148-ja">[RFC4148]</dt>
+<dd class="break">
+<span class="refAuthor">Stephan, E.</span>, <span></span><span class="refTitle">"IP Performance Metrics (IPPM) Metrics Registry"</span>, <span class="seriesInfo">BCP 108</span>, <span class="seriesInfo">RFC 4148</span>, <span class="seriesInfo">DOI 10.17487/RFC4148</span>, <time datetime="2005-08" class="refDate">August 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4148">https://www.rfc-editor.org/info/rfc4148</a>&gt;</span>
+</dd>
+<dt id="RFC4656-ja">[RFC4656]</dt>
+<dd class="break">
+<span class="refAuthor">Shalunov, S.</span>, <span class="refAuthor">Teitelbaum, B.</span>, <span class="refAuthor">Karp, A.</span>, <span class="refAuthor">Boote, J.</span>, and <span class="refAuthor">M. Zekauskas</span>, <span></span><span class="refTitle">"A One-way Active Measurement Protocol (OWAMP)"</span>, <span class="seriesInfo">RFC 4656</span>, <span class="seriesInfo">DOI 10.17487/RFC4656</span>, <time datetime="2006-09" class="refDate">September 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4656">https://www.rfc-editor.org/info/rfc4656</a>&gt;</span>
+</dd>
+<dt id="RFC5357-ja">[RFC5357]</dt>
+<dd class="break">
+<span class="refAuthor">Hedayat, K.</span>, <span class="refAuthor">Krzanowski, R.</span>, <span class="refAuthor">Morton, A.</span>, <span class="refAuthor">Yum, K.</span>, and <span class="refAuthor">J. Babiarz</span>, <span></span><span class="refTitle">"A Two-Way Active Measurement Protocol (TWAMP)"</span>, <span class="seriesInfo">RFC 5357</span>, <span class="seriesInfo">DOI 10.17487/RFC5357</span>, <time datetime="2008-10" class="refDate">October 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5357">https://www.rfc-editor.org/info/rfc5357</a>&gt;</span>
+</dd>
+<dt id="RFC5474-ja">[RFC5474]</dt>
+<dd class="break">
+<span class="refAuthor">Duffield, N., Ed.</span>, <span class="refAuthor">Chiou, D.</span>, <span class="refAuthor">Claise, B.</span>, <span class="refAuthor">Greenberg, A.</span>, <span class="refAuthor">Grossglauser, M.</span>, and <span class="refAuthor">J. Rexford</span>, <span></span><span class="refTitle">"A Framework for Packet Selection and Reporting"</span>, <span class="seriesInfo">RFC 5474</span>, <span class="seriesInfo">DOI 10.17487/RFC5474</span>, <time datetime="2009-03" class="refDate">March 2009</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5474">https://www.rfc-editor.org/info/rfc5474</a>&gt;</span>
+</dd>
+<dt id="RFC6248-ja">[RFC6248]</dt>
+<dd class="break">
+<span class="refAuthor">Morton, A.</span>, <span></span><span class="refTitle">"RFC 4148 and the IP Performance Metrics (IPPM) Registry of Metrics Are Obsolete"</span>, <span class="seriesInfo">RFC 6248</span>, <span class="seriesInfo">DOI 10.17487/RFC6248</span>, <time datetime="2011-04" class="refDate">April 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6248">https://www.rfc-editor.org/info/rfc6248</a>&gt;</span>
+</dd>
+<dt id="RFC6812-ja">[RFC6812]</dt>
+<dd class="break">
+<span class="refAuthor">Chiba, M.</span>, <span class="refAuthor">Clemm, A.</span>, <span class="refAuthor">Medley, S.</span>, <span class="refAuthor">Salowey, J.</span>, <span class="refAuthor">Thombare, S.</span>, and <span class="refAuthor">E. Yedavalli</span>, <span></span><span class="refTitle">"Cisco Service-Level Assurance Protocol"</span>, <span class="seriesInfo">RFC 6812</span>, <span class="seriesInfo">DOI 10.17487/RFC6812</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6812">https://www.rfc-editor.org/info/rfc6812</a>&gt;</span>
+</dd>
+<dt id="RFC7011-ja">[RFC7011]</dt>
+<dd class="break">
+<span class="refAuthor">Claise, B., Ed.</span>, <span class="refAuthor">Trammell, B., Ed.</span>, and <span class="refAuthor">P. Aitken</span>, <span></span><span class="refTitle">"Specification of the IP Flow Information Export (IPFIX) Protocol for the Exchange of Flow Information"</span>, <span class="seriesInfo">STD 77</span>, <span class="seriesInfo">RFC 7011</span>, <span class="seriesInfo">DOI 10.17487/RFC7011</span>, <time datetime="2013-09" class="refDate">September 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7011">https://www.rfc-editor.org/info/rfc7011</a>&gt;</span>
+</dd>
+<dt id="RFC7297-ja">[RFC7297]</dt>
+<dd class="break">
+<span class="refAuthor">Boucadair, M.</span>, <span class="refAuthor">Jacquenet, C.</span>, and <span class="refAuthor">N. Wang</span>, <span></span><span class="refTitle">"IP Connectivity Provisioning Profile (CPP)"</span>, <span class="seriesInfo">RFC 7297</span>, <span class="seriesInfo">DOI 10.17487/RFC7297</span>, <time datetime="2014-07" class="refDate">July 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7297">https://www.rfc-editor.org/info/rfc7297</a>&gt;</span>
+</dd>
+<dt id="RFC7575-ja">[RFC7575]</dt>
+<dd class="break">
+<span class="refAuthor">Behringer, M.</span>, <span class="refAuthor">Pritikin, M.</span>, <span class="refAuthor">Bjarnason, S.</span>, <span class="refAuthor">Clemm, A.</span>, <span class="refAuthor">Carpenter, B.</span>, <span class="refAuthor">Jiang, S.</span>, and <span class="refAuthor">L. Ciavaglia</span>, <span></span><span class="refTitle">"Autonomic Networking: Definitions and Design Goals"</span>, <span class="seriesInfo">RFC 7575</span>, <span class="seriesInfo">DOI 10.17487/RFC7575</span>, <time datetime="2015-06" class="refDate">June 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7575">https://www.rfc-editor.org/info/rfc7575</a>&gt;</span>
+</dd>
+<dt id="RFC8250-ja">[RFC8250]</dt>
+<dd class="break">
+<span class="refAuthor">Elkins, N.</span>, <span class="refAuthor">Hamilton, R.</span>, and <span class="refAuthor">M. Ackermann</span>, <span></span><span class="refTitle">"IPv6 Performance and Diagnostic Metrics (PDM) Destination Option"</span>, <span class="seriesInfo">RFC 8250</span>, <span class="seriesInfo">DOI 10.17487/RFC8250</span>, <time datetime="2017-09" class="refDate">September 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8250">https://www.rfc-editor.org/info/rfc8250</a>&gt;</span>
+</dd>
+</dl></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">We wish to acknowledge the helpful contributions, comments, and
+suggestions that were received from Mohamed Boucadair, Brian
+Carpenter, Hanlin Fang, Bruno Klauser, Diego Lopez, Vincent Roca, and
+Eric Voit.  In addition, we thank Diego Lopez, Vincent Roca, and
+Brian Carpenter for their detailed reviews.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">Mohamed Boucadair、Brian Carpenter、Hanlin Fang、Bruno Klauser、Diego Lopez、Vincent Roca、Eric Voitから寄せられた有益な貢献、コメント、提案に感謝します。また、詳細なレビューをしてくださったDiego Lopez、Vincent Roca、Brian Carpenterにも感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Jeferson Campos Nobre</div>
+<div class="author-org">University of Vale do Rio dos Sinos</div>
+<div class="author-postal"><span class="locality">Porto Alegre</span></div>
+<div class="author-postal"><span class="country-name">Brazil</span></div>
+<div class="author-email"><a href="mailto:jcnobre@unisinos.br">jcnobre@unisinos.br</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Jeferson Campos Nobre</div>
+<div class="author-org">University of Vale do Rio dos Sinos</div>
+<div class="author-postal"><span class="locality">Porto Alegre</span></div>
+<div class="author-postal"><span class="country-name">Brazil</span></div>
+<div class="author-email"><a href="mailto:jcnobre@unisinos.br">jcnobre@unisinos.br</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Lisandro Zambenedetti Granvile</div>
+<div class="author-org">Federal University of Rio Grande do Sul</div>
+<div class="author-postal"><span class="locality">Porto Alegre</span></div>
+<div class="author-postal"><span class="country-name">Brazil</span></div>
+<div class="author-email"><a href="mailto:granville@inf.ufrgs.br">granville@inf.ufrgs.br</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Lisandro Zambenedetti Granvile</div>
+<div class="author-org">Federal University of Rio Grande do Sul</div>
+<div class="author-postal"><span class="locality">Porto Alegre</span></div>
+<div class="author-postal"><span class="country-name">Brazil</span></div>
+<div class="author-email"><a href="mailto:granville@inf.ufrgs.br">granville@inf.ufrgs.br</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Alexander Clemm</div>
+<div class="author-org">Huawei USA - Futurewei Technologies Inc.</div>
+<div class="author-postal">
+<span class="locality">Santa Clara</span>, <span class="region">California</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:ludwig@clemm.org">ludwig@clemm.org</a></div>
+<div class="author-email"><a href="mailto:alexander.clemm@huawei.com">alexander.clemm@huawei.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Alexander Clemm</div>
+<div class="author-org">Huawei USA - Futurewei Technologies Inc.</div>
+<div class="author-postal">
+<span class="locality">Santa Clara</span>, <span class="region">California</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:ludwig@clemm.org">ludwig@clemm.org</a></div>
+<div class="author-email"><a href="mailto:alexander.clemm@huawei.com">alexander.clemm@huawei.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Alberto Gonzalez Prieto</div>
+<div class="author-org">VMware</div>
+<div class="author-postal">
+<span class="locality">Palo Alto</span>, <span class="region">California</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:agonzalezpri@vmware.com">agonzalezpri@vmware.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Alberto Gonzalez Prieto</div>
+<div class="author-org">VMware</div>
+<div class="author-postal">
+<span class="locality">Palo Alto</span>, <span class="region">California</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:agonzalezpri@vmware.com">agonzalezpri@vmware.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

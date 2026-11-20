@@ -1,0 +1,1584 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-rtgwg-uloop-delay-09" indexInclude="true" number="8333" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-rtgwg-uloop-delay-09" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8333" rel="alternate"/>
+  <front>
+    <title abbrev="Micro-loop Prevention by Local Delay">Micro-loop Prevention by Introducing a Local Convergence Delay</title>
+    <seriesInfo name="RFC" value="8333" stream="IETF"/>
+    <date year="2018" month="March"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">This document describes a mechanism for link-state routing protocols
+that prevents local transient forwarding loops in case of link
+failure.  This mechanism proposes a two-step convergence by
+introducing a delay between the convergence of the node adjacent to
+the topology change and the network-wide convergence.</t>
+      <t indent="0" pn="section-abstract-2">Because this mechanism delays the IGP convergence, it may only be
+used for planned maintenance or when Fast Reroute (FRR) protects the
+traffic during the time between the link failure and the IGP
+convergence.</t>
+      <t indent="0" pn="section-abstract-3">The mechanism is limited to the link-down event in order to keep the
+mechanism simple.</t>
+      <t indent="0" pn="section-abstract-4">Simulations using real network topologies have been performed and
+show that local loops are a significant portion (&gt;50%) of the total
+forwarding loops.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This is an Internet Standards Track document.</t>
+        <t indent="0" pn="section-boilerplate.1.2">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</t>
+        <t indent="0" pn="section-boilerplate.1.3">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<eref target="https://www.rfc-editor.org/info/rfc8333" brackets="none"/>.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<eref target="https://trustee.ietf.org/license-info" brackets="none"/>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">Table of Contents</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">Introduction</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">Terminology</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-acronyms">Acronyms</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-language">Requirements Language</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-side-effects-of-transient-forwarding-loops">Side Effects of Transient Forwarding Loops</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-frr-inefficiency">FRR Inefficiency</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-network-congestion">Network Congestion</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview-of-the-solution">Overview of the Solution</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-specification">Specification</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-definitions">Definitions</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-regular-igp-reaction">Regular IGP Reaction</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-events">Local Events</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-delay-for-link-down-events">Local Delay for Link-Down Events</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-applicability">Applicability</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+              <li pn="section-toc.1-1.6.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-applicable-case-local-loops">Applicable Case: Local Loops</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-non-applicable-case-remote-loops">Non-applicable Case: Remote Loops</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-simulations">Simulations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-considerations">Deployment Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-examples">Examples</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+              <li pn="section-toc.1-1.9.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-link-down-event">Local Link-Down Event</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-and-remote-event">Local and Remote Event</xref></t>
+              </li>
+              <li pn="section-toc.1-1.9.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.3.1"><xref derivedContent="9.3" format="counter" sectionFormat="of" target="section-9.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-aborting-local-delay">Aborting Local Delay</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-comparison-with-other-solutions">Comparison with Other Solutions</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+              <li pn="section-toc.1-1.10.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-plsn">PLSN</xref></t>
+              </li>
+              <li pn="section-toc.1-1.10.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ofib">oFIB</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANA Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">Security Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.13.1"><xref derivedContent="13" format="counter" sectionFormat="of" target="section-13"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">References</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.13.2">
+              <li pn="section-toc.1-1.13.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.13.2.1.1"><xref derivedContent="13.1" format="counter" sectionFormat="of" target="section-13.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">Normative References</xref></t>
+              </li>
+              <li pn="section-toc.1-1.13.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.13.2.2.1"><xref derivedContent="13.2" format="counter" sectionFormat="of" target="section-13.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">Informative References</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" pn="section-toc.1-1.14.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t indent="0" pn="section-toc.1-1.15.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">Authors' Addresses</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">Micro-loops and some potential solutions are described in <xref target="RFC5715" format="default" sectionFormat="of" derivedContent="RFC5715"/>.
+This document describes a simple targeted mechanism that prevents
+micro-loops that are local to the failure.  Based on network
+analysis, local micro-loops make up a significant portion of the
+micro-loops.  A simple and easily deployable solution for these local
+micro-loops is critical because these local loops cause some traffic
+loss after an FRR alternate has been used (see <xref target="section-3.1" format="default" sectionFormat="of" derivedContent="Section 3.1"/>).</t>
+      <t indent="0" pn="section-1-2">Consider the case in <xref target="figure-1" format="default" sectionFormat="of" derivedContent="Figure 1"/> where S does not have an LFA (Loop-Free
+Alternate) to protect its traffic to D when the S-D link fails.  That
+means that all non-D neighbors of S on the topology will send to S
+any traffic destined to D; if a neighbor did not, then that neighbor
+would be loop-free.  Regardless of the advanced FRR technique used,
+when S converges to the new topology, it will send its traffic to a
+neighbor that is not loop-free and will thus cause a local
+micro-loop.  The deployment of advanced FRR techniques motivates this
+simple router-local mechanism to solve this targeted problem.  This
+solution can work with the various techniques described in <xref target="RFC5715" format="default" sectionFormat="of" derivedContent="RFC5715"/>.</t>
+      <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+        <artwork name="" type="" align="left" alt="" pn="section-1-3.1"><![CDATA[
+                               D ------ C
+                               |        |
+                               |        | 5
+                               |        |
+                               S ------ B
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-1-4">In <xref target="figure-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>, all links have a metric of 1 except the B-C link, which
+has a metric of 5.  When the S-D link fails, a transient forwarding
+loop may appear between S and B if S updates its forwarding entry to
+D before B does.</t>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">Terminology</name>
+      <section anchor="acronyms" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-acronyms">Acronyms</name>
+        <dl newline="false" spacing="normal" indent="3" pn="section-2.1-1">
+          <dt pn="section-2.1-1.1">FIB:</dt>
+          <dd pn="section-2.1-1.2">Forwarding Information Base</dd>
+          <dt pn="section-2.1-1.3">FRR:</dt>
+          <dd pn="section-2.1-1.4">Fast Reroute</dd>
+          <dt pn="section-2.1-1.5">IGP:</dt>
+          <dd pn="section-2.1-1.6">Interior Gateway Protocol</dd>
+          <dt pn="section-2.1-1.7">LFA:</dt>
+          <dd pn="section-2.1-1.8">Loop-Free Alternate</dd>
+          <dt pn="section-2.1-1.9">LSA:</dt>
+          <dd pn="section-2.1-1.10">Link State Advertisement</dd>
+          <dt pn="section-2.1-1.11">LSP:</dt>
+          <dd pn="section-2.1-1.12">Link State Packet</dd>
+          <dt pn="section-2.1-1.13">MRT:</dt>
+          <dd pn="section-2.1-1.14">Maximally Redundant Tree</dd>
+          <dt pn="section-2.1-1.15">oFIB:</dt>
+          <dd pn="section-2.1-1.16">Ordered FIB</dd>
+          <dt pn="section-2.1-1.17">PLR:</dt>
+          <dd pn="section-2.1-1.18">Point of Local Repair</dd>
+          <dt pn="section-2.1-1.19">PLSN:</dt>
+          <dd pn="section-2.1-1.20">Path Locking via Safe Neighbors</dd>
+          <dt pn="section-2.1-1.21">RIB:</dt>
+          <dd pn="section-2.1-1.22">Routing Information Base</dd>
+          <dt pn="section-2.1-1.23">RLFA:</dt>
+          <dd pn="section-2.1-1.24">Remote Loop-Free Alternate</dd>
+          <dt pn="section-2.1-1.25">SPF:</dt>
+          <dd pn="section-2.1-1.26">Shortest Path First</dd>
+          <dt pn="section-2.1-1.27">TTL:</dt>
+          <dd pn="section-2.1-1.28">Time to Live</dd>
+        </dl>
+      </section>
+      <section anchor="requirements-language" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-requirements-language">Requirements Language</name>
+        <t indent="0" pn="section-2.2-1">The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;,
+&quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;, &quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>NOT RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and
+&quot;<bcp14>OPTIONAL</bcp14>&quot; in this document are to be interpreted as described in
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/> when, and only when, they appear in all
+capitals, as shown here.</t>
+      </section>
+    </section>
+    <section anchor="side-effects-of-transient-forwarding-loops" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-side-effects-of-transient-forwarding-loops">Side Effects of Transient Forwarding Loops</name>
+      <t indent="0" pn="section-3-1">Even if they are very limited in duration, transient forwarding loops
+may cause significant network damage.</t>
+      <section anchor="frr-inefficiency" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-frr-inefficiency">FRR Inefficiency</name>
+        <t indent="0" pn="section-3.1-1">In <xref target="figure-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>, we consider an IP/LDP routed network.</t>
+        <figure anchor="figure-2" align="left" suppress-title="false" pn="figure-2">
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-2.1"><![CDATA[
+                              D
+                            1 |
+                              |    1
+                              A ------ B
+                              |        |    ^
+                           10 |        | 5  | T
+                              |        |    |
+                              E--------C
+                              |    1
+                            1 |
+                              S
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.1-3">An RSVP-TE tunnel T, provisioned on C and terminating on B, is used
+to protect the traffic against C-B link failure (the IGP shortcut
+feature, defined in <xref target="RFC3906" format="default" sectionFormat="of" derivedContent="RFC3906"/>, is activated on C).  The primary path
+of T is C-&gt;B and FRR is activated on T, providing an FRR bypass or
+detour using path C-&gt;E-&gt;A-&gt;B.  On router C, the next hop to D is the
+tunnel T, thanks to the IGP shortcut.  When the C-B link fails:</t>
+        <ol type="1" spacing="normal" indent="adaptive" start="1" pn="section-3.1-4">
+          <li pn="section-3.1-4.1">C detects the failure and updates the tunnel path using a
+preprogrammed FRR path.  The traffic path from S to D becomes
+S-&gt;E-&gt;C-&gt;E-&gt;A-&gt;B-&gt;A-&gt;D.</li>
+          <li pn="section-3.1-4.2">
+            <t indent="0" pn="section-3.1-4.2.1">In parallel, on router C, both the IGP convergence and the TE
+tunnel convergence (tunnel path recomputation) are occurring:</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.1-4.2.2">
+              <li pn="section-3.1-4.2.2.1">The tunnel T path is recomputed and now uses C-&gt;E-&gt;A-&gt;B.</li>
+              <li pn="section-3.1-4.2.2.2">The IGP path to D is recomputed and now uses C-&gt;E-&gt;A-&gt;D.</li>
+            </ul>
+          </li>
+          <li pn="section-3.1-4.3">On C, the tail-end of the TE tunnel (router B) is no longer on
+the shortest-path tree (SPT) to D, so C does not continue to
+encapsulate the traffic to D using the tunnel T and updates its
+forwarding entry to D using the next-hop E.</li>
+        </ol>
+        <t indent="0" pn="section-3.1-5">If C updates its forwarding entry to D before router E, there would
+be a transient forwarding loop between C and E until E has converged.</t>
+        <t indent="0" pn="section-3.1-6"><xref target="table-1" format="default" sectionFormat="of" derivedContent="Table 1"/> describes a theoretical sequence of events happening when the
+B-C link fails.  This theoretical sequence of events should only be
+read as an example.</t>
+        <table anchor="table-1" align="center" pn="table-1">
+          <thead>
+            <tr>
+              <th align="center" colspan="1" rowspan="1">Network Condition</th>
+              <th align="center" colspan="1" rowspan="1">Time</th>
+              <th align="center" colspan="1" rowspan="1">Router C Events</th>
+              <th align="center" colspan="1" rowspan="1">Router E Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td align="center" colspan="1" rowspan="1">C detects the failure</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td align="center" colspan="1" rowspan="1">C activates FRR</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td align="center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+62 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+92 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+163 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td align="center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0+255 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+340 ms</td>
+              <td align="center" colspan="1" rowspan="1">C convergence ends</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-3.1-8">The issue described here is completely independent of the FRR
+mechanism involved (e.g., TE FRR, LFA/RLFA, MRT, etc.) when the
+primary path uses hop-by-hop routing.  The protection enabled by FRR
+works perfectly but only ensures protection until the PLR has
+converged (as soon as the PLR has converged, it replaces its FRR path
+with a new primary path).  When implementing FRR, a service provider
+wants to guarantee a very limited loss of connectivity time.  The
+example described in this section shows that the benefit of FRR may
+be completely lost due to a transient forwarding loop appearing when
+PLR has converged.  Delaying FIB updates after the IGP convergence
+(1) may allow the FRR path to be kept until the neighbors have
+converged and (2) preserves the customer traffic.</t>
+      </section>
+      <section anchor="network-congestion" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-network-congestion">Network Congestion</name>
+        <t indent="0" pn="section-3.2-1">In <xref target="figure-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>, when the S-D link fails, a transient forwarding loop may
+appear between S and B for destination D.  The traffic on the S-B
+link will constantly increase due to the looping traffic to D.
+Depending on the TTL of the packets, the traffic rate destined to D,
+and the bandwidth of the link, the S-B link may become congested in a
+few hundreds of milliseconds and will stay congested until the loop
+is eliminated.</t>
+        <figure anchor="figure-3" align="left" suppress-title="false" pn="figure-3">
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-2.1"><![CDATA[
+                                    1
+                               D ------ C
+                               |        |
+                             1 |        | 5
+                               |        |
+                          A -- S ------ B
+                             / |    1
+                            F  E
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.2-3">The congestion introduced by transient forwarding loops is
+problematic as it can affect traffic that is not directly affected by
+the failing network component.  In <xref target="figure-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>, the congestion of the
+S-B link will impact some customer traffic that is not directly
+affected by the failure, e.g., traffic from A to B, F to B, and E to
+B.  Class of service may mitigate the congestion for some traffic.
+However, some traffic not directly affected by the failure will still
+be dropped as a router is not able to distinguish the looping traffic
+from the normally forwarded traffic.</t>
+      </section>
+    </section>
+    <section anchor="overview-of-the-solution" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-overview-of-the-solution">Overview of the Solution</name>
+      <t indent="0" pn="section-4-1">This document defines a two-step convergence initiated by the router
+detecting a failure and advertising the topological change in the
+IGP.  This introduces a delay between network-wide convergence and
+the convergence of the local router.</t>
+      <t indent="0" pn="section-4-2">The solution described in this document is limited to local link-down
+events in order to keep the solution simple.</t>
+      <t indent="0" pn="section-4-3">This ordered convergence is similar to the ordered FIB (oFIB)
+approach defined in <xref target="RFC6976" format="default" sectionFormat="of" derivedContent="RFC6976"/>, but it is limited to only a &quot;one-hop&quot;
+distance.  As a consequence, it is more simple and becomes a
+local-only feature that does not require interoperability.  This benefit
+comes with the limitation of eliminating transient forwarding loops
+involving the local router only.  The mechanism also reuses some
+concepts described in <xref target="PLSN" format="default" sectionFormat="of" derivedContent="PLSN"/>.</t>
+    </section>
+    <section anchor="specification" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-specification">Specification</name>
+      <section anchor="definitions" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-definitions">Definitions</name>
+        <t indent="0" pn="section-5.1-1">This document refers to the following existing IGP timers.  These
+timers may be standardized or implemented as a vendor-specific local
+feature.</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5.1-2">
+          <li pn="section-5.1-2.1">LSP_GEN_TIMER: The delay between the consecutive generation of two
+local LSPs/LSAs.  From an operational point of view, this delay is
+usually tuned to batch multiple local events in a single local
+LSP/LSA update.  In IS-IS, this timer is defined as
+minimumLSPGenerationInterval <xref target="ISO10589" format="default" sectionFormat="of" derivedContent="ISO10589"/>.  In OSPF version 2, this
+timer is defined as MinLSInterval <xref target="RFC2328" format="default" sectionFormat="of" derivedContent="RFC2328"/>.  It is often
+associated with a vendor-specific damping mechanism to slow down
+reactions by incrementing the timer when multiple consecutive
+events are detected.</li>
+          <li pn="section-5.1-2.2">SPF_DELAY: The delay between the first IGP event triggering a new
+routing table computation and the start of that routing table
+computation.  It is often associated with a damping mechanism to
+slow down reactions by incrementing the timer when the IGP becomes
+unstable.  As an example, <xref target="BACKOFF" format="default" sectionFormat="of" derivedContent="BACKOFF"/> defines a standard SPF delay
+algorithm.</li>
+        </ul>
+        <t indent="0" pn="section-5.1-3">This document introduces the following new timer:</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5.1-4">
+          <li pn="section-5.1-4.1">ULOOP_DELAY_DOWN_TIMER: Used to slow down the local node
+convergence in case of link-down events.</li>
+        </ul>
+      </section>
+      <section anchor="regular-igp-reaction" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-regular-igp-reaction">Regular IGP Reaction</name>
+        <t indent="0" pn="section-5.2-1">When the status of an adjacency or link changes, the regular IGP
+convergence behavior of the router advertising the event involves the
+following main steps:</t>
+        <ol type="1" spacing="normal" indent="adaptive" start="1" pn="section-5.2-2">
+          <li pn="section-5.2-2.1">IGP is notified of the up/down event.</li>
+          <li pn="section-5.2-2.2">The IGP processes the notification and postpones the reaction for
+LSP_GEN_TIMER ms.</li>
+          <li pn="section-5.2-2.3">Upon LSP_GEN_TIMER expiration, the IGP updates its LSP/LSA and
+floods it.</li>
+          <li pn="section-5.2-2.4">The SPF computation is scheduled in SPF_DELAY ms.</li>
+          <li pn="section-5.2-2.5">Upon SPF_DELAY timer expiration, the SPF is computed, and then
+the RIB and FIB are updated.</li>
+        </ol>
+      </section>
+      <section anchor="local-events" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-local-events">Local Events</name>
+        <t indent="0" pn="section-5.3-1">The mechanism described in this document assumes that there has been
+a single link failure as seen by the IGP area/level.  If this
+assumption is violated (e.g., multiple links or nodes failed), then
+regular IP convergence must be applied (as described in <xref target="section-5.2" format="default" sectionFormat="of" derivedContent="Section 5.2"/>).</t>
+        <t indent="0" pn="section-5.3-2">To determine if the mechanism is applicable or not, an implementation
+<bcp14>SHOULD</bcp14> implement logic to correlate the protocol messages (LSP/LSA)
+received during the SPF scheduling period in order to determine the
+topology changes that occurred.  This is necessary as multiple
+protocol messages may describe the same topology change, and a single
+protocol message may describe multiple topology changes.  As a
+consequence, determining a particular topology change <bcp14>MUST</bcp14> be
+independent of the order of reception of those protocol messages.
+How the logic works is left to the implementation.</t>
+        <t indent="0" pn="section-5.3-3">Using this logic, if an implementation determines that the associated
+topology change is a single local link failure, then the router <bcp14>MAY</bcp14>
+use the mechanism described in this document; otherwise, the regular
+IP convergence <bcp14>MUST</bcp14> be used.</t>
+        <t indent="0" pn="section-5.3-4">In <xref target="figure-4" format="default" sectionFormat="of" derivedContent="Figure 4"/>, let router B be the computing router when the link B-C
+fails.  B updates its local LSP/LSA describing the link B-C as down,
+C does the same, and both start flooding their updated LSPs/LSAs.
+During the SPF_DELAY period, B and C learn all the LSPs/LSAs to
+consider.  B sees that C is flooding an advertisement that indicates
+that a link is down, and B is the other end of that link.  B
+determines that B and C are describing the same single event.  Since
+B receives no other changes, B can determine that this is a local
+link failure and may decide to activate the mechanism described in
+this document.</t>
+        <figure anchor="figure-4" align="left" suppress-title="false" pn="figure-4">
+          <artwork name="" type="" align="left" alt="" pn="section-5.3-5.1"><![CDATA[
+                           +--- E ----+--------+
+                           |          |        |
+                    A ---- B -------- C ------ D
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="local-delay-for-link-down-events" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-local-delay-for-link-down-events">Local Delay for Link-Down Events</name>
+        <t indent="0" pn="section-5.4-1">This document introduces a change in step 5 (see list in <xref target="section-5.2" format="default" sectionFormat="of" derivedContent="Section 5.2"/>)
+so that, upon an adjacency or link-down event, the local convergence
+is delayed compared to the network-wide convergence.  The new step 5
+is described below:</t>
+        <ol type="1" spacing="normal" indent="adaptive" start="5" pn="section-5.4-2">
+          <li pn="section-5.4-2.1">Upon SPF_DELAY timer expiration, the SPF is computed.  If the
+condition of a single local link-down event has been met, then an
+update of the RIB and the FIB <bcp14>MUST</bcp14> be delayed for
+ULOOP_DELAY_DOWN_TIMER ms.  Otherwise, the RIB and FIB <bcp14>SHOULD</bcp14> be
+updated immediately.</li>
+        </ol>
+        <t indent="0" pn="section-5.4-3">If a new convergence occurs while ULOOP_DELAY_DOWN_TIMER is running,
+ULOOP_DELAY_DOWN_TIMER is stopped, and the RIB/FIB <bcp14>SHOULD</bcp14> be updated
+as part of the new convergence event.</t>
+        <t indent="0" pn="section-5.4-4">As a result of this addition, routers local to the failure will
+converge slower than remote routers.  Hence, it <bcp14>SHOULD</bcp14> only be done
+for a non-urgent convergence, such as administrative deactivation
+(maintenance) or when the traffic is protected by FRR.</t>
+      </section>
+    </section>
+    <section anchor="applicability" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-applicability">Applicability</name>
+      <t indent="0" pn="section-6-1">As previously stated, this mechanism only avoids the forwarding loops
+on the links between the node local to the failure and its neighbors.
+Forwarding loops may still occur on other links.</t>
+      <section anchor="applicable-case-local-loops" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-applicable-case-local-loops">Applicable Case: Local Loops</name>
+        <t indent="0" pn="section-6.1-1">In <xref target="figure-5" format="default" sectionFormat="of" derivedContent="Figure 5"/>, let us consider the traffic from G to F.  The primary
+path is G-&gt;D-&gt;C-&gt;E-&gt;F.  When the link C-E fails, if C updates its
+forwarding entry for F before D, a transient loop occurs.  This is
+sub-optimal as it breaks C's FRR forwarding even though upstream
+routers are still forwarding the traffic to C.</t>
+        <figure anchor="figure-5" align="left" suppress-title="false" pn="figure-5">
+          <artwork name="" type="" align="left" alt="" pn="section-6.1-2.1"><![CDATA[
+                       A ------ B ----- E
+                       |              / |
+                       |             /  |
+                   G---D------------C   F
+
+                   All the links have a metric of 1
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-6.1-3">By implementing the mechanism defined in this document on C, when the
+C-E link fails, C delays the update of its forwarding entry to F, in
+order to allow some time for D to converge.  FRR on C keeps
+protecting the traffic during this period.  When
+ULOOP_DELAY_DOWN_TIMER expires on C, its forwarding entry to F is
+updated.  There is no transient forwarding loop on the link C-D.</t>
+      </section>
+      <section anchor="non-applicable-case-remote-loops" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-non-applicable-case-remote-loops">Non-applicable Case: Remote Loops</name>
+        <t indent="0" pn="section-6.2-1">In <xref target="figure-6" format="default" sectionFormat="of" derivedContent="Figure 6"/>, let us consider the traffic from G to K.  The primary
+path is G-&gt;D-&gt;C-&gt;F-&gt;J-&gt;K.  When the C-F link fails, if C updates its
+forwarding entry to K before D, a transient loop occurs between C and
+D.</t>
+        <figure anchor="figure-6" align="left" suppress-title="false" pn="figure-6">
+          <artwork name="" type="" align="left" alt="" pn="section-6.2-2.1"><![CDATA[
+                A ------ B ----- E --- H
+                |                      |
+                |                      |
+            G---D--------C ------F --- J ---- K
+
+            All the links have a metric of 1 except B-E=15
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-6.2-3">By implementing the mechanism defined in this document on C, when the
+link C-F fails, C delays the update of its forwarding entry to K,
+allowing time for D to converge.  When ULOOP_DELAY_DOWN_TIMER expires
+on C, its forwarding entry to F is updated.  There is no transient
+forwarding loop between C and D.  However, a transient forwarding
+loop may still occur between D and A.  In this scenario, this
+mechanism is not enough to address all the possible forwarding loops.
+However, it does not create additional traffic loss.  Besides, in
+some cases -- such as when the nodes update their FIB in the order C,
+A, D because the router A is quicker than D to converge -- the
+mechanism may still avoid the forwarding loop that would have
+otherwise occurred.</t>
+      </section>
+    </section>
+    <section anchor="simulations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-simulations">Simulations</name>
+      <t indent="0" pn="section-7-1">Simulations have been run on multiple service-provider topologies.
+We evaluated the efficiency of the mechanism on eight different
+service-provider topologies (different network size and design).
+<xref target="table-2" format="default" sectionFormat="of" derivedContent="Table 2"/> displays the gain for each topology.</t>
+      <table anchor="table-2" align="center" pn="table-2">
+        <thead>
+          <tr>
+            <th align="center" colspan="1" rowspan="1">Topology</th>
+            <th align="center" colspan="1" rowspan="1">Gain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T1</td>
+            <td align="center" colspan="1" rowspan="1">71%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T2</td>
+            <td align="center" colspan="1" rowspan="1">81%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T3</td>
+            <td align="center" colspan="1" rowspan="1">62%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T4</td>
+            <td align="center" colspan="1" rowspan="1">50%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T5</td>
+            <td align="center" colspan="1" rowspan="1">70%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T6</td>
+            <td align="center" colspan="1" rowspan="1">70%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T7</td>
+            <td align="center" colspan="1" rowspan="1">59%</td>
+          </tr>
+          <tr>
+            <td align="center" colspan="1" rowspan="1">T8</td>
+            <td align="center" colspan="1" rowspan="1">77%</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-7-3">We evaluated the gain as follows:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7-4">
+        <li pn="section-7-4.1">We considered a tuple (link A-B, destination D, PLR S, backup
+next-hop N) as a loop if, upon link A-B failure, the flow from a
+router S upstream from A (A could be considered as PLR also) to D
+may loop due to convergence time difference between S and one of
+its neighbors N.</li>
+        <li pn="section-7-4.2">We evaluated the number of potential loop tuples in normal
+conditions.</li>
+        <li pn="section-7-4.3">We evaluated the number of potential loop tuples using the same
+topological input but taking into account that S converges after
+N.</li>
+        <li pn="section-7-4.4">The gain is the relative number of loops (both remote and local)
+we succeed in suppressing.</li>
+      </ul>
+      <t indent="0" pn="section-7-5">For topology 1, implementing the local delay prevented 71% of the
+transient forwarding loops created by the failure of any link.  The
+analysis shows that all local loops are prevented and only remote
+loops remain.</t>
+    </section>
+    <section anchor="deployment-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-deployment-considerations">Deployment Considerations</name>
+      <t indent="0" pn="section-8-1">Transient forwarding loops have the following drawbacks:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-8-2">
+        <li pn="section-8-2.1">They limit FRR efficiency.  Even if FRR is activated within 50 ms,
+as soon as the PLR has converged, the traffic may be affected by a
+transient loop.</li>
+        <li pn="section-8-2.2">They may impact traffic not directly affected by the failure (due
+to link congestion).</li>
+      </ul>
+      <t indent="0" pn="section-8-3">The local delay mechanism is a transient forwarding loop avoidance
+mechanism (like oFIB).  Even if it only addresses local transient
+loops, the efficiency versus complexity comparison of the mechanism
+makes it a good solution.  It is also incrementally deployable with
+incremental benefits, which makes it an attractive option for both
+vendors to implement and service providers to deploy.  Delaying the
+convergence time is not an issue if we consider that the traffic is
+protected during the convergence.</t>
+      <t indent="0" pn="section-8-4">The ULOOP_DELAY_DOWN_TIMER value should be set according to the
+maximum IGP convergence time observed in the network (usually
+observed in the slowest node).</t>
+      <t indent="0" pn="section-8-5">This mechanism is limited to link-down events.  When a link goes
+down, it eventually goes back up.  As a consequence, with this
+mechanism deployed, only the link-down event will be protected
+against transient forwarding loops while the link-up event will not.
+If the operator wants to limit the impact of transient forwarding
+loops during the link-up event, it should make sure to use specific
+procedures to bring the link back online.  As examples, the operator
+can decide to put the link back online outside of business hours, or
+it can use some incremental metric changes to prevent loops (as
+proposed in <xref target="RFC5715" format="default" sectionFormat="of" derivedContent="RFC5715"/>).</t>
+    </section>
+    <section anchor="examples" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-examples">Examples</name>
+      <t indent="0" pn="section-9-1">We consider the following figure for the examples in this section:</t>
+      <figure anchor="figure-7" align="left" suppress-title="false" pn="figure-7">
+        <artwork name="" type="" align="left" alt="" pn="section-9-2.1"><![CDATA[
+                               D
+                             1 |        F----X
+                               |    1   |
+                               A ------ B
+                               |        |
+                            10 |        | 5
+                               |        |
+                               E--------C
+                               |    1
+                             1 |
+                               S
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-9-3">The network above is considered to have a convergence time of about 1
+second, so ULOOP_DELAY_DOWN_TIMER will be adjusted to this value.  We
+also consider that FRR is running on each node.</t>
+      <section anchor="local-link-down-event" numbered="true" removeInRFC="false" toc="include" pn="section-9.1">
+        <name slugifiedName="name-local-link-down-event">Local Link-Down Event</name>
+        <t indent="0" pn="section-9.1-1"><xref target="table-3" format="default" sectionFormat="of" derivedContent="Table 3"/> describes the events and their timing on routers C and E when
+the link B-C goes down.  It is based on a theoretical sequence of
+events that should only been read as an example.  As C detects a
+single local event corresponding to a link-down event (its LSP + LSP
+from B received), it applies the local delay down behavior, and no
+micro-loop is formed.</t>
+        <table anchor="table-3" align="center" pn="table-3">
+          <thead>
+            <tr>
+              <th align="center" colspan="1" rowspan="1">Network Condition</th>
+              <th align="center" colspan="1" rowspan="1">Time</th>
+              <th align="center" colspan="1" rowspan="1">Router C Events</th>
+              <th align="center" colspan="1" rowspan="1">Router E Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td align="center" colspan="1" rowspan="1">C detects the failure</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td align="center" colspan="1" rowspan="1">C activates FRR</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+53 ms</td>
+              <td align="center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+161 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td align="center" colspan="1" rowspan="1">C delays its RIB/FIB update (1 sec)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1165 ms</td>
+              <td align="center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td align="center" colspan="1" rowspan="1">C convergence ends</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-9.1-3">Similarly, upon B-C link-down event, if LSP/LSA from B is received
+before C detects the link failure, C will apply the route update
+delay if the local detection is part of the same SPF run.  <xref target="table-4" format="default" sectionFormat="of" derivedContent="Table 4"/>
+describes the associated theoretical sequence of events.  It should
+only been read as an example.</t>
+        <table anchor="table-4" align="center" pn="table-4">
+          <thead>
+            <tr>
+              <th align="center" colspan="1" rowspan="1">Network Condition</th>
+              <th align="center" colspan="1" rowspan="1">Time</th>
+              <th align="center" colspan="1" rowspan="1">Router C Events</th>
+              <th align="center" colspan="1" rowspan="1">Router E Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+32 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+33 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td align="center" colspan="1" rowspan="1">C detects the failure</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td align="center" colspan="1" rowspan="1">C activates FRR</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td align="center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+135 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+140 ms</td>
+              <td align="center" colspan="1" rowspan="1">C delays its RIB/FIB update (1 sec)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1145 ms</td>
+              <td align="center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td align="center" colspan="1" rowspan="1">C convergence ends</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="local-and-remote-event" numbered="true" removeInRFC="false" toc="include" pn="section-9.2">
+        <name slugifiedName="name-local-and-remote-event">Local and Remote Event</name>
+        <t indent="0" pn="section-9.2-1"><xref target="table-5" format="default" sectionFormat="of" derivedContent="Table 5"/> describes the events and their timing on router C and E when
+the link B-C goes down and when the link F-X fails in the same time
+window.  C will not apply the local delay because a non-local
+topology change is also received.  <xref target="table-5" format="default" sectionFormat="of" derivedContent="Table 5"/> is based on a theoretical
+sequence of events that should only been read as an example.</t>
+        <table anchor="table-5" align="center" pn="table-5">
+          <thead>
+            <tr>
+              <th align="center" colspan="1" rowspan="1">Network Condition</th>
+              <th align="center" colspan="1" rowspan="1">Time</th>
+              <th align="center" colspan="1" rowspan="1">Router C Events</th>
+              <th align="center" colspan="1" rowspan="1">Router E Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td align="center" colspan="1" rowspan="1">C detects the failure</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+36 ms</td>
+              <td align="center" colspan="1" rowspan="1">Link F-X fails</td>
+              <td align="center" colspan="1" rowspan="1">Link F-X fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td align="center" colspan="1" rowspan="1">C activates FRR</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+54 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from F and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+69 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from F, floods it and schedules SPF (100 ms)</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td align="center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from C</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+117 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E floods LSP/LSA from C</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td align="center" colspan="1" rowspan="1">C starts updating its RIB/FIB (NO DELAY)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+170 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+173 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0+365 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+450 ms</td>
+              <td align="center" colspan="1" rowspan="1">C convergence ends</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="aborting-local-delay" numbered="true" removeInRFC="false" toc="include" pn="section-9.3">
+        <name slugifiedName="name-aborting-local-delay">Aborting Local Delay</name>
+        <t indent="0" pn="section-9.3-1"><xref target="table-6" format="default" sectionFormat="of" derivedContent="Table 6"/> describes the events and their timing on routers C and E when
+the link B-C goes down.  In addition, we consider what happens when
+the F-X link fails during local delay of the FIB update.  C will
+first apply the local delay, but when the new event happens, it will
+fall back to the standard convergence mechanism without further
+delaying route insertion.  In this example, we consider a
+ULOOP_DELAY_DOWN_TIMER configured to 2 seconds.  <xref target="table-6" format="default" sectionFormat="of" derivedContent="Table 6"/> is based on
+a theoretical sequence of events that should only been read as an
+example.</t>
+        <table anchor="table-6" align="center" pn="table-6">
+          <thead>
+            <tr>
+              <th align="center" colspan="1" rowspan="1">Network Condition</th>
+              <th align="center" colspan="1" rowspan="1">Time</th>
+              <th align="center" colspan="1" rowspan="1">Router C Events</th>
+              <th align="center" colspan="1" rowspan="1">Router E Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td align="center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td align="center" colspan="1" rowspan="1">C detects the failure</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td align="center" colspan="1" rowspan="1">C activates FRR</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td align="center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+57 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td align="center" colspan="1" rowspan="1">C delays its RIB/FIB update (2 sec)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+254 ms</td>
+              <td align="center" colspan="1" rowspan="1">Link F-X fails</td>
+              <td align="center" colspan="1" rowspan="1">Link F-X fails</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+300 ms</td>
+              <td align="center" colspan="1" rowspan="1">C receives LSP/LSA from F and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+303 ms</td>
+              <td align="center" colspan="1" rowspan="1">C schedules SPF (200 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+312 ms</td>
+              <td align="center" colspan="1" rowspan="1">E receives LSP/LSA from F and floods it</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+313 ms</td>
+              <td align="center" colspan="1" rowspan="1">E schedules SPF (200 ms)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+502 ms</td>
+              <td align="center" colspan="1" rowspan="1">C computes SPF</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+505 ms</td>
+              <td align="center" colspan="1" rowspan="1">C starts updating its RIB/FIB (NO DELAY)</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+514 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+519 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td align="center" colspan="1" rowspan="1">t0+659 ms</td>
+              <td align="center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td align="center" colspan="1" rowspan="1">t0+778 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+781 ms</td>
+              <td align="center" colspan="1" rowspan="1">C convergence ends</td>
+              <td align="center" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">t0+810 ms</td>
+              <td align="center" colspan="1" rowspan="1"/>
+              <td align="center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+    <section anchor="comparison-with-other-solutions" numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-comparison-with-other-solutions">Comparison with Other Solutions</name>
+      <t indent="0" pn="section-10-1">As stated in <xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>, the local delay solution reuses some concepts
+already introduced by other IETF proposals but tries to find a
+trade-off between efficiency and simplicity.  This section tries to compare
+behaviors of the solutions.</t>
+      <section anchor="plsn" numbered="true" removeInRFC="false" toc="include" pn="section-10.1">
+        <name slugifiedName="name-plsn">PLSN</name>
+        <t indent="0" pn="section-10.1-1">PLSN <xref target="PLSN" format="default" sectionFormat="of" derivedContent="PLSN"/> describes a mechanism where each node in the network
+tries to avoid transient forwarding loops upon a topology change by
+always keeping traffic on a loop-free path for a defined duration
+(locked path to a safe neighbor).  The locked path may be the new
+primary next hop, another neighbor, or the old primary next hop
+depending on how the safety condition is satisfied.</t>
+        <t indent="0" pn="section-10.1-2">PLSN does not solve all transient forwarding loops (see <xref target="PLSN" section="4" format="default" sectionFormat="of" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-rtgwg-microloop-analysis-01#section-4" derivedContent="PLSN"/> for more details).</t>
+        <t indent="0" pn="section-10.1-3">The solution defined in this document reuses some concepts of PLSN
+but in a more simple fashion:</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-10.1-4">
+          <li pn="section-10.1-4.1">PLSN has three different behaviors: (1) keep using the old next
+hop, (2) use the new primary next hop if it is safe, or (3) use
+another safe next hop.  The local delay solution, however, only
+has one: keep using the current next hop (i.e., the old primary
+next hop or an already-activated FRR path).</li>
+          <li pn="section-10.1-4.2">PLSN may cause some damage while using a safe next hop that is not
+the new primary next hop if the new safe next hop does not provide
+enough bandwidth (see <xref target="RFC7916" format="default" sectionFormat="of" derivedContent="RFC7916"/>).  The solution defined in this
+document may not experience this issue as the service provider may
+have control on the FRR path being used, preventing network
+congestion.</li>
+          <li pn="section-10.1-4.3">PLSN applies to all nodes in a network (remote or local changes),
+while the mechanism defined in this document applies only to the
+nodes connected to the topology change.</li>
+        </ul>
+      </section>
+      <section anchor="ofib" numbered="true" removeInRFC="false" toc="include" pn="section-10.2">
+        <name slugifiedName="name-ofib">oFIB</name>
+        <t indent="0" pn="section-10.2-1">oFIB <xref target="RFC6976" format="default" sectionFormat="of" derivedContent="RFC6976"/> describes a mechanism where the convergence of the
+network upon a topology change is ordered in order to prevent
+transient forwarding loops.  Each router in the network deduces the
+failure type from the LSA/LSP received and computes/applies a
+specific FIB update timer based on the failure type and its rank in
+the network, considering the failure point as root.</t>
+        <t indent="0" pn="section-10.2-2">The oFIB mechanism solves all the transient forwarding loops in a
+network at the price of introducing complexity in the convergence
+process that may require careful monitoring by the service provider.</t>
+        <t indent="0" pn="section-10.2-3">The solution defined in this document reuses the oFIB concept but
+limits it to the first hop that experiences the topology change.  As
+demonstrated, the mechanism defined in this document allows all the
+local transient forwarding loops to be solved; these represent a high
+percentage of all the loops.  Moreover, limiting to one hop allows
+network-wide convergence behavior to be kept.</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-iana-considerations">IANA Considerations</name>
+      <t indent="0" pn="section-11-1">This document has no IANA actions.</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-12">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-12-1">This document does not introduce any change in terms of IGP security.
+The operation is internal to the router.  The local delay does not
+increase the number of attack vectors as an attacker could only
+trigger this mechanism if it already has the ability to disable or
+enable an IGP link.  The local delay does not increase the negative
+consequences.  If an attacker has the ability to disable or enable an
+IGP link, it can already harm the network by creating instability and
+harm the traffic by creating forwarding packet loss and forwarding
+loss for the traffic crossing that link.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-13">
+      <name slugifiedName="name-references">References</name>
+      <references pn="section-13.1">
+        <name slugifiedName="name-normative-references">Normative References</name>
+        <reference anchor="ISO10589" quoteTitle="true" derivedAnchor="ISO10589">
+          <front>
+            <title>Information technology -- Telecommunications and information exchange between systems -- Intermediate System to Intermediate System intra-domain routeing information exchange protocol for use in conjunction with the protocol for providing the connectionless-mode network service (ISO 8473)</title>
+            <author>
+              <organization showOnFrontPage="true">International Organization for Standardization</organization>
+            </author>
+            <date year="2002" month="November"/>
+          </front>
+          <seriesInfo name="ISO/IEC" value="10589:2002"/>
+          <refcontent>Second Edition</refcontent>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC2328" target="https://www.rfc-editor.org/info/rfc2328" quoteTitle="true" derivedAnchor="RFC2328">
+          <front>
+            <title>OSPF Version 2</title>
+            <author fullname="J. Moy" initials="J." surname="Moy"/>
+            <date year="1998" month="April"/>
+          </front>
+          <seriesInfo name="STD" value="54"/>
+          <seriesInfo name="RFC" value="2328"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2328"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-13.2">
+        <name slugifiedName="name-informative-references">Informative References</name>
+        <reference anchor="BACKOFF" quoteTitle="true" derivedAnchor="BACKOFF">
+          <front>
+            <title>SPF Back-off Delay algorithm for link state IGPs</title>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <author fullname="S. Litkowski" initials="S." surname="Litkowski"/>
+            <author fullname="H. Gredler" initials="H." surname="Gredler"/>
+            <author fullname="A. Lindem" initials="A." surname="Lindem"/>
+            <author fullname="P. Francois" initials="P." surname="Francois"/>
+            <author fullname="C. Bowers" initials="C." surname="Bowers"/>
+            <date year="2018" month="March"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-rtgwg-backoff-algo-10"/>
+        </reference>
+        <reference anchor="PLSN" quoteTitle="true" derivedAnchor="PLSN">
+          <front>
+            <title>Analysis and Minimization of Microloops in Link-state Routing Protocols</title>
+            <author fullname="A. Zinin" initials="A." surname="Zinin"/>
+            <date year="2005" month="October"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-rtgwg-microloop-analysis-01"/>
+        </reference>
+        <reference anchor="RFC3906" target="https://www.rfc-editor.org/info/rfc3906" quoteTitle="true" derivedAnchor="RFC3906">
+          <front>
+            <title>Calculating Interior Gateway Protocol (IGP) Routes Over Traffic Engineering Tunnels</title>
+            <author fullname="N. Shen" initials="N." surname="Shen"/>
+            <author fullname="H. Smit" initials="H." surname="Smit"/>
+            <date year="2004" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="3906"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3906"/>
+        </reference>
+        <reference anchor="RFC5715" target="https://www.rfc-editor.org/info/rfc5715" quoteTitle="true" derivedAnchor="RFC5715">
+          <front>
+            <title>A Framework for Loop-Free Convergence</title>
+            <author fullname="M. Shand" initials="M." surname="Shand"/>
+            <author fullname="S. Bryant" initials="S." surname="Bryant"/>
+            <date year="2010" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="5715"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5715"/>
+        </reference>
+        <reference anchor="RFC6976" target="https://www.rfc-editor.org/info/rfc6976" quoteTitle="true" derivedAnchor="RFC6976">
+          <front>
+            <title>Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach</title>
+            <author fullname="M. Shand" initials="M." surname="Shand"/>
+            <author fullname="S. Bryant" initials="S." surname="Bryant"/>
+            <author fullname="S. Previdi" initials="S." surname="Previdi"/>
+            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
+            <author fullname="P. Francois" initials="P." surname="Francois"/>
+            <author fullname="O. Bonaventure" initials="O." surname="Bonaventure"/>
+            <date year="2013" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="6976"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6976"/>
+        </reference>
+        <reference anchor="RFC7916" target="https://www.rfc-editor.org/info/rfc7916" quoteTitle="true" derivedAnchor="RFC7916">
+          <front>
+            <title>Operational Management of Loop-Free Alternates</title>
+            <author fullname="S. Litkowski" initials="S." surname="Litkowski" role="editor"/>
+            <author fullname="B. Decraene" initials="B." surname="Decraene"/>
+            <author fullname="C. Filsfils" initials="C." surname="Filsfils"/>
+            <author fullname="K. Raza" initials="K." surname="Raza"/>
+            <author fullname="M. Horneffer" initials="M." surname="Horneffer"/>
+            <author fullname="P. Sarkar" initials="P." surname="Sarkar"/>
+            <date year="2016" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="7916"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7916"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+      <t indent="0" pn="section-appendix.a-1">We would like to thank the authors of <xref target="RFC6976" format="default" sectionFormat="of" derivedContent="RFC6976"/> for introducing the
+concept of ordered convergence: Mike Shand, Stewart Bryant, Stefano
+Previdi, and Olivier Bonaventure.</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">Authors' Addresses</name>
+      <author fullname="Stephane Litkowski" initials="S." surname="Litkowski">
+        <organization showOnFrontPage="true">Orange</organization>
+        <address>
+          <email>stephane.litkowski@orange.com</email>
+        </address>
+      </author>
+      <author fullname="Bruno Decraene" initials="B." surname="Decraene">
+        <organization showOnFrontPage="true">Orange</organization>
+        <address>
+          <email>bruno.decraene@orange.com</email>
+        </address>
+      </author>
+      <author fullname="Clarence Filsfils" initials="C." surname="Filsfils">
+        <organization showOnFrontPage="true">Cisco Systems</organization>
+        <address>
+          <email>cfilsfil@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Pierre Francois" initials="P." surname="Francois">
+        <organization showOnFrontPage="true">Individual Contributor</organization>
+        <address>
+          <email>pfrpfr@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

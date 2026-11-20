@@ -1,0 +1,3285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8333: ローカルな収束遅延の導入によるマイクロループの防止（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>PROPOSED STANDARD</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8333.html">RFC 8333</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8333">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8333">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8333</h1>
+<h1 id="title-en">Micro-loop Prevention by Introducing a Local Convergence Delay</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8333</h1>
+<h1 id="title-ja">ローカルな収束遅延の導入によるマイクロループの防止</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document describes a mechanism for link-state routing protocols
+that prevents local transient forwarding loops in case of link
+failure.  This mechanism proposes a two-step convergence by
+introducing a delay between the convergence of the node adjacent to
+the topology change and the network-wide convergence.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書は、リンク障害時にローカルな一時的転送ループを防止する、リンクステートルーティングプロトコルのためのメカニズムを説明します。
+このメカニズムは、トポロジーの変更に隣接するノードの収束とネットワーク全体の収束の間に遅延を導入することで、2段階の収束を提案します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">Because this mechanism delays the IGP convergence, it may only be
+used for planned maintenance or when Fast Reroute (FRR) protects the
+traffic during the time between the link failure and the IGP
+convergence.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">このメカニズムはIGPの収束を遅らせるため、計画的なメンテナンスの場合か、リンク障害からIGPの収束までの間に高速リルート（Fast Reroute、FRR）がトラフィックを保護している場合にのみ使用できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-3-en">The mechanism is limited to the link-down event in order to keep the
+mechanism simple.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-3-ja">メカニズムを単純に保つため、このメカニズムはリンクダウンイベントに限定されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-4-en">Simulations using real network topologies have been performed and
+show that local loops are a significant portion (&gt;50%) of the total
+forwarding loops.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-4-ja">実際のネットワークトポロジーを用いたシミュレーションを実施し、ローカルループが転送ループ全体のかなりの部分（&gt;50%）を占めることを示しました。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This is an Internet Standards Track document.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">これはインターネット標準化過程（Internet Standards Track）の文書です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8333" class="eref">https://www.rfc-editor.org/info/rfc8333</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="https://www.rfc-editor.org/info/rfc8333" class="eref">https://www.rfc-editor.org/info/rfc8333</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>)に従うものとします。
+これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-terminology-en">Terminology</a></p>
+<ul id="section-toc.1-1.2.2-en">
+<li id="section-toc.1-1.2.2.1-en">
+                <p id="section-toc.1-1.2.2.1.1-en"><a href="#section-2.1-en">2.1</a>.  <a href="#name-acronyms-en">Acronyms</a></p>
+</li>
+              <li id="section-toc.1-1.2.2.2-en">
+                <p id="section-toc.1-1.2.2.2.1-en"><a href="#section-2.2-en">2.2</a>.  <a href="#name-requirements-language-en">Requirements Language</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-side-effects-of-transient-forwarding-loops-en">Side Effects of Transient Forwarding Loops</a></p>
+<ul id="section-toc.1-1.3.2-en">
+<li id="section-toc.1-1.3.2.1-en">
+                <p id="section-toc.1-1.3.2.1.1-en"><a href="#section-3.1-en">3.1</a>.  <a href="#name-frr-inefficiency-en">FRR Inefficiency</a></p>
+</li>
+              <li id="section-toc.1-1.3.2.2-en">
+                <p id="section-toc.1-1.3.2.2.1-en"><a href="#section-3.2-en">3.2</a>.  <a href="#name-network-congestion-en">Network Congestion</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-overview-of-the-solution-en">Overview of the Solution</a></p>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-specification-en">Specification</a></p>
+<ul id="section-toc.1-1.5.2-en">
+<li id="section-toc.1-1.5.2.1-en">
+                <p id="section-toc.1-1.5.2.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-definitions-en">Definitions</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.2-en">
+                <p id="section-toc.1-1.5.2.2.1-en"><a href="#section-5.2-en">5.2</a>.  <a href="#name-regular-igp-reaction-en">Regular IGP Reaction</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.3-en">
+                <p id="section-toc.1-1.5.2.3.1-en"><a href="#section-5.3-en">5.3</a>.  <a href="#name-local-events-en">Local Events</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.4-en">
+                <p id="section-toc.1-1.5.2.4.1-en"><a href="#section-5.4-en">5.4</a>.  <a href="#name-local-delay-for-link-down-events-en">Local Delay for Link-Down Events</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-applicability-en">Applicability</a></p>
+<ul id="section-toc.1-1.6.2-en">
+<li id="section-toc.1-1.6.2.1-en">
+                <p id="section-toc.1-1.6.2.1.1-en"><a href="#section-6.1-en">6.1</a>.  <a href="#name-applicable-case-local-loops-en">Applicable Case: Local Loops</a></p>
+</li>
+              <li id="section-toc.1-1.6.2.2-en">
+                <p id="section-toc.1-1.6.2.2.1-en"><a href="#section-6.2-en">6.2</a>.  <a href="#name-non-applicable-case-remote-loops-en">Non-applicable Case: Remote Loops</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-simulations-en">Simulations</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-deployment-considerations-en">Deployment Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-examples-en">Examples</a></p>
+<ul id="section-toc.1-1.9.2-en">
+<li id="section-toc.1-1.9.2.1-en">
+                <p id="section-toc.1-1.9.2.1.1-en"><a href="#section-9.1-en">9.1</a>.  <a href="#name-local-link-down-event-en">Local Link-Down Event</a></p>
+</li>
+              <li id="section-toc.1-1.9.2.2-en">
+                <p id="section-toc.1-1.9.2.2.1-en"><a href="#section-9.2-en">9.2</a>.  <a href="#name-local-and-remote-event-en">Local and Remote Event</a></p>
+</li>
+              <li id="section-toc.1-1.9.2.3-en">
+                <p id="section-toc.1-1.9.2.3.1-en"><a href="#section-9.3-en">9.3</a>.  <a href="#name-aborting-local-delay-en">Aborting Local Delay</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-comparison-with-other-solutions-en">Comparison with Other Solutions</a></p>
+<ul id="section-toc.1-1.10.2-en">
+<li id="section-toc.1-1.10.2.1-en">
+                <p id="section-toc.1-1.10.2.1.1-en"><a href="#section-10.1-en">10.1</a>.  <a href="#name-plsn-en">PLSN</a></p>
+</li>
+              <li id="section-toc.1-1.10.2.2-en">
+                <p id="section-toc.1-1.10.2.2.1-en"><a href="#section-10.2-en">10.2</a>.  <a href="#name-ofib-en">oFIB</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#section-11-en">11</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.12-en">
+            <p id="section-toc.1-1.12.1-en"><a href="#section-12-en">12</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.13-en">
+            <p id="section-toc.1-1.13.1-en"><a href="#section-13-en">13</a>.  <a href="#name-references-en">References</a></p>
+<ul id="section-toc.1-1.13.2-en">
+<li id="section-toc.1-1.13.2.1-en">
+                <p id="section-toc.1-1.13.2.1.1-en"><a href="#section-13.1-en">13.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+              <li id="section-toc.1-1.13.2.2-en">
+                <p id="section-toc.1-1.13.2.2.1-en"><a href="#section-13.2-en">13.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.14-en">
+            <p id="section-toc.1-1.14.1-en"><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.15-en">
+            <p id="section-toc.1-1.15.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-terminology-ja">用語</a></p>
+<ul id="section-toc.1-1.2.2-ja">
+<li id="section-toc.1-1.2.2.1-ja">
+                <p id="section-toc.1-1.2.2.1.1-ja"><a href="#section-2.1-ja">2.1</a>.  <a href="#name-acronyms-ja">略語</a></p>
+</li>
+              <li id="section-toc.1-1.2.2.2-ja">
+                <p id="section-toc.1-1.2.2.2.1-ja"><a href="#section-2.2-ja">2.2</a>.  <a href="#name-requirements-language-ja">要件言語</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-side-effects-of-transient-forwarding-loops-ja">一時的な転送ループの副作用</a></p>
+<ul id="section-toc.1-1.3.2-ja">
+<li id="section-toc.1-1.3.2.1-ja">
+                <p id="section-toc.1-1.3.2.1.1-ja"><a href="#section-3.1-ja">3.1</a>.  <a href="#name-frr-inefficiency-ja">FRRの非効率性</a></p>
+</li>
+              <li id="section-toc.1-1.3.2.2-ja">
+                <p id="section-toc.1-1.3.2.2.1-ja"><a href="#section-3.2-ja">3.2</a>.  <a href="#name-network-congestion-ja">ネットワークの輻輳</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-overview-of-the-solution-ja">解決策の概要</a></p>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-specification-ja">仕様</a></p>
+<ul id="section-toc.1-1.5.2-ja">
+<li id="section-toc.1-1.5.2.1-ja">
+                <p id="section-toc.1-1.5.2.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-definitions-ja">定義</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.2-ja">
+                <p id="section-toc.1-1.5.2.2.1-ja"><a href="#section-5.2-ja">5.2</a>.  <a href="#name-regular-igp-reaction-ja">通常のIGPの反応</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.3-ja">
+                <p id="section-toc.1-1.5.2.3.1-ja"><a href="#section-5.3-ja">5.3</a>.  <a href="#name-local-events-ja">ローカルイベント</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.4-ja">
+                <p id="section-toc.1-1.5.2.4.1-ja"><a href="#section-5.4-ja">5.4</a>.  <a href="#name-local-delay-for-link-down-events-ja">リンクダウンイベントに対するローカル遅延</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-applicability-ja">適用可能性</a></p>
+<ul id="section-toc.1-1.6.2-ja">
+<li id="section-toc.1-1.6.2.1-ja">
+                <p id="section-toc.1-1.6.2.1.1-ja"><a href="#section-6.1-ja">6.1</a>.  <a href="#name-applicable-case-local-loops-ja">適用可能なケース：ローカルループ</a></p>
+</li>
+              <li id="section-toc.1-1.6.2.2-ja">
+                <p id="section-toc.1-1.6.2.2.1-ja"><a href="#section-6.2-ja">6.2</a>.  <a href="#name-non-applicable-case-remote-loops-ja">適用できないケース：リモートループ</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-simulations-ja">シミュレーション</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-deployment-considerations-ja">展開に関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-examples-ja">例</a></p>
+<ul id="section-toc.1-1.9.2-ja">
+<li id="section-toc.1-1.9.2.1-ja">
+                <p id="section-toc.1-1.9.2.1.1-ja"><a href="#section-9.1-ja">9.1</a>.  <a href="#name-local-link-down-event-ja">ローカルなリンクダウンイベント</a></p>
+</li>
+              <li id="section-toc.1-1.9.2.2-ja">
+                <p id="section-toc.1-1.9.2.2.1-ja"><a href="#section-9.2-ja">9.2</a>.  <a href="#name-local-and-remote-event-ja">ローカルとリモートのイベント</a></p>
+</li>
+              <li id="section-toc.1-1.9.2.3-ja">
+                <p id="section-toc.1-1.9.2.3.1-ja"><a href="#section-9.3-ja">9.3</a>.  <a href="#name-aborting-local-delay-ja">ローカル遅延の中止</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-comparison-with-other-solutions-ja">他の解決策との比較</a></p>
+<ul id="section-toc.1-1.10.2-ja">
+<li id="section-toc.1-1.10.2.1-ja">
+                <p id="section-toc.1-1.10.2.1.1-ja"><a href="#section-10.1-ja">10.1</a>.  <a href="#name-plsn-ja">PLSN</a></p>
+</li>
+              <li id="section-toc.1-1.10.2.2-ja">
+                <p id="section-toc.1-1.10.2.2.1-ja"><a href="#section-10.2-ja">10.2</a>.  <a href="#name-ofib-ja">oFIB</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#section-11-ja">11</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.12-ja">
+            <p id="section-toc.1-1.12.1-ja"><a href="#section-12-ja">12</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.13-ja">
+            <p id="section-toc.1-1.13.1-ja"><a href="#section-13-ja">13</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul id="section-toc.1-1.13.2-ja">
+<li id="section-toc.1-1.13.2.1-ja">
+                <p id="section-toc.1-1.13.2.1.1-ja"><a href="#section-13.1-ja">13.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+              <li id="section-toc.1-1.13.2.2-ja">
+                <p id="section-toc.1-1.13.2.2.1-ja"><a href="#section-13.2-ja">13.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.14-ja">
+            <p id="section-toc.1-1.14.1-ja"><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.15-ja">
+            <p id="section-toc.1-1.15.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+        </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">Micro-loops and some potential solutions are described in <span>[<a href="#RFC5715-en">RFC5715</a>]</span>.
+This document describes a simple targeted mechanism that prevents
+micro-loops that are local to the failure.  Based on network
+analysis, local micro-loops make up a significant portion of the
+micro-loops.  A simple and easily deployable solution for these local
+micro-loops is critical because these local loops cause some traffic
+loss after an FRR alternate has been used (see <a href="#section-3.1-en">Section 3.1</a>).</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">マイクロループといくつかの潜在的な解決策は、<span>[<a href="#RFC5715-ja">RFC5715</a>]</span>で説明されています。
+この文書は、障害に対してローカルなマイクロループを防止する、単純で対象を絞ったメカニズムを説明します。
+ネットワーク分析によると、ローカルなマイクロループはマイクロループのかなりの部分を占めます。
+これらのローカルループは、FRRの代替経路が使用された後に一部のトラフィック損失を引き起こすため（<a href="#section-3.1-ja">セクション3.1</a>を参照）、これらのローカルなマイクロループに対する単純で展開が容易な解決策は非常に重要です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">Consider the case in <a href="#figure-1-en">Figure 1</a> where S does not have an LFA (Loop-Free
+Alternate) to protect its traffic to D when the S-D link fails.  That
+means that all non-D neighbors of S on the topology will send to S
+any traffic destined to D; if a neighbor did not, then that neighbor
+would be loop-free.  Regardless of the advanced FRR technique used,
+when S converges to the new topology, it will send its traffic to a
+neighbor that is not loop-free and will thus cause a local
+micro-loop.  The deployment of advanced FRR techniques motivates this
+simple router-local mechanism to solve this targeted problem.  This
+solution can work with the various techniques described in <span>[<a href="#RFC5715-en">RFC5715</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja"><a href="#figure-1-ja">図1</a>において、S-Dリンクに障害が発生したときに、SがDへのトラフィックを保護するためのLFA（Loop-Free Alternate）を持たないケースを考えます。
+これは、トポロジー上のSのD以外のすべての近隣が、Dを宛先とするトラフィックをSに送信することを意味します。
+もしそうしない近隣があれば、その近隣はループフリーであることになります。
+どのような高度なFRR技術を使用していても、Sが新しいトポロジーに収束すると、Sはループフリーではない近隣にトラフィックを送信するため、ローカルなマイクロループを引き起こします。
+高度なFRR技術の展開が、この対象を絞った問題を解決するための、ルーター内で完結するこの単純なメカニズムの動機となっています。
+この解決策は、<span>[<a href="#RFC5715-ja">RFC5715</a>]</span>で説明されているさまざまな技術と組み合わせて機能します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-1-en"><div lang="" id="section-1-3.1-en"><pre tabindex="0" role="region" aria-label="Figure 1">
+                               D ------ C
+                               |        |
+                               |        | 5
+                               |        |
+                               S ------ B
+</pre></div>
+<figcaption><span>Figure 1</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-1-ja"><div lang="" id="section-1-3.1-ja"><pre tabindex="0" role="region" aria-label="図1">
+                               D ------ C
+                               |        |
+                               |        | 5
+                               |        |
+                               S ------ B
+</pre></div>
+<figcaption><span>図1</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">In <a href="#figure-1-en">Figure 1</a>, all links have a metric of 1 except the B-C link, which
+has a metric of 5.  When the S-D link fails, a transient forwarding
+loop may appear between S and B if S updates its forwarding entry to
+D before B does.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja"><a href="#figure-1-ja">図1</a>では、メトリックが5であるB-Cリンクを除き、すべてのリンクのメトリックは1です。
+S-Dリンクに障害が発生したとき、BよりもSが先にDへの転送エントリーを更新すると、SとBの間に一時的な転送ループが発生する可能性があります。</p></div>
+</div></section><section><span id="section-2"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-terminology-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-terminology-en" class="section-name selfRef">Terminology</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-terminology-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-terminology-ja" class="section-name selfRef">用語</a>
+      </h2></div>
+</div>
+<section><span id="section-2.1"></span><span id="acronyms-en"></span><span id="acronyms-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-acronyms-en" lang="en">
+<a id="section-2.1-en" href="#section-2.1-en" class="section-number selfRef">2.1.</a> <a href="#name-acronyms-en" class="section-name selfRef">Acronyms</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-acronyms-ja" lang="ja">
+<a id="section-2.1-ja" href="#section-2.1-ja" class="section-number selfRef">2.1.</a> <a href="#name-acronyms-ja" class="section-name selfRef">略語</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-2.1-1-en">
+<dt id="section-2.1-1.1-en">FIB:</dt>
+          <dd id="section-2.1-1.2-en">Forwarding Information Base</dd>
+          <dt id="section-2.1-1.3-en">FRR:</dt>
+          <dd id="section-2.1-1.4-en">Fast Reroute</dd>
+          <dt id="section-2.1-1.5-en">IGP:</dt>
+          <dd id="section-2.1-1.6-en">Interior Gateway Protocol</dd>
+          <dt id="section-2.1-1.7-en">LFA:</dt>
+          <dd id="section-2.1-1.8-en">Loop-Free Alternate</dd>
+          <dt id="section-2.1-1.9-en">LSA:</dt>
+          <dd id="section-2.1-1.10-en">Link State Advertisement</dd>
+          <dt id="section-2.1-1.11-en">LSP:</dt>
+          <dd id="section-2.1-1.12-en">Link State Packet</dd>
+          <dt id="section-2.1-1.13-en">MRT:</dt>
+          <dd id="section-2.1-1.14-en">Maximally Redundant Tree</dd>
+          <dt id="section-2.1-1.15-en">oFIB:</dt>
+          <dd id="section-2.1-1.16-en">Ordered FIB</dd>
+          <dt id="section-2.1-1.17-en">PLR:</dt>
+          <dd id="section-2.1-1.18-en">Point of Local Repair</dd>
+          <dt id="section-2.1-1.19-en">PLSN:</dt>
+          <dd id="section-2.1-1.20-en">Path Locking via Safe Neighbors</dd>
+          <dt id="section-2.1-1.21-en">RIB:</dt>
+          <dd id="section-2.1-1.22-en">Routing Information Base</dd>
+          <dt id="section-2.1-1.23-en">RLFA:</dt>
+          <dd id="section-2.1-1.24-en">Remote Loop-Free Alternate</dd>
+          <dt id="section-2.1-1.25-en">SPF:</dt>
+          <dd id="section-2.1-1.26-en">Shortest Path First</dd>
+          <dt id="section-2.1-1.27-en">TTL:</dt>
+          <dd id="section-2.1-1.28-en">Time to Live</dd>
+        </dl></div>
+<div lang="ja" class="col"><dl id="section-2.1-1-ja">
+<dt id="section-2.1-1.1-ja">FIB:</dt>
+          <dd id="section-2.1-1.2-ja">転送情報ベース（Forwarding Information Base）</dd>
+          <dt id="section-2.1-1.3-ja">FRR:</dt>
+          <dd id="section-2.1-1.4-ja">高速リルート（Fast Reroute）</dd>
+          <dt id="section-2.1-1.5-ja">IGP:</dt>
+          <dd id="section-2.1-1.6-ja">内部ゲートウェイプロトコル（Interior Gateway Protocol）</dd>
+          <dt id="section-2.1-1.7-ja">LFA:</dt>
+          <dd id="section-2.1-1.8-ja">ループフリー代替（Loop-Free Alternate）</dd>
+          <dt id="section-2.1-1.9-ja">LSA:</dt>
+          <dd id="section-2.1-1.10-ja">リンクステート広告（Link State Advertisement）</dd>
+          <dt id="section-2.1-1.11-ja">LSP:</dt>
+          <dd id="section-2.1-1.12-ja">リンクステートパケット（Link State Packet）</dd>
+          <dt id="section-2.1-1.13-ja">MRT:</dt>
+          <dd id="section-2.1-1.14-ja">最大冗長ツリー（Maximally Redundant Tree）</dd>
+          <dt id="section-2.1-1.15-ja">oFIB:</dt>
+          <dd id="section-2.1-1.16-ja">順序付きFIB（Ordered FIB）</dd>
+          <dt id="section-2.1-1.17-ja">PLR:</dt>
+          <dd id="section-2.1-1.18-ja">ローカル修復ポイント（Point of Local Repair）</dd>
+          <dt id="section-2.1-1.19-ja">PLSN:</dt>
+          <dd id="section-2.1-1.20-ja">安全な近隣によるパスのロック（Path Locking via Safe Neighbors）</dd>
+          <dt id="section-2.1-1.21-ja">RIB:</dt>
+          <dd id="section-2.1-1.22-ja">ルーティング情報ベース（Routing Information Base）</dd>
+          <dt id="section-2.1-1.23-ja">RLFA:</dt>
+          <dd id="section-2.1-1.24-ja">リモートループフリー代替（Remote Loop-Free Alternate）</dd>
+          <dt id="section-2.1-1.25-ja">SPF:</dt>
+          <dd id="section-2.1-1.26-ja">最短パス優先（Shortest Path First）</dd>
+          <dt id="section-2.1-1.27-ja">TTL:</dt>
+          <dd id="section-2.1-1.28-ja">生存時間（Time to Live）</dd>
+        </dl></div>
+</div></section><section><span id="section-2.2"></span><span id="requirements-language-en"></span><span id="requirements-language-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-requirements-language-en" lang="en">
+<a id="section-2.2-en" href="#section-2.2-en" class="section-number selfRef">2.2.</a> <a href="#name-requirements-language-en" class="section-name selfRef">Requirements Language</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-requirements-language-ja" lang="ja">
+<a id="section-2.2-ja" href="#section-2.2-ja" class="section-number selfRef">2.2.</a> <a href="#name-requirements-language-ja" class="section-name selfRef">要件言語</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.2-1-en">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in
+BCP 14 <span>[<a href="#RFC2119-en">RFC2119</a>]</span> <span>[<a href="#RFC8174-en">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+<div lang="ja" class="col"><p id="section-2.2-1-ja">キーワード「<span class="bcp14">しなければなりません（MUST）</span>」、「<span class="bcp14">してはなりません（MUST NOT）</span>」、
+「<span class="bcp14">要求されています（REQUIRED）</span>」、
+「<span class="bcp14">することになります（SHALL）</span>」、「<span class="bcp14">することはありません（SHALL NOT）</span>」、
+「<span class="bcp14">すべきです（SHOULD）</span>」、「<span class="bcp14">すべきではありません（SHOULD NOT）</span>」、
+「<span class="bcp14">推奨されます（RECOMMENDED）</span>」、「<span class="bcp14">推奨されません（NOT RECOMMENDED）</span>」、
+「<span class="bcp14">してもよいです（MAY）</span>」、「<span class="bcp14">選択できます（OPTIONAL）</span>」は、
+BCP 14 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span> <span>[<a href="#RFC8174-ja">RFC8174</a>]</span>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</p></div>
+</div></section></section><section><span id="section-3"></span><span id="side-effects-of-transient-forwarding-loops-en"></span><span id="side-effects-of-transient-forwarding-loops-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-side-effects-of-transient-forwarding-loops-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-side-effects-of-transient-forwarding-loops-en" class="section-name selfRef">Side Effects of Transient Forwarding Loops</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-side-effects-of-transient-forwarding-loops-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-side-effects-of-transient-forwarding-loops-ja" class="section-name selfRef">一時的な転送ループの副作用</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">Even if they are very limited in duration, transient forwarding loops
+may cause significant network damage.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">持続時間がごく短い場合でも、一時的な転送ループはネットワークに重大な損害を与える可能性があります。</p></div>
+</div>
+<section><span id="section-3.1"></span><span id="frr-inefficiency-en"></span><span id="frr-inefficiency-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-frr-inefficiency-en" lang="en">
+<a id="section-3.1-en" href="#section-3.1-en" class="section-number selfRef">3.1.</a> <a href="#name-frr-inefficiency-en" class="section-name selfRef">FRR Inefficiency</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-frr-inefficiency-ja" lang="ja">
+<a id="section-3.1-ja" href="#section-3.1-ja" class="section-number selfRef">3.1.</a> <a href="#name-frr-inefficiency-ja" class="section-name selfRef">FRRの非効率性</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-1-en">In <a href="#figure-2-en">Figure 2</a>, we consider an IP/LDP routed network.</p></div>
+<div lang="ja" class="col"><p id="section-3.1-1-ja"><a href="#figure-2-ja">図2</a>では、IP/LDPでルーティングされるネットワークを考えます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-2-en"><div lang="" id="section-3.1-2.1-en"><pre tabindex="0" role="region" aria-label="Figure 2">
+                              D
+                            1 |
+                              |    1
+                              A ------ B
+                              |        |    ^
+                           10 |        | 5  | T
+                              |        |    |
+                              E--------C
+                              |    1
+                            1 |
+                              S
+</pre></div>
+<figcaption><span>Figure 2</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-2-ja"><div lang="" id="section-3.1-2.1-ja"><pre tabindex="0" role="region" aria-label="図2">
+                              D
+                            1 |
+                              |    1
+                              A ------ B
+                              |        |    ^
+                           10 |        | 5  | T
+                              |        |    |
+                              E--------C
+                              |    1
+                            1 |
+                              S
+</pre></div>
+<figcaption><span>図2</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-3-en">An RSVP-TE tunnel T, provisioned on C and terminating on B, is used
+to protect the traffic against C-B link failure (the IGP shortcut
+feature, defined in <span>[<a href="#RFC3906-en">RFC3906</a>]</span>, is activated on C).  The primary path
+of T is C-&gt;B and FRR is activated on T, providing an FRR bypass or
+detour using path C-&gt;E-&gt;A-&gt;B.  On router C, the next hop to D is the
+tunnel T, thanks to the IGP shortcut.  When the C-B link fails:</p></div>
+<div lang="ja" class="col"><p id="section-3.1-3-ja">Cでプロビジョニングされ、Bで終端するRSVP-TEトンネルTを使用して、C-Bリンクの障害からトラフィックを保護します（Cでは、<span>[<a href="#RFC3906-ja">RFC3906</a>]</span>で定義されているIGPショートカット機能が有効になっています）。
+TのプライマリーパスはC-&gt;Bであり、TではFRRが有効になっていて、パスC-&gt;E-&gt;A-&gt;Bを使用するFRRのバイパスまたは迂回路を提供します。
+IGPショートカットにより、ルーターCにおけるDへのネクストホップはトンネルTになります。
+C-Bリンクに障害が発生すると、次のようになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-3.1-4-en">
+<li id="section-3.1-4.1-en">C detects the failure and updates the tunnel path using a
+preprogrammed FRR path.  The traffic path from S to D becomes
+S-&gt;E-&gt;C-&gt;E-&gt;A-&gt;B-&gt;A-&gt;D.</li>
+          <li id="section-3.1-4.2-en">
+            <p id="section-3.1-4.2.1-en">In parallel, on router C, both the IGP convergence and the TE
+tunnel convergence (tunnel path recomputation) are occurring:</p>
+<ul id="section-3.1-4.2.2-en">
+<li id="section-3.1-4.2.2.1-en">The tunnel T path is recomputed and now uses C-&gt;E-&gt;A-&gt;B.</li>
+              <li id="section-3.1-4.2.2.2-en">The IGP path to D is recomputed and now uses C-&gt;E-&gt;A-&gt;D.</li>
+            </ul>
+</li>
+          <li id="section-3.1-4.3-en">On C, the tail-end of the TE tunnel (router B) is no longer on
+the shortest-path tree (SPT) to D, so C does not continue to
+encapsulate the traffic to D using the tunnel T and updates its
+forwarding entry to D using the next-hop E.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-3.1-4-ja">
+<li id="section-3.1-4.1-ja">Cは障害を検出し、事前にプログラムされたFRRパスを使用してトンネルパスを更新します。
+SからDへのトラフィックのパスはS-&gt;E-&gt;C-&gt;E-&gt;A-&gt;B-&gt;A-&gt;Dになります。</li>
+          <li id="section-3.1-4.2-ja">
+            <p id="section-3.1-4.2.1-ja">並行して、ルーターCでは、IGPの収束とTEトンネルの収束（トンネルパスの再計算）の両方が行われます。</p>
+<ul id="section-3.1-4.2.2-ja">
+<li id="section-3.1-4.2.2.1-ja">トンネルTのパスが再計算され、C-&gt;E-&gt;A-&gt;Bを使用するようになります。</li>
+              <li id="section-3.1-4.2.2.2-ja">DへのIGPパスが再計算され、C-&gt;E-&gt;A-&gt;Dを使用するようになります。</li>
+            </ul>
+</li>
+          <li id="section-3.1-4.3-ja">Cにおいて、TEトンネルの終端（ルーターB）はもはやDへの最短パスツリー（SPT）上にないため、CはトンネルTを使用してDへのトラフィックをカプセル化し続けることをやめ、ネクストホップEを使用してDへの転送エントリーを更新します。</li>
+        </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-5-en">If C updates its forwarding entry to D before router E, there would
+be a transient forwarding loop between C and E until E has converged.</p></div>
+<div lang="ja" class="col"><p id="section-3.1-5-ja">CがルーターEよりも先にDへの転送エントリーを更新すると、Eが収束するまでCとEの間に一時的な転送ループが発生します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-6-en"><a href="#table-1-en">Table 1</a> describes a theoretical sequence of events happening when the
+B-C link fails.  This theoretical sequence of events should only be
+read as an example.</p></div>
+<div lang="ja" class="col"><p id="section-3.1-6-ja"><a href="#table-1-ja">表1</a>は、B-Cリンクに障害が発生したときに起こるイベントの理論的な順序を示しています。
+このイベントの理論的な順序は、あくまで例として読んでください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-1-en">
+<caption><a href="#table-1-en" class="selfRef">Table 1</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Network Condition</th>
+              <th class="text-center" colspan="1" rowspan="1">Time</th>
+              <th class="text-center" colspan="1" rowspan="1">Router C Events</th>
+              <th class="text-center" colspan="1" rowspan="1">Router E Events</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C detects the failure</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C activates FRR</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+62 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+92 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+163 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C convergence ends</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-1-ja">
+<caption><a href="#table-1-ja" class="selfRef">表1</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">ネットワークの状態</th>
+              <th class="text-center" colspan="1" rowspan="1">時刻</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターCのイベント</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターEのイベント</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが障害を検出</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFRRを有効化</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のローカルLSP/LSAを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが更新した自身のローカルLSP/LSAをフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+62 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（100 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからLSP/LSAを受信してフラッディング</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+92 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFをスケジュール（100 ms）</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+163 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を開始</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがDに対する自身のRIB/FIBを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cの収束が終了</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがDに対する自身のRIB/FIBを更新</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eの収束が終了</td>
+            </tr>
+</tbody>
+</table></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-8-en">The issue described here is completely independent of the FRR
+mechanism involved (e.g., TE FRR, LFA/RLFA, MRT, etc.) when the
+primary path uses hop-by-hop routing.  The protection enabled by FRR
+works perfectly but only ensures protection until the PLR has
+converged (as soon as the PLR has converged, it replaces its FRR path
+with a new primary path).  When implementing FRR, a service provider
+wants to guarantee a very limited loss of connectivity time.  The
+example described in this section shows that the benefit of FRR may
+be completely lost due to a transient forwarding loop appearing when
+PLR has converged.  Delaying FIB updates after the IGP convergence
+(1) may allow the FRR path to be kept until the neighbors have
+converged and (2) preserves the customer traffic.</p></div>
+<div lang="ja" class="col"><p id="section-3.1-8-ja">ここで説明した問題は、プライマリーパスがホップバイホップのルーティングを使用している場合、使用されるFRRメカニズム（たとえば、TE FRR、LFA/RLFA、MRTなど）とはまったく無関係に発生します。
+FRRによって可能になる保護は完璧に機能しますが、保護が保証されるのはPLRが収束するまでの間だけです（PLRは収束するとすぐに、FRRパスを新しいプライマリーパスに置き換えます）。
+FRRを実装する際、サービスプロバイダーは、接続が失われる時間をごく短くすることを保証したいと考えます。
+このセクションで説明した例は、PLRが収束したときに発生する一時的な転送ループによって、FRRの利点が完全に失われる可能性があることを示しています。
+IGPの収束後にFIBの更新を遅らせることで、（1）近隣が収束するまでFRRパスを維持できる可能性があり、（2）顧客のトラフィックが守られます。</p></div>
+</div></section><section><span id="section-3.2"></span><span id="network-congestion-en"></span><span id="network-congestion-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-network-congestion-en" lang="en">
+<a id="section-3.2-en" href="#section-3.2-en" class="section-number selfRef">3.2.</a> <a href="#name-network-congestion-en" class="section-name selfRef">Network Congestion</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-network-congestion-ja" lang="ja">
+<a id="section-3.2-ja" href="#section-3.2-ja" class="section-number selfRef">3.2.</a> <a href="#name-network-congestion-ja" class="section-name selfRef">ネットワークの輻輳</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-1-en">In <a href="#figure-3-en">Figure 3</a>, when the S-D link fails, a transient forwarding loop may
+appear between S and B for destination D.  The traffic on the S-B
+link will constantly increase due to the looping traffic to D.
+Depending on the TTL of the packets, the traffic rate destined to D,
+and the bandwidth of the link, the S-B link may become congested in a
+few hundreds of milliseconds and will stay congested until the loop
+is eliminated.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-1-ja"><a href="#figure-3-ja">図3</a>では、S-Dリンクに障害が発生したとき、宛先Dについて、SとBの間に一時的な転送ループが発生する可能性があります。
+S-Bリンク上のトラフィックは、Dへのループするトラフィックによって増加し続けます。
+パケットのTTL、Dを宛先とするトラフィックのレート、リンクの帯域幅によっては、S-Bリンクは数百ミリ秒で輻輳状態になる可能性があり、ループが解消されるまで輻輳したままになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-3-en"><div lang="" id="section-3.2-2.1-en"><pre tabindex="0" role="region" aria-label="Figure 3">
+                                    1
+                               D ------ C
+                               |        |
+                             1 |        | 5
+                               |        |
+                          A -- S ------ B
+                             / |    1
+                            F  E
+</pre></div>
+<figcaption><span>Figure 3</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-3-ja"><div lang="" id="section-3.2-2.1-ja"><pre tabindex="0" role="region" aria-label="図3">
+                                    1
+                               D ------ C
+                               |        |
+                             1 |        | 5
+                               |        |
+                          A -- S ------ B
+                             / |    1
+                            F  E
+</pre></div>
+<figcaption><span>図3</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-3-en">The congestion introduced by transient forwarding loops is
+problematic as it can affect traffic that is not directly affected by
+the failing network component.  In <a href="#figure-3-en">Figure 3</a>, the congestion of the
+S-B link will impact some customer traffic that is not directly
+affected by the failure, e.g., traffic from A to B, F to B, and E to
+B.  Class of service may mitigate the congestion for some traffic.
+However, some traffic not directly affected by the failure will still
+be dropped as a router is not able to distinguish the looping traffic
+from the normally forwarded traffic.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-3-ja">一時的な転送ループによって発生する輻輳は、障害が発生したネットワークコンポーネントの直接的な影響を受けないトラフィックにも影響を与える可能性があるため、問題です。
+<a href="#figure-3-ja">図3</a>では、S-Bリンクの輻輳は、障害の直接的な影響を受けない一部の顧客トラフィック（たとえば、AからB、FからB、EからBへのトラフィック）に影響を与えます。
+サービスクラス（class of service）によって、一部のトラフィックについては輻輳を緩和できる場合があります。
+しかし、ルーターはループしているトラフィックを通常どおり転送されているトラフィックと区別できないため、障害の直接的な影響を受けない一部のトラフィックは依然として破棄されます。</p></div>
+</div></section></section><section><span id="section-4"></span><span id="overview-of-the-solution-en"></span><span id="overview-of-the-solution-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-overview-of-the-solution-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-overview-of-the-solution-en" class="section-name selfRef">Overview of the Solution</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-overview-of-the-solution-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-overview-of-the-solution-ja" class="section-name selfRef">解決策の概要</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">This document defines a two-step convergence initiated by the router
+detecting a failure and advertising the topological change in the
+IGP.  This introduces a delay between network-wide convergence and
+the convergence of the local router.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">この文書は、障害を検出してIGPでトポロジーの変更を広告するルーターによって開始される、2段階の収束を定義します。
+これにより、ネットワーク全体の収束とローカルルーターの収束の間に遅延が導入されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">The solution described in this document is limited to local link-down
+events in order to keep the solution simple.</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">解決策を単純に保つため、この文書で説明する解決策はローカルなリンクダウンイベントに限定されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-3-en">This ordered convergence is similar to the ordered FIB (oFIB)
+approach defined in <span>[<a href="#RFC6976-en">RFC6976</a>]</span>, but it is limited to only a "one-hop"
+distance.  As a consequence, it is more simple and becomes a
+local-only feature that does not require interoperability.  This benefit
+comes with the limitation of eliminating transient forwarding loops
+involving the local router only.  The mechanism also reuses some
+concepts described in <span>[<a href="#PLSN-en">PLSN</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-4-3-ja">この順序付けられた収束は、<span>[<a href="#RFC6976-ja">RFC6976</a>]</span>で定義されている順序付きFIB（oFIB）のアプローチに似ていますが、「1ホップ」の距離だけに限定されています。
+その結果、より単純になり、相互運用性を必要としないローカルだけの機能になります。
+この利点には、ローカルルーターが関与する一時的な転送ループしか解消できないという制限が伴います。
+このメカニズムは、<span>[<a href="#PLSN-ja">PLSN</a>]</span>で説明されているいくつかの概念も再利用しています。</p></div>
+</div></section><section><span id="section-5"></span><span id="specification-en"></span><span id="specification-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-specification-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-specification-en" class="section-name selfRef">Specification</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-specification-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-specification-ja" class="section-name selfRef">仕様</a>
+      </h2></div>
+</div>
+<section><span id="section-5.1"></span><span id="definitions-en"></span><span id="definitions-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-definitions-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-definitions-en" class="section-name selfRef">Definitions</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-definitions-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-definitions-ja" class="section-name selfRef">定義</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-1-en">This document refers to the following existing IGP timers.  These
+timers may be standardized or implemented as a vendor-specific local
+feature.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-1-ja">この文書は、次の既存のIGPタイマーを参照します。
+これらのタイマーは、標準化されている場合もあれば、ベンダー固有のローカル機能として実装されている場合もあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.1-2-en">
+<li id="section-5.1-2.1-en">LSP_GEN_TIMER: The delay between the consecutive generation of two
+local LSPs/LSAs.  From an operational point of view, this delay is
+usually tuned to batch multiple local events in a single local
+LSP/LSA update.  In IS-IS, this timer is defined as
+minimumLSPGenerationInterval <span>[<a href="#ISO10589-en">ISO10589</a>]</span>.  In OSPF version 2, this
+timer is defined as MinLSInterval <span>[<a href="#RFC2328-en">RFC2328</a>]</span>.  It is often
+associated with a vendor-specific damping mechanism to slow down
+reactions by incrementing the timer when multiple consecutive
+events are detected.</li>
+          <li id="section-5.1-2.2-en">SPF_DELAY: The delay between the first IGP event triggering a new
+routing table computation and the start of that routing table
+computation.  It is often associated with a damping mechanism to
+slow down reactions by incrementing the timer when the IGP becomes
+unstable.  As an example, <span>[<a href="#BACKOFF-en">BACKOFF</a>]</span> defines a standard SPF delay
+algorithm.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.1-2-ja">
+<li id="section-5.1-2.1-ja">LSP_GEN_TIMER：2つのローカルLSP/LSAを連続して生成する間の遅延です。
+運用の観点からは、この遅延は通常、複数のローカルイベントを1回のローカルLSP/LSAの更新にまとめるように調整されます。
+IS-ISでは、このタイマーはminimumLSPGenerationInterval <span>[<a href="#ISO10589-ja">ISO10589</a>]</span>として定義されています。
+OSPFバージョン2では、このタイマーはMinLSInterval <span>[<a href="#RFC2328-ja">RFC2328</a>]</span>として定義されています。
+このタイマーには多くの場合、複数の連続したイベントが検出されたときにタイマーを増やすことで反応を遅くする、ベンダー固有のダンピングメカニズムが組み合わされています。</li>
+          <li id="section-5.1-2.2-ja">SPF_DELAY：新しいルーティングテーブルの計算を引き起こす最初のIGPイベントから、そのルーティングテーブルの計算を開始するまでの遅延です。
+このタイマーには多くの場合、IGPが不安定になったときにタイマーを増やすことで反応を遅くするダンピングメカニズムが組み合わされています。
+例として、<span>[<a href="#BACKOFF-ja">BACKOFF</a>]</span>は標準的なSPF遅延アルゴリズムを定義しています。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-3-en">This document introduces the following new timer:</p></div>
+<div lang="ja" class="col"><p id="section-5.1-3-ja">この文書は、次の新しいタイマーを導入します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.1-4-en">
+<li id="section-5.1-4.1-en">ULOOP_DELAY_DOWN_TIMER: Used to slow down the local node
+convergence in case of link-down events.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.1-4-ja">
+<li id="section-5.1-4.1-ja">ULOOP_DELAY_DOWN_TIMER：リンクダウンイベントの場合に、ローカルノードの収束を遅くするために使用します。</li>
+        </ul></div>
+</div></section><section><span id="section-5.2"></span><span id="regular-igp-reaction-en"></span><span id="regular-igp-reaction-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-regular-igp-reaction-en" lang="en">
+<a id="section-5.2-en" href="#section-5.2-en" class="section-number selfRef">5.2.</a> <a href="#name-regular-igp-reaction-en" class="section-name selfRef">Regular IGP Reaction</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-regular-igp-reaction-ja" lang="ja">
+<a id="section-5.2-ja" href="#section-5.2-ja" class="section-number selfRef">5.2.</a> <a href="#name-regular-igp-reaction-ja" class="section-name selfRef">通常のIGPの反応</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-1-en">When the status of an adjacency or link changes, the regular IGP
+convergence behavior of the router advertising the event involves the
+following main steps:</p></div>
+<div lang="ja" class="col"><p id="section-5.2-1-ja">隣接関係またはリンクの状態が変化したとき、そのイベントを広告するルーターの通常のIGP収束の振る舞いは、次の主な手順で構成されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-5.2-2-en">
+<li id="section-5.2-2.1-en">IGP is notified of the up/down event.</li>
+          <li id="section-5.2-2.2-en">The IGP processes the notification and postpones the reaction for
+LSP_GEN_TIMER ms.</li>
+          <li id="section-5.2-2.3-en">Upon LSP_GEN_TIMER expiration, the IGP updates its LSP/LSA and
+floods it.</li>
+          <li id="section-5.2-2.4-en">The SPF computation is scheduled in SPF_DELAY ms.</li>
+          <li id="section-5.2-2.5-en">Upon SPF_DELAY timer expiration, the SPF is computed, and then
+the RIB and FIB are updated.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol id="section-5.2-2-ja">
+<li id="section-5.2-2.1-ja">IGPがアップ/ダウンイベントの通知を受けます。</li>
+          <li id="section-5.2-2.2-ja">IGPは通知を処理し、LSP_GEN_TIMERミリ秒の間、反応を延期します。</li>
+          <li id="section-5.2-2.3-ja">LSP_GEN_TIMERが期限切れになると、IGPは自身のLSP/LSAを更新してフラッディングします。</li>
+          <li id="section-5.2-2.4-ja">SPFの計算がSPF_DELAYミリ秒後にスケジュールされます。</li>
+          <li id="section-5.2-2.5-ja">SPF_DELAYタイマーが期限切れになると、SPFが計算され、その後RIBとFIBが更新されます。</li>
+        </ol></div>
+</div></section><section><span id="section-5.3"></span><span id="local-events-en"></span><span id="local-events-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-local-events-en" lang="en">
+<a id="section-5.3-en" href="#section-5.3-en" class="section-number selfRef">5.3.</a> <a href="#name-local-events-en" class="section-name selfRef">Local Events</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-local-events-ja" lang="ja">
+<a id="section-5.3-ja" href="#section-5.3-ja" class="section-number selfRef">5.3.</a> <a href="#name-local-events-ja" class="section-name selfRef">ローカルイベント</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-1-en">The mechanism described in this document assumes that there has been
+a single link failure as seen by the IGP area/level.  If this
+assumption is violated (e.g., multiple links or nodes failed), then
+regular IP convergence must be applied (as described in <a href="#section-5.2-en">Section 5.2</a>).</p></div>
+<div lang="ja" class="col"><p id="section-5.3-1-ja">この文書で説明するメカニズムは、IGPのエリア/レベルから見て単一のリンク障害が発生したことを前提としています。
+この前提が成り立たない場合（たとえば、複数のリンクやノードに障害が発生した場合）は、（<a href="#section-5.2-ja">セクション5.2</a>で説明されているとおりの）通常のIP収束を適用する必要があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-2-en">To determine if the mechanism is applicable or not, an implementation
+<span class="bcp14">SHOULD</span> implement logic to correlate the protocol messages (LSP/LSA)
+received during the SPF scheduling period in order to determine the
+topology changes that occurred.  This is necessary as multiple
+protocol messages may describe the same topology change, and a single
+protocol message may describe multiple topology changes.  As a
+consequence, determining a particular topology change <span class="bcp14">MUST</span> be
+independent of the order of reception of those protocol messages.
+How the logic works is left to the implementation.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-2-ja">メカニズムが適用可能かどうかを判断するために、実装は、発生したトポロジーの変更を特定する目的で、SPFのスケジューリング期間中に受信したプロトコルメッセージ（LSP/LSA）を相互に関連付けるロジックを実装<span class="bcp14">すべきです（SHOULD）</span>。
+複数のプロトコルメッセージが同じトポロジーの変更を記述することもあれば、単一のプロトコルメッセージが複数のトポロジーの変更を記述することもあるため、これが必要になります。
+したがって、特定のトポロジーの変更の判断は、それらのプロトコルメッセージの受信順序に依存しないもので<span class="bcp14">なければなりません（MUST）</span>。
+このロジックがどのように動作するかは、実装に任されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-3-en">Using this logic, if an implementation determines that the associated
+topology change is a single local link failure, then the router <span class="bcp14">MAY</span>
+use the mechanism described in this document; otherwise, the regular
+IP convergence <span class="bcp14">MUST</span> be used.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-3-ja">このロジックを使用して、関連するトポロジーの変更が単一のローカルなリンク障害であると実装が判断した場合、ルーターはこの文書で説明するメカニズムを使用<span class="bcp14">してもよいです（MAY）</span>。
+そうでない場合は、通常のIP収束を使用<span class="bcp14">しなければなりません（MUST）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-4-en">In <a href="#figure-4-en">Figure 4</a>, let router B be the computing router when the link B-C
+fails.  B updates its local LSP/LSA describing the link B-C as down,
+C does the same, and both start flooding their updated LSPs/LSAs.
+During the SPF_DELAY period, B and C learn all the LSPs/LSAs to
+consider.  B sees that C is flooding an advertisement that indicates
+that a link is down, and B is the other end of that link.  B
+determines that B and C are describing the same single event.  Since
+B receives no other changes, B can determine that this is a local
+link failure and may decide to activate the mechanism described in
+this document.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-4-ja"><a href="#figure-4-ja">図4</a>において、リンクB-Cに障害が発生したときに計算を行うルーターをルーターBとします。
+BはリンクB-Cをダウンとして記述するように自身のローカルLSP/LSAを更新し、Cも同じことを行い、両者は更新したLSP/LSAのフラッディングを開始します。
+SPF_DELAYの期間中に、BとCは考慮すべきすべてのLSP/LSAを学習します。
+Bは、Cがあるリンクのダウンを示す広告をフラッディングしていて、B自身がそのリンクのもう一方の端であることを認識します。
+Bは、BとCが同じ単一のイベントを記述していると判断します。
+Bは他の変更を受信していないため、これがローカルなリンク障害であると判断でき、この文書で説明するメカニズムを有効にすることを決定できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-4-en"><div lang="" id="section-5.3-5.1-en"><pre tabindex="0" role="region" aria-label="Figure 4">
+                           +--- E ----+--------+
+                           |          |        |
+                    A ---- B -------- C ------ D
+</pre></div>
+<figcaption><span>Figure 4</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-4-ja"><div lang="" id="section-5.3-5.1-ja"><pre tabindex="0" role="region" aria-label="図4">
+                           +--- E ----+--------+
+                           |          |        |
+                    A ---- B -------- C ------ D
+</pre></div>
+<figcaption><span>図4</span></figcaption></figure></div>
+</div></section><section><span id="section-5.4"></span><span id="local-delay-for-link-down-events-en"></span><span id="local-delay-for-link-down-events-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-local-delay-for-link-down-events-en" lang="en">
+<a id="section-5.4-en" href="#section-5.4-en" class="section-number selfRef">5.4.</a> <a href="#name-local-delay-for-link-down-events-en" class="section-name selfRef">Local Delay for Link-Down Events</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-local-delay-for-link-down-events-ja" lang="ja">
+<a id="section-5.4-ja" href="#section-5.4-ja" class="section-number selfRef">5.4.</a> <a href="#name-local-delay-for-link-down-events-ja" class="section-name selfRef">リンクダウンイベントに対するローカル遅延</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-1-en">This document introduces a change in step 5 (see list in <a href="#section-5.2-en">Section 5.2</a>)
+so that, upon an adjacency or link-down event, the local convergence
+is delayed compared to the network-wide convergence.  The new step 5
+is described below:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-1-ja">この文書は、隣接関係またはリンクのダウンイベントの際にローカルの収束がネットワーク全体の収束よりも遅れるように、手順5（<a href="#section-5.2-ja">セクション5.2</a>のリストを参照）に変更を加えます。
+新しい手順5を以下に示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol start="5" id="section-5.4-2-en">
+<li id="section-5.4-2.1-en">Upon SPF_DELAY timer expiration, the SPF is computed.  If the
+condition of a single local link-down event has been met, then an
+update of the RIB and the FIB <span class="bcp14">MUST</span> be delayed for
+ULOOP_DELAY_DOWN_TIMER ms.  Otherwise, the RIB and FIB <span class="bcp14">SHOULD</span> be
+updated immediately.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol start="5" id="section-5.4-2-ja">
+<li id="section-5.4-2.1-ja">SPF_DELAYタイマーが期限切れになると、SPFが計算されます。
+単一のローカルなリンクダウンイベントという条件が満たされた場合、RIBとFIBの更新をULOOP_DELAY_DOWN_TIMERミリ秒の間遅らせ<span class="bcp14">なければなりません（MUST）</span>。
+そうでない場合は、RIBとFIBをただちに更新<span class="bcp14">すべきです（SHOULD）</span>。</li>
+        </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-3-en">If a new convergence occurs while ULOOP_DELAY_DOWN_TIMER is running,
+ULOOP_DELAY_DOWN_TIMER is stopped, and the RIB/FIB <span class="bcp14">SHOULD</span> be updated
+as part of the new convergence event.</p></div>
+<div lang="ja" class="col"><p id="section-5.4-3-ja">ULOOP_DELAY_DOWN_TIMERの実行中に新しい収束が発生した場合、ULOOP_DELAY_DOWN_TIMERは停止され、RIB/FIBは新しい収束イベントの一部として更新される<span class="bcp14">べきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-4-en">As a result of this addition, routers local to the failure will
+converge slower than remote routers.  Hence, it <span class="bcp14">SHOULD</span> only be done
+for a non-urgent convergence, such as administrative deactivation
+(maintenance) or when the traffic is protected by FRR.</p></div>
+<div lang="ja" class="col"><p id="section-5.4-4-ja">この追加の結果、障害に対してローカルなルーターは、リモートのルーターよりも遅く収束することになります。
+したがって、これは管理上の無効化（メンテナンス）の場合や、トラフィックがFRRによって保護されている場合など、緊急でない収束に対してのみ行う<span class="bcp14">べきです（SHOULD）</span>。</p></div>
+</div></section></section><section><span id="section-6"></span><span id="applicability-en"></span><span id="applicability-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-applicability-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-applicability-en" class="section-name selfRef">Applicability</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-applicability-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-applicability-ja" class="section-name selfRef">適用可能性</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">As previously stated, this mechanism only avoids the forwarding loops
+on the links between the node local to the failure and its neighbors.
+Forwarding loops may still occur on other links.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">前述のとおり、このメカニズムが回避するのは、障害に対してローカルなノードとその近隣との間のリンク上の転送ループだけです。
+他のリンクでは、依然として転送ループが発生する可能性があります。</p></div>
+</div>
+<section><span id="section-6.1"></span><span id="applicable-case-local-loops-en"></span><span id="applicable-case-local-loops-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-applicable-case-local-loops-en" lang="en">
+<a id="section-6.1-en" href="#section-6.1-en" class="section-number selfRef">6.1.</a> <a href="#name-applicable-case-local-loops-en" class="section-name selfRef">Applicable Case: Local Loops</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-applicable-case-local-loops-ja" lang="ja">
+<a id="section-6.1-ja" href="#section-6.1-ja" class="section-number selfRef">6.1.</a> <a href="#name-applicable-case-local-loops-ja" class="section-name selfRef">適用可能なケース：ローカルループ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-1-en">In <a href="#figure-5-en">Figure 5</a>, let us consider the traffic from G to F.  The primary
+path is G-&gt;D-&gt;C-&gt;E-&gt;F.  When the link C-E fails, if C updates its
+forwarding entry for F before D, a transient loop occurs.  This is
+sub-optimal as it breaks C's FRR forwarding even though upstream
+routers are still forwarding the traffic to C.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-1-ja"><a href="#figure-5-ja">図5</a>において、GからFへのトラフィックを考えます。
+プライマリーパスはG-&gt;D-&gt;C-&gt;E-&gt;Fです。
+リンクC-Eに障害が発生したとき、CがDよりも先にFに対する転送エントリーを更新すると、一時的なループが発生します。
+上流のルーターがまだCにトラフィックを転送しているにもかかわらず、CのFRRによる転送が壊れてしまうため、これは最適ではありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-5-en"><div lang="" id="section-6.1-2.1-en"><pre tabindex="0" role="region" aria-label="Figure 5">
+                       A ------ B ----- E
+                       |              / |
+                       |             /  |
+                   G---D------------C   F
+
+                   All the links have a metric of 1
+</pre></div>
+<figcaption><span>Figure 5</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-5-ja"><div lang="" id="section-6.1-2.1-ja"><pre tabindex="0" role="region" aria-label="図5">
+                       A ------ B ----- E
+                       |              / |
+                       |             /  |
+                   G---D------------C   F
+
+                   All the links have a metric of 1
+</pre></div>
+<figcaption><span>図5</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-3-en">By implementing the mechanism defined in this document on C, when the
+C-E link fails, C delays the update of its forwarding entry to F, in
+order to allow some time for D to converge.  FRR on C keeps
+protecting the traffic during this period.  When
+ULOOP_DELAY_DOWN_TIMER expires on C, its forwarding entry to F is
+updated.  There is no transient forwarding loop on the link C-D.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-3-ja">この文書で定義するメカニズムをCに実装すると、C-Eリンクに障害が発生したとき、CはDが収束するための時間を確保するために、Fへの転送エントリーの更新を遅らせます。
+この期間中は、CのFRRがトラフィックを保護し続けます。
+CでULOOP_DELAY_DOWN_TIMERが期限切れになると、Fへの転送エントリーが更新されます。
+リンクC-D上で一時的な転送ループは発生しません。</p></div>
+</div></section><section><span id="section-6.2"></span><span id="non-applicable-case-remote-loops-en"></span><span id="non-applicable-case-remote-loops-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-non-applicable-case-remote-loops-en" lang="en">
+<a id="section-6.2-en" href="#section-6.2-en" class="section-number selfRef">6.2.</a> <a href="#name-non-applicable-case-remote-loops-en" class="section-name selfRef">Non-applicable Case: Remote Loops</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-non-applicable-case-remote-loops-ja" lang="ja">
+<a id="section-6.2-ja" href="#section-6.2-ja" class="section-number selfRef">6.2.</a> <a href="#name-non-applicable-case-remote-loops-ja" class="section-name selfRef">適用できないケース：リモートループ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-1-en">In <a href="#figure-6-en">Figure 6</a>, let us consider the traffic from G to K.  The primary
+path is G-&gt;D-&gt;C-&gt;F-&gt;J-&gt;K.  When the C-F link fails, if C updates its
+forwarding entry to K before D, a transient loop occurs between C and
+D.</p></div>
+<div lang="ja" class="col"><p id="section-6.2-1-ja"><a href="#figure-6-ja">図6</a>において、GからKへのトラフィックを考えます。
+プライマリーパスはG-&gt;D-&gt;C-&gt;F-&gt;J-&gt;Kです。
+C-Fリンクに障害が発生したとき、CがDよりも先にKへの転送エントリーを更新すると、CとDの間で一時的なループが発生します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-6-en"><div lang="" id="section-6.2-2.1-en"><pre tabindex="0" role="region" aria-label="Figure 6">
+                A ------ B ----- E --- H
+                |                      |
+                |                      |
+            G---D--------C ------F --- J ---- K
+
+            All the links have a metric of 1 except B-E=15
+</pre></div>
+<figcaption><span>Figure 6</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-6-ja"><div lang="" id="section-6.2-2.1-ja"><pre tabindex="0" role="region" aria-label="図6">
+                A ------ B ----- E --- H
+                |                      |
+                |                      |
+            G---D--------C ------F --- J ---- K
+
+            All the links have a metric of 1 except B-E=15
+</pre></div>
+<figcaption><span>図6</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-3-en">By implementing the mechanism defined in this document on C, when the
+link C-F fails, C delays the update of its forwarding entry to K,
+allowing time for D to converge.  When ULOOP_DELAY_DOWN_TIMER expires
+on C, its forwarding entry to F is updated.  There is no transient
+forwarding loop between C and D.  However, a transient forwarding
+loop may still occur between D and A.  In this scenario, this
+mechanism is not enough to address all the possible forwarding loops.
+However, it does not create additional traffic loss.  Besides, in
+some cases -- such as when the nodes update their FIB in the order C,
+A, D because the router A is quicker than D to converge -- the
+mechanism may still avoid the forwarding loop that would have
+otherwise occurred.</p></div>
+<div lang="ja" class="col"><p id="section-6.2-3-ja">この文書で定義するメカニズムをCに実装すると、リンクC-Fに障害が発生したとき、CはKへの転送エントリーの更新を遅らせ、Dが収束するための時間を確保します。
+CでULOOP_DELAY_DOWN_TIMERが期限切れになると、Fへの転送エントリーが更新されます。
+CとDの間で一時的な転送ループは発生しません。
+しかし、DとAの間では、依然として一時的な転送ループが発生する可能性があります。
+このシナリオでは、このメカニズムだけでは、発生しうるすべての転送ループに対処するには不十分です。
+しかし、このメカニズムによってトラフィック損失が増えることはありません。
+さらに、いくつかのケースでは（たとえば、ルーターAがDよりも速く収束するために、ノードがC、A、Dの順にFIBを更新する場合など）、このメカニズムによって、本来なら発生していたはずの転送ループを回避できることもあります。</p></div>
+</div></section></section><section><span id="section-7"></span><span id="simulations-en"></span><span id="simulations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-simulations-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-simulations-en" class="section-name selfRef">Simulations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-simulations-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-simulations-ja" class="section-name selfRef">シミュレーション</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">Simulations have been run on multiple service-provider topologies.
+We evaluated the efficiency of the mechanism on eight different
+service-provider topologies (different network size and design).
+<a href="#table-2-en">Table 2</a> displays the gain for each topology.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">複数のサービスプロバイダーのトポロジーでシミュレーションを実行しました。
+私たちは、8つの異なるサービスプロバイダーのトポロジー（ネットワークの規模や設計がそれぞれ異なります）で、このメカニズムの効率を評価しました。
+<a href="#table-2-ja">表2</a>は、各トポロジーにおける改善率を示しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-2-en">
+<caption><a href="#table-2-en" class="selfRef">Table 2</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Topology</th>
+            <th class="text-center" colspan="1" rowspan="1">Gain</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T1</td>
+            <td class="text-center" colspan="1" rowspan="1">71%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T2</td>
+            <td class="text-center" colspan="1" rowspan="1">81%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T3</td>
+            <td class="text-center" colspan="1" rowspan="1">62%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T4</td>
+            <td class="text-center" colspan="1" rowspan="1">50%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T5</td>
+            <td class="text-center" colspan="1" rowspan="1">70%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T6</td>
+            <td class="text-center" colspan="1" rowspan="1">70%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T7</td>
+            <td class="text-center" colspan="1" rowspan="1">59%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T8</td>
+            <td class="text-center" colspan="1" rowspan="1">77%</td>
+          </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-2-ja">
+<caption><a href="#table-2-ja" class="selfRef">表2</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">トポロジー</th>
+            <th class="text-center" colspan="1" rowspan="1">改善率</th>
+          </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T1</td>
+            <td class="text-center" colspan="1" rowspan="1">71%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T2</td>
+            <td class="text-center" colspan="1" rowspan="1">81%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T3</td>
+            <td class="text-center" colspan="1" rowspan="1">62%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T4</td>
+            <td class="text-center" colspan="1" rowspan="1">50%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T5</td>
+            <td class="text-center" colspan="1" rowspan="1">70%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T6</td>
+            <td class="text-center" colspan="1" rowspan="1">70%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T7</td>
+            <td class="text-center" colspan="1" rowspan="1">59%</td>
+          </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">T8</td>
+            <td class="text-center" colspan="1" rowspan="1">77%</td>
+          </tr>
+</tbody>
+</table></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-3-en">We evaluated the gain as follows:</p></div>
+<div lang="ja" class="col"><p id="section-7-3-ja">改善率は次のように評価しました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7-4-en">
+<li id="section-7-4.1-en">We considered a tuple (link A-B, destination D, PLR S, backup
+next-hop N) as a loop if, upon link A-B failure, the flow from a
+router S upstream from A (A could be considered as PLR also) to D
+may loop due to convergence time difference between S and one of
+its neighbors N.</li>
+        <li id="section-7-4.2-en">We evaluated the number of potential loop tuples in normal
+conditions.</li>
+        <li id="section-7-4.3-en">We evaluated the number of potential loop tuples using the same
+topological input but taking into account that S converges after
+N.</li>
+        <li id="section-7-4.4-en">The gain is the relative number of loops (both remote and local)
+we succeed in suppressing.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-7-4-ja">
+<li id="section-7-4.1-ja">リンクA-Bの障害時に、Aの上流にあるルーターS（AもPLRとみなせます）からDへのフローが、Sとその近隣の1つであるNとの間の収束時間の差によってループする可能性がある場合、タプル（リンクA-B、宛先D、PLR S、バックアップネクストホップN）をループとみなしました。</li>
+        <li id="section-7-4.2-ja">通常の条件における潜在的なループタプルの数を評価しました。</li>
+        <li id="section-7-4.3-ja">同じトポロジーの入力を使用しつつ、SがNより後に収束することを考慮に入れて、潜在的なループタプルの数を評価しました。</li>
+        <li id="section-7-4.4-ja">改善率は、抑制に成功したループ（リモートとローカルの両方）の相対的な数です。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-5-en">For topology 1, implementing the local delay prevented 71% of the
+transient forwarding loops created by the failure of any link.  The
+analysis shows that all local loops are prevented and only remote
+loops remain.</p></div>
+<div lang="ja" class="col"><p id="section-7-5-ja">トポロジー1では、ローカル遅延を実装することで、任意のリンクの障害によって生じる一時的な転送ループの71%を防止しました。
+分析によって、すべてのローカルループが防止され、リモートループだけが残ることがわかりました。</p></div>
+</div></section><section><span id="section-8"></span><span id="deployment-considerations-en"></span><span id="deployment-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-deployment-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-deployment-considerations-en" class="section-name selfRef">Deployment Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-deployment-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-deployment-considerations-ja" class="section-name selfRef">展開に関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">Transient forwarding loops have the following drawbacks:</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">一時的な転送ループには、次の欠点があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-8-2-en">
+<li id="section-8-2.1-en">They limit FRR efficiency.  Even if FRR is activated within 50 ms,
+as soon as the PLR has converged, the traffic may be affected by a
+transient loop.</li>
+        <li id="section-8-2.2-en">They may impact traffic not directly affected by the failure (due
+to link congestion).</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-8-2-ja">
+<li id="section-8-2.1-ja">FRRの効率を制限します。
+FRRが50ミリ秒以内に有効になったとしても、PLRが収束するとすぐに、トラフィックが一時的なループの影響を受ける可能性があります。</li>
+        <li id="section-8-2.2-ja">障害の直接的な影響を受けないトラフィックに（リンクの輻輳によって）影響を与える可能性があります。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-3-en">The local delay mechanism is a transient forwarding loop avoidance
+mechanism (like oFIB).  Even if it only addresses local transient
+loops, the efficiency versus complexity comparison of the mechanism
+makes it a good solution.  It is also incrementally deployable with
+incremental benefits, which makes it an attractive option for both
+vendors to implement and service providers to deploy.  Delaying the
+convergence time is not an issue if we consider that the traffic is
+protected during the convergence.</p></div>
+<div lang="ja" class="col"><p id="section-8-3-ja">ローカル遅延メカニズムは、（oFIBと同様の）一時的な転送ループを回避するメカニズムです。
+ローカルな一時的ループにしか対処しないとしても、このメカニズムの効率と複雑さを比較すると、良い解決策といえます。
+また、段階的に展開でき、展開に応じて段階的に利益が得られるため、ベンダーが実装し、サービスプロバイダーが展開するうえで魅力的な選択肢になります。
+収束中もトラフィックが保護されていると考えれば、収束時間を遅らせることは問題になりません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-4-en">The ULOOP_DELAY_DOWN_TIMER value should be set according to the
+maximum IGP convergence time observed in the network (usually
+observed in the slowest node).</p></div>
+<div lang="ja" class="col"><p id="section-8-4-ja">ULOOP_DELAY_DOWN_TIMERの値は、ネットワークで観測される最大のIGP収束時間（通常は最も遅いノードで観測されます）に応じて設定するのが適切です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-5-en">This mechanism is limited to link-down events.  When a link goes
+down, it eventually goes back up.  As a consequence, with this
+mechanism deployed, only the link-down event will be protected
+against transient forwarding loops while the link-up event will not.
+If the operator wants to limit the impact of transient forwarding
+loops during the link-up event, it should make sure to use specific
+procedures to bring the link back online.  As examples, the operator
+can decide to put the link back online outside of business hours, or
+it can use some incremental metric changes to prevent loops (as
+proposed in <span>[<a href="#RFC5715-en">RFC5715</a>]</span>).</p></div>
+<div lang="ja" class="col"><p id="section-8-5-ja">このメカニズムはリンクダウンイベントに限定されています。
+リンクがダウンしても、いずれはアップに戻ります。
+その結果、このメカニズムを展開した場合、一時的な転送ループから保護されるのはリンクダウンイベントだけで、リンクアップイベントは保護されません。
+運用者がリンクアップイベント時の一時的な転送ループの影響を抑えたい場合は、リンクをオンラインに戻す際に特定の手順を確実に使用するよう配慮するのが適切です。
+例として、運用者は営業時間外にリンクをオンラインに戻すことを決めたり、（<span>[<a href="#RFC5715-ja">RFC5715</a>]</span>で提案されているように）ループを防ぐために段階的なメトリックの変更を使用したりできます。</p></div>
+</div></section><section><span id="section-9"></span><span id="examples-en"></span><span id="examples-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-examples-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-examples-en" class="section-name selfRef">Examples</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-examples-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-examples-ja" class="section-name selfRef">例</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">We consider the following figure for the examples in this section:</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">このセクションの例では、次の図を考えます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-7-en"><div lang="" id="section-9-2.1-en"><pre tabindex="0" role="region" aria-label="Figure 7">
+                               D
+                             1 |        F----X
+                               |    1   |
+                               A ------ B
+                               |        |
+                            10 |        | 5
+                               |        |
+                               E--------C
+                               |    1
+                             1 |
+                               S
+</pre></div>
+<figcaption><span>Figure 7</span></figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-7-ja"><div lang="" id="section-9-2.1-ja"><pre tabindex="0" role="region" aria-label="図7">
+                               D
+                             1 |        F----X
+                               |    1   |
+                               A ------ B
+                               |        |
+                            10 |        | 5
+                               |        |
+                               E--------C
+                               |    1
+                             1 |
+                               S
+</pre></div>
+<figcaption><span>図7</span></figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-3-en">The network above is considered to have a convergence time of about 1
+second, so ULOOP_DELAY_DOWN_TIMER will be adjusted to this value.  We
+also consider that FRR is running on each node.</p></div>
+<div lang="ja" class="col"><p id="section-9-3-ja">上記のネットワークの収束時間は約1秒であるとみなし、ULOOP_DELAY_DOWN_TIMERをこの値に調整します。
+また、各ノードでFRRが動作しているものとします。</p></div>
+</div>
+<section><span id="section-9.1"></span><span id="local-link-down-event-en"></span><span id="local-link-down-event-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-local-link-down-event-en" lang="en">
+<a id="section-9.1-en" href="#section-9.1-en" class="section-number selfRef">9.1.</a> <a href="#name-local-link-down-event-en" class="section-name selfRef">Local Link-Down Event</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-local-link-down-event-ja" lang="ja">
+<a id="section-9.1-ja" href="#section-9.1-ja" class="section-number selfRef">9.1.</a> <a href="#name-local-link-down-event-ja" class="section-name selfRef">ローカルなリンクダウンイベント</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-1-en"><a href="#table-3-en">Table 3</a> describes the events and their timing on routers C and E when
+the link B-C goes down.  It is based on a theoretical sequence of
+events that should only been read as an example.  As C detects a
+single local event corresponding to a link-down event (its LSP + LSP
+from B received), it applies the local delay down behavior, and no
+micro-loop is formed.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-1-ja"><a href="#table-3-ja">表3</a>は、リンクB-Cがダウンしたときの、ルーターCとEにおけるイベントとそのタイミングを示しています。
+これはイベントの理論的な順序に基づいており、あくまで例として読んでください。
+Cは、リンクダウンイベントに対応する単一のローカルイベント（自身のLSPと、受信したBからのLSP）を検出するため、ローカル遅延ダウンの振る舞いを適用し、マイクロループは形成されません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-3-en">
+<caption><a href="#table-3-en" class="selfRef">Table 3</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Network Condition</th>
+              <th class="text-center" colspan="1" rowspan="1">Time</th>
+              <th class="text-center" colspan="1" rowspan="1">Router C Events</th>
+              <th class="text-center" colspan="1" rowspan="1">Router E Events</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C detects the failure</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C activates FRR</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+53 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+161 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C delays its RIB/FIB update (1 sec)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C convergence ends</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-3-ja">
+<caption><a href="#table-3-ja" class="selfRef">表3</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">ネットワークの状態</th>
+              <th class="text-center" colspan="1" rowspan="1">時刻</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターCのイベント</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターEのイベント</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが障害を検出</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFRRを有効化</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のローカルLSP/LSAを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+53 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが更新した自身のローカルLSP/LSAをフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（100 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがBからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからLSP/LSAを受信してフラッディング</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFをスケジュール（100 ms）</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+161 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を遅延（1秒）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがDに対する自身のRIB/FIBを更新</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eの収束が終了</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を開始</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがDに対する自身のRIB/FIBを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cの収束が終了</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+</tbody>
+</table></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-3-en">Similarly, upon B-C link-down event, if LSP/LSA from B is received
+before C detects the link failure, C will apply the route update
+delay if the local detection is part of the same SPF run.  <a href="#table-4-en">Table 4</a>
+describes the associated theoretical sequence of events.  It should
+only been read as an example.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-3-ja">同様に、B-Cリンクのダウンイベントの際に、Cがリンク障害を検出する前にBからのLSP/LSAを受信した場合でも、ローカルでの検出が同じSPF実行の一部であれば、Cは経路更新の遅延を適用します。
+<a href="#table-4-ja">表4</a>は、これに対応するイベントの理論的な順序を示しています。
+これは、あくまで例として読んでください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-4-en">
+<caption><a href="#table-4-en" class="selfRef">Table 4</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Network Condition</th>
+              <th class="text-center" colspan="1" rowspan="1">Time</th>
+              <th class="text-center" colspan="1" rowspan="1">Router C Events</th>
+              <th class="text-center" colspan="1" rowspan="1">Router E Events</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+32 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+33 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C detects the failure</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C activates FRR</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+135 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+140 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C delays its RIB/FIB update (1 sec)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1145 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C starts updating its RIB/FIB</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C convergence ends</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-4-ja">
+<caption><a href="#table-4-ja" class="selfRef">表4</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">ネットワークの状態</th>
+              <th class="text-center" colspan="1" rowspan="1">時刻</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターCのイベント</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターEのイベント</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+32 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがBからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+33 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（100 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが障害を検出</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFRRを有効化</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のローカルLSP/LSAを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが更新した自身のローカルLSP/LSAをフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからLSP/LSAを受信してフラッディング</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFをスケジュール（100 ms）</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+135 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+140 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を遅延（1秒）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがDに対する自身のRIB/FIBを更新</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eの収束が終了</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1145 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を開始</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1255 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがDに対する自身のRIB/FIBを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+1340 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cの収束が終了</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+</tbody>
+</table></div></div>
+</div></section><section><span id="section-9.2"></span><span id="local-and-remote-event-en"></span><span id="local-and-remote-event-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-local-and-remote-event-en" lang="en">
+<a id="section-9.2-en" href="#section-9.2-en" class="section-number selfRef">9.2.</a> <a href="#name-local-and-remote-event-en" class="section-name selfRef">Local and Remote Event</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-local-and-remote-event-ja" lang="ja">
+<a id="section-9.2-ja" href="#section-9.2-ja" class="section-number selfRef">9.2.</a> <a href="#name-local-and-remote-event-ja" class="section-name selfRef">ローカルとリモートのイベント</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.2-1-en"><a href="#table-5-en">Table 5</a> describes the events and their timing on router C and E when
+the link B-C goes down and when the link F-X fails in the same time
+window.  C will not apply the local delay because a non-local
+topology change is also received.  <a href="#table-5-en">Table 5</a> is based on a theoretical
+sequence of events that should only been read as an example.</p></div>
+<div lang="ja" class="col"><p id="section-9.2-1-ja"><a href="#table-5-ja">表5</a>は、リンクB-Cがダウンし、同じ時間枠でリンクF-Xにも障害が発生したときの、ルーターCとEにおけるイベントとそのタイミングを示しています。
+ローカルでないトポロジーの変更も受信するため、Cはローカル遅延を適用しません。
+<a href="#table-5-ja">表5</a>はイベントの理論的な順序に基づいており、あくまで例として読んでください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-5-en">
+<caption><a href="#table-5-en" class="selfRef">Table 5</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Network Condition</th>
+              <th class="text-center" colspan="1" rowspan="1">Time</th>
+              <th class="text-center" colspan="1" rowspan="1">Router C Events</th>
+              <th class="text-center" colspan="1" rowspan="1">Router E Events</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C detects the failure</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+36 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Link F-X fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link F-X fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C activates FRR</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+54 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from F and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+69 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from F, floods it and schedules SPF (100 ms)</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from C</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+117 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E floods LSP/LSA from C</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C starts updating its RIB/FIB (NO DELAY)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+170 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+173 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+365 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+450 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C convergence ends</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-5-ja">
+<caption><a href="#table-5-ja" class="selfRef">表5</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">ネットワークの状態</th>
+              <th class="text-center" colspan="1" rowspan="1">時刻</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターCのイベント</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターEのイベント</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが障害を検出</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+36 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクF-Xの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクF-Xの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFRRを有効化</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のローカルLSP/LSAを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+54 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+60 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（100 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがBからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+69 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがFからLSP/LSAを受信し、フラッディングしてSPFをスケジュール（100 ms）</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+70 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが更新した自身のローカルLSP/LSAをフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからLSP/LSAを受信</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+117 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからのLSP/LSAをフラッディング</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を開始（遅延なし）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+170 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+173 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+365 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがDに対する自身のRIB/FIBを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+443 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがDに対する自身のRIB/FIBを更新</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+450 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cの収束が終了</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+470 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eの収束が終了</td>
+            </tr>
+</tbody>
+</table></div></div>
+</div></section><section><span id="section-9.3"></span><span id="aborting-local-delay-en"></span><span id="aborting-local-delay-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-aborting-local-delay-en" lang="en">
+<a id="section-9.3-en" href="#section-9.3-en" class="section-number selfRef">9.3.</a> <a href="#name-aborting-local-delay-en" class="section-name selfRef">Aborting Local Delay</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-aborting-local-delay-ja" lang="ja">
+<a id="section-9.3-ja" href="#section-9.3-ja" class="section-number selfRef">9.3.</a> <a href="#name-aborting-local-delay-ja" class="section-name selfRef">ローカル遅延の中止</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.3-1-en"><a href="#table-6-en">Table 6</a> describes the events and their timing on routers C and E when
+the link B-C goes down.  In addition, we consider what happens when
+the F-X link fails during local delay of the FIB update.  C will
+first apply the local delay, but when the new event happens, it will
+fall back to the standard convergence mechanism without further
+delaying route insertion.  In this example, we consider a
+ULOOP_DELAY_DOWN_TIMER configured to 2 seconds.  <a href="#table-6-en">Table 6</a> is based on
+a theoretical sequence of events that should only been read as an
+example.</p></div>
+<div lang="ja" class="col"><p id="section-9.3-1-ja"><a href="#table-6-ja">表6</a>は、リンクB-Cがダウンしたときの、ルーターCとEにおけるイベントとそのタイミングを示しています。
+加えて、FIBの更新をローカルで遅延している間にF-Xリンクに障害が発生した場合に何が起こるかを考えます。
+Cは最初にローカル遅延を適用しますが、新しいイベントが発生すると、経路の挿入をそれ以上遅らせることなく、標準の収束メカニズムにフォールバックします。
+この例では、ULOOP_DELAY_DOWN_TIMERが2秒に設定されているものとします。
+<a href="#table-6-ja">表6</a>はイベントの理論的な順序に基づいており、あくまで例として読んでください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div class="table-wrapper"><table id="table-6-en">
+<caption><a href="#table-6-en" class="selfRef">Table 6</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">Network Condition</th>
+              <th class="text-center" colspan="1" rowspan="1">Time</th>
+              <th class="text-center" colspan="1" rowspan="1">Router C Events</th>
+              <th class="text-center" colspan="1" rowspan="1">Router E Events</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link B-C fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C detects the failure</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C activates FRR</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its local LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C floods its local updated LSP/LSA</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+57 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (100 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from B and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from C and floods it</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E schedules SPF (100 ms)</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C delays its RIB/FIB update (2 sec)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+254 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Link F-X fails</td>
+              <td class="text-center" colspan="1" rowspan="1">Link F-X fails</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+300 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C receives LSP/LSA from F and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+303 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C schedules SPF (200 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+312 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">E receives LSP/LSA from F and floods it</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+313 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">E schedules SPF (200 ms)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+502 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C computes SPF</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+505 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C starts updating its RIB/FIB (NO DELAY)</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+514 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E computes SPF</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+519 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E starts updating its RIB/FIB</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic lost</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+659 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C updates its RIB/FIB for D</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;D Traffic OK</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+778 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E updates its RIB/FIB for D</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+781 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">C convergence ends</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+810 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">E convergence ends</td>
+            </tr>
+</tbody>
+</table></div></div>
+<div lang="ja" class="col"><div class="table-wrapper"><table id="table-6-ja">
+<caption><a href="#table-6-ja" class="selfRef">表6</a></caption>
+<thead><tr>
+<th class="text-center" colspan="1" rowspan="1">ネットワークの状態</th>
+              <th class="text-center" colspan="1" rowspan="1">時刻</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターCのイベント</th>
+              <th class="text-center" colspan="1" rowspan="1">ルーターEのイベント</th>
+            </tr></thead>
+<tbody>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクB-Cの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+20 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが障害を検出</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+40 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFRRを有効化</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+50 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のローカルLSP/LSAを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+55 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが更新した自身のローカルLSP/LSAをフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+57 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（100 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+67 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがBからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+87 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがCからLSP/LSAを受信してフラッディング</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+90 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFをスケジュール（100 ms）</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+160 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+165 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を遅延（2秒）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+193 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+199 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+254 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクF-Xの障害</td>
+              <td class="text-center" colspan="1" rowspan="1">リンクF-Xの障害</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+300 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがFからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+303 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFをスケジュール（200 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+312 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">EがFからLSP/LSAを受信してフラッディング</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+313 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFをスケジュール（200 ms）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+502 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがSPFを計算</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+505 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cが自身のRIB/FIBの更新を開始（遅延なし）</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+514 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがSPFを計算</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+519 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eが自身のRIB/FIBの更新を開始</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック損失</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+659 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">CがDに対する自身のRIB/FIBを更新</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1">S-&gt;Dのトラフィック正常</td>
+              <td class="text-center" colspan="1" rowspan="1">t0+778 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">EがDに対する自身のRIB/FIBを更新</td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+781 ms</td>
+              <td class="text-center" colspan="1" rowspan="1">Cの収束が終了</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+            </tr>
+<tr>
+<td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">t0+810 ms</td>
+              <td class="text-center" colspan="1" rowspan="1"></td>
+              <td class="text-center" colspan="1" rowspan="1">Eの収束が終了</td>
+            </tr>
+</tbody>
+</table></div></div>
+</div></section></section><section><span id="section-10"></span><span id="comparison-with-other-solutions-en"></span><span id="comparison-with-other-solutions-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-comparison-with-other-solutions-en" lang="en">
+<a id="section-10-en" href="#section-10-en" class="section-number selfRef">10.</a> <a href="#name-comparison-with-other-solutions-en" class="section-name selfRef">Comparison with Other Solutions</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-comparison-with-other-solutions-ja" lang="ja">
+<a id="section-10-ja" href="#section-10-ja" class="section-number selfRef">10.</a> <a href="#name-comparison-with-other-solutions-ja" class="section-name selfRef">他の解決策との比較</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10-1-en">As stated in <a href="#section-4-en">Section 4</a>, the local delay solution reuses some concepts
+already introduced by other IETF proposals but tries to find a
+trade-off between efficiency and simplicity.  This section tries to compare
+behaviors of the solutions.</p></div>
+<div lang="ja" class="col"><p id="section-10-1-ja"><a href="#section-4-ja">セクション4</a>で述べたように、ローカル遅延による解決策は、他のIETFの提案ですでに導入されているいくつかの概念を再利用していますが、効率と単純さの間のトレードオフを見いだそうとしています。
+このセクションでは、各解決策の振る舞いを比較します。</p></div>
+</div>
+<section><span id="section-10.1"></span><span id="plsn-en"></span><span id="plsn-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-plsn-en" lang="en">
+<a id="section-10.1-en" href="#section-10.1-en" class="section-number selfRef">10.1.</a> <a href="#name-plsn-en" class="section-name selfRef">PLSN</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-plsn-ja" lang="ja">
+<a id="section-10.1-ja" href="#section-10.1-ja" class="section-number selfRef">10.1.</a> <a href="#name-plsn-ja" class="section-name selfRef">PLSN</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.1-1-en">PLSN <span>[<a href="#PLSN-en">PLSN</a>]</span> describes a mechanism where each node in the network
+tries to avoid transient forwarding loops upon a topology change by
+always keeping traffic on a loop-free path for a defined duration
+(locked path to a safe neighbor).  The locked path may be the new
+primary next hop, another neighbor, or the old primary next hop
+depending on how the safety condition is satisfied.</p></div>
+<div lang="ja" class="col"><p id="section-10.1-1-ja">PLSN <span>[<a href="#PLSN-ja">PLSN</a>]</span>は、トポロジーの変更時に、定められた期間、常にトラフィックをループフリーなパス（安全な近隣へのロックされたパス）上に保つことで、ネットワーク内の各ノードが一時的な転送ループを回避しようとするメカニズムを説明しています。
+ロックされたパスは、安全条件がどのように満たされるかに応じて、新しいプライマリーネクストホップ、別の近隣、古いプライマリーネクストホップのいずれかになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.1-2-en">PLSN does not solve all transient forwarding loops (see <span><a href="https://datatracker.ietf.org/doc/html/draft-ietf-rtgwg-microloop-analysis-01#section-4">Section 4</a> of [<a href="#PLSN-en">PLSN</a>]</span> for more details).</p></div>
+<div lang="ja" class="col"><p id="section-10.1-2-ja">PLSNは、すべての一時的な転送ループを解決するわけではありません（詳細については<span>[<a href="#PLSN-ja">PLSN</a>]の<a href="https://datatracker.ietf.org/doc/html/draft-ietf-rtgwg-microloop-analysis-01#section-4">セクション4</a></span>を参照してください）。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.1-3-en">The solution defined in this document reuses some concepts of PLSN
+but in a more simple fashion:</p></div>
+<div lang="ja" class="col"><p id="section-10.1-3-ja">この文書で定義する解決策は、PLSNのいくつかの概念を再利用していますが、より単純な方法をとっています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-10.1-4-en">
+<li id="section-10.1-4.1-en">PLSN has three different behaviors: (1) keep using the old next
+hop, (2) use the new primary next hop if it is safe, or (3) use
+another safe next hop.  The local delay solution, however, only
+has one: keep using the current next hop (i.e., the old primary
+next hop or an already-activated FRR path).</li>
+          <li id="section-10.1-4.2-en">PLSN may cause some damage while using a safe next hop that is not
+the new primary next hop if the new safe next hop does not provide
+enough bandwidth (see <span>[<a href="#RFC7916-en">RFC7916</a>]</span>).  The solution defined in this
+document may not experience this issue as the service provider may
+have control on the FRR path being used, preventing network
+congestion.</li>
+          <li id="section-10.1-4.3-en">PLSN applies to all nodes in a network (remote or local changes),
+while the mechanism defined in this document applies only to the
+nodes connected to the topology change.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-10.1-4-ja">
+<li id="section-10.1-4.1-ja">PLSNには、（1）古いネクストホップを使い続ける、（2）新しいプライマリーネクストホップが安全であればそれを使用する、（3）別の安全なネクストホップを使用する、という3つの異なる振る舞いがあります。
+一方、ローカル遅延による解決策の振る舞いは、現在のネクストホップ（つまり、古いプライマリーネクストホップか、すでに有効になっているFRRパス）を使い続けるという1つだけです。</li>
+          <li id="section-10.1-4.2-ja">PLSNでは、新しいプライマリーネクストホップではない安全なネクストホップを使用している間に、その新しい安全なネクストホップが十分な帯域幅を提供しない場合、何らかの損害が生じる可能性があります（<span>[<a href="#RFC7916-ja">RFC7916</a>]</span>を参照）。
+この文書で定義する解決策では、サービスプロバイダーが使用されるFRRパスを制御してネットワークの輻輳を防げるため、この問題は発生しないと考えられます。</li>
+          <li id="section-10.1-4.3-ja">PLSNはネットワーク内のすべてのノードに（リモートの変更にもローカルの変更にも）適用されますが、この文書で定義するメカニズムは、トポロジーの変更に接続されたノードにのみ適用されます。</li>
+        </ul></div>
+</div></section><section><span id="section-10.2"></span><span id="ofib-en"></span><span id="ofib-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-ofib-en" lang="en">
+<a id="section-10.2-en" href="#section-10.2-en" class="section-number selfRef">10.2.</a> <a href="#name-ofib-en" class="section-name selfRef">oFIB</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-ofib-ja" lang="ja">
+<a id="section-10.2-ja" href="#section-10.2-ja" class="section-number selfRef">10.2.</a> <a href="#name-ofib-ja" class="section-name selfRef">oFIB</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.2-1-en">oFIB <span>[<a href="#RFC6976-en">RFC6976</a>]</span> describes a mechanism where the convergence of the
+network upon a topology change is ordered in order to prevent
+transient forwarding loops.  Each router in the network deduces the
+failure type from the LSA/LSP received and computes/applies a
+specific FIB update timer based on the failure type and its rank in
+the network, considering the failure point as root.</p></div>
+<div lang="ja" class="col"><p id="section-10.2-1-ja">oFIB <span>[<a href="#RFC6976-ja">RFC6976</a>]</span>は、一時的な転送ループを防ぐために、トポロジーの変更時のネットワークの収束に順序を付けるメカニズムを説明しています。
+ネットワーク内の各ルーターは、受信したLSA/LSPから障害の種類を推定し、障害点をルートとみなして、障害の種類とネットワーク内での自身の順位に基づく特定のFIB更新タイマーを計算・適用します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.2-2-en">The oFIB mechanism solves all the transient forwarding loops in a
+network at the price of introducing complexity in the convergence
+process that may require careful monitoring by the service provider.</p></div>
+<div lang="ja" class="col"><p id="section-10.2-2-ja">oFIBメカニズムはネットワーク内のすべての一時的な転送ループを解決しますが、その代償として収束プロセスに複雑さが持ち込まれ、サービスプロバイダーによる注意深い監視が必要になる場合があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10.2-3-en">The solution defined in this document reuses the oFIB concept but
+limits it to the first hop that experiences the topology change.  As
+demonstrated, the mechanism defined in this document allows all the
+local transient forwarding loops to be solved; these represent a high
+percentage of all the loops.  Moreover, limiting to one hop allows
+network-wide convergence behavior to be kept.</p></div>
+<div lang="ja" class="col"><p id="section-10.2-3-ja">この文書で定義する解決策は、oFIBの概念を再利用していますが、それをトポロジーの変更を経験する最初のホップに限定しています。
+これまでに示したように、この文書で定義するメカニズムによって、すべてのローカルな一時的転送ループを解決できます。
+これらは、全ループの中で高い割合を占めます。
+さらに、1ホップに限定することで、ネットワーク全体の収束の振る舞いを維持できます。</p></div>
+</div></section></section><section><span id="section-11"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-11-en" href="#section-11-en" class="section-number selfRef">11.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-11-ja" href="#section-11-ja" class="section-number selfRef">11.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-11-1-en">This document has no IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-11-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><section><span id="section-12"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-12-en" href="#section-12-en" class="section-number selfRef">12.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-12-ja" href="#section-12-ja" class="section-number selfRef">12.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-12-1-en">This document does not introduce any change in terms of IGP security.
+The operation is internal to the router.  The local delay does not
+increase the number of attack vectors as an attacker could only
+trigger this mechanism if it already has the ability to disable or
+enable an IGP link.  The local delay does not increase the negative
+consequences.  If an attacker has the ability to disable or enable an
+IGP link, it can already harm the network by creating instability and
+harm the traffic by creating forwarding packet loss and forwarding
+loss for the traffic crossing that link.</p></div>
+<div lang="ja" class="col"><p id="section-12-1-ja">この文書は、IGPのセキュリティーに関して何の変更も導入しません。
+この操作はルーターの内部で行われます。
+攻撃者がこのメカニズムを発動できるのは、IGPリンクを無効化または有効化する能力をすでに持っている場合だけなので、ローカル遅延によって攻撃ベクトルの数が増えることはありません。
+ローカル遅延によって悪影響が大きくなることもありません。
+IGPリンクを無効化または有効化する能力を攻撃者が持っている場合、攻撃者はすでに、不安定な状態を生み出すことでネットワークに損害を与えたり、そのリンクを通過するトラフィックに転送パケットの損失や転送の損失を生じさせることでトラフィックに損害を与えたりできます。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-13-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-13.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="ISO10589-en">[ISO10589]</dt>
+<dd class="break">
+<span class="refAuthor">International Organization for Standardization</span>, <span></span><span class="refTitle">"Information technology -- Telecommunications and information exchange between systems -- Intermediate System to Intermediate System intra-domain routeing information exchange protocol for use in conjunction with the protocol for providing the connectionless-mode network service (ISO 8473)"</span>, <span class="refContent">Second Edition</span>, <span class="seriesInfo">ISO/IEC 10589:2002</span>, <time datetime="2002-11" class="refDate">November 2002</time>, </dd>
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC2328-en">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC8174-en">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-13.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="BACKOFF-en">[BACKOFF]</dt>
+<dd class="break">
+<span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Gredler, H.</span>, <span class="refAuthor">Lindem, A.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">C. Bowers</span>, <span></span><span class="refTitle">"SPF Back-off Delay algorithm for link state IGPs"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-backoff-algo-10</span>, <time datetime="2018-03" class="refDate">March 2018</time>, </dd>
+<dt id="PLSN-en">[PLSN]</dt>
+<dd class="break">
+<span class="refAuthor">Zinin, A.</span>, <span></span><span class="refTitle">"Analysis and Minimization of Microloops in Link-state Routing Protocols"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-microloop-analysis-01</span>, <time datetime="2005-10" class="refDate">October 2005</time>, </dd>
+<dt id="RFC3906-en">[RFC3906]</dt>
+<dd class="break">
+<span class="refAuthor">Shen, N.</span> and <span class="refAuthor">H. Smit</span>, <span></span><span class="refTitle">"Calculating Interior Gateway Protocol (IGP) Routes Over Traffic Engineering Tunnels"</span>, <span class="seriesInfo">RFC 3906</span>, <span class="seriesInfo">DOI 10.17487/RFC3906</span>, <time datetime="2004-10" class="refDate">October 2004</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3906">https://www.rfc-editor.org/info/rfc3906</a>&gt;</span>
+</dd>
+<dt id="RFC5715-en">[RFC5715]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span> and <span class="refAuthor">S. Bryant</span>, <span></span><span class="refTitle">"A Framework for Loop-Free Convergence"</span>, <span class="seriesInfo">RFC 5715</span>, <span class="seriesInfo">DOI 10.17487/RFC5715</span>, <time datetime="2010-01" class="refDate">January 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5715">https://www.rfc-editor.org/info/rfc5715</a>&gt;</span>
+</dd>
+<dt id="RFC6976-en">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="RFC7916-en">[RFC7916]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S., Ed.</span>, <span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Raza, K.</span>, <span class="refAuthor">Horneffer, M.</span>, and <span class="refAuthor">P. Sarkar</span>, <span></span><span class="refTitle">"Operational Management of Loop-Free Alternates"</span>, <span class="seriesInfo">RFC 7916</span>, <span class="seriesInfo">DOI 10.17487/RFC7916</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7916">https://www.rfc-editor.org/info/rfc7916</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-13-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-13.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="ISO10589-ja">[ISO10589]</dt>
+<dd class="break">
+<span class="refAuthor">International Organization for Standardization</span>, <span></span><span class="refTitle">"Information technology -- Telecommunications and information exchange between systems -- Intermediate System to Intermediate System intra-domain routeing information exchange protocol for use in conjunction with the protocol for providing the connectionless-mode network service (ISO 8473)"</span>, <span class="refContent">Second Edition</span>, <span class="seriesInfo">ISO/IEC 10589:2002</span>, <time datetime="2002-11" class="refDate">November 2002</time>, </dd>
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC2328-ja">[RFC2328]</dt>
+<dd class="break">
+<span class="refAuthor">Moy, J.</span>, <span></span><span class="refTitle">"OSPF Version 2"</span>, <span class="seriesInfo">STD 54</span>, <span class="seriesInfo">RFC 2328</span>, <span class="seriesInfo">DOI 10.17487/RFC2328</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2328">https://www.rfc-editor.org/info/rfc2328</a>&gt;</span>
+</dd>
+<dt id="RFC8174-ja">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-13.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="BACKOFF-ja">[BACKOFF]</dt>
+<dd class="break">
+<span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Litkowski, S.</span>, <span class="refAuthor">Gredler, H.</span>, <span class="refAuthor">Lindem, A.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">C. Bowers</span>, <span></span><span class="refTitle">"SPF Back-off Delay algorithm for link state IGPs"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-backoff-algo-10</span>, <time datetime="2018-03" class="refDate">March 2018</time>, </dd>
+<dt id="PLSN-ja">[PLSN]</dt>
+<dd class="break">
+<span class="refAuthor">Zinin, A.</span>, <span></span><span class="refTitle">"Analysis and Minimization of Microloops in Link-state Routing Protocols"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-rtgwg-microloop-analysis-01</span>, <time datetime="2005-10" class="refDate">October 2005</time>, </dd>
+<dt id="RFC3906-ja">[RFC3906]</dt>
+<dd class="break">
+<span class="refAuthor">Shen, N.</span> and <span class="refAuthor">H. Smit</span>, <span></span><span class="refTitle">"Calculating Interior Gateway Protocol (IGP) Routes Over Traffic Engineering Tunnels"</span>, <span class="seriesInfo">RFC 3906</span>, <span class="seriesInfo">DOI 10.17487/RFC3906</span>, <time datetime="2004-10" class="refDate">October 2004</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3906">https://www.rfc-editor.org/info/rfc3906</a>&gt;</span>
+</dd>
+<dt id="RFC5715-ja">[RFC5715]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span> and <span class="refAuthor">S. Bryant</span>, <span></span><span class="refTitle">"A Framework for Loop-Free Convergence"</span>, <span class="seriesInfo">RFC 5715</span>, <span class="seriesInfo">DOI 10.17487/RFC5715</span>, <time datetime="2010-01" class="refDate">January 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5715">https://www.rfc-editor.org/info/rfc5715</a>&gt;</span>
+</dd>
+<dt id="RFC6976-ja">[RFC6976]</dt>
+<dd class="break">
+<span class="refAuthor">Shand, M.</span>, <span class="refAuthor">Bryant, S.</span>, <span class="refAuthor">Previdi, S.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Francois, P.</span>, and <span class="refAuthor">O. Bonaventure</span>, <span></span><span class="refTitle">"Framework for Loop-Free Convergence Using the Ordered Forwarding Information Base (oFIB) Approach"</span>, <span class="seriesInfo">RFC 6976</span>, <span class="seriesInfo">DOI 10.17487/RFC6976</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6976">https://www.rfc-editor.org/info/rfc6976</a>&gt;</span>
+</dd>
+<dt id="RFC7916-ja">[RFC7916]</dt>
+<dd class="break">
+<span class="refAuthor">Litkowski, S., Ed.</span>, <span class="refAuthor">Decraene, B.</span>, <span class="refAuthor">Filsfils, C.</span>, <span class="refAuthor">Raza, K.</span>, <span class="refAuthor">Horneffer, M.</span>, and <span class="refAuthor">P. Sarkar</span>, <span></span><span class="refTitle">"Operational Management of Loop-Free Alternates"</span>, <span class="seriesInfo">RFC 7916</span>, <span class="seriesInfo">DOI 10.17487/RFC7916</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7916">https://www.rfc-editor.org/info/rfc7916</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">We would like to thank the authors of <span>[<a href="#RFC6976-en">RFC6976</a>]</span> for introducing the
+concept of ordered convergence: Mike Shand, Stewart Bryant, Stefano
+Previdi, and Olivier Bonaventure.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">順序付けられた収束の概念を導入した<span>[<a href="#RFC6976-ja">RFC6976</a>]</span>の著者であるMike Shand、Stewart Bryant、Stefano Previdi、Olivier Bonaventureに感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Stephane Litkowski</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:stephane.litkowski@orange.com">stephane.litkowski@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Bruno Decraene</div>
+<div class="author-org">Orange</div>
+<div class="author-email"><a href="mailto:bruno.decraene@orange.com">bruno.decraene@orange.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Clarence Filsfils</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-email"><a href="mailto:cfilsfil@cisco.com">cfilsfil@cisco.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Clarence Filsfils</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-email"><a href="mailto:cfilsfil@cisco.com">cfilsfil@cisco.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Pierre Francois</div>
+<div class="author-org">Individual Contributor</div>
+<div class="author-email"><a href="mailto:pfrpfr@gmail.com">pfrpfr@gmail.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Pierre Francois</div>
+<div class="author-org">Individual Contributor</div>
+<div class="author-email"><a href="mailto:pfrpfr@gmail.com">pfrpfr@gmail.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

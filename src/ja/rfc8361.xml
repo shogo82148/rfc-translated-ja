@@ -1,0 +1,524 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-trill-centralized-replication-13" indexInclude="true" number="8361" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-trill-centralized-replication-13" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8361" rel="alternate"/>
+  <front>
+    <title>Transparent Interconnection of Lots of Links（TRILL）：アクティブ-アクティブのブロードキャスト、未知ユニキャスト、マルチキャスト（BUM）トラフィックのための集中複製</title>
+    <seriesInfo name="RFC" value="8361" stream="IETF"/>
+    <date year="2018" month="April"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">Transparent Interconnection of Lots of Links（TRILL）のアクティブ-アクティブアクセスでは、RFC 7781で規定された疑似ニックネームのメカニズムを使用すると、リバースパスフォワーディング（Reverse Path Forwarding: RPF）チェックが失敗する問題が発生することがあります。この文書は、集中複製によってこのRPFチェック失敗の問題を解決する方法を説明します。すべての入口ルーティングブリッジ（RBridge）は、ブロードキャスト、未知ユニキャスト、マルチキャスト（Broadcast, Unknown Unicast, and Multicast: BUM）トラフィックを、ユニキャストのTRILLカプセル化で集中ノードに送信します。集中ノードはBUMトラフィックを受信すると、パケットのカプセル化を解除し、TRILL基本プロトコル（RFC 6325）に従って確立された分配ツリーを使用して、宛先のRBridgeにパケットを転送します。入口RBridgeと集中複製ノードの間に位置するRBridgeでRPFチェックが失敗するのを避けるために、RPF計算アルゴリズムに若干の変更が必要です。各RBridgeでのRPFチェックは、実際の入口RBridgeを使用して計算するのではなく、集中ノードが入口RBridgeであるかのように計算しなければなりません（MUST）。この文書はRFC 6325を更新します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="https://www.rfc-editor.org/info/rfc8361" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-used-in-this-document">この文書で使用する表記規則</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-centralized-replication-solution-overview">集中複製による方法の概要</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-frame-duplication-from-remote-rbridge">リモートRBridgeからのフレームの重複</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-local-forwarding-behavior-on-ingress-rbridge">入口RBridgeでのローカル転送の振る舞い</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-loop-prevention-among-rbridges-in-an-edge-group">エッジグループ内のRBridge間でのループ防止</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-centralized-replication-forwarding-process">集中複製の転送プロセス</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bum-traffic-load-balancing-among-multiple-centralized-nodes">複数の集中ノード間でのBUMトラフィックの負荷分散</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-coexisting-with-the-cmt-solution-(rfc-7783)">CMTによる方法（RFC 7783）との共存</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-network-upgrade-analysis">ネットワークのアップグレードの分析</xref></t>
+          </li>
+          <li pn="section-toc.1-1.11">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.11.1"><xref derivedContent="11" format="counter" sectionFormat="of" target="section-11"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-trill-protocol-extensions">TRILLプロトコルの拡張</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.11.2">
+            <li pn="section-toc.1-1.11.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.11.1.1"><xref derivedContent="11.1" format="counter" sectionFormat="of" target="section-11.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-&quot;r&quot;-and-&quot;c&quot;-flag-in-the-nickname-flags-appsub-tlv">Nickname Flags APPsub-TLVの「R」フラグと「C」フラグ</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.12">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.12.1"><xref derivedContent="12" format="counter" sectionFormat="of" target="section-12"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.13">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.13.1"><xref derivedContent="13" format="counter" sectionFormat="of" target="section-13"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.14">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.14.1"><xref derivedContent="14" format="counter" sectionFormat="of" target="section-14"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.14.2">
+            <li pn="section-toc.1-1.14.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.14.1.1"><xref derivedContent="14.1" format="counter" sectionFormat="of" target="section-14.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.14.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.14.2.1"><xref derivedContent="14.2" format="counter" sectionFormat="of" target="section-14.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.15">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.15.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.16">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.16.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">IETFのTRILLプロトコル<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>は、ループがなくホップごとに行われるマルチパスのデータ転送を、最小限の設定で提供します。TRILLは、制御プレーンのルーティングプロトコルとしてIS-IS <xref target="RFC6165" format="default" sectionFormat="of" derivedContent="RFC6165"/> <xref target="RFC7176" format="default" sectionFormat="of" derivedContent="RFC7176"/>を使用し、ユーザーデータ用にTRILL固有のヘッダーを定義します。</t>
+      <t indent="0" pn="section-1-2">顧客機器（Customer Equipment: CE）デバイスは、エッジRBridgeの集合にマルチホーム接続できます。これらのエッジRBridgeは、アクティブ-アクティブのサービスを提供できるエッジグループを形成します。その場合、CEからのすべてのアップリンクは、マルチシャーシリンクアグリゲーション（Multi-Chassis Link Aggregation: MC-LAG）や分散耐障害ネットワーク相互接続（Distributed Resilient Network Interconnect: DRNI）<xref target="IEEE802.1AX" format="default" sectionFormat="of" derivedContent="IEEE802.1AX"/>などのローカルアクティブ-アクティブリンクプロトコル（Local Active-Active Link Protocol: LAALP）<xref target="RFC7379" format="default" sectionFormat="of" derivedContent="RFC7379"/>によって処理されます。フローに基づくアクティブ-アクティブの負荷共有メカニズムにより、より良い負荷分散と高い信頼性を実現できます。CEデバイスは、それ自体がレイヤー3（L3）のエンドシステムである場合もあれば、L3エンドシステムがTRILLキャンパスにアクセスするためのブリッジスイッチである場合もあります。</t>
+      <t indent="0" pn="section-1-3">アクティブ-アクティブアクセスでは、<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/>の疑似ニックネームによる方法を使用して、リモートのRBridgeでのメディアアクセス制御（Media Access Control: MAC）フリップフロップを回避できます。基本的な考え方は、単一の疑似ニックネームを持つ仮想RBridge（RBv）を使用してエッジグループを表すことです。そのエッジグループのメンバーであるRBridgeは、TRILLデータフレームをTRILLキャンパスに投入する際に、自身のニックネームではなくこの疑似ニックネームを入口ニックネームとして使用します。このニックネームを使用すると、リモートのRBridgeが学習するニックネームが疑似ニックネームになるため、アドレスのフリップフロップの問題は解決します。しかし、次のように、パケットが誤って破棄されるという別の問題が生じます。エッジRBridgeが疑似ニックネームを入口ニックネームとして使用してBUMトラフィックを転送すると、入口RBridgeと分配ツリーのルートの間に位置するすべてのRBridge（RBn）は、そのトラフィックをRBvから入ってきたものとして扱います。同じRBvに属する異なるエッジRBridgeが同じ分配ツリーを使用すると、トラフィックがあるRBnに異なるポートから到着することがあります。すると、TRILL <xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>が要求するリバースパスフォワーディング（Reverse Path Forwarding: RPF）チェックが失敗し、予期しないポートで受信されたBUMトラフィックはRBnによって破棄されてしまいます。</t>
+      <t indent="0" pn="section-1-4">この文書は、仮想RBridgeの場合にRPFチェックの失敗によってパケットが誤って破棄される問題を解決するために、BUMトラフィック転送のための集中複製の方法を規定します。基本的な考え方は、すべての入口RBridgeが、ユニキャストのTRILLカプセル化を使用して、BUMトラフィックを集中ノードに送信するというものです。この集中ノードは分配ツリーのルートで<bcp14>なければなりません（MUST）</bcp14>。集中ノードはパケットを受信すると、パケットのカプセル化を解除し、TRILL基本プロトコルに従って確立された分配ツリーを使用して、宛先のRBridgeにパケットを転送します。この文書は<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>を更新します。<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>では、マルチデスティネーショントラフィックはマルチデスティネーションのTRILLデータパケットとして入口処理されます。しかし、この文書では、集中複製機能を使用する場合、マルチデスティネーショントラフィックは最初にユニキャストのTRILLデータパケットとして入口処理されます。</t>
+    </section>
+    <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-used-in-this-document">この文書で使用する表記規則</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      <t indent="0" pn="section-2-2">この文書では、<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>の略語と用語に加えて、次のものを使用します。</t>
+      <dl newline="false" spacing="normal" indent="15" pn="section-2-3">
+        <dt pn="section-2-3.1">BUM:</dt>
+        <dd pn="section-2-3.2">ブロードキャスト、未知ユニキャスト、マルチキャスト（Broadcast, Unknown unicast, and Multicast）</dd>
+        <dt pn="section-2-3.3">CE:</dt>
+        <dd pn="section-2-3.4">顧客機器（Customer Equipment）（<xref target="RFC7783" format="default" sectionFormat="of" derivedContent="RFC7783"/>と同様）。デバイス（エンドステーションまたはブリッジ）に関連して使います。デバイスは物理的な機器でも仮想的な機器でもかまいません。</dd>
+        <dt pn="section-2-3.5">Data Label:</dt>
+        <dd pn="section-2-3.6">データラベル。VLANまたはファイングレインドラベル（Fine-Grained Labeled: FGL）<xref target="RFC7172" format="default" sectionFormat="of" derivedContent="RFC7172"/></dd>
+        <dt pn="section-2-3.7">DF:</dt>
+        <dd pn="section-2-3.8">指定フォワーダー（Designated Forwarder）<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/></dd>
+        <dt pn="section-2-3.9">FGL:</dt>
+        <dd pn="section-2-3.10">ファイングレインドラベル（Fine-Grained Label）<xref target="RFC7172" format="default" sectionFormat="of" derivedContent="RFC7172"/></dd>
+        <dt pn="section-2-3.11">LAALP:</dt>
+        <dd pn="section-2-3.12">ローカルアクティブ-アクティブリンクプロトコル（Local Active-Active Link Protocol）<xref target="RFC7379" format="default" sectionFormat="of" derivedContent="RFC7379"/></dd>
+        <dt pn="section-2-3.13">MAC flip flop:</dt>
+        <dd pn="section-2-3.14">MACフリップフロップ。リモートのスイッチから見て、MACアドレスの接続点が変わり続けるように見える問題です。<xref target="RFC7379" section="3.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7379#section-3.3" derivedContent="RFC7379"/>を参照してください。</dd>
+        <dt pn="section-2-3.15">MC-LAG:</dt>
+        <dd pn="section-2-3.16">マルチシャーシリンクアグリゲーション（Multi-Chassis Link Aggregation）</dd>
+        <dt pn="section-2-3.17">RPF:</dt>
+        <dd pn="section-2-3.18">リバースパスフォワーディング（Reverse Path Forwarding）</dd>
+      </dl>
+    </section>
+    <section anchor="centralized-replication-solution-overview" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-centralized-replication-solution-overview">集中複製による方法の概要</name>
+      <t indent="0" pn="section-3-1">エッジRBridgeは、CEデバイスからBUMトラフィックを受信すると、マルチキャストのカプセル化ではなくユニキャストのTRILLカプセル化を使用して、パケットを集中ノードに送信します。集中ノードは分配ツリーのルートで<bcp14>なければなりません（MUST）</bcp14>。分配ツリーのルートには通常、高帯域幅の隣接関係を多数持つ大容量のコアRBridgeが選ばれます。この制約により、以下で説明するように、中継RBridgeにはソフトウェアの変更だけで集中複製をサポートすることが現実的になります。</t>
+      <t indent="0" pn="section-3-2">ユニキャストのTRILLカプセル化のTRILLヘッダーには、「入口RBridgeニックネーム（ingress RBridge nickname）」フィールドと「出口RBridgeニックネーム（egress RBridge nickname）」フィールドが含まれます<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>。入口RBridgeが、<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/>を使用するアクティブ-アクティブのエッジグループに属するポートからBUMパケットを受信した場合、リモートのRBridgeでのMACフリップフロップ（<xref target="RFC7379" section="3.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7379#section-3.3" derivedContent="RFC7379"/>を参照）を避けるために、入口RBridgeニックネームを自身のニックネームではなく疑似ニックネームに設定します。出口RBridgeニックネームには、集中ノードの特別なニックネームを設定します。この特別なニックネームは、集中複製を目的としたユニキャストのTRILLカプセル化を、通常のユニキャストのTRILLカプセル化と区別するために使用されます。この特別なニックネームを「Rニックネーム（R-nickname）」と呼びます。</t>
+      <t indent="0" pn="section-3-3">集中RBridgeは、自身のRニックネームを出口ニックネームとするユニキャストのTRILLカプセル化されたパケットを受信すると、そのパケットのカプセル化を解除します。次に集中RBridgeは、TRILL基本プロトコル<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>に従って確立された分配ツリーの1つを使用して、BUMパケットを複製し、パケットの宛先のRBridgeに転送します。集中RBridgeは、ツリーのルートが自分自身である分配ツリーを使用<bcp14>しなければなりません（MUST）</bcp14>。（RBridgeは複数のツリーのルートになることがあります。）集中RBridgeは、BUMトラフィックを転送する際、ローカルで入口処理したフレームであるかのように分配ツリー上に送信するだけです。ただし、すべての出口RBridgeでのMACアドレス学習が疑似ニックネームに結び付けられるように、入口ニックネームは受信したパケットのものと同じままにします。</t>
+      <t indent="0" pn="section-3-4">集中ノードから始まる分配ツリーに沿って、複製されたパケットが各RBridgeによって転送される際、<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>に従ってRPFチェックが実行されます。この方法ではマルチキャストトラフィックは常に集中ノードから来るので、入口RBridgeと集中複製ノードの間に位置するRBridgeでは、そのようなBUMパケットの受信ポートは集中ノードに面したポートになるはずです。しかし、<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>で規定された分配ツリーの計算は、エッジグループの仮想RBridgeを入口RBridgeとして使用するため、その結果得られるRPFポートは実際の入口RBridgeに面したポートになり、RPFチェックは失敗します。</t>
+      <t indent="0" pn="section-3-5">この問題を解決するには、RPFテストに若干の変更が必要です。この場合、各RBridgeでのRPF計算は、集中ノードがルートである各ツリーについて、実際の入口である仮想RBridgeではなく、その集中ノードを入口RBridgeとして使用して計算を行うべきです。その結果、RPFチェックは、マルチデスティネーショントラフィックについて、RBridgeの集中ノードに面したポートでのトラフィックを受け入れるようになります。これにより、RPFチェックによってフレームが誤って破棄されることを防げます。</t>
+      <t indent="0" pn="section-3-6">受信したマルチデスティネーションのTRILLデータパケットに対する実際のRPFチェックの変更は簡単です。<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>のRPFチェックは、{入口ニックネーム, ツリー, 受信RBridgeポート}の3つ組が許可されているかどうかを確認するものです。（ツリーはそのルートのニックネームによって示され、それはTRILLヘッダーの「出口ニックネーム（egress nickname）」フィールドに格納されます。）RPFチェックを判定する際、「入口ニックネーム」が集中複製を使用している場合（Cニックネームによって示されます。<xref target="section-9" format="default" sectionFormat="of" derivedContent="Section 9"/>を参照）は、ツリーのルートからの分配に基づいてチェックします。「入口ニックネーム」が集中複製を使用していない場合は、その入口ニックネームを持つRBridgeからの分配に基づいてチェックします。</t>
+      <t indent="0" pn="section-3-7">集中複製のユニキャストTRILLカプセル化を通常のユニキャストTRILLカプセル化と区別するために、集中複製用にRニックネームを導入します。集中ノードは、出口ニックネームがRニックネームであるユニキャストのTRILLカプセル化トラフィックを受信すると、パケットのカプセル化を解除し、前述のとおり再カプセル化して、自身がルートである分配ツリーを通じて宛先のRBridgeにパケットを転送します。TRILLでは、RBridgeは複数のニックネームを保持できるので、集中RBridgeは単に別のニックネームを取得してRニックネームとして使用します。集中RBridge（1つまたは複数）は、<xref target="section-11" format="default" sectionFormat="of" derivedContent="Section 11"/>で規定するTRILLリンクステートPDU（LSP）拡張を通じて、すべてのTRILLキャンパスに自身のRニックネームを通知すべきです。</t>
+    </section>
+    <section anchor="frame-duplication-from-remote-rbridge" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-frame-duplication-from-remote-rbridge">リモートRBridgeからのフレームの重複</name>
+      <t indent="0" pn="section-4-1">リモートのホストが、TRILLキャンパスにアクティブ-アクティブ接続しているローカルのCEにマルチデスティネーションフレームを送信すると、フレームの重複が発生することがあります。ローカルのCEがリモートのRBridgeから複数のコピーを受信するのを避けるために、出口方向のマルチキャストトラフィックについては指定フォワーダー（Designated Forwarder: DF）メカニズムをサポートします。</t>
+      <t indent="0" pn="section-4-2">DF選出メカニズム<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/>では、VLANごとに、アクティブ-アクティブグループ内の1つのRBridgeの1つのポートだけが、TRILLキャンパスからローカルのアクセス側へマルチキャストトラフィックを転送できます。DFを使用する基本的な考え方は、BUMトラフィックの出口処理を担当するRBridgeを、エッジグループからVLANごとに1つ選出することです。<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/>は、エッジグループに参加するメンバーRBridge間のDF選出メカニズムを説明しています。</t>
+      <t indent="0" pn="section-4-3">フレームの重複を防ぐためにDF選出メカニズムを使用する場合、RBridgeのアクセスポートは、非グループ、グループDFポート、グループ非DFポートの3種類のいずれかに分類されます。後の2種類はグループポートと呼ぶことができます。各グループポートは疑似ニックネームに関連付けられます。エッジグループのRBridgeに対して一貫したニックネーム割り当てを使用する場合、同じ疑似ニックネームが単一のRBridge上の複数のポートに関連付けられることがあります。典型的なシナリオは、CE1がLAALP1によってRB1とRB2に接続され、CE2がLAALP2によってRB1とRB2に接続されている場合です。使用する疑似ニックネームの数を節約するために、RB1とRB2上のLAALP1とLAALP2の両方のメンバーポートは、すべて同じ疑似ニックネームに関連付けられます。</t>
+    </section>
+    <section anchor="local-forwarding-behavior-on-ingress-rbridge" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-local-forwarding-behavior-on-ingress-rbridge">入口RBridgeでのローカル転送の振る舞い</name>
+      <t indent="0" pn="section-5-1">入口RBridge（RB1）が、ローカルでアクティブ-アクティブ接続しているCE（CE1）デバイスからBUMトラフィックを受信すると、そのトラフィックはTRILLカプセル化されてTRILLキャンパスに投入されます。そして集中複製によって複製され、TRILL分配ツリーに沿って、入口RBridge自身を含むすべての宛先RBridgeに転送されます。トラフィックが元の送信元であるCEにループして戻るのを避けるために、CEグループの疑似ニックネームである入口ニックネームをトラフィックのフィルタリングに使用します。</t>
+      <t indent="0" pn="section-5-2">しかし、入口RB1に接続し、それぞれ同じ疑似ニックネームに関連付けられた2つのCE（たとえばCE1とCE2）がある場合、RB1はローカルで複製してCE2に転送する必要があります。なぜなら、TRILLキャンパスを経由するCE1とCE2の間のBUMトラフィックのもう1つのコピーは、トラフィックのフィルタリングによって遮断されるからです。</t>
+      <t indent="0" pn="section-5-3">CE1とCE2が同じ疑似ニックネームに関連付けられていない場合、TRILLキャンパスを経由するCE1とCE2の間のBUMトラフィックのコピーは、トラフィックのフィルタリングによって遮断されません。受信側のCEでトラフィックが重複するのを避けるために、入口RB1でこれら2つのCEの間にローカルで複製したBUMトラフィックがあってはなりません。</t>
+      <t indent="0" pn="section-5-4">まとめると、各CEに対するBUMトラフィックの転送の振る舞いを正しくするために、入口RBridgeでのローカル複製の振る舞いは次のようになります。</t>
+      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-5-5">
+        <li pn="section-5-5.1" derivedCounter="1.">受信ポートに関連付けられたものと同じ疑似ニックネームに関連付けられた、アクティブ-アクティブのグループポートに複製します。</li>
+        <li pn="section-5-5.2" derivedCounter="2.">ほかの疑似ニックネームに関連付けられたアクティブ-アクティブのグループポートには複製しません。</li>
+        <li pn="section-5-5.3" derivedCounter="3.">エッジグループに属さないポートには複製しません。</li>
+      </ol>
+      <t indent="0" pn="section-5-6">RB1の入口RBridgeでの上記のローカル転送の振る舞いを、「集中複製のローカル転送の振る舞いA」と呼ぶことができます。</t>
+      <t indent="0" pn="section-5-7">入口RBridgeであるRB1自身が集中複製ノードである場合、RB1がTRILLキャンパスに投入したBUMトラフィックはRB1にループして戻ってきません。この場合のローカル転送の振る舞いを、集中複製のローカル転送の振る舞いBと呼びます。RB1での振る舞いBは次のとおりです。</t>
+      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-5-8">
+        <li pn="section-5-8.1" derivedCounter="1.">受信ポートに関連付けられたものと同じ疑似ニックネームに関連付けられたポートに、ローカルで複製します。</li>
+        <li pn="section-5-8.2" derivedCounter="2.">異なる疑似ニックネームに関連付けられたグループDFポートに、ローカルで複製します。異なる疑似ニックネームに関連付けられたグループ非DFポートには複製しません。</li>
+        <li pn="section-5-8.3" derivedCounter="3.">エッジグループに属さないポートに、ローカルで複製します。</li>
+      </ol>
+    </section>
+    <section anchor="loop-prevention-among-rbridges-in-an-edge-group" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-loop-prevention-among-rbridges-in-an-edge-group">エッジグループ内のRBridge間でのループ防止</name>
+      <t indent="0" pn="section-6-1">CEがDFポートを通じて入口RBridgeにBUMパケットを送信した場合、そのRBridgeは、そのアクティブ-アクティブグループについて非DFポートしか持たないほかのRBridgeのすべてまたは一部に、そのパケットを転送します。非DFポートへのBUMトラフィックの転送は許可されていないので、この場合、フレームがCEにループして戻ることはありません。</t>
+      <t indent="0" pn="section-6-2">CEが非DFポートを通じて入口RBridge（たとえばRB1）にBUMパケットを送信した場合、RB1は、そのアクティブ-アクティブグループについてDFポートを持つほかのRBridgeにそのパケットを転送します。この場合、フレームはCEにループして戻ってしまうため、エッジグループ内のRBridge間でループするのを避けるために、トラフィックのスプリットホライズンフィルタリングのメカニズムを使用します。</t>
+      <t indent="0" pn="section-6-3">このスプリットホライズンのメカニズムは、TRILLヘッダーの入口ニックネームフィールドを利用して、パケットの出口ポートが、TRILLキャンパスへのパケットの受信ポートと同じアクティブ-アクティブグループに属しているかどうかを確認します。</t>
+      <t indent="0" pn="section-6-4">入口RBridgeが、アクティブ-アクティブ接続しているCEデバイスからBUMトラフィックを受信すると、そのトラフィックはTRILLカプセル化されてTRILLキャンパスを通じて集中RBridgeに送信されます。集中RBridgeでトラフィックは複製され、TRILL分配ツリーを通じて、入口RBridge自身を含む宛先のRBridgeに転送されます。アクティブ-アクティブアクセスの2つのCEに対して同じ疑似ニックネームを入口ニックネームとして使用している場合、出口RBridgeはそのニックネームを使用して、すべてのローカルのCEへのトラフィック転送をフィルタリングできます。この場合、これら2つのCEの間のトラフィックはローカルのRBridgeを経由し、TRILLキャンパスからのトラフィックのもう1つのコピーはフィルタリングされます。接続している2つのCEデバイスに異なる入口ニックネームを使用している場合、これら2つのCEに接続するアクセスポートは互いに分離されるべきです。これら2つのCEの間のBUMトラフィックはTRILLキャンパスを経由すべきです。そうしないと、送信元のCEと同じRBridgeに接続している宛先のCEが、トラフィックのコピーを2つ受信してしまいます。</t>
+    </section>
+    <section anchor="centralized-replication-forwarding-process" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-centralized-replication-forwarding-process">集中複製の転送プロセス</name>
+      <figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
+        <name slugifiedName="name-trill-active-active-access">TRILLのアクティブ-アクティブアクセス</name>
+        <artwork name="" type="" align="left" alt="" pn="section-7-1.1"><![CDATA[
+                          +-----------+
+                          |   (RB5)   |
+                          +-----------+
+                                |
+                          +-----------+
+                          |   (RB4)   |
+                          +-----------+
+
+                           |     |    |
+                   --------      |     --------
+                  |              |             |
+                +------+      +------+      +------+
+                |(RB1) |      |(RB2) |      | (RB3)|
+                +------+      +------+      +------+
+                  *   |         *  |          * |  ^
+                  *   |         *  |          * |   ^
+                  *   ----------*-------------*--    ^
+                  ***************************** |     ^
+                  *                             |      ^
+           LAALP1 *                      LAALP2 |       ^
+              +------+                    +------+    +------+
+              |  CE1 |                    | CE2  |    | CE3  |
+              +------+                    +------+    +------+
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-7-2">注：この図のアスタリスクの線、ハイフンと縦棒の線、サーカムフレックスの線は、各CEと各RBの接続を示しています。</t>
+      <t indent="0" pn="section-7-3">上の<xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>のネットワーク例で集中複製の方法を使用すると仮定します。RB5は分配ツリーのルートであり、集中複製ノードです。CE1とCE2は、それぞれLAALP1とLAALP2を通じてRB1、RB2、RB3にアクティブ-アクティブでアクセスしています。CE3はRB3にシングルホーム接続しています。RB1からRB5までのRBridge自身のニックネームは、それぞれnick1からnick5です。RB1、RB2、RB3は、LAALP1とLAALP2に同じ疑似ニックネームを使用しており、その疑似ニックネームはP-nickです。集中複製ノードであるRB5のRニックネームはS-nickです。</t>
+      <t indent="0" pn="section-7-4">CE1からCE2とCE3へのBUMトラフィックの転送プロセスは次のとおりです。</t>
+      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-7-5">
+        <li pn="section-7-5.1" derivedCounter="1.">CE1はBUMトラフィックをRB3に送信します。</li>
+        <li pn="section-7-5.2" derivedCounter="2.">RB3はBUMトラフィックを複製し、ローカルでCE2に送信します。RB2はまた、ユニキャストのTRILLカプセル化を使用してトラフィックをRB5に送信します。TRILLヘッダーでは、入口ニックネームをP-nickに、出口ニックネームをS-nickに設定します。</li>
+        <li pn="section-7-5.3" derivedCounter="3.">RB5は、ユニキャストのTRILLデータパケットのカプセル化を解除します。次に、自身がルートである分配ツリーを使用して、そのパケットをマルチデスティネーションのTRILLデータパケットとして転送します。マルチデスティネーションのTRILLヘッダーの出口ニックネームはnick5で、入口ニックネームはP-nickのままです。RB3がRニックネームではないニックネームにユニキャストを送信していた場合、パケットは再カプセル化されなかったでしょう。ツリーのルートではないRニックネームに送信された場合、そのパケットはまったく転送されないか、再カプセル化されて転送されたとしても誤った枝刈りの対象となり、意図したすべての受信者には配送されません。</li>
+        <li pn="section-7-5.4" derivedCounter="4.">RB4は、RB5からマルチキャストのTRILLトラフィックを受信します。受信ポートは、分配ツリーのルートに面した上りポートです。この文書で変更したRPFポートの計算アルゴリズムにより、RB4のRPFチェックは正しく行われます。RPFチェックを実行したあと、RB4はほかのすべての出口RBridge（RB1、RB2、RB3）にトラフィックを転送します。</li>
+        <li pn="section-7-5.5" derivedCounter="5.">RB3は、RB4からマルチキャストのTRILLトラフィックを受信します。RB3は、マルチデスティネーションのTRILLデータパケットのカプセル化を解除します。入口ニックネームのP-nickは、CE1とCE2に接続するローカルのLAALPのニックネームと同じなので、RB3はフレームの重複を避けるために、CE1とCE2にはトラフィックを転送しません。RB3はCE3にだけパケットを転送します。</li>
+        <li pn="section-7-5.6" derivedCounter="6.">RB1とRB2は、RB4からマルチキャストのTRILLトラフィックを受信します。転送プロセスはRB3でのプロセスと同様です。つまり、入口ニックネームのP-nickは、CE1とCE2に接続するローカルのLAALPのニックネームと同じなので、RB1とRB2もローカルのCE1とCE2にはトラフィックを転送しません。</li>
+      </ol>
+    </section>
+    <section anchor="bum-traffic-load-balancing-among-multiple-centralized-nodes" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-bum-traffic-load-balancing-among-multiple-centralized-nodes">複数の集中ノード間でのBUMトラフィックの負荷分散</name>
+      <t indent="0" pn="section-8-1">ユニキャストのTRILLカプセル化によるBUMトラフィックの負荷分散をサポートするために、複数の集中複製ノードを展開し、データラベル（VLANまたはFGL）に基づいてトラフィックをこれらのノードに分散させることができます。さらに、ある集中ノードにこのBUMトラフィックをより多く送信したい場合は、そのノードが2つ以上のRニックネームを保持することもできます。そのノードが受け取るBUMトラフィックの割合は、保持するRニックネームの数に比例します。</t>
+      <t indent="0" pn="section-8-2">TRILLキャンパス内の集中ノードが保持する異なるRニックネームがk個あると仮定すると、アクティブ-アクティブアクセスの入口RBridgeが使用するVLANベース（またはFGLベース<xref target="RFC7172" format="default" sectionFormat="of" derivedContent="RFC7172"/>）の負荷分散アルゴリズムは次のとおりです。</t>
+      <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-8-3">
+        <li pn="section-8-3.1" derivedCounter="1.">すべてのRニックネームを、符号なし16ビット整数として扱って昇順に並べ、0からk-1までの番号を付けます。</li>
+        <li pn="section-8-3.2" derivedCounter="2.">データラベルIDがmの場合、インデックスが(m mod k)であるRニックネームを、BUMトラフィックのユニキャストTRILLカプセル化の出口ニックネームとして選択します。</li>
+      </ol>
+      <t indent="0" pn="section-8-4">たとえば、3つのRニックネーム（RN）があるとします。RNはRN0からRN2の順に並べられます。VLAN ID1からID5までの5つのVLANがエッジRBridgeに分散していると仮定すると、VLAN1のトラフィックはRN1に、VLAN2のトラフィックはRN2に、というように送られます。</t>
+      <t indent="0" pn="section-8-5">アクティブ-アクティブ接続に参加している入口RBridgeは、ローカルのCEからBUMトラフィックを受信すると、VLANベースの負荷分散アルゴリズムに基づいて、トラフィックをどのRニックネームに送信するかを決定します。これにより、複数の集中ノード／複数のRニックネームを使用して、BUMトラフィックのデータラベルベースの負荷分散を実現できます。</t>
+    </section>
+    <section anchor="coexisting-with-the-cmt-solution-(rfc-7783)" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-coexisting-with-the-cmt-solution-(rfc-7783)">CMTによる方法（RFC 7783）との共存</name>
+      <figure anchor="fig-2" align="left" suppress-title="false" pn="figure-2">
+        <name slugifiedName="name-cmt-and-centralized-replication-coexisting-scenario">CMTと集中複製が共存するシナリオ</name>
+        <artwork name="" type="" align="left" alt="" pn="section-9-1.1"><![CDATA[
+                 +------+    +------+
+                 |(RB6) |    |(RB7) |
+                 +------+    +------+
+   ------------------|-----------|----------------------
+   |            |              |          |            |
++------+    +------+       +------+    +------+     +------+
+|(RB1) |    |(RB2) |       |(RB3) |    |(RB4) |     |(RB5) |
++------+    +------+       +------+    +------+     +------+
+    |          |               |          |            |
+    ------------               -------------------------
+          |                               |
+      +------+                         +------+
+      |  CE1 |                         |  CE2 |
+      +------+                         +------+
+]]></artwork>
+      </figure>
+      <t indent="0" pn="section-9-2">集中複製による方法と、<xref target="RFC7783" format="default" sectionFormat="of" derivedContent="RFC7783"/>の協調マルチキャストツリー（Coordinated Multicast Trees: CMT）による方法は、どちらもリモートのRBridgeでのMACフリップフロップを避けるために疑似ニックネームを使用することに依存しています。これら2つの方法は、単一のTRILLキャンパス内で共存できます。どちらの方法を使うかは、RBridgeのアクティブ-アクティブのエッジグループごとに独立して選択できます。</t>
+      <t indent="0" pn="section-9-3"><xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>に示すように、RB1とRB2はCE1のアクティブ-アクティブアクセスにCMTを使用し、RB3、RB4、RB5はCE2のアクティブ-アクティブアクセスに集中複製を使用します。</t>
+      <t indent="0" pn="section-9-4">集中複製による方法では、エッジグループのRBridgeは、Cフラグを設定したNickname Flags APPsub-TLVを使用して、ローカルの疑似ニックネームを通知<bcp14>しなければなりません（MUST）</bcp14>。Cフラグが設定されたニックネームを「Cニックネーム（C-nickname）」と呼びます。中継RBridgeは、Cニックネームを入口ニックネームとするTRILLデータパケットを受信すると、集中複製に固有のRPFチェックアルゴリズムを実行します。</t>
+      <t indent="0" pn="section-9-5">CMT <xref target="RFC7783" format="default" sectionFormat="of" derivedContent="RFC7783"/>を使用するエッジグループは、自身が使用している疑似ニックネームにCフラグを設定しては<bcp14>なりません（MUST NOT）</bcp14>。<xref target="RFC7780" format="default" sectionFormat="of" derivedContent="RFC7780"/>は、Nickname Flags APPsub-TLVを生成するすべてのRBridgeに対して、自身が知らないフラグビットをゼロに設定することを要求しているので、これはすでに必須の振る舞いです。それにもかかわらず、CMT <xref target="RFC7783" format="default" sectionFormat="of" derivedContent="RFC7783"/>を使用するエッジRBridgeがエッジグループの疑似ニックネームにCビットを設定した場合、そのニックネームを入口としてカプセル化されたBUMトラフィックは、分配の早い段階で誤って枝刈りされる可能性が非常に高く、その結果、意図した宛先のごく一部にしか届かない（まったく届かない可能性もある）でしょう。混乱を避けるために、疑似ニックネームを集中複製のエッジグループとCMTベースのエッジグループの間で共有しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+    </section>
+    <section anchor="network-upgrade-analysis" numbered="true" removeInRFC="false" toc="include" pn="section-10">
+      <name slugifiedName="name-network-upgrade-analysis">ネットワークのアップグレードの分析</name>
+      <t indent="0" pn="section-10-1">集中ノードは通常、集中複製をサポートするために、ソフトウェアとハードウェアのアップグレードが必要になります。集中複製は、TRILLユニキャストトラフィックのカプセル化を解除するプロセスと、分配ツリーに沿った通常のTRILLマルチキャストトラフィックの転送プロセスをつなぎ合わせるものです。</t>
+      <t indent="0" pn="section-10-2">アクティブ-アクティブ接続のエッジRBridgeは通常、BUMトラフィックのユニキャストTRILLカプセル化をサポートするために、ソフトウェアとハードウェアのアップグレードが必要になります。このプロセスは、ほかのヘッドエンド複製のプロセスと同様です。</t>
+      <t indent="0" pn="section-10-3">中継ノードは通常、変更されたRPFポートの計算アルゴリズムをサポートするために、ソフトウェアのアップグレードだけが必要です。</t>
+    </section>
+    <section anchor="trill-protocol-extensions" numbered="true" removeInRFC="false" toc="include" pn="section-11">
+      <name slugifiedName="name-trill-protocol-extensions">TRILLプロトコルの拡張</name>
+      <t indent="0" pn="section-11-1">Nickname Flags APPsub-TLV <xref target="RFC7780" format="default" sectionFormat="of" derivedContent="RFC7780"/>に、2つの新しいフラグ「R」と「C」を規定します。Rフラグが設定されたニックネームを「Rニックネーム（R-nickname）」と呼び、Cフラグが設定されたニックネームを「Cニックネーム（C-nickname）」と呼びます。Rニックネームは、ユニキャストのTRILLカプセル化されたBUMトラフィックを通常のユニキャストTRILLトラフィックと区別するために、集中ノードに付与される特別なニックネームです。Cニックネームのフラグは、集中複製を使用する各エッジグループの疑似ニックネームに設定されます。Cニックネームは特別な疑似ニックネームであり、入口ニックネームフィールドにCニックネームを持つTRILLデータパケットに対して、中継RBridgeは異なるRPFチェックアルゴリズムを実行します。</t>
+      <t indent="0" pn="section-11-2">アクティブ-アクティブのエッジRBridgeが集中複製を使用してBUMトラフィックを転送する場合、BUMトラフィックのユニキャストTRILLカプセル化のTRILLヘッダーでは、Rニックネームを出口ニックネームとして使用し、Cニックネームを入口ニックネームとして使用します。</t>
+      <section anchor="&quot;r&quot;-and-&quot;c&quot;-flag-in-the-nickname-flags-appsub-tlv" numbered="true" removeInRFC="false" toc="include" pn="section-11.1">
+        <name slugifiedName="name-&quot;r&quot;-and-&quot;c&quot;-flag-in-the-nickname-flags-appsub-tlv">Nickname Flags APPsub-TLVの「R」フラグと「C」フラグ</name>
+        <t indent="0" pn="section-11.1-1">Nickname Flags APPsub-TLVに現れるニックネームを持たないRBridgeがこのAPPsub-TLVを広告している場合、APPsub-TLVのRフラグとCフラグのビットは、ゼロであるかのように扱わ<bcp14>なければなりません（MUST）</bcp14>。分配ツリーのルートではないRBridgeがRニックネームを広告した場合、そのニックネームをRニックネームとして扱っては<bcp14>なりません（MUST NOT）</bcp14>。代わりに通常のニックネームとして扱います。つまり、ツリーのルートではないRBridgeがニックネームを保持している場合、Rニックネームのフラグはあらゆる目的において無視されます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-11.1-2"><![CDATA[
+           0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+          +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+          |   Nickname                                    |
+          +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+          |IN|SE|R | C|    RESV                           |
+          +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+                          NICKFLAG RECORD
+]]></artwork>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-11.1-3">
+          <li pn="section-11.1-3.1">R = Rフラグが1の場合、Nicknameを保持し広告しているTRILLスイッチが集中複製ノードであり、エッジグループのRBridgeがアクティブ-アクティブアクセスにこの集中複製による方法を使用するとき、エッジグループのRBridgeがBUMトラフィックをTRILLキャンパスに投入するための出口ニックネームとしてNicknameが使用されることを示します。Rフラグが0の場合、そのニックネームはその目的には使用されません。</li>
+          <li pn="section-11.1-3.2">C = Cフラグが1の場合、このニックネームを入口ニックネームとするTRILLトラフィックには、<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>で規定した特別なRPFチェックアルゴリズムが必要であることを示します。Cフラグが0の場合、そのニックネームはその目的には使用されません。</li>
+        </ul>
+        <t indent="0" pn="section-11.1-4">エラーや、設定変更などのあとにリンクステートデータベースが収束していく間の一時的に不整合なLSPによって、同じニックネームに対するNickname Flags APPsub-TLVが不整合になる可能性があります。この場合、そのニックネームに対するいずれかのNickname Flags APPsub-TLVでR／Cフラグが設定されていれば、そのニックネームはR／Cフラグが設定されているものとして扱うことが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-12">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-12-1">この文書は、追加のセキュリティーリスクを何ら導入しません。ツリーのルートである不正なRBridgeは、Rニックネームを広告することでトラフィックを引き寄せることができます。しかし、RBridgeは、低コストの隣接関係を広告したり、自身を最高優先度のツリールートにしたりするなど、ほかにもさまざまな方法で問題を引き起こすことができるので、これはリスクの実質的な増加にはなりません。一般に、信頼できないデバイスがRBridgeとして振る舞い大混乱を引き起こすことへの防御策は、IS-IS認証<xref target="RFC5310" format="default" sectionFormat="of" derivedContent="RFC5310"/>を使用し、信頼できるRBridgeだけが認証鍵を持つようにTRILLキャンパスを設定・管理することです。</t>
+      <t indent="0" pn="section-12-2">TRILLのセキュリティーに関する一般的な考慮事項については、<xref target="RFC6325" format="default" sectionFormat="of" derivedContent="RFC6325"/>を参照してください。疑似ニックネームによるアクティブ-アクティブに関連するセキュリティーの考慮事項については、<xref target="RFC7781" format="default" sectionFormat="of" derivedContent="RFC7781"/>を参照してください。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-13">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-13-1">IANAは、<xref target="section-11.1" format="default" sectionFormat="of" derivedContent="Section 11.1"/>で説明したRビットとCビットのために、Nickname Flags APPsubTLVのフラグの2ビットを割り当て、「Transparent Interconnection of Lots of Links (TRILL) Parameters」レジストリーの「NickFlags Bits」サブレジストリーを次のように更新しました。</t>
+      <table align="center">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">ビット</th>
+            <th align="left" colspan="1" rowspan="1">ニーモニック</th>
+            <th align="left" colspan="1" rowspan="1">説明</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">2</td>
+            <td align="left" colspan="1" rowspan="1">R</td>
+            <td align="left" colspan="1" rowspan="1">Replication Nickname</td>
+            <td align="left" colspan="1" rowspan="1">[RFC8361]</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">3</td>
+            <td align="left" colspan="1" rowspan="1">C</td>
+            <td align="left" colspan="1" rowspan="1">Special RPF Check</td>
+            <td align="left" colspan="1" rowspan="1">[RFC8361]</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-14">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-14.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC5310" target="https://www.rfc-editor.org/info/rfc5310" quoteTitle="true" derivedAnchor="RFC5310">
+          <front>
+            <title>IS-IS Generic Cryptographic Authentication</title>
+            <author fullname="M. Bhatia" initials="M." surname="Bhatia"/>
+            <author fullname="V. Manral" initials="V." surname="Manral"/>
+            <author fullname="T. Li" initials="T." surname="Li"/>
+            <author fullname="R. Atkinson" initials="R." surname="Atkinson"/>
+            <author fullname="R. White" initials="R." surname="White"/>
+            <author fullname="M. Fanto" initials="M." surname="Fanto"/>
+            <date year="2009" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="5310"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5310"/>
+        </reference>
+        <reference anchor="RFC6165" target="https://www.rfc-editor.org/info/rfc6165" quoteTitle="true" derivedAnchor="RFC6165">
+          <front>
+            <title>Extensions to IS-IS for Layer-2 Systems</title>
+            <author fullname="A. Banerjee" initials="A." surname="Banerjee"/>
+            <author fullname="D. Ward" initials="D." surname="Ward"/>
+            <date year="2011" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="6165"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6165"/>
+        </reference>
+        <reference anchor="RFC6325" target="https://www.rfc-editor.org/info/rfc6325" quoteTitle="true" derivedAnchor="RFC6325">
+          <front>
+            <title>Routing Bridges (RBridges): Base Protocol Specification</title>
+            <author fullname="R. Perlman" initials="R." surname="Perlman"/>
+            <author fullname="D. Eastlake 3rd" initials="D." surname="Eastlake 3rd"/>
+            <author fullname="D. Dutt" initials="D." surname="Dutt"/>
+            <author fullname="S. Gai" initials="S." surname="Gai"/>
+            <author fullname="A. Ghanwani" initials="A." surname="Ghanwani"/>
+            <date year="2011" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="6325"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6325"/>
+        </reference>
+        <reference anchor="RFC7172" target="https://www.rfc-editor.org/info/rfc7172" quoteTitle="true" derivedAnchor="RFC7172">
+          <front>
+            <title>Transparent Interconnection of Lots of Links (TRILL): Fine-Grained Labeling</title>
+            <author fullname="D. Eastlake 3rd" initials="D." surname="Eastlake 3rd"/>
+            <author fullname="M. Zhang" initials="M." surname="Zhang"/>
+            <author fullname="P. Agarwal" initials="P." surname="Agarwal"/>
+            <author fullname="R. Perlman" initials="R." surname="Perlman"/>
+            <author fullname="D. Dutt" initials="D." surname="Dutt"/>
+            <date year="2014" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="7172"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7172"/>
+        </reference>
+        <reference anchor="RFC7176" target="https://www.rfc-editor.org/info/rfc7176" quoteTitle="true" derivedAnchor="RFC7176">
+          <front>
+            <title>Transparent Interconnection of Lots of Links (TRILL) Use of IS-IS</title>
+            <author fullname="D. Eastlake 3rd" initials="D." surname="Eastlake 3rd"/>
+            <author fullname="T. Senevirathne" initials="T." surname="Senevirathne"/>
+            <author fullname="A. Ghanwani" initials="A." surname="Ghanwani"/>
+            <author fullname="D. Dutt" initials="D." surname="Dutt"/>
+            <author fullname="A. Banerjee" initials="A." surname="Banerjee"/>
+            <date year="2014" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="7176"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7176"/>
+        </reference>
+        <reference anchor="RFC7780" target="https://www.rfc-editor.org/info/rfc7780" quoteTitle="true" derivedAnchor="RFC7780">
+          <front>
+            <title>Transparent Interconnection of Lots of Links (TRILL): Clarifications, Corrections, and Updates</title>
+            <author fullname="D. Eastlake 3rd" initials="D." surname="Eastlake 3rd"/>
+            <author fullname="M. Zhang" initials="M." surname="Zhang"/>
+            <author fullname="R. Perlman" initials="R." surname="Perlman"/>
+            <author fullname="A. Banerjee" initials="A." surname="Banerjee"/>
+            <author fullname="A. Ghanwani" initials="A." surname="Ghanwani"/>
+            <author fullname="S. Gupta" initials="S." surname="Gupta"/>
+            <date year="2016" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="7780"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7780"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-14.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC7781" target="https://www.rfc-editor.org/info/rfc7781" quoteTitle="true" derivedAnchor="RFC7781">
+          <front>
+            <title>Transparent Interconnection of Lots of Links (TRILL): Pseudo-Nickname for Active-Active Access</title>
+            <author fullname="H. Zhai" initials="H." surname="Zhai"/>
+            <author fullname="T. Senevirathne" initials="T." surname="Senevirathne"/>
+            <author fullname="R. Perlman" initials="R." surname="Perlman"/>
+            <author fullname="M. Zhang" initials="M." surname="Zhang"/>
+            <author fullname="Y. Li" initials="Y." surname="Li"/>
+            <date year="2016" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="7781"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7781"/>
+        </reference>
+        <reference anchor="RFC7379" target="https://www.rfc-editor.org/info/rfc7379" quoteTitle="true" derivedAnchor="RFC7379">
+          <front>
+            <title>Problem Statement and Goals for Active-Active Connection at the Transparent Interconnection of Lots of Links (TRILL) Edge</title>
+            <author fullname="Y. Li" initials="Y." surname="Li"/>
+            <author fullname="W. Hao" initials="W." surname="Hao"/>
+            <author fullname="R. Perlman" initials="R." surname="Perlman"/>
+            <author fullname="J. Hudson" initials="J." surname="Hudson"/>
+            <author fullname="H. Zhai" initials="H." surname="Zhai"/>
+            <date year="2014" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="7379"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7379"/>
+        </reference>
+        <reference anchor="RFC7783" target="https://www.rfc-editor.org/info/rfc7783" quoteTitle="true" derivedAnchor="RFC7783">
+          <front>
+            <title>Coordinated Multicast Trees (CMT) for Transparent Interconnection of Lots of Links (TRILL)</title>
+            <author fullname="T. Senevirathne" initials="T." surname="Senevirathne"/>
+            <author fullname="J. Pathangi" initials="J." surname="Pathangi"/>
+            <author fullname="J. Hudson" initials="J." surname="Hudson"/>
+            <date year="2016" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="7783"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7783"/>
+        </reference>
+        <reference anchor="IEEE802.1AX" target="http://ieeexplore.ieee.org/document/7888436/" quoteTitle="true" derivedAnchor="IEEE802.1AX">
+          <front>
+            <title>IEEE Standard for Local and metropolitan area networks -- Link Aggregation</title>
+            <author>
+              <organization showOnFrontPage="true">IEEE</organization>
+            </author>
+            <date year="2017" month="March"/>
+          </front>
+          <seriesInfo name="IEEE" value="802.1AX"/>
+          <seriesInfo name="DOI" value="10.1109/IEEESTD.2017.7888436"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、Donald Eastlake、Hongjun Zhai、Xiaomin Wu、Liang Xia、Francis Dupontの重要な貢献に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Weiguo Hao" initials="W." surname="Hao">
+        <organization showOnFrontPage="true">Huawei Technologies</organization>
+        <address>
+          <postal>
+            <street>101 Software Avenue,</street>
+            <city>Nanjing</city>
+            <code>210012</code>
+            <country>China</country>
+          </postal>
+          <email>haoweiguo@huawei.com</email>
+        </address>
+      </author>
+      <author fullname="Yizhou Li" initials="Y." surname="Li">
+        <organization showOnFrontPage="true">Huawei Technologies</organization>
+        <address>
+          <postal>
+            <street>101 Software Avenue,</street>
+            <city>Nanjing</city>
+            <code>210012</code>
+            <country>China</country>
+          </postal>
+          <email>liyizhou@huawei.com</email>
+        </address>
+      </author>
+      <author fullname="Muhammad Durrani" initials="M." surname="Durrani">
+        <organization showOnFrontPage="true">Equinix</organization>
+        <address>
+          <email>mdurrani@equinix.com</email>
+        </address>
+      </author>
+      <author fullname="Sujay Gupta" initials="S." surname="Gupta">
+        <organization showOnFrontPage="true">IP Infusion</organization>
+        <address>
+          <postal>
+            <street>RMZ Centennial</street>
+            <street>Mahadevapura Post</street>
+            <city>Bangalore</city>
+            <code>560048</code>
+            <country>India</country>
+          </postal>
+          <email>sujay.gupta@ipinfusion.com</email>
+        </address>
+      </author>
+      <author fullname="Andrew Qu" initials="A." surname="Qu">
+        <organization showOnFrontPage="true">MediaTec</organization>
+        <address>
+          <email>laodulaodu@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

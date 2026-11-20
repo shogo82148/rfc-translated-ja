@@ -1,0 +1,1125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-sidr-rpki-validation-reconsidered-10" indexInclude="true" number="8360" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-sidr-rpki-validation-reconsidered-10" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8360" rel="alternate"/>
+  <front>
+    <title>リソース公開鍵基盤（RPKI）の検証の再検討</title>
+    <seriesInfo name="RFC" value="8360" stream="IETF"/>
+    <date year="2018" month="April"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、RFC 6487で規定されている証明書検証手順の代替を規定します。この代替手順は、本質的なセキュリティー機能を維持しつつ、リソース公開鍵基盤（Resource Public Key Infrastructure、RPKI）における証明書管理の運用上の脆さを軽減します。</t>
+      <t indent="0" pn="section-abstract-2">RFC 6487で規定されている手順では、リソース証明書が発行元証明書に含まれていないリソースを過大主張（overclaim）していることが判明した場合、そのリソース証明書を全面的に拒否することを要求します。一方、ここで定義する検証プロセスでは、発行元の認証局（Certification Authority、CA）が、そのようなリソース証明書を、そのリソースと発行元証明書のリソースとの共通部分について受け入れるべきであると伝えることを選択できるようにします。</t>
+      <t indent="0" pn="section-abstract-3">ここで定義する検証プロセスは、単一のトラストアンカー（trust anchor、TA）のもとでの検証のみを考慮していることに注意してください。特に、設定された複数のTAが重複するリソースを主張する場合の過大主張に関する懸念は、この文書の範囲外とします。</t>
+      <t indent="0" pn="section-abstract-4">この選択は、「X.509 Extensions for IP Addresses and AS Identifiers」（RFC 3779）および「Certificate Policy (CP) for the Resource Public Key Infrastructure (RPKI)」（RFC 6484）に対する代替のオブジェクト識別子（Object Identifier、OID）の組によって示されます。トラストアンカー配下のどの証明書でもこれらのOIDが使用されていない場合、ここで定義する検証手順は、RFC 6487で定義されている手順と同じ結果になることに注意してください。</t>
+      <t indent="0" pn="section-abstract-5">さらに、この文書は、経路生成元認可（Route Origin Authorization、ROA）（RFC 6482）およびBGPsecルーター証明書（BGPsec PKI Profiles -- 発行要求中）の検証に対する代替を提供します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<eref target="https://www.rfc-editor.org/info/rfc8360" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+            <li pn="section-toc.1-1.1.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-requirements-notation">要件の表記</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-certificate-validation-in-the-rpki">RPKIにおける証明書の検証</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations">運用上の考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-amended-rpki-certification-validation-process">修正されたRPKI証明書検証プロセス</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-verified-resource-sets">検証済みリソースセット</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-differences-with-existing-standards">既存の標準との差異</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2">
+              <li pn="section-toc.1-1.4.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1.1"><xref derivedContent="4.2.1" format="counter" sectionFormat="of" target="section-4.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-certificate-policy-(cp)-for-use-with-validation-reconsidered-in-the-rpki">RPKIにおける再検討された検証で使用する証明書ポリシー（CP）</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.1"><xref derivedContent="4.2.2" format="counter" sectionFormat="of" target="section-4.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-alternative-to-x.509-extensions-for-ip-addresses-and-as-identifiers-(rfc-3779)">IPアドレスとAS識別子のためのX.509拡張（RFC 3779）の代替</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.2.2">
+                <li pn="section-toc.1-1.4.2.2.1">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.1.1"><xref derivedContent="4.2.2.1" format="counter" sectionFormat="of" target="section-4.2.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-oid-for-id-pe-ipaddrblocks-v2">id-pe-ipAddrBlocks-v2のOID</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.2">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.2.1"><xref derivedContent="4.2.2.2" format="counter" sectionFormat="of" target="section-4.2.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-syntax-for-id-pe-ipaddrblocks-v2">id-pe-ipAddrBlocks-v2の構文</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.3">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.3.1"><xref derivedContent="4.2.2.3" format="counter" sectionFormat="of" target="section-4.2.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-oid-for-id-pe-autonomoussysids-v2">id-pe-autonomousSysIds-v2のOID</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.4">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.4.1"><xref derivedContent="4.2.2.4" format="counter" sectionFormat="of" target="section-4.2.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-syntax-for-id-pe-autonomoussysids-v2">id-pe-autonomousSysIds-v2の構文</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.5">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.5.1"><xref derivedContent="4.2.2.5" format="counter" sectionFormat="of" target="section-4.2.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-ip-address-delegation-extension-certification-path-validation">修正されたIPアドレス委任拡張の証明書パス検証</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.6">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.6.1"><xref derivedContent="4.2.2.6" format="counter" sectionFormat="of" target="section-4.2.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-autonomous-system-identifier-delegation-extension-certification-path-validation">修正された自律システム識別子委任拡張の証明書パス検証</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.2.7">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.2.7.1"><xref derivedContent="4.2.2.7" format="counter" sectionFormat="of" target="section-4.2.2.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-asn.1-module">修正されたASN.1モジュール</xref></t>
+                </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.3.1"><xref derivedContent="4.2.3" format="counter" sectionFormat="of" target="section-4.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-addendum-to-rfc-6268">RFC 6268への補遺</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.4.1"><xref derivedContent="4.2.4" format="counter" sectionFormat="of" target="section-4.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-alternative-to-the-profile-for-x.509-pkix-resource-certificates">X.509 PKIXリソース証明書のプロファイルの代替</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2.4.2">
+                <li pn="section-toc.1-1.4.2.4.1">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.4.1.1"><xref derivedContent="4.2.4.1" format="counter" sectionFormat="of" target="section-4.2.4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-certificate-policies">修正された証明書ポリシー</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.4.2">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.4.2.1"><xref derivedContent="4.2.4.2" format="counter" sectionFormat="of" target="section-4.2.4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-ip-resources">修正されたIPリソース</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.4.3">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.4.3.1"><xref derivedContent="4.2.4.3" format="counter" sectionFormat="of" target="section-4.2.4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-as-resources">修正されたASリソース</xref></t>
+                </li>
+                <li pn="section-toc.1-1.4.2.4.4">
+                  <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.4.4.1"><xref derivedContent="4.2.4.4" format="counter" sectionFormat="of" target="section-4.2.4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-amended-resource-certificate-path-validation">修正されたリソース証明書パス検証</xref></t>
+                </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.4.2.5">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.5.1"><xref derivedContent="4.2.5" format="counter" sectionFormat="of" target="section-4.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-alternative-roa-validation">ROA検証の代替</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.2.6">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.6.1"><xref derivedContent="4.2.6" format="counter" sectionFormat="of" target="section-4.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-an-alternative-to-bgpsec-router-certificate-validation">BGPsecルーター証明書の検証の代替</xref></t>
+              </li>
+              </ul>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-validation-examples">検証の例</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-1----an-rpki-tree-using-the-old-oids-only">例1 -- 古いOIDのみを使用するRPKIツリー</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-2----an-rpki-tree-using-the-new-oids-only">例2 -- 新しいOIDのみを使用するRPKIツリー</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-3----an-rpki-tree-using-a-mix-of-old-and-new-oids">例3 -- 古いOIDと新しいOIDを混在して使用するRPKIツリー</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-considerations">展開に関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+            <li pn="section-toc.1-1.9.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.9.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-overview">概要</name>
+      <t indent="0" pn="section-1-1">この文書は、RFC 6487で規定されている証明書検証手順の代替を規定します。RFC 6487で規定されている手順では、リソース証明書が発行元証明書に含まれていないリソースを過大主張（overclaim）していることが判明した場合、そのリソース証明書を全面的に拒否することを要求します。これに対し、ここで定義する手順では、そのようなリソース証明書を、そのリソースと発行元証明書のリソースとの共通部分についてのみ受け入れることを定めます。</t>
+      <t indent="0" pn="section-1-2">過大主張が発生しない限り、両方の手順の結果は同じです。さらに、新しい手順によって、発行元証明書のパス上で正当に保有されていないリソースが受け入れられることは決してありません。</t>
+      <t indent="0" pn="section-1-3">ただし、ここで定義する手順では、発行元証明書のパス上でリソースが正当に保有されなくなった場合に、その影響を、それらのリソースを参照する経路生成元認可（Route Origin Authorization、ROA）<xref target="RFC6482" format="default" sectionFormat="of" derivedContent="RFC6482"/>などのアテステーションだけに限定します。</t>
+      <section anchor="requirements-notation" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-requirements-notation">要件の表記</name>
+        <t indent="0" pn="section-1.1-1">この文書内のキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、
+「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、
+「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、および「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+ここに示すようにすべて大文字で表記される場合に限り、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>で説明される意味で解釈されます。</t>
+      </section>
+    </section>
+    <section anchor="certificate-validation-in-the-rpki" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-certificate-validation-in-the-rpki">RPKIにおける証明書の検証</name>
+      <t indent="0" pn="section-2-1">現在<xref target="RFC6487" section="7.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-7.2" derivedContent="RFC6487"/>で定義されているとおり、RPKIプロファイルに準拠するPKIX証明書の検証は、パス検証プロセスの使用に依存しています。このプロセスでは、検証パス内の各証明書が証明書の検証基準を満たすことが要求されます。</t>
+      <t indent="0" pn="section-2-2">特に、これらの基準では、検証パス内の各証明書のインターネット番号リソース（Internet Number Resources、INR）が、発行元証明書のINRによって「包含」されていることが要求されます。パス内の最初の証明書はトラストアンカーである必要があり、そのリソースは定義上有効であるとみなされます。</t>
+      <t indent="0" pn="section-2-3">たとえば、次の一連の証明書を考えます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-4"><![CDATA[
+Certificate 1 (trust anchor):
+Issuer TA,
+Subject TA,
+Resources 192.0.2.0/24, 198.51.100.0/24,
+      2001:db8::/32, AS64496-AS64500
+
+Certificate 2:
+Issuer TA,
+Subject CA1,
+Resources 192.0.2.0/24, 198.51.100.0/24, 2001:db8::/32
+
+Certificate 3:
+Issuer CA1,
+Subject CA2,
+Resources 192.0.2.0/24, 198.51.100.0/24, 2001:db8::/32
+
+ROA 1:
+Embedded Certificate 4 (EE certificate):
+Issuer CA2,
+Subject R1,
+Resources 192.0.2.0/24
+
+Prefix 192.0.2.0/24, Max Length 24, ASN 64496
+]]></artwork>
+      <t indent="0" pn="section-2-5">このシナリオでは、各証明書のINRが発行元証明書のINRによって包含されているため、すべての証明書が有効であるとみなされます。<xref target="RFC6482" format="default" sectionFormat="of" derivedContent="RFC6482"/>で要求されているとおり、指定されたプレフィックスが埋め込まれたエンドエンティティー（EE）証明書によって包含されているため、ROA1は有効です。</t>
+    </section>
+    <section anchor="operational-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-operational-considerations">運用上の考慮事項</name>
+      <t indent="0" pn="section-3-1">RPKIに記録された割り振りは、リソースの移転の結果として変化します。たとえば、移転に関与するCAが、CA証明書のいくつかが一時的に「過大主張」する状態になるような順序でCA証明書を変更することを選ぶかもしれません。証明書が、その証明書を発行したCAのINRに含まれていないINRを含んでいる場合、その証明書は「過大主張」していると言います。</t>
+      <t indent="0" pn="section-3-2">また、親がリソースを移転または回収しているときに、子CAが縮小されたリソース証明書を自発的に要求しないことも起こり得ます。さらに、RPKIデータベースの管理中に発生し得る運用上の誤りによっても、一時的に下位の証明書のINRのすべてを包含しなくなったCA証明書が作成される可能性があります。</t>
+      <t indent="0" pn="section-3-3">次の一連の証明書を考えます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-4"><![CDATA[
+Certificate 1 (trust anchor):
+Issuer TA,
+Subject TA,
+Resources 192.0.2.0/24, 198.51.100.0/24,
+     2001:db8::/32, AS64496-AS64500
+
+Certificate 2:
+Issuer TA,
+Subject CA1,
+Resources 192.0.2.0/24, 2001:db8::/32
+
+Certificate 3 (invalid):
+Issuer CA1,
+Subject CA2,
+Resources 192.0.2.0/24, 198.51.100.0/24, 2001:db8::/32
+
+ROA 1 (invalid):
+Embedded Certificate 4 (EE certificate, invalid):
+Issuer CA2,
+Subject R1,
+Resources 192.0.2.0/24
+
+Prefix 192.0.2.0/24, Max Length 24, ASN 64496
+]]></artwork>
+      <t indent="0" pn="section-3-5">ここでは、前の例の証明書2がTAによってCA1に再発行され、プレフィックス198.51.100.0/24が削除されています。しかし、CA1はCA2に新しい証明書3を再発行しませんでした。その結果、証明書3は過大主張している状態になり、無効とみなされます。再帰的に、ROA1に使用されている埋め込まれた証明書4も無効になります。そして、<xref target="RFC6482" format="default" sectionFormat="of" derivedContent="RFC6482"/>で要求されているとおり、ROAに含まれる指定されたプレフィックスが有効な埋め込みEE証明書によってもはや包含されていないため、ROA1は無効です。</t>
+      <t indent="0" pn="section-3-6">しかし、ROA1は、CA1の証明書から削除されたアドレスリソースをまったく使用していないことに注意してください。したがって、ROA1を引き続き有効とみなせることが望ましいでしょう。技術的には、CA1が198.51.100.0/24を除いた証明書3をCA2に再発行すべきであり、そうすれば<xref target="RFC6482" format="default" sectionFormat="of" derivedContent="RFC6482"/>に従ってROA1は有効とみなされます。しかし、CA1がこの対応をしない限り、ROA1は無効のままです。ROA1が行う主張はCA1の証明書の範囲の縮小による影響を受けていないため、ROA1を有効とみなせるほうが望ましいでしょう。</t>
+    </section>
+    <section anchor="an-amended-rpki-certification-validation-process" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-an-amended-rpki-certification-validation-process">修正されたRPKI証明書検証プロセス</name>
+      <section anchor="verified-resource-sets" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-verified-resource-sets">検証済みリソースセット</name>
+        <t indent="0" pn="section-4.1-1">上で説明した問題は、現時点では発生する確率が低い問題とみなせます。しかし、RPKI階層の頂点近くで過大主張が発生した場合、その地点より下にあるサブツリー全体が無効になるため、ルーティングのセキュリティーへの潜在的な影響は大きくなります。</t>
+        <t indent="0" pn="section-4.1-2">ここで規定する<xref target="RFC6487" format="default" sectionFormat="of" derivedContent="RFC6487"/>の検証手順への変更は、この問題が発生する確率を変えるものではありませんが、影響を過大主張されたリソースだけに限定します。この改訂された検証アルゴリズムは、過大主張の結果としてCA証明書が完全に無効として扱われることを避けることを目的としています。ただし、これらの変更は、RPKIが提供するセキュリティーを低下させないように設計されています。具体的には、ROAとルーター証明書は、それらに含まれるリソースのすべてが、トラストアンカーに至るパス上のすべての上位の証明書によって包含されている場合にのみ、有効として扱われます。</t>
+        <t indent="0" pn="section-4.1-3">これを概念的に実現する方法は、証明書内のリソース拡張<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>に含まれるINRとは別に、証明書ごとに検証済みリソースセット（Verified Resource Set、VRS）を保持することです。</t>
+      </section>
+      <section anchor="differences-with-existing-standards" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-differences-with-existing-standards">既存の標準との差異</name>
+        <section anchor="certificate-policy-(cp)-for-use-with-validation-reconsidered-in-the-rpki" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.1">
+          <name slugifiedName="name-certificate-policy-(cp)-for-use-with-validation-reconsidered-in-the-rpki">RPKIにおける再検討された検証で使用する証明書ポリシー（CP）</name>
+          <t indent="0" pn="section-4.2.1-1"><xref target="RFC6484" section="1.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6484#section-1.2" derivedContent="RFC6484"/>では、「Certificate Policy (CP) for the Resource PKI (RPKI)」（リソースPKI（RPKI）の証明書ポリシー（CP））を次のOIDで定義していることに注意してください。</t>
+          <sourcecode type="asn.1" markers="false" pn="section-4.2.1-2"><![CDATA[
+id-cp-ipAddr-asNumber OBJECT IDENTIFIER ::= { iso(1)
+        identified-organization(3) dod(6) internet(1)
+        security(5) mechanisms(5) pkix(7) cp(14) 2 }
+]]></sourcecode>
+          <t indent="0" pn="section-4.2.1-3">この文書により、代替の「Certificate Policy (CP) for use with validation reconsidered in the Resource PKI (RPKI)」（リソースPKI（RPKI）における再検討された検証で使用する証明書ポリシー（CP））に対して、新しいOIDが次のように割り当てられました。</t>
+          <sourcecode type="asn.1" markers="false" pn="section-4.2.1-4"><![CDATA[
+id-cp-ipAddr-asNumber-v2 OBJECT IDENTIFIER ::= { iso(1)
+        identified-organization(3) dod(6) internet(1)
+        security(5) mechanisms(5) pkix(7) cp(14) 3 }
+]]></sourcecode>
+          <t indent="0" pn="section-4.2.1-5">この代替の証明書ポリシーは、<xref target="RFC6484" format="default" sectionFormat="of" derivedContent="RFC6484"/>で説明されている証明書ポリシーと同じです。ただし、セクション4.2.4.4で説明する検証手順のステップ8における判断を決定するために使用される点が異なります。</t>
+        </section>
+        <section anchor="an-alternative-to-x.509-extensions-for-ip-addresses-and-as-identifiers-(rfc-3779)" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2">
+          <name slugifiedName="name-an-alternative-to-x.509-extensions-for-ip-addresses-and-as-identifiers-(rfc-3779)">IPアドレスとAS識別子のためのX.509拡張（RFC 3779）の代替</name>
+          <t indent="0" pn="section-4.2.2-1">この文書は、<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>の代替を定義します。以下のサブセクションで説明する注目すべき例外を除き、<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>で説明されているすべての仕様と手順が適用されます。</t>
+          <section anchor="oid-for-id-pe-ipaddrblocks-v2" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.1">
+            <name slugifiedName="name-oid-for-id-pe-ipaddrblocks-v2">id-pe-ipAddrBlocks-v2のOID</name>
+            <t indent="0" pn="section-4.2.2.1-1">この文書により、拡張id-pe-ipAddrBlocks-v2（id-pe 28）に対してOIDが割り当てられました。このOIDは、セクション4.2.1で定義する代替の証明書ポリシーOIDと組み合わせてのみ使用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.2.1-2">以下は、<xref target="RFC3779" section="2.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3779#section-2.2.1" derivedContent="RFC3779"/>の仕様の代替として使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.2.1-3">この拡張のOIDはid-pe-ipAddrBlocks-v2です。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.1-4"><![CDATA[
+id-pe-ipAddrBlocks-v2  OBJECT IDENTIFIER ::= { id-pe 28 }
+]]></sourcecode>
+            <t indent="0" pn="section-4.2.2.1-5">ここで、<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>は次のように定義しています。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.1-6"><![CDATA[
+id-pkix  OBJECT IDENTIFIER ::= { iso(1) identified-organization(3)
+       dod(6) internet(1) security(5) mechanisms(5) pkix(7) }
+
+id-pe    OBJECT IDENTIFIER ::= { id-pkix 1 }
+]]></sourcecode>
+          </section>
+          <section anchor="syntax-for-id-pe-ipaddrblocks-v2" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.2">
+            <name slugifiedName="name-syntax-for-id-pe-ipaddrblocks-v2">id-pe-ipAddrBlocks-v2の構文</name>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.2-1"><![CDATA[
+id-pe-ipAddrBlocks-v2      OBJECT IDENTIFIER ::= { id-pe 28 }
+
+IPAddrBlocks        ::= SEQUENCE OF IPAddressFamily
+
+IPAddressFamily     ::= SEQUENCE {    -- AFIと省略可能なSAFI --
+addressFamily        OCTET STRING (SIZE (2..3)),
+ipAddressChoice      IPAddressChoice }
+
+IPAddressChoice     ::= CHOICE {
+inherit              NULL, -- 発行者から継承 --
+addressesOrRanges    SEQUENCE OF IPAddressOrRange }
+
+IPAddressOrRange    ::= CHOICE {
+addressPrefix        IPAddress,
+addressRange         IPAddressRange }
+
+IPAddressRange      ::= SEQUENCE {
+min                  IPAddress,
+max                  IPAddress }
+
+IPAddress           ::= BIT STRING
+]]></sourcecode>
+            <t indent="0" pn="section-4.2.2.2-2">上記の構文で参照されているオブジェクトの説明は、<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>のセクション2.2.3.1から2.2.3.9で定義されていることに注意してください。</t>
+          </section>
+          <section anchor="oid-for-id-pe-autonomoussysids-v2" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.3">
+            <name slugifiedName="name-oid-for-id-pe-autonomoussysids-v2">id-pe-autonomousSysIds-v2のOID</name>
+            <t indent="0" pn="section-4.2.2.3-1">この文書により、拡張id-pe-autonomousSysIds-v2（id-pe 29）に対してOIDが割り当てられました。このOIDは、セクション4.2.1で定義する代替の証明書ポリシーOIDと組み合わせてのみ使用<bcp14>しなければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.2.3-2">以下は、<xref target="RFC3779" section="3.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3779#section-3.2.1" derivedContent="RFC3779"/>の仕様の代替として使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.2.3-3">この拡張のOIDはid-pe-autonomousSysIds-v2です。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.3-4"><![CDATA[
+id-pe-autonomousSysIds-v2  OBJECT IDENTIFIER ::= { id-pe 29 }
+]]></sourcecode>
+            <t indent="0" pn="section-4.2.2.3-5">ここで、<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>は次のように定義しています。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.3-6"><![CDATA[
+id-pkix  OBJECT IDENTIFIER ::= { iso(1) identified-organization(3)
+       dod(6) internet(1) security(5) mechanisms(5) pkix(7) }
+
+id-pe    OBJECT IDENTIFIER ::= { id-pkix 1 }
+]]></sourcecode>
+          </section>
+          <section anchor="syntax-for-id-pe-autonomoussysids-v2" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.4">
+            <name slugifiedName="name-syntax-for-id-pe-autonomoussysids-v2">id-pe-autonomousSysIds-v2の構文</name>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.4-1"><![CDATA[
+id-pe-autonomousSysIds-v2  OBJECT IDENTIFIER ::= { id-pe 29 }
+
+ASIdentifiers       ::= SEQUENCE {
+asnum               [0] EXPLICIT ASIdentifierChoice OPTIONAL,
+rdi                 [1] EXPLICIT ASIdentifierChoice OPTIONAL}
+
+ASIdentifierChoice  ::= CHOICE {
+inherit              NULL, -- 発行者から継承 --
+asIdsOrRanges        SEQUENCE OF ASIdOrRange }
+
+ASIdOrRange         ::= CHOICE {
+id                  ASId,
+range               ASRange }
+
+ASRange             ::= SEQUENCE {
+min                 ASId,
+max                 ASId }
+
+ASId                ::= INTEGER
+]]></sourcecode>
+          </section>
+          <section anchor="amended-ip-address-delegation-extension-certification-path-validation" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.5">
+            <name slugifiedName="name-amended-ip-address-delegation-extension-certification-path-validation">修正されたIPアドレス委任拡張の証明書パス検証</name>
+            <t indent="0" pn="section-4.2.2.5-1">証明書パス検証は、セクション4.2.4.4で規定するとおりに実行します。</t>
+          </section>
+          <section anchor="amended-autonomous-system-identifier-delegation-extension-certification-path-validation" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.6">
+            <name slugifiedName="name-amended-autonomous-system-identifier-delegation-extension-certification-path-validation">修正された自律システム識別子委任拡張の証明書パス検証</name>
+            <t indent="0" pn="section-4.2.2.6-1">証明書パス検証は、セクション4.2.4.4で規定するとおりに実行します。</t>
+          </section>
+          <section anchor="amended-asn.1-module" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.2.7">
+            <name slugifiedName="name-amended-asn.1-module">修正されたASN.1モジュール</name>
+            <t indent="0" pn="section-4.2.2.7-1">この文書により、id-mod-ip-addr-and-as-ident-v2に対して次のようにOIDが割り当てられました。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.7-2"><![CDATA[
+IPAddrAndASCertExtn-v2 { iso(1) identified-organization(3) dod(6)
+   internet(1) security(5) mechanisms(5) pkix(7) mod(0)
+   id-mod-ip-addr-and-as-ident-v2(90) }
+]]></sourcecode>
+            <t indent="0" pn="section-4.2.2.7-3">以下は、<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>の付録Aの仕様の代替として使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.2.7-4">この規範的な付録は、準拠するPKIコンポーネントが使用するIPアドレスおよびAS識別子の委任のための拡張を、ASN.1構文で記述します。</t>
+            <sourcecode type="asn.1" markers="false" pn="section-4.2.2.7-5"><![CDATA[
+IPAddrAndASCertExtn-v2 { iso(1) identified-organization(3) dod(6)
+   internet(1) security(5) mechanisms(5) pkix(7) mod(0)
+   id-mod-ip-addr-and-as-ident-v2(90) }
+
+DEFINITIONS EXPLICIT TAGS ::=
+
+BEGIN
+
+-- EXPORTS ALL --
+
+IMPORTS
+
+-- PKIX固有のOIDとアーク --
+
+id-pe FROM PKIX1Explicit88 { iso(1) identified-organization(3)
+     dod(6) internet(1) security(5) mechanisms(5) pkix(7)
+     id-mod(0) id-pkix1-explicit(18) }
+
+-- IPアドレスブロックとAS識別子の構文 --
+
+IPAddrBlocks, ASIdentifiers FROM  IPAddrAndASCertExtn { iso(1)
+   identified-organization(3) dod(6) internet(1) security(5)
+   mechanisms(5) pkix(7) mod(0) id-mod-ip-addr-and-as-ident(30) }
+;
+
+-- 再検討された検証のIPアドレス委任拡張のOID --
+
+id-pe-ipAddrBlocks-v2  OBJECT IDENTIFIER ::= { id-pe 28 }
+
+-- 再検討された検証のIPアドレス委任拡張の構文 --
+-- 構文はRFC 3779からインポートする --
+
+-- 再検討された検証の自律システム識別子 --
+--     委任拡張のOID                    --
+
+id-pe-autonomousSysIds-v2  OBJECT IDENTIFIER ::= { id-pe 29 }
+
+-- 再検討された検証の自律システム識別子 --
+--     委任拡張の構文                   --
+
+-- 構文はRFC 3779からインポートする --
+
+END
+]]></sourcecode>
+          </section>
+        </section>
+        <section anchor="addendum-to-rfc-6268" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.3">
+          <name slugifiedName="name-addendum-to-rfc-6268">RFC 6268への補遺</name>
+          <t indent="0" pn="section-4.2.3-1">この文書により、id-mod-ip-addr-and-as-ident-2v2に対して次のようにOIDが割り当てられました。</t>
+          <sourcecode type="asn.1" markers="false" pn="section-4.2.3-2"><![CDATA[
+IPAddrAndASCertExtn-2010v2 { iso(1) identified-organization(3) dod(6)
+         internet(1) security(5) mechanisms(5) pkix(7) mod(0)
+         id-mod-ip-addr-and-as-ident-2v2(91) }
+]]></sourcecode>
+          <t indent="0" pn="section-4.2.3-3"><xref target="RFC6268" format="default" sectionFormat="of" derivedContent="RFC6268"/>は、いくつかの補助的なASN.1モジュールを2008年版のASN.1に準拠するように更新する情報提供RFCです。セクション4.2.2.7の1988年版ASN.1モジュールが、引き続き規範的なバージョンです。</t>
+          <t indent="0" pn="section-4.2.3-4">以下は、セクション4.2.2.1および4.2.2.3で定義する拡張とともに使用する、2008年版のASN.1に準拠する追加のモジュールです。</t>
+          <sourcecode type="asn.1" markers="false" pn="section-4.2.3-5"><![CDATA[
+IPAddrAndASCertExtn-2010v2 { iso(1) identified-organization(3) dod(6)
+         internet(1) security(5) mechanisms(5) pkix(7) mod(0)
+         id-mod-ip-addr-and-as-ident-2v2(91) }
+
+  DEFINITIONS EXPLICIT TAGS ::=
+
+  BEGIN
+
+     EXPORTS ALL;
+     IMPORTS
+
+     -- PKIX固有のOIDとアーク --
+
+     id-pe
+     FROM PKIX1Explicit-2009
+       { iso(1) identified-organization(3) dod(6) internet(1)
+         security(5) mechanisms(5) pkix(7) id-mod(0)
+         id-mod-pkix1-explicit-02(51)}
+
+     EXTENSION
+     FROM PKIX-CommonTypes-2009
+       { iso(1) identified-organization(3) dod(6) internet(1)
+         security(5) mechanisms(5) pkix(7) id-mod(0)
+         id-mod-pkixCommon-02(57)}
+
+  -- IPアドレスブロックとAS識別子の構文 --
+
+     IPAddrBlocks, ASIdentifiers
+     FROM IPAddrAndASCertExtn-2010
+        { iso(1) identified-organization(3) dod(6)
+          internet(1) security(5) mechanisms(5) pkix(7) mod(0)
+          id-mod-ip-addr-and-as-ident-2(72) }
+     ;
+
+     --
+     -- Extensionsは、このモジュールで定義する拡張の集合を含む
+     --
+     -- これらは公開鍵証明書に置かれることを意図しているため、
+     -- RFC 5280のために定義されたPKIXImplicit-2009の
+     -- CertExtensions拡張集合に追加すること
+     --
+
+     Extensions EXTENSION ::= {
+        ext-pe-ipAddrBlocks-v2 | ext-pe-autonomousSysIds-v2
+     }
+
+     -- 再検討された検証のIPアドレス委任拡張のOID --
+
+     ext-pe-ipAddrBlocks-v2 EXTENSION ::= {
+       SYNTAX IPAddrBlocks
+       IDENTIFIED BY id-pe-ipAddrBlocks-v2
+     }
+
+     id-pe-ipAddrBlocks-v2  OBJECT IDENTIFIER ::= { id-pe 28 }
+
+     -- 再検討された検証のIPアドレス委任 --
+     --      拡張の構文                  --
+
+     -- 構文はRFC 6268からインポートする --
+
+     -- 再検討された検証の自律システム識別子 --
+     --      委任拡張のOID                   --
+
+     ext-pe-autonomousSysIds-v2 EXTENSION ::= {
+       SYNTAX ASIdentifiers
+       IDENTIFIED BY id-pe-autonomousSysIds-v2
+     }
+
+     id-pe-autonomousSysIds OBJECT IDENTIFIER ::= { id-pe 29 }
+
+  -- 再検討された検証の自律システム識別子 --
+  --      委任拡張の構文                  --
+
+  -- 構文はRFC 6268からインポートする --
+
+  END
+]]></sourcecode>
+        </section>
+        <section anchor="an-alternative-to-the-profile-for-x.509-pkix-resource-certificates" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.4">
+          <name slugifiedName="name-an-alternative-to-the-profile-for-x.509-pkix-resource-certificates">X.509 PKIXリソース証明書のプロファイルの代替</name>
+          <t indent="0" pn="section-4.2.4-1">この文書は、X.509 PKIXリソース証明書の代替プロファイルを定義します。このプロファイルは、以下の注目すべき例外を除き、<xref target="RFC6487" format="default" sectionFormat="of" derivedContent="RFC6487"/>で説明されているすべての定義と手順に従います。</t>
+          <section anchor="amended-certificate-policies" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.4.1">
+            <name slugifiedName="name-amended-certificate-policies">修正された証明書ポリシー</name>
+            <t indent="0" pn="section-4.2.4.1-1">以下は、<xref target="RFC6487" section="4.8.9" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.9" derivedContent="RFC6487"/>の代わりにこのプロファイルで使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.4.1-2">この拡張は存在<bcp14>しなければなりません（MUST）</bcp14>。また、クリティカルとマーク<bcp14>しなければなりません（MUST）</bcp14>。この拡張は、セクション4.2.1の更新されたRPKI CPで規定されているとおり、id-cp-ipAddr-asNumber-v2タイプのポリシーをちょうど1つ含ま<bcp14>なければなりません（MUST）</bcp14>。</t>
+          </section>
+          <section anchor="amended-ip-resources" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.4.2">
+            <name slugifiedName="name-amended-ip-resources">修正されたIPリソース</name>
+            <t indent="0" pn="section-4.2.4.2-1">以下は、<xref target="RFC6487" section="4.8.10" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.10" derivedContent="RFC6487"/>の代わりにこのプロファイルで使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.4.2-2">IPリソース拡張とASリソース拡張のいずれか、または両方が、すべてのRPKI証明書に存在<bcp14>しなければなりません（MUST）</bcp14>。また、それらはクリティカルとマーク<bcp14>しなければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.4.2-3">この拡張には、セクション4.2.2.1に従ったIPアドレスリソースのリストが含まれます。この値では、特定のアドレスファミリー識別子（Address Family Identifier、AFI）の値に対して「inherit」要素を指定できます。公衆インターネットで使用するパブリック番号リソースを記述するリソース証明書の文脈では、後続AFI（Subsequent AFI、SAFI）の値を使用<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.4.2-4">この拡張は、空でないIPアドレスレコードの集合を指定するか、または「inherit」設定を使用してこの証明書のIPアドレスリソースセットが証明書の発行者のものから継承されることを示すかのいずれかで<bcp14>なければなりません（MUST）</bcp14>。</t>
+          </section>
+          <section anchor="amended-as-resources" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.4.3">
+            <name slugifiedName="name-amended-as-resources">修正されたASリソース</name>
+            <t indent="0" pn="section-4.2.4.3-1">以下は、<xref target="RFC6487" section="4.8.11" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.11" derivedContent="RFC6487"/>の代わりにこのプロファイルで使用する、修正された仕様です。</t>
+            <t indent="0" pn="section-4.2.4.3-2">ASリソース拡張とIPリソース拡張のいずれか、または両方が、すべてのRPKI証明書に存在<bcp14>しなければなりません（MUST）</bcp14>。また、それらはクリティカルとマーク<bcp14>しなければなりません（MUST）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.4.3-3">この拡張には、セクション4.2.2.3に従ったAS番号リソースのリストが含まれます。あるいは、「inherit」要素を指定することもできます。ルーティングドメイン識別子（Routing Domain Identifier、RDI）の値はこのプロファイルではサポートされず（NOT supported）、使用<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+            <t indent="0" pn="section-4.2.4.3-4">この拡張は、空でないAS番号レコードの集合を指定するか、または「inherit」設定を使用してこの証明書のAS番号リソースセットが証明書の発行者のものから継承されることを示すかのいずれかで<bcp14>なければなりません（MUST）</bcp14>。</t>
+          </section>
+          <section anchor="amended-resource-certificate-path-validation" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.4.4">
+            <name slugifiedName="name-amended-resource-certificate-path-validation">修正されたリソース証明書パス検証</name>
+            <t indent="0" pn="section-4.2.4.4-1">以下は、<xref target="RFC6487" section="7.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-7.2" derivedContent="RFC6487"/>の代わりに使用するパス検証の修正された仕様です。この仕様では、<xref target="RFC6487" format="default" sectionFormat="of" derivedContent="RFC6487"/>で定義されているプロファイルに従う証明書と、上で説明したプロファイルに従う証明書の両方を検証できます。</t>
+            <t indent="0" pn="section-4.2.4.4-2">CAとEEのリソース証明書を検証するために、次のアルゴリズムを使用します。このアルゴリズムは、<xref target="RFC5280" format="default" sectionFormat="of" derivedContent="RFC5280"/>のパス検証アルゴリズムをモデルにしていますが、<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>のIPアドレス委任拡張とAS識別子委任拡張を利用するように変更されています。</t>
+            <t indent="0" pn="section-4.2.4.4-3">検証アルゴリズムへの入力は次の2つです。</t>
+            <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.4.4-4">
+              <li pn="section-4.2.4.4-4.1">トラストアンカー</li>
+              <li pn="section-4.2.4.4-4.2">検証対象の証明書</li>
+            </ol>
+            <t indent="0" pn="section-4.2.4.4-5">このアルゴリズムは、RPKIで使用する2つの新しい変数、検証済みリソースセット-IP（Verified Resource Set-IP、VRS-IP）と検証済みリソースセット-AS（Verified Resource Set-AS、VRS-AS）で初期化されます。これらの集合は、各CA証明書について有効とみなされるINR（IPアドレス空間とAS番号）の集合を追跡するために使用されます。VRS-IPとVRS-ASの集合は、最初に、検証の実行に使用するトラストアンカーのIPアドレス委任とAS識別子委任の値にそれぞれ設定されます。</t>
+            <t indent="0" pn="section-4.2.4.4-6">このパス検証アルゴリズムは、特に、候補となる証明書パス（n個の証明書の列）が次の条件を満たすことを検証します。</t>
+            <ol spacing="normal" type="a" indent="adaptive" start="1" pn="section-4.2.4.4-7">
+              <li pn="section-4.2.4.4-7.1">{1, ..., n-1}のすべての'x'について、証明書'x'のサブジェクトが証明書('x' + 1)の発行者であること。</li>
+              <li pn="section-4.2.4.4-7.2">証明書'1'がトラストアンカーによって発行されていること。</li>
+              <li pn="section-4.2.4.4-7.3">証明書'n'が検証対象の証明書であること。</li>
+              <li pn="section-4.2.4.4-7.4">{1, ..., n}のすべての'x'について、証明書'x'が有効であること。</li>
+            </ol>
+            <t indent="0" pn="section-4.2.4.4-8">証明書の検証では、<xref target="RFC5280" section="6" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc5280#section-6" derivedContent="RFC5280"/>で規定されている証明書パス検証の基準に加えて、次の条件のすべてが成り立つことを検証する必要があります。</t>
+            <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.2.4.4-9">
+              <li pn="section-4.2.4.4-9.1">証明書x（x&gt;1）の署名が、発行者の証明書（x-1）の公開鍵を使用し、その公開鍵に対して（証明書x-1で）指定されている署名アルゴリズムを使用して検証されること。</li>
+              <li pn="section-4.2.4.4-9.2">現在時刻が、証明書xのValidityフィールドにあるNotBeforeとNotAfterの値で定義される期間内にあること。</li>
+              <li pn="section-4.2.4.4-9.3">証明書xのVersion、Issuer、Subjectフィールドが、RFC 6487のセクション4.1から4.7で確立されている制約を満たすこと。</li>
+              <li pn="section-4.2.4.4-9.4">証明書xが<xref target="RFC6487" section="4.8.9" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.9" derivedContent="RFC6487"/>で定義されている証明書ポリシーを使用している場合、その証明書は、<xref target="RFC6487" section="4.8" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8" derivedContent="RFC6487"/>で定義されている拡張のうち、存在しなければならないものをすべて含ま<bcp14>なければなりません（MUST）</bcp14>。これらの各拡張の値は、それぞれのセクションで各拡張について確立されている制約を満たす<bcp14>必要があります（MUST）</bcp14>。このように特定されていない拡張は、証明書xに現れては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+              <li pn="section-4.2.4.4-9.5">証明書xがセクション4.2.4.1で定義する証明書ポリシーを使用している場合、<xref target="RFC6487" section="4.8" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8" derivedContent="RFC6487"/>で定義されている拡張のうち、セクション4.8.9、4.8.10、4.8.11を除くすべての拡張が存在<bcp14>しなければなりません（MUST）</bcp14>。証明書は、セクション4.2.4.2または4.2.4.3、あるいはその両方で定義する拡張を含ま<bcp14>なければなりません（MUST）</bcp14>。これらの各拡張の値は、それぞれのセクションで各拡張について確立されている制約を満たす<bcp14>必要があります（MUST）</bcp14>。このように特定されていない拡張は、証明書xに現れては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+              <li pn="section-4.2.4.4-9.6">証明書xは失効していては<bcp14>なりません（MUST NOT）</bcp14>。すなわち、証明書x-1が表すCAが発行した証明書失効リスト（Certificate Revocation List、CRL）に、証明書xが現れては<bcp14>なりません（MUST NOT）</bcp14>。</li>
+              <li pn="section-4.2.4.4-9.7">
+                <t indent="0" pn="section-4.2.4.4-9.7.1">VRS-IPとVRS-ASの集合の値を、次のように計算します。</t>
+                <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2.4.4-9.7.2">
+                  <li pn="section-4.2.4.4-9.7.2.1">IPアドレス委任拡張が証明書xに存在し、x=1の場合、VRS-IPをこの拡張にあるリソースに設定します。</li>
+                  <li pn="section-4.2.4.4-9.7.2.2">IPアドレス委任拡張が証明書xに存在し、x&gt;1の場合、VRS-IPを、この拡張のリソースと証明書x-1について計算されたVRS-IPの値との共通部分に設定します。</li>
+                  <li pn="section-4.2.4.4-9.7.2.3">IPアドレス委任拡張が証明書xに存在しない場合、VRS-IPをNULLに設定します。</li>
+                  <li pn="section-4.2.4.4-9.7.2.4">IPアドレス委任拡張が証明書xに存在し、x=1の場合、VRS-IPをこの拡張にあるリソースに設定します。</li>
+                  <li pn="section-4.2.4.4-9.7.2.5">AS識別子委任拡張が証明書xに存在し、x&gt;1の場合、VRS-ASを、この拡張のリソースと証明書x-1について計算されたVRS-ASの値との共通部分に設定します。</li>
+                  <li pn="section-4.2.4.4-9.7.2.6">AS識別子委任拡張が証明書xに存在しない場合、VRS-ASをNULLに設定します。</li>
+                </ul>
+              </li>
+              <li pn="section-4.2.4.4-9.8">
+                <t indent="0" pn="section-4.2.4.4-9.8.1">VRS-IPと証明書xのIPアドレス委任拡張との間、またはVRS-ASと証明書xのAS識別子委任拡張との間で、リソースに何らかの差異がある場合は、次のようにします。</t>
+                <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2.4.4-9.8.2">
+                  <li pn="section-4.2.4.4-9.8.2.1">証明書xがセクション4.2.4.1で定義する証明書ポリシーを使用している場合、証明書xについて過大主張しているリソースを列挙した警告を発行<bcp14>すべきです（SHOULD）</bcp14>。</li>
+                  <li pn="section-4.2.4.4-9.8.2.2">証明書xが<xref target="RFC6487" section="4.8.9" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6487#section-4.8.9" derivedContent="RFC6487"/>で定義されている証明書ポリシーを使用している場合、証明書xを拒否<bcp14>しなければなりません（MUST）</bcp14>。</li>
+                </ul>
+              </li>
+            </ol>
+            <t indent="0" pn="section-4.2.4.4-10">これらの規則により、CA証明書は、トラストアンカーからそのCA証明書までのパス上の証明書（のすべて）には存在しないリソースを含むことができます。CA証明書のリソースのいずれもがパス上のすべての証明書に存在しない場合、下位の証明書はどれも有効になり得ません。しかし、これは一時的な状態である可能性があるため、その証明書はすぐには拒否されません。関連付けられたVRSの集合は、問題の証明書に正当に関連付けられたリソースを正確に反映しているため、証明書をすぐに拒否しないことがセキュリティー上の問題を引き起こすことはありません。</t>
+          </section>
+        </section>
+        <section anchor="an-alternative-roa-validation" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.5">
+          <name slugifiedName="name-an-alternative-roa-validation">ROA検証の代替</name>
+          <t indent="0" pn="section-4.2.5-1"><xref target="RFC6482" section="4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6482#section-4" derivedContent="RFC6482"/>には現在、ROAのリソースの検証について次の記述があります。</t>
+          <blockquote pn="section-4.2.5-2">
+            <t indent="0" pn="section-4.2.5-2.1">IPアドレス委任拡張<xref target="RFC3779" format="default" sectionFormat="of" derivedContent="RFC3779"/>が（ROA内に含まれる）エンドエンティティー（EE）証明書に存在し、ROA内の各IPアドレスプレフィックスが、EE証明書のIPアドレス委任拡張で指定されるIPアドレスの集合に含まれていること。</t>
+          </blockquote>
+          <t indent="0" pn="section-4.2.5-3">エンドエンティティー証明書がセクション4.2.4.1で定義する証明書ポリシーを使用している場合は、代わりに次の方法を使用しなければなりません。</t>
+          <blockquote pn="section-4.2.5-4">
+            <t indent="0" pn="section-4.2.5-4.1">セクション4.2.4.2で説明する修正されたIPアドレス委任拡張が（ROA内に含まれる）エンドエンティティー（EE）証明書に存在し、ROA内の各IPアドレスプレフィックスが、セクション4.2.4.4で説明するEE証明書の検証の結果として指定されるVRS-IPの集合に含まれていること。</t>
+          </blockquote>
+          <t indent="0" pn="section-4.2.5-5">これにより、ROAは、ROA内のすべてのIPアドレスプレフィックスが、そのROAの検証に使用するトラストアンカーまでのパス上にあるすべての証明書のVRS-IPによって包含されている場合にのみ有効となることが保証される点に注意してください。</t>
+          <t indent="0" pn="section-4.2.5-6">運用者は、IPアドレスプレフィックスごとに別々のROAを発行<bcp14>してもよいです（MAY）</bcp14>。そうすることで、トラストアンカーまでのパス上にあるいずれかの証明書のVRS-IPから1つ以上のIPアドレスプレフィックスが失われても、他のIPアドレスプレフィックスに対する認可が無効になることはありません。</t>
+        </section>
+        <section anchor="an-alternative-to-bgpsec-router-certificate-validation" numbered="true" removeInRFC="false" toc="include" pn="section-4.2.6">
+          <name slugifiedName="name-an-alternative-to-bgpsec-router-certificate-validation">BGPsecルーター証明書の検証の代替</name>
+          <t indent="0" pn="section-4.2.6-1">BGPsecルーター証明書<xref target="RFC8209" format="default" sectionFormat="of" derivedContent="RFC8209"/>がセクション4.2.4.1で定義する証明書ポリシーを使用している場合、<xref target="RFC8209" section="3.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8209#section-3.3" derivedContent="RFC8209"/>で定義されているBGPsecルーター証明書の検証に加えて、次の制約を満たさ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2.6-2">
+            <li pn="section-4.2.6-2.1">BGPsecルーター証明書のVRS-ASは、ASリソース識別子委任拡張内のすべての自律システム番号（Autonomous System Number、ASN）を包含<bcp14>しなければなりません（MUST）</bcp14>。</li>
+          </ul>
+          <t indent="0" pn="section-4.2.6-3">運用者は、異なるASNごとに別々のBGPsecルーター証明書を発行<bcp14>してもよいです（MAY）</bcp14>。そうすることで、トラストアンカーまでのパス上にあるいずれかの証明書のVRS-ASからASNが失われても、他のASNのルーター鍵が無効になることはありません。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="validation-examples" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-validation-examples">検証の例</name>
+      <t indent="0" pn="section-5-1">このセクションでは、セクション4.2.4.4、4.2.5、4.2.6で説明したアルゴリズムと手順を使用して実行したRPKI検証の結果を、次の3つの展開シナリオのもとで示します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-2">
+        <li pn="section-5-2.1">古いOIDのみを使用する証明書で構成されるRPKIツリー</li>
+        <li pn="section-5-2.2">新しいOIDのみを使用する証明書で構成されるRPKIツリー</li>
+        <li pn="section-5-2.3">古いOIDまたは新しいOIDのいずれかを使用する証明書が混在するRPKIツリー</li>
+      </ul>
+      <t indent="0" pn="section-5-3">ここでは、証明書が<xref target="RFC6484" section="1.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6484#section-1.2" derivedContent="RFC6484"/>、<xref target="RFC3779" section="2.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3779#section-2.2.1" derivedContent="RFC3779"/>、<xref target="RFC3779" section="3.2.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3779#section-3.2.1" derivedContent="RFC3779"/>のいずれか、またはそれらの組み合わせで定義されているOIDを使用している場合、その証明書は「古い」OIDを使用していると言います。証明書がセクション4.2.4.1、4.2.2.1、4.2.2.3のいずれか、またはそれらの組み合わせで定義されているOIDを使用している場合、その証明書は「新しい」OIDを使用していると言います。</t>
+      <section anchor="example-1----an-rpki-tree-using-the-old-oids-only" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-example-1----an-rpki-tree-using-the-old-oids-only">例1 -- 古いOIDのみを使用するRPKIツリー</name>
+        <t indent="0" pn="section-5.1-1">次の例を考えます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-2"><![CDATA[
+Certificate 1 (trust anchor):
+ Issuer: TA,
+ Subject: TA,
+ OIDs: OLD,
+ Resources: 0/0, ::0, AS0-4294967295 (all resources)
+
+  Verified Resource Set: 0/0, ::0, AS0-4294967295 (all resources)
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-3"><![CDATA[
+Certificate 2:
+ Issuer: TA,
+ Subject: CA1,
+ OIDs: OLD,
+ Resources: 192.0.2.0/24, 2001:db8::/32, AS64496
+
+  Verified Resource Set: 192.0.2.0/24,
+                         2001:db8::/32, AS64496
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-4"><![CDATA[
+Certificate 3 (invalid):
+ Issuer: CA1,
+ Subject: CA2,
+ OIDs: OLD,
+ Resources: 192.0.2.0/24, 198.51.100.0/24, AS64496
+
+  Verified Resource Set: 192.0.2.0/24, AS64496
+]]></artwork>
+        <t indent="0" pn="section-5.1-5">証明書3のリソースには、検証済みリソースセットに見つからない198.51.100.0/24が含まれているため、証明書3は無効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-6"><![CDATA[
+ROA 1 (invalid):
+ Embedded Certificate 4 (EE certificate invalid):
+  Issuer: CA2,
+  Subject: R1,
+  OIDs: OLD,
+  Resources: 192.0.2.0/24
+    Prefix 192.0.2.0/24, Max Length 24, ASN 64496
+]]></artwork>
+        <t indent="0" pn="section-5.1-7">証明書3が無効であるため、ROA1は無効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-8"><![CDATA[
+ROA 2 (invalid):
+ Embedded Certificate 5 (EE certificate invalid):
+  Issuer: CA2,
+  Subject: R2,
+  OIDs: OLD,
+  Resources: 198.51.100.0/24
+   Prefix 198.51.100.0/24, Max Length 24, ASN 64496
+]]></artwork>
+        <t indent="0" pn="section-5.1-9">証明書3が無効であるため、ROA2は無効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-10"><![CDATA[
+BGPsec Certificate 1 (invalid):
+ Issuer: CA2,
+ Subject: ROUTER-64496,
+ OIDs: NEW,
+ Resources: AS64496
+]]></artwork>
+        <t indent="0" pn="section-5.1-11">証明書3が無効であるため、BGPsec証明書1は無効です。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-12"><![CDATA[
+BGPsec Certificate 2 (invalid):
+ Issuer: CA2,
+ Subject: ALL-ROUTERS,
+ OIDs: NEW,
+ Resources: AS64496-AS64497
+]]></artwork>
+        <t indent="0" pn="section-5.1-13">証明書3が無効であるため、BGPsec証明書2は無効です。</t>
+      </section>
+      <section anchor="example-2----an-rpki-tree-using-the-new-oids-only" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-example-2----an-rpki-tree-using-the-new-oids-only">例2 -- 新しいOIDのみを使用するRPKIツリー</name>
+        <t indent="0" pn="section-5.2-1">修正されたアプローチのもとで、次の例を考えます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-2"><![CDATA[
+Certificate 1 (trust anchor):
+ Issuer: TA,
+ Subject: TA,
+ OIDs: NEW,
+ Resources: 0/0, ::0, AS0-4294967295 (all resources)
+
+  Verified Resource Set: 0/0, ::0, AS0-4294967295 (all resources)
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-3"><![CDATA[
+Certificate 2:
+ Issuer: TA,
+ Subject: CA1,
+ OIDs: NEW,
+ Resources: 192.0.2.0/24, 2001:db8::/32, AS64496
+
+  Verified Resource Set: 192.0.2.0/24,
+                         2001:db8::/32, AS64496
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-4"><![CDATA[
+Certificate 3:
+ Issuer: CA1,
+ Subject: CA2,
+ OIDs: NEW,
+ Resources: 192.0.2.0/24, 198.51.100.0/24, AS64496
+
+  Verified Resource Set: 192.0.2.0/24, AS64496
+  Warnings: overclaim for 198.51.100.0/24
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-5"><![CDATA[
+ROA 1 (valid):
+ Embedded Certificate 4 (EE certificate):
+  Issuer: CA2,
+  Subject: R1,
+  OIDs: NEW,
+  Resources: 192.0.2.0/24
+   Prefix 192.0.2.0/24, Max Length 24, ASN 64496
+
+   Verified Resource Set: 192.0.2.0/24
+   Warnings: none
+]]></artwork>
+        <t indent="0" pn="section-5.2-6">プレフィックスが埋め込まれたEE証明書の検証済みリソースセットに一致するため、ROA1は有効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-7"><![CDATA[
+ROA 2 (invalid):
+ Embedded Certificate 5 (EE certificate invalid):
+  Issuer: CA2,
+  Subject: R2,
+  OIDs: NEW,
+  Resources: 198.51.100.0/24
+    Prefix 198.51.100.0/24, Max Length 24, ASN 64496
+
+    Verified Resource Set: none (empty set)
+    Warnings: 198.51.100.0/24
+]]></artwork>
+        <t indent="0" pn="section-5.2-8">ROAのプレフィックス198.51.100.0/24が検証済みリソースセットに含まれていないため、ROA2は無効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-9"><![CDATA[
+BGPsec Certificate 1 (valid):
+ Issuer: CA2,
+ Subject: ROUTER-64496,
+ OIDs: NEW,
+ Resources: AS64496
+
+  Verified Resource Set: AS64496
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.2-10"><![CDATA[
+BGPsec Certificate 2 (invalid):
+ Issuer: CA2,
+ Subject: ALL-ROUTERS,
+ OIDs: NEW,
+ Resources: AS64496-AS64497
+
+   Verified Resource Set: AS64496
+]]></artwork>
+        <t indent="0" pn="section-5.2-11">BGPsec証明書2のリソースのすべてが検証済みリソースセットに含まれているわけではないため、BGPsec証明書2は無効です。</t>
+        <t indent="0" pn="section-5.2-12">この問題は、AS番号ごとに別々の証明書を発行することで緩和できることに注意してください。</t>
+      </section>
+      <section anchor="example-3----an-rpki-tree-using-a-mix-of-old-and-new-oids" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-example-3----an-rpki-tree-using-a-mix-of-old-and-new-oids">例3 -- 古いOIDと新しいOIDを混在して使用するRPKIツリー</name>
+        <t indent="0" pn="section-5.3-1">次の例では、発行元のCAが過大主張が発生する可能性を予期し、その影響を問題の過大主張されたリソースだけに限定したいと考えているCA証明書に対してのみ、新しいOIDを使用します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-2"><![CDATA[
+Certificate 1 (trust anchor):
+ Issuer: TA,
+ Subject: TA,
+ OIDs: OLD,
+ Resources: 0/0, ::0, AS0-4294967295 (all resources)
+
+  Verified Resource Set: 0/0, ::0, AS0-4294967295 (all resources)
+  Warnings: none
+]]></artwork>
+        <t indent="0" pn="section-5.3-3">トラストアンカー証明書が過大主張していると判定されることはないことに注意してください。そのため、ここで新しいOIDを使用しても、この証明書の有効性に関しては何も変わりません。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-4"><![CDATA[
+Certificate 2:
+ Issuer: TA,
+ Subject: CA1,
+ OIDs: OLD,
+ Resources: 192.0.2.0/24, 2001:db8::/32, AS64496
+
+  Verified Resource Set: 192.0.2.0/24,
+                         2001:db8::/32, AS64496
+  Warnings: none
+]]></artwork>
+        <t indent="0" pn="section-5.3-5">TA証明書はすべてのリソースを主張しているため、その下に過大主張していると判定され得る証明書を発行することは不可能であることに注意してください。したがって、証明書2に新しいOIDを使用する利点はありません。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-6"><![CDATA[
+Certificate 3:
+ Issuer: CA1,
+ Subject: CA2,
+ OIDs: NEW,
+ Resources: 192.0.2.0/24, 198.51.100.0/24, AS64496
+
+  Verified Resource Set: 192.0.2.0/24, AS64496
+  Warnings: overclaim for 198.51.100.0/24
+]]></artwork>
+        <t indent="0" pn="section-5.3-7">CA1は、証明書2上の自身のリソースが変更され、かつ証明書3に古いOIDが使用されていた場合に、CA2に発行した証明書3を無効にしてしまう可能性があることを予期していた点に注意してください。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-8"><![CDATA[
+ROA 1 (valid):
+ Embedded Certificate 4 (EE certificate):
+  Issuer: CA2,
+  Subject: R1,
+  OIDs: OLD,
+  Resources: 192.0.2.0/24
+   Prefix 192.0.2.0/24, Max Length 24, ASN 64496
+
+   Verified Resource Set: 192.0.2.0/24
+   Warnings: none
+]]></artwork>
+        <t indent="0" pn="section-5.3-9">プレフィックスが埋め込まれたEE証明書の検証済みリソースセットに一致するため、ROA1は有効とみなされます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-10"><![CDATA[
+ROA 2 (invalid):
+ Embedded Certificate 5 (EE certificate invalid):
+  Issuer: CA2,
+  Subject: R2,
+  OIDs: OLD,
+  Resources: 198.51.100.0/24
+    Prefix 198.51.100.0/24, Max Length 24, ASN 64496
+
+    Verified Resource Set: none (empty set)
+]]></artwork>
+        <t indent="0" pn="section-5.3-11">ROA2のEE証明書のリソースには、その検証済みリソースセットに含まれていない198.51.100.0/24が含まれているため、ROA2は無効とみなされます。</t>
+        <t indent="0" pn="section-5.3-12">ここで（例2のように）新しいOIDを使用した場合でも、プレフィックスが検証済みリソースセットに含まれていないため、ROA 2は無効とみなされることに注意してください。</t>
+        <t indent="0" pn="section-5.3-13">したがって、有効性の結果に違いがないのであれば、ここでは古いOIDを使用するのが最も明確であると主張できます。（セクション4.2.5で説明したとおり）ROAのプレフィックスの過大主張は、どのようなものであっても、そのROAが無効とみなされる結果になら<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-14"><![CDATA[
+BGPsec Certificate 1 (valid):
+ Issuer: CA2,
+ Subject: ROUTER-64496,
+ OIDs: OLD,
+ Resources: AS64496
+
+  Verified Resource Set: AS64496
+  Warnings: none
+]]></artwork>
+        <artwork name="" type="" align="left" alt="" pn="section-5.3-15"><![CDATA[
+BGPsec Certificate 2 (invalid):
+ Issuer: CA2,
+ Subject: ALL-ROUTERS,
+ OIDs: OLD,
+ Resources: AS64496-AS64497
+
+   Verified Resource Set: AS64496
+]]></artwork>
+        <t indent="0" pn="section-5.3-16">BGPsec証明書2のリソースには、その検証済みリソースセットに含まれていないAS64497が含まれているため、BGPsec証明書2は無効とみなされます。</t>
+        <t indent="0" pn="section-5.3-17">ここで（例2のように）新しいOIDを使用した場合でも、プレフィックスが検証済みリソースセットに含まれていないため、BGPsec証明書2は無効とみなされることに注意してください。</t>
+        <t indent="0" pn="section-5.3-18">したがって、有効性の結果に違いがないのであれば、ここでは古いOIDを使用するのが最も明確であると主張できます。（セクション4.2.6で説明したとおり）この証明書における過大主張は、どのようなものであっても、その証明書が無効とみなされる結果になら<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-5.3-19">また、例2と同様に、この問題はAS番号ごとに別々の証明書を発行することで緩和できることにも注意してください。</t>
+      </section>
+    </section>
+    <section anchor="deployment-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-deployment-considerations">展開に関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この文書は代替のRPKI検証アルゴリズムを定義しますが、このアルゴリズムをどのように展開するかは定めません。これは別の取り組みとして議論すべきです。とはいえ、以下の所見はこの議論の助けになるでしょう。</t>
+      <t indent="0" pn="section-6-2">この文書は、新しいOIDと、<xref target="RFC6487" format="default" sectionFormat="of" derivedContent="RFC6487"/>で説明されているX.509 PKIXリソース証明書のプロファイルの代替を導入するため、グローバルRPKIでそのような証明書を使用すると、この文書で説明する代替プロファイルを（まだ）実装していない依拠当事者（Relying Party）ツールによって、そのような証明書が拒否されることになります。</t>
+      <t indent="0" pn="section-6-3">このため、認証局がこの仕様を使用し始める前に、そのようなツールを更新しておくことが重要です。</t>
+      <t indent="0" pn="section-6-4">ただし、OIDは各RPKI証明書の中で定義されるため、すべての認証局が、あるいは認証局が発行するすべての証明書でさえ、同時に新しいOIDに移行しなければならないという厳格な要件はありません。セクション5.3の例は、偶発的な過大主張が発生する可能性のあるCA証明書でのみ新しいOIDを使用する、ありうる展開の形を示しています。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">著者らは、改訂された検証アルゴリズムがRPKIに新たなセキュリティー上の脆弱性を持ち込むことはないと考えています。なぜなら、発行者が保有していないリソースを含むROAやルーター証明書が、このアルゴリズムによって受け入れられることはあり得ないからです。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">IANAは、「SMI Security for PKIX Certificate Policies」レジストリーに次のものを追加しました。</t>
+      <table align="center" pn="table-1">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">10進数</th>
+            <th align="left" colspan="1" rowspan="1">説明</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">3</td>
+            <td align="left" colspan="1" rowspan="1">id-cp-ipAddr-asNumber-v2</td>
+            <td align="left" colspan="1" rowspan="1">セクション4.2.1</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-8-2">IANAは、「SMI Security for PKIX Certificate Extension」レジストリーに次のものを追加しました。</t>
+      <table align="center" pn="table-2">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">10進数</th>
+            <th align="left" colspan="1" rowspan="1">説明</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">28</td>
+            <td align="left" colspan="1" rowspan="1">id-pe-ipAddrBlocks-v2</td>
+            <td align="left" colspan="1" rowspan="1">セクション4.2.2.1</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">29</td>
+            <td align="left" colspan="1" rowspan="1">id-pe-autonomousSysIds-v2</td>
+            <td align="left" colspan="1" rowspan="1">セクション4.2.2.3</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-8-3">IANAは、「SMI Security for PKIX Module Identifier」レジストリーに次のものを追加しました。</t>
+      <table align="center" pn="table-3">
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">10進数</th>
+            <th align="left" colspan="1" rowspan="1">説明</th>
+            <th align="left" colspan="1" rowspan="1">参照</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">90</td>
+            <td align="left" colspan="1" rowspan="1">id-mod-ip-addr-and-as-ident-v2</td>
+            <td align="left" colspan="1" rowspan="1">セクション4.2.2.7</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">91</td>
+            <td align="left" colspan="1" rowspan="1">id-mod-ip-addr-and-as-ident-2v2</td>
+            <td align="left" colspan="1" rowspan="1">セクション4.2.3</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3779" target="https://www.rfc-editor.org/info/rfc3779" quoteTitle="true" derivedAnchor="RFC3779">
+          <front>
+            <title>X.509 Extensions for IP Addresses and AS Identifiers</title>
+            <author fullname="C. Lynn" initials="C." surname="Lynn"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="K. Seo" initials="K." surname="Seo"/>
+            <date year="2004" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="3779"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3779"/>
+        </reference>
+        <reference anchor="RFC5280" target="https://www.rfc-editor.org/info/rfc5280" quoteTitle="true" derivedAnchor="RFC5280">
+          <front>
+            <title>Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</title>
+            <author fullname="D. Cooper" initials="D." surname="Cooper"/>
+            <author fullname="S. Santesson" initials="S." surname="Santesson"/>
+            <author fullname="S. Farrell" initials="S." surname="Farrell"/>
+            <author fullname="S. Boeyen" initials="S." surname="Boeyen"/>
+            <author fullname="R. Housley" initials="R." surname="Housley"/>
+            <author fullname="W. Polk" initials="W." surname="Polk"/>
+            <date year="2008" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="5280"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5280"/>
+        </reference>
+        <reference anchor="RFC6482" target="https://www.rfc-editor.org/info/rfc6482" quoteTitle="true" derivedAnchor="RFC6482">
+          <front>
+            <title>A Profile for Route Origin Authorizations (ROAs)</title>
+            <author fullname="M. Lepinski" initials="M." surname="Lepinski"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="D. Kong" initials="D." surname="Kong"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6482"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6482"/>
+        </reference>
+        <reference anchor="RFC6484" target="https://www.rfc-editor.org/info/rfc6484" quoteTitle="true" derivedAnchor="RFC6484">
+          <front>
+            <title>Certificate Policy (CP) for the Resource Public Key Infrastructure (RPKI)</title>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <author fullname="D. Kong" initials="D." surname="Kong"/>
+            <author fullname="K. Seo" initials="K." surname="Seo"/>
+            <author fullname="R. Watro" initials="R." surname="Watro"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="BCP" value="173"/>
+          <seriesInfo name="RFC" value="6484"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6484"/>
+        </reference>
+        <reference anchor="RFC6487" target="https://www.rfc-editor.org/info/rfc6487" quoteTitle="true" derivedAnchor="RFC6487">
+          <front>
+            <title>A Profile for X.509 PKIX Resource Certificates</title>
+            <author fullname="G. Huston" initials="G." surname="Huston"/>
+            <author fullname="G. Michaelson" initials="G." surname="Michaelson"/>
+            <author fullname="R. Loomans" initials="R." surname="Loomans"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6487"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6487"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8209" target="https://www.rfc-editor.org/info/rfc8209" quoteTitle="true" derivedAnchor="RFC8209">
+          <front>
+            <title>A Profile for BGPsec Router Certificates, Certificate Revocation Lists, and Certification Requests</title>
+            <author fullname="M. Reynolds" initials="M." surname="Reynolds"/>
+            <author fullname="S. Turner" initials="S." surname="Turner"/>
+            <author fullname="S. Kent" initials="S." surname="Kent"/>
+            <date year="2017" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="8209"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8209"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="RFC6268" target="https://www.rfc-editor.org/info/rfc6268" quoteTitle="true" derivedAnchor="RFC6268">
+          <front>
+            <title>Additional New ASN.1 Modules for the Cryptographic Message Syntax (CMS) and the Public Key Infrastructure Using X.509 (PKIX)</title>
+            <author fullname="J. Schaad" initials="J." surname="Schaad"/>
+            <author fullname="S. Turner" initials="S." surname="Turner"/>
+            <date year="2011" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="6268"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6268"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、この文書のレビューと貢献についてStephen Kentに感謝します。依拠当事者ツールの動作を決定的にするために別々のOIDを使用すべきであると提案してくれたRob Austeinに感謝します。また、OIDとASN.1の更新に貢献してくれたRuss Housley、Sean Turner、Tom Petchに感謝します。最後に、この文書の全般的なレビューをしてくれたTom Harrisonに感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Geoff Huston" initials="G." surname="Huston">
+        <organization showOnFrontPage="true">Asia Pacific Network Information Centre</organization>
+        <address>
+          <postal>
+            <street>6 Cordelia St</street>
+            <city>South Brisbane</city>
+            <region>QLD</region>
+            <code>4101</code>
+            <country>Australia</country>
+          </postal>
+          <phone>+61 7 3858 3100</phone>
+          <email>gih@apnic.net</email>
+        </address>
+      </author>
+      <author fullname="George Michaelson" initials="G." surname="Michaelson">
+        <organization showOnFrontPage="true">Asia Pacific Network Information Centre</organization>
+        <address>
+          <postal>
+            <street>6 Cordelia St</street>
+            <city>South Brisbane</city>
+            <region>QLD</region>
+            <code>4101</code>
+            <country>Australia</country>
+          </postal>
+          <phone>+61 7 3858 3100</phone>
+          <email>ggm@apnic.net</email>
+        </address>
+      </author>
+      <author fullname="Carlos M. Martinez" initials="C." surname="Martinez">
+        <organization showOnFrontPage="true">Latin American and Caribbean Internet Address Registry</organization>
+        <address>
+          <postal>
+            <street>Rambla Mexico 6125</street>
+            <city>Montevideo</city>
+            <code>11400</code>
+            <country>Uruguay</country>
+          </postal>
+          <phone>+598 2604 2222</phone>
+          <email>carlos@lacnic.net</email>
+        </address>
+      </author>
+      <author fullname="Tim Bruijnzeels" initials="T." surname="Bruijnzeels">
+        <organization showOnFrontPage="true">RIPE Network Coordination Centre</organization>
+        <address>
+          <postal>
+            <street>Singel 258</street>
+            <city>Amsterdam</city>
+            <code>1016 AB</code>
+            <country>The Netherlands</country>
+          </postal>
+          <email>tim@ripe.net</email>
+        </address>
+      </author>
+      <author fullname="Andrew Lee Newton" initials="A." surname="Newton">
+        <organization showOnFrontPage="true">American Registry for Internet Numbers</organization>
+        <address>
+          <postal>
+            <street>3635 Concorde Parkway</street>
+            <city>Chantilly</city>
+            <region>VA</region>
+            <code>20151</code>
+            <country>United States of America</country>
+          </postal>
+          <email>andy@arin.net</email>
+        </address>
+      </author>
+      <author fullname="Daniel Shaw" initials="D." surname="Shaw">
+        <organization showOnFrontPage="true">African Network Information Centre (AFRINIC)</organization>
+        <address>
+          <postal>
+            <street>11th Floor, Standard Chartered Tower</street>
+            <city>Cybercity, Ebene</city>
+            <country>Mauritius</country>
+          </postal>
+          <phone>+230 403 51 00</phone>
+          <email>daniel@afrinic.net</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

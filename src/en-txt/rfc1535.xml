@@ -1,0 +1,257 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="1535" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc1535" rel="alternate"/>
+  <front>
+    <title>A Security Problem and Proposed Correction With Widely Deployed DNS Software</title>
+    <seriesInfo name="RFC" value="1535" stream="IETF"/>
+    <author fullname="E. Gavron" initials="E." surname="Gavron">
+      <organization showOnFrontPage="true">ACES Research Inc.</organization>
+      <address/>
+    </author>
+    <date year="1993" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">This document discusses a flaw in some of the currently distributed
+name resolver clients.  The flaw exposes a security weakness related
+to the search heuristic invoked by these same resolvers when users
+provide a partial domain name, and which is easy to exploit (although
+not by the masses).  This document points out the flaw, a case in
+point, and a solution.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This memo provides information for the Internet community.  It does
+not specify an Internet standard.  Distribution of this memo is
+unlimited.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="background" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-background">Background</name>
+      <t indent="0" pn="section-unnumbered-1-1">Current Domain Name Server clients are designed to ease the burden of
+remembering IP dotted quad addresses.  As such they translate human-readable names into addresses and other resource records.  Part of
+the translation process includes understanding and dealing with
+hostnames that are not fully qualified domain names (FQDNs).</t>
+      <t indent="0" pn="section-unnumbered-1-2">An absolute &quot;rooted&quot; FQDN is of the format {name}{.} A non &quot;rooted&quot;
+domain name is of the format {name}</t>
+      <t indent="0" pn="section-unnumbered-1-3">A domain name may have many parts and typically these include the
+host, domain, and type.  Example:  foobar.company.com or
+fooschool.university.edu.</t>
+    </section>
+    <section anchor="flaw" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-flaw">Flaw</name>
+      <t indent="0" pn="section-unnumbered-2-1">The problem with most widely distributed resolvers based on the BSD
+BIND resolver is that they attempt to resolve a partial name by
+processing a search list of partial domains to be added to portions
+of the specified host name until a DNS record is found.  This
+&quot;feature&quot; is disabled by default in the official BIND 4.9.2 release.</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-2"><![CDATA[
+   Example: A TELNET attempt by    User@Machine.Tech.ACES.COM
+                             to    UnivHost.University.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-2-3">The resolver client will realize that since &quot;UnivHost.University.EDU&quot;
+does not end with a &quot;.&quot;, it is not an absolute &quot;rooted&quot; FQDN.  It
+will then try the following combinations until a resource record is
+found:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-4"><![CDATA[
+                UnivHost.University.EDU.Tech.ACES.COM.
+                UnivHost.University.EDU.ACES.COM.
+                UnivHost.University.EDU.COM.
+                UnivHost.University.EDU.
+]]></artwork>
+    </section>
+    <section anchor="security-issue" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-security-issue">Security Issue</name>
+      <t indent="0" pn="section-unnumbered-3-1">After registering the EDU.COM domain, it was discovered that an
+unliberal application of one wildcard CNAME record would cause *all*
+connects from any .COM site to any .EDU site to terminate at one
+target machine in the private edu.com sub-domain.</t>
+      <t indent="0" pn="section-unnumbered-3-2">Further, discussion reveals that specific hostnames registered in
+this private subdomain, or any similarly named subdomain may be used
+to spoof a host.</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-3-3"><![CDATA[
+        Example:        harvard.edu.com.        CNAME   targethost
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-3-4">Thus all connects to Harvard.edu from all .com sites would end up at
+targthost, a machine which could provide a Harvard.edu login banner.</t>
+      <t indent="0" pn="section-unnumbered-3-5">This is clearly unacceptable.  Further, it could only be made worse
+with domains like COM.EDU, MIL.GOV, GOV.COM, etc.</t>
+    </section>
+    <section anchor="public-vs-local-name-space-administration" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-4">
+      <name slugifiedName="name-public-vs-local-name-space-administration">Public vs. Local Name Space Administration</name>
+      <t indent="0" pn="section-unnumbered-4-1">The specification of the Domain Name System and the software that
+implements it provides an undifferentiated hierarchy which permits
+delegation of administration for subordinate portions of the name
+space.  Actual administration of the name space is divided between
+&quot;public&quot; and &quot;local&quot; portions.  Public administration pertains to all
+top-level domains, such as .COM and .EDU.  For some domains, it also
+pertains to some number of sub-domain levels.  The multi-level nature
+of the public administration is most evident for top-level domains
+for countries.  For example in the Fully Qualified Domain Name,
+dbc.mtview.ca.us., the portion &quot;mtview.ca.us&quot; represents three levels
+of public administration.  Only the left-most portion is subject to
+local administration.</t>
+      <t indent="0" pn="section-unnumbered-4-2">The danger of the heuristic search common in current practise is that
+it it is possible to &quot;intercept&quot; the search by matching against an
+unintended value while walking up the search list.  While this is
+potentially dangerous at any level, it is entirely unacceptable when
+the error impacts users outside of a local administration.</t>
+      <t indent="0" pn="section-unnumbered-4-3">When attempting to resolve a partial domain name, DNS resolvers use
+the Domain Name of the searching host for deriving the search list.
+Existing DNS resolvers do not distinguish the portion of that name
+which is in the locally administered scope from the part that is
+publically administered.</t>
+    </section>
+    <section anchor="solutions" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-5">
+      <name slugifiedName="name-solutions">Solution(s)</name>
+      <t indent="0" pn="section-unnumbered-5-1">At a minimum, DNS resolvers must honor the BOUNDARY between local and
+public administration, by limiting any search lists to locally-administered portions of the Domain Name space.  This requires a
+parameter which shows the scope of the name space controlled by the
+local administrator.</t>
+      <t indent="0" pn="section-unnumbered-5-2">This would permit progressive searches from the most qualified to
+less qualified up through the locally controlled domain, but not
+beyond.</t>
+      <t indent="0" pn="section-unnumbered-5-3">For example, if the local user were trying to reach:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-4"><![CDATA[
+        User@chief.admin.DESERTU.EDU from
+        starburst,astro.DESERTU.EDU,
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-5">it is reasonable to permit the user to enter just chief.admin, and
+for the search to cover:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-6"><![CDATA[
+        chief.admin.astro.DESERTU.EDU
+        chief.admin.DESERTU.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-7">but not</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-8"><![CDATA[
+        chief.admin.EDU
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-9">In this case, the value of &quot;search&quot; should be set to &quot;DESERTU.EDU&quot;
+because that's the scope of the name space controlled by the local
+DNS administrator.</t>
+      <t indent="0" pn="section-unnumbered-5-10">This is more than a mere optimization hack.  The local administrator
+has control over the assignment of names within the locally
+administered domain, so the administrator can make sure that
+abbreviations result in the right thing.  Outside of the local
+control, users are necessarily at risk.</t>
+      <t indent="0" pn="section-unnumbered-5-11">A more stringent mechanism is implemented in BIND 4.9.2, to respond
+to this problem:</t>
+      <t indent="0" pn="section-unnumbered-5-12">The DNS Name resolver clients narrows its IMPLICIT search list IF ANY
+to only try the first and the last of the examples shown.</t>
+      <t indent="0" pn="section-unnumbered-5-13">Any additional search alternatives must be configured into the
+resolver EXPLICITLY.</t>
+      <t indent="0" pn="section-unnumbered-5-14">DNS Name resolver software SHOULD NOT use implicit search lists in
+attempts to resolve partial names into absolute FQDNs other than the
+hosts's immediate parent domain.</t>
+      <t indent="0" pn="section-unnumbered-5-15">Resolvers which continue to use implicit search lists MUST limit
+their scope to locally administered sub-domains.</t>
+      <t indent="0" pn="section-unnumbered-5-16">DNS Name resolver software SHOULD NOT come pre-configured with
+explicit search lists that perpetuate this problem.</t>
+      <t indent="0" pn="section-unnumbered-5-17">Further, in any event where a &quot;.&quot; exists in a specified name it
+should be assumed to be a fully qualified domain name (FQDN) and
+SHOULD be tried as a rooted name first.</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-5-18"><![CDATA[
+   Example:  Given  user@a.b.c.d connecting to e.f.g.h  only two tries
+             should be attempted as a result of using an implicit
+             search list:
+
+                e.f.g.h.  and e.f.g.h.b.c.d.
+
+             Given user@a.b.c.d. connecting to host those same two
+             tries would appear as:
+
+                x.b.c.d.  and x.
+]]></artwork>
+      <t indent="0" pn="section-unnumbered-5-19">Some organizations make regular use of multi-part, partially
+qualified Domain Names.  For example, host foo.loc1.org.city.state.us
+might be used to making references to bar.loc2, or mumble.loc3, all
+of which refer to whatever.locN.org.city.state.us</t>
+      <t indent="0" pn="section-unnumbered-5-20">The stringent implicit search rules for BIND 4.9.2 will now cause
+these searches to fail.  To return the ability for them to succeed,
+configuration of the client resolvers must be changed to include an
+explicit search rule for org.city.state.us.  That is, it must contain
+an explicit rule for any -- and each -- portion of the locally-administered sub-domain that it wishes to have as part of the search
+list.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-references">
+      <name slugifiedName="name-references">References</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>Domain Names Concepts and Facilities</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1034"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-2" quoteTitle="true" derivedAnchor="2">
+        <front>
+          <title>Domain Names Implementation and Specification</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1035"/>
+        <refcontent>USC/Information Sciences Institute</refcontent>
+      </reference>
+      <reference anchor="ref-3" quoteTitle="true" derivedAnchor="3">
+        <front>
+          <title>Mail Routing and the Domain System</title>
+          <author fullname="C. Partridge" initials="C." surname="Partridge"/>
+          <date year="1986" month="January"/>
+        </front>
+        <seriesInfo name="STD" value="14"/>
+        <seriesInfo name="RFC" value="974"/>
+        <refcontent>CSNET CIC BBN</refcontent>
+      </reference>
+      <reference anchor="ref-4" quoteTitle="true" derivedAnchor="4">
+        <front>
+          <title>Common DNS Implementation Errors and Suggested Fixes</title>
+          <author fullname="A. Kumar" initials="A." surname="Kumar"/>
+          <author fullname="J. Postel" initials="J." surname="Postel"/>
+          <author fullname="C. Neuman" initials="C." surname="Neuman"/>
+          <author fullname="P. Danzig" initials="P." surname="Danzig"/>
+          <author fullname="S. Miller" initials="S." surname="Miller"/>
+          <date year="1993" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1536"/>
+        <refcontent>USC/Information Sciences Institute, USC</refcontent>
+      </reference>
+      <reference anchor="ref-5" quoteTitle="true" derivedAnchor="5">
+        <front>
+          <title>Common DNS Data File Configuration Errors</title>
+          <author fullname="P. Beertema" initials="P." surname="Beertema"/>
+          <date year="1993" month="October"/>
+        </front>
+        <seriesInfo name="RFC" value="1537"/>
+        <refcontent>CWI</refcontent>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-appendix.a-1">This memo indicates vulnerabilities with all too-forgiving DNS
+clients.  It points out a correction that would eliminate the future
+potential of the problem.</t>
+    </section>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="Ehud Gavron" initials="E." surname="Gavron">
+        <organization showOnFrontPage="true">ACES Research Inc.</organization>
+        <address>
+          <postal>
+            <street>PO Box 14546</street>
+            <city>Tucson</city>
+            <region>AZ</region>
+            <code>85711</code>
+          </postal>
+          <phone>(602) 743-9841</phone>
+          <email>gavron@aces.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

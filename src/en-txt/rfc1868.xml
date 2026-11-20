@@ -1,0 +1,192 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-malkin-unarp-00" indexInclude="true" number="1868" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-malkin-unarp-00" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc1868" rel="alternate"/>
+  <front>
+    <title>ARP Extension - UNARP</title>
+    <seriesInfo name="RFC" value="1868" stream="IETF"/>
+    <author fullname="G. Malkin" initials="G." surname="Malkin">
+      <organization showOnFrontPage="true">Xylogics, Inc.</organization>
+      <address/>
+    </author>
+    <date year="1995" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">The Address Resolution Protocol allows an IP node to determine the
+hardware (datalink) address of a neighboring node on a broadcast
+network.  The protocol depends on timers to age away old ARP entries.
+This document specifies a trivial modification to the ARP mechanism,
+not the packet format, which allows a node to announce that it is
+leaving the network and that all other nodes should modify their ARP
+tables accordingly.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This memo defines an Experimental Protocol for the Internet
+community.  This memo does not specify an Internet standard of any
+kind.  Discussion and suggestions for improvement are requested.
+Distribution of this memo is unlimited.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+      <t indent="0" pn="section-unnumbered-1-1">Thanks to James Carlson/Xylogics for reviewing this document and
+proposing the backwards compatibility mechanism.</t>
+    </section>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">The primary purpose of the Address Resolution Protocol, as defined in
+<xref target="ref-1" format="default" sectionFormat="of" derivedContent="1"/>, is to determine a node's hardware address based on its network
+address (protocol address in ARPspeak).  The ARP protocol
+specifically states that nodes should not periodically advertise
+their existence for two reasons: first, this would generate a lot of
+network traffic and table maintenance overhead; second, it is highly
+unlikely that all nodes will need to communicate to all other nodes.
+Since a node does not advertise its existence, neither does it
+advertise its imminent departure.  This is not a serious problem
+since most ARP implementations maintain timers to age away old
+entries, and departing nodes seldom depart gracefully in any case.</t>
+      <t indent="0" pn="section-1-2">Over time, an additional use has been found for ARP: Proxy ARP.
+While there are those who believe Proxy ARP is an evil thing, it does
+serve a purpose; that is, it allows for communication in ways never
+considered in the original IP architecture.  For example, allows
+dial-in hosts to connect to a network without consuming a large
+amount of the IP address space (i.e., all of the hosts contain
+addresses on the same subnet, even though they are not directly
+attached to the physical network associated with that subnet address.
+It is this use of Proxy ARP which produces the problem addressed by
+this document.</t>
+    </section>
+    <section anchor="the-problem" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-the-problem">The Problem</name>
+      <t indent="0" pn="section-2-1">Consider the following topology:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-2"><![CDATA[
+                 +--------+
+                 | Host A |
+                 +--------+
+                     |
+   ======================================== LAN
+       |                             |
+   +--------+                    +--------+
+   |  CS1   |   comm. servers    |  CS2   |
+   +--------+                    +--------+
+     |    |                        |    |
+    +-+  +-+                      +-+  +-+
+    | |  | |       modems         | |  | |
+    +-+  +-+                      +-+  +-+
+]]></artwork>
+      <t indent="0" pn="section-2-3">Assume that all of the modems are on the same rotary; that is, when a
+remote host dials in, it may be assigned a modem on either of the
+communication servers.  Further assume that all of the remote hosts'
+IP addresses have the same subnet address as the servers and Host A,
+this in order to conserve address space.</t>
+      <t indent="0" pn="section-2-4">To begin, a remote host dials into CS1 and attempts to communicate
+with Host A.  Host A will assume, based on the subnet mask, that the
+remote host is actually attached to the LAN and will issue an ARP
+Request to determine its hardware address.  Naturally, the remote
+host will not hear this request.  CS1, knowing this, will respond in
+the remote host's place with its own hardware address.  Host A, on
+receiving the ARP Reply, will then communicate with the remote host,
+transparently through CS1.  So far everything is just fine.</t>
+      <t indent="0" pn="section-2-5">Now, the remote host disconnects and, before Host A can age its ARP
+cache, reconnects through CS2.  Herein lies the problem.  Whenever
+Host A attempts to send a packet to the remote host, it will send it
+to CS1 because it cannot know that its ARP cache entry is invalid.
+If, when the remote host disconnects, the server to which it was
+attached could inform other nodes on the LAN that the protocol
+address/hardware address mapping was no longer valid, the problem
+would not occur.</t>
+    </section>
+    <section anchor="the-solution" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-the-solution">The Solution</name>
+      <t indent="0" pn="section-3-1">When a server, as described above, disconnects from a remote host for
+which it has responded to a Proxy ARP, it broadcasts an UNARP.  An
+UNARP is an unsolicited ARP Reply with the following field values:</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-3-2">
+        <dt pn="section-3-2.1">Hardware Address Space</dt>
+        <dd pn="section-3-2.2">as appropriate</dd>
+        <dt pn="section-3-2.3">Protocol Address Space</dt>
+        <dd pn="section-3-2.4">0x800 (IP)</dd>
+        <dt pn="section-3-2.5">Hardware Address Length</dt>
+        <dd pn="section-3-2.6">0 (see Backwards Compatibility)</dd>
+        <dt pn="section-3-2.7">Protocol Address Length</dt>
+        <dd pn="section-3-2.8">4 (length of an IP address)</dd>
+        <dt pn="section-3-2.9">Opcode</dt>
+        <dd pn="section-3-2.10">2 (Reply)</dd>
+        <dt pn="section-3-2.11">Source Hardware Address</dt>
+        <dd pn="section-3-2.12">Not Included</dd>
+        <dt pn="section-3-2.13">Source Protocol Address</dt>
+        <dd pn="section-3-2.14">IP address of detaching host</dd>
+        <dt pn="section-3-2.15">Target Hardware Address</dt>
+        <dd pn="section-3-2.16">Not Included</dd>
+        <dt pn="section-3-2.17">Target Protocol Address</dt>
+        <dd pn="section-3-2.18">255.255.255.255 (IP broadcast)</dd>
+      </dl>
+      <t indent="0" pn="section-3-3">NOTE: this is a 16-byte packet (not including MAC header)</t>
+      <t indent="0" pn="section-3-4">On receiving an UNARP, a node deletes the ARP cache entry associated
+with the IP address.</t>
+      <t indent="0" pn="section-3-5">It is not strictly necessary that a server keep state information
+about whether or not it has actually sent a Proxy ARP Reply; it would
+be sufficient if a server always sends an UNARP when a remote host
+disconnects.</t>
+      <t indent="0" pn="section-3-6">Of course, there is no reason why a host which gracefully detaches
+from a LAN cannot also send an UNARP for itself.  This would be
+especially useful if, upon re-attaching, it might have a different
+hardware address.</t>
+    </section>
+    <section anchor="backwards-compatibility" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-backwards-compatibility">Backwards Compatibility</name>
+      <t indent="0" pn="section-4-1">The modifications to support UNARP are trivial, so there is every
+expectation that it will be widely supported.  Of course, there will
+be a period of time during which nodes which support UNARP will
+coexist with nodes which do not support UNARP.  To prevent
+unenlightened nodes from adding spurious ARP cache entries with
+hardware addresses of zero, UNARP packets specify a hardware address
+length of zero.  This should be rejected by nodes which do not
+support UNARP.  As a consequence of this, the source and target
+hardware address fields do not exist in UNARP packets (as previously
+described).</t>
+      <t indent="0" pn="section-4-2">It is recommended that implementors include a configuration switch to
+disable UNARP in the event that some vendor's ARP implementation
+might take offense at the abbreviated UNARP packet format.</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-5-1">Security issues are not discussed in this memo.</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-unnumbered-2">
+      <name slugifiedName="name-references">References</name>
+      <reference anchor="ref-1" quoteTitle="true" derivedAnchor="1">
+        <front>
+          <title>An Ethernet Address Resolution Protocol</title>
+          <author fullname="D. Plummer" initials="D." surname="Plummer">
+            <organization showOnFrontPage="true">MIT</organization>
+          </author>
+          <date year="1982" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="37"/>
+        <seriesInfo name="RFC" value="826"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="Gary Scott Malkin" initials="G." surname="Malkin">
+        <organization showOnFrontPage="true">Xylogics, Inc.</organization>
+        <address>
+          <postal>
+            <street>53 Third Avenue</street>
+            <city>Burlington</city>
+            <region>MA</region>
+            <code>01803</code>
+          </postal>
+          <phone>(617) 272-8140</phone>
+          <email>gmalkin@xylogics.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

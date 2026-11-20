@@ -1,0 +1,253 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-ipv6-host-load-sharing-04" indexInclude="true" number="4311" updates="2461" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-ipv6-host-load-sharing-04" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc4311" rel="alternate"/>
+  <front>
+    <title>IPv6 Host-to-Router Load Sharing</title>
+    <seriesInfo name="RFC" value="4311" stream="IETF"/>
+    <author fullname="R. Hinden" initials="R." surname="Hinden">
+      <organization showOnFrontPage="true">Nokia</organization>
+      <address/>
+    </author>
+    <author fullname="D. Thaler" initials="D." surname="Thaler">
+      <organization showOnFrontPage="true">Microsoft</organization>
+      <address/>
+    </author>
+    <date year="2005" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">The original IPv6 conceptual sending algorithm does not do load
+sharing among equivalent IPv6 routers, and suggests schemes that can
+be problematic in practice.  This document updates the conceptual
+sending algorithm in RFC 2461 so that traffic to different
+destinations can be distributed among routers in an efficient
+fashion.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1-1">This document specifies an Internet standards track protocol for the
+Internet community, and requests discussion and suggestions for
+improvements.  Please refer to the current edition of the &quot;Internet
+Official Protocol Standards&quot; (STD 1) for the standardization state
+and status of this protocol.  Distribution of this memo is unlimited.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2005).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">In the conceptual sending algorithm in <xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/> and in the optional
+extension in <xref target="ROUTERSEL" format="default" sectionFormat="of" derivedContent="ROUTERSEL"/>, a next hop is chosen when no destination
+cache entry exists for an off-link destination or when communication
+through an existing router is failing.  Normally, a router is
+selected the first time traffic is sent to a specific destination IP
+address.  Subsequent traffic to the same destination address
+continues to use the same router unless there is some reason to
+change to a different router (e.g., a redirect message is received,
+or the router is found to be unreachable).</t>
+      <t indent="0" pn="section-1-2">In addition, as described in <xref target="ADDRSEL" format="default" sectionFormat="of" derivedContent="ADDRSEL"/>, the choice of next hop may
+also affect the choice of source address, and hence indirectly (and
+to a lesser extent) may affect the router used for inbound traffic as
+well.</t>
+      <t indent="0" pn="section-1-3">In both the base sending algorithm and in the optional extension,
+sometimes a host has a choice of multiple equivalent routers for a
+destination.  That is, all other factors are equal and a host must
+break a tie via some implementation-specific means.</t>
+      <t indent="0" pn="section-1-4">It is often desirable when there is more than one equivalent router
+that hosts distribute their outgoing traffic among these routers.
+This shares the load among multiple routers and provides better
+performance for the host's traffic.</t>
+      <t indent="0" pn="section-1-5">On the other hand, load sharing can be undesirable in situations
+where sufficient capacity is available through a single router and
+the traffic patterns could be more predictable by using a single
+router; in particular, this helps to diagnose connectivity problems
+beyond the first-hop routers.</t>
+      <t indent="0" pn="section-1-6"><xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/> does not require any particular behavior in this respect.  It
+specifies that an implementation may always choose the same router
+(e.g., the first in the list) or may cycle through the routers in a
+round-robin manner.  Both of these suggestions are problematic.</t>
+      <t indent="0" pn="section-1-7">Clearly, always choosing the same router does not provide load
+sharing.  Some problems with load sharing using naive tie-breaking
+techniques such as round-robin and random are discussed in
+<xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>.  While the destination cache provides some stability
+since the determination is not per packet, cache evictions or
+timeouts can still result in unstable or unpredictable paths over
+time, lowering the performance and making it harder to diagnose
+problems.  Round-robin selection may also result in synchronization
+issues among hosts, where in the worst case the load is concentrated
+on one router at a time.</t>
+      <t indent="0" pn="section-1-8">In the remainder of this document, the key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;,
+&quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;, &quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;,
+&quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and &quot;<bcp14>OPTIONAL</bcp14>&quot; are to be interpreted as
+described in <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>.</t>
+    </section>
+    <section anchor="load-sharing" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-load-sharing">Load Sharing</name>
+      <t indent="0" pn="section-2-1">When a host chooses from multiple equivalent routers, it <bcp14>SHOULD</bcp14>
+support choosing using some method that distributes load for
+different destinations among the equivalent routers rather than
+always choosing the same router (e.g., the first in the list).  This
+memo takes no stance on whether the support for load sharing should
+be turned on or off by default.  Furthermore, a host that does
+attempt to distribute load among routers <bcp14>SHOULD</bcp14> use a hash-based
+scheme that takes (at least) the destination IP address into account,
+such as those described in <xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>, for choosing a router to use.</t>
+      <t indent="0" pn="section-2-2">Note that traffic for a given destination address will use the same
+router as long as the Destination Cache Entry for the destination
+address is not deleted.  With a hash-based scheme, traffic for a
+given destination address will use the same router over time even if
+the Destination Cache Entry is deleted, as long as the list of
+equivalent routers remains the same.</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-3-1">As mentioned in <xref target="MULTIPATH" format="default" sectionFormat="of" derivedContent="MULTIPATH"/>, when next-hop selection is predictable,
+an application can synthesize traffic that will all hash the same,
+making it possible to launch a denial-of-service attack against the
+load-sharing algorithm, and overload a particular router.  This can
+even be done by a remote application that can cause a host to respond
+to a given destination address.  A special case of this is when the
+same (single) next-hop is always selected, such as in the algorithm
+allowed by <xref target="ND" format="default" sectionFormat="of" derivedContent="ND"/>.  Introducing hashing can make such an attack more
+difficult; the more unpredictable the hash is, the harder it becomes
+to conduct a denial-of-service attack against any single router.</t>
+      <t indent="0" pn="section-3-2">However, a malicious local application can bypass the algorithm for
+its own traffic by using mechanisms such as raw sockets, and remote
+attackers can still overload the routers directly.  Hence, the
+mechanisms discussed herein have no significant incremental impact on
+Internet infrastructure security.</t>
+    </section>
+    <section anchor="acknowledgements" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+      <t indent="0" pn="section-4-1">The authors of this document would like to thank Erik Nordmark, Brian
+Haberman, Steve Deering, Aron Silverton, Christian Huitema, and Pekka
+Savola.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-normative-references">Normative References</name>
+      <reference anchor="ND" quoteTitle="true" derivedAnchor="ND">
+        <front>
+          <title>Neighbor Discovery for IP Version 6 (IPv6)</title>
+          <author fullname="T. Narten" initials="T." surname="Narten"/>
+          <author fullname="E. Nordmark" initials="E." surname="Nordmark"/>
+          <author fullname="W. Simpson" initials="W." surname="Simpson"/>
+          <date year="1998" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="2461"/>
+      </reference>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="ADDRSEL" quoteTitle="true" derivedAnchor="ADDRSEL">
+        <front>
+          <title>Default Address Selection for Internet Protocol version 6 (IPv6)</title>
+          <author fullname="R. Draves" initials="R." surname="Draves"/>
+          <date year="2003" month="February"/>
+        </front>
+        <seriesInfo name="RFC" value="3484"/>
+      </reference>
+      <reference anchor="ROUTERSEL" quoteTitle="true" derivedAnchor="ROUTERSEL">
+        <front>
+          <title>Default Router Preferences and More-Specific Routes</title>
+          <author fullname="R. Draves" initials="R." surname="Draves"/>
+          <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+          <date year="2005" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="4191"/>
+      </reference>
+    </references>
+    <references pn="section-6">
+      <name slugifiedName="name-informative-references">Informative References</name>
+      <reference anchor="MULTIPATH" quoteTitle="true" derivedAnchor="MULTIPATH">
+        <front>
+          <title>Multipath Issues in Unicast and Multicast Next-Hop Selection</title>
+          <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+          <author fullname="C. Hopps" initials="C." surname="Hopps"/>
+          <date year="2000" month="November"/>
+        </front>
+        <seriesInfo name="RFC" value="2991"/>
+      </reference>
+    </references>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-addresses">Authors' Addresses</name>
+      <author fullname="Robert Hinden" initials="R." surname="Hinden">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>313 Fairchild Drive</street>
+            <city>Mountain View</city>
+            <region>CA</region>
+            <code>94043</code>
+          </postal>
+          <phone>+1 650 625-2004</phone>
+          <email>bob.hinden@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Dave Thaler" initials="D." surname="Thaler">
+        <organization showOnFrontPage="true">Microsoft Corporation</organization>
+        <address>
+          <postal>
+            <street>One Microsoft Way</street>
+            <city>Redmond</city>
+            <region>WA</region>
+            <code>98052</code>
+          </postal>
+          <phone>+1 425 703 8835</phone>
+          <email>dthaler@microsoft.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">Full Copyright Statement</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2005).</t>
+        <t indent="0" pn="section-appendix.b-2">This document is subject to the rights, licenses and restrictions
+contained in BCP 78, and except as set forth therein, the authors
+retain all their rights.</t>
+        <t indent="0" pn="section-appendix.b-3">This document and the information contained herein are provided on an
+&quot;AS IS&quot; basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET
+ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE
+INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">Intellectual Property</name>
+        <t indent="0" pn="section-appendix.c-1">The IETF takes no position regarding the validity or scope of any
+Intellectual Property Rights or other rights that might be claimed to
+pertain to the implementation or use of the technology described in
+this document or the extent to which any license under such rights
+might or might not be available; nor does it represent that it has
+made any independent effort to identify any such rights.  Information
+on the procedures with respect to rights in RFC documents can be
+found in BCP 78 and BCP 79.</t>
+        <t indent="0" pn="section-appendix.c-2">Copies of IPR disclosures made to the IETF Secretariat and any
+assurances of licenses to be made available, or the result of an
+attempt made to obtain a general license or permission for the use of
+such proprietary rights by implementers or users of this
+specification can be obtained from the IETF on-line IPR repository at
+http://www.ietf.org/ipr.</t>
+        <t indent="0" pn="section-appendix.c-3">The IETF invites any interested party to bring to its attention any
+copyrights, patents or patent applications, or other proprietary
+rights that may cover technology that may be required to implement
+this standard.  Please address the information to the IETF at ietf-ipr@ietf.org.</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">Acknowledgement</name>
+        <t indent="0" pn="section-appendix.d-1">Funding for the RFC Editor function is currently provided by the
+Internet Society.</t>
+      </section>
+  </back>
+</rfc>

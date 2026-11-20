@@ -1,0 +1,204 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-hoffman-tls-master-secret-input-03" indexInclude="true" number="6358" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-hoffman-tls-master-secret-input-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc6358" rel="alternate"/>
+  <front>
+    <title>Additional Master Secret Inputs for TLS</title>
+    <seriesInfo name="RFC" value="6358" stream="IETF"/>
+    <author fullname="P. Hoffman" initials="P." surname="Hoffman">
+      <organization showOnFrontPage="true">VPN Consortium</organization>
+      <address/>
+    </author>
+    <date year="2012" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">This document describes a mechanism for using additional master
+secret inputs with Transport Layer Security (TLS) and Datagram TLS
+(DTLS).</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document is not an Internet Standards Track specification; it is
+published for examination, experimental implementation, and
+evaluation.</t>
+        <t indent="0" pn="section-boilerplate.1.2">This document defines an Experimental Protocol for the Internet
+community.  This document is a product of the Internet Engineering
+Task Force (IETF).  It represents the consensus of the IETF
+community.  It has received public review and has been approved for
+publication by the Internet Engineering Steering Group (IESG).  Not
+all documents approved by the IESG are a candidate for any level of
+Internet Standard; see Section 2 of RFC 5741.</t>
+        <t indent="0" pn="section-boilerplate.1.3">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+http://www.rfc-editor.org/info/rfc6358.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2012 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(http://trustee.ietf.org/license-info) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</t>
+        <t indent="0" pn="section-boilerplate.2-3">This document may contain material from IETF Documents or IETF
+Contributions published or made publicly available before November
+10, 2008.  The person(s) controlling the copyright in some of this
+material may not have granted the IETF Trust the right to allow
+modifications of such material outside the IETF Standards Process.
+Without obtaining an adequate license from the person(s) controlling
+the copyright in such materials, this document may not be modified
+outside the IETF Standards Process, and derivative works of it may
+not be created outside the IETF Standards Process, except to format
+it for publication as an RFC or to translate it into languages other
+than English.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">Some TLS 1.2 <xref target="RFC5246" format="default" sectionFormat="of" derivedContent="RFC5246"/> and DTLS 1.2 <xref target="RFC6347" format="default" sectionFormat="of" derivedContent="RFC6347"/> extensions want to mix
+particular data into the calculation of the master secret.  This
+mixing creates a cryptographic binding of the added material directly
+into the secret that is used to protect the TLS session.  For
+example, some systems want to be sure that there is sufficient
+randomness in the TLS master secret, and this can be accomplished by
+adding it directly to the master secret calculations.</t>
+      <t indent="0" pn="section-1-2">This document describes a framework for TLS and DTLS extensions to
+meet these requirements.  In an extension that uses this framework, a
+client and server provide data in the handshake using normal TLS
+extensions, and then this data is combined with the ClientHello and
+ServerHello random values during the derivation of the master_secret.</t>
+      <t indent="0" pn="section-1-3">Extensions that specify data to be added to the master secret are
+called &quot;extensions with master secret input&quot;.  An extension with
+master secret input must specify the additional input that comes from
+the client and/or the server.  Note that the term &quot;and/or&quot; is used
+here because the definition of the extension might cause input to the
+master secret to come from only one of the participants.</t>
+      <t indent="0" pn="section-1-4">Note that extensions that do not specify that they are extensions
+with master secret input cannot be extensions with master secret
+input.  That is, every extension that does not call itself an
+extension with master secret input is treated just like a normal
+extension.  Also note that this document only describes a framework;
+if an extension uses this framework, and a client and server both
+implement the extension, no signaling about the use of master secret
+input is needed: that comes as part of the extension definition
+itself.</t>
+      <t indent="0" pn="section-1-5">Use of one or more of these extensions changes the way that the
+master secret is calculated in TLS and DTLS.  That is, if the
+handshake has no extensions, or only extensions that are not
+extensions with master secret input, the master secret calculation is
+unchanged.</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-document">Conventions Used in This Document</name>
+        <t indent="0" pn="section-1.1-1">The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;,
+&quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;, &quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and &quot;<bcp14>OPTIONAL</bcp14>&quot; in this
+document are to be interpreted as described in <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>.</t>
+      </section>
+    </section>
+    <section anchor="master-secret-calculation-modifications-for-tls-and-dtls" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-master-secret-calculation-modifications-for-tls-and-dtls">Master Secret Calculation Modifications for TLS and DTLS</name>
+      <t indent="0" pn="section-2-1">When an extension with master secret input is present in the
+handshake, the additional master secret input values <bcp14>MUST</bcp14> be mixed
+into the pseudorandom function (PRF) calculation along with the
+client and server random values during the computation of the master
+secret.  For the calculation of the master secret, the extensions
+<bcp14>MUST</bcp14> be sorted by extension type order.  Note that TLS 1.2 specifies
+that there can only be one extension per type, and the extensions can
+appear in mixed order.</t>
+      <t indent="0" pn="section-2-2">Each extension with master secret input adds its own specified input,
+called &quot;additional_ms_input_1&quot; for the extension with master secret
+input that has the lowest type number, &quot;additional_ms_input_2&quot; for
+the extension with master secret input with the second lowest type
+number, and so on.</t>
+      <t indent="0" pn="section-2-3">The calculation of the master secret becomes:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-4"><![CDATA[
+   master_secret = PRF(pre_master_secret, "master secret",
+                       ClientHello.random +
+                       ClientHello.additional_ms_input_1 +
+                       ClientHello.additional_ms_input_2 +
+                       . . .
+                       ClientHello.additional_ms_input_N +
+                       ServerHello.random +
+                       ServerHello.additional_ms_input_1 +
+                       ServerHello.additional_ms_input_2 +
+                       . . .
+                       ServerHello.additional_ms_input_N +
+                       )[0..47];
+]]></artwork>
+      <t indent="0" pn="section-2-5">Using the specified order of the additional_ms_input_n fields in the
+master_secret is required for interoperability.  Otherwise, a server
+and a client would not know how to unambiguously calculate the same
+master_secret.</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-3-1">This modification to TLS and DTLS increases the amount of data that
+an attacker can inject into the master secret calculation.  This
+potentially would allow an attacker who had partially compromised the
+inputs to the master secret calculation greater scope for influencing
+the output.  Hash-based PRFs like the one used in TLS master secret
+calculations are designed to be fairly indifferent to the input size.</t>
+      <t indent="0" pn="section-3-2">The additional master secret input may have no entropy; in fact, it
+might be completely predictable to an attacker.  TLS is designed to
+function correctly even when the PRF used in the master secret
+calculation has a great deal of predictable material because the PRF
+is used to generate distinct keying material for each connection.
+Thus, even in the face of completely predictable additional master
+secret input values, no harm is done to the resulting PRF output.
+When there is entropy in these values, that entropy is reflected in
+the PRF output.</t>
+    </section>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-acknowledgments">Acknowledgments</name>
+      <t indent="0" pn="section-4-1">Much of the text in this document is derived from text written by
+Eric Rescorla, Margaret Salter, and Jerry Solinas.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-normative-references">Normative References</name>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC5246" quoteTitle="true" derivedAnchor="RFC5246">
+        <front>
+          <title>The Transport Layer Security (TLS) Protocol Version 1.2</title>
+          <author fullname="T. Dierks" initials="T." surname="Dierks"/>
+          <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+          <date year="2008" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="5246"/>
+      </reference>
+      <reference anchor="RFC6347" quoteTitle="true" derivedAnchor="RFC6347">
+        <front>
+          <title>Datagram Transport Layer Security version 1.2</title>
+          <author fullname="E. Rescorla" initials="E." surname="Rescorla"/>
+          <author fullname="N. Modadugu" initials="N." surname="Modadugu"/>
+          <date year="2012" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="6347"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="Paul Hoffman" initials="P." surname="Hoffman">
+        <organization showOnFrontPage="true">VPN Consortium</organization>
+        <address>
+          <email>paul.hoffman@vpnc.org</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

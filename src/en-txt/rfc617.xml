@@ -1,0 +1,171 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="617" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc617" rel="alternate"/>
+  <front>
+    <title>Note on Socket Number Assignment</title>
+    <seriesInfo name="RFC" value="617" stream="IETF"/>
+    <author fullname="Edward Taft" initials="E." surname="Taft">
+      <organization showOnFrontPage="true">PARC-MAXC</organization>
+      <address/>
+    </author>
+    <date year="1974" month="February"/>
+    <abstract pn="section-abstract">
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="false" removeInRFC="false" toc="exclude" pn="section-1">
+      <name slugifiedName="name-introduction">INTRODUCTION</name>
+      <t indent="0" pn="section-1-1">In several current and proposed protocols, as well as in a few
+other documents, the assumption is made (or implied) that a user
+process in control of one end of a Telnet connection has free
+access to a group of socket numbers beginning with or surrounding
+the Telnet socket numbers.</t>
+      <t indent="0" pn="section-1-2">For example, the File Transfer Protocol (RFC 542, NIC #17759)
+specifies that the default data transfer sockets are S+2, S+3,
+U+4, and U+5, where S and U are the server and user sockets
+involved in the initial connection (ICP).</t>
+      <t indent="0" pn="section-1-3">Similarly, the proposed Network Graphics Protocol (NIC #19933)
+provides for a second connection pair for graphics data,
+parallel to the Telnet connection, using (at both ends) sockets
+n+6 and n+7, where n is the Telnet receive socket.</t>
+      <t indent="0" pn="section-1-4">I would like to point out to designers of protocols that the
+Host-Host Protocol (NIC #8246) quite explicitly places no
+interpretations or constraints on host assignment of socket
+numbers, except for the use of the low-order bit to indicate
+direction of data flow. We should refrain from making further
+assumptions (as does the "Socket Number List" document (RFC 503,
+NIC #15747) in stating that the low-order 8 bits are
+"user-specified"), lest we inadvertently exclude certain host
+software architectures or protocol implementations.</t>
+    </section>
+    <section anchor="an-example" numbered="false" removeInRFC="false" toc="exclude" pn="section-2">
+      <name slugifiedName="name-an-example">AN EXAMPLE</name>
+      <t indent="0" pn="section-2-1">To illustrate the source of my concern, let me briefly describe
+the user software interface to the network in the PDP-10 NCP
+implementation currently in use at HARV-10, CMU-10A, and CMU-108.
+I will then show why the fixed socket number requirements of the
+two protocols I mentioned above present implementation
+difficulties, especially at the server end.</t>
+      <t indent="0" pn="section-2-2">Opening a connection at one of these hosts causes the creation of
+a "device" (in approximately the same manner as, say, mounting a
+disk pack). As such, an open connection is subject to any one of
+a number of operations on devices in 10/50, including assignment
+of logical names, opening for data transfer, and reassignment to
+another job.</t>
+      <t indent="0" pn="section-2-3">The NCP allows a (non-privileged) user program to specify the
+low-order 8 bits of the socket number of any connection which it
+opens, and to specify that the other 24 bits be assigned in one of
+three ways:</t>
+      <ul spacing="normal" bare="false" empty="false" indent="3" pn="section-2-4">
+        <li pn="section-2-4.1">As a function of the job number, making a "job-relative"
+socket.</li>
+        <li pn="section-2-4.2">As a function of the user identification, making a
+"user-relative" socket.</li>
+        <li pn="section-2-4.3">As a "guaranteed unique" number, i.e. one assigned by the
+NCP such that no other socket number in use has the same
+high-order 24 bits.</li>
+      </ul>
+      <t indent="0" pn="section-2-5">A program may also specify all 32 bits of a local socket number
+provided the high-order 24 bits are the same as the corresponding
+bits in some other socket already owned by the same job.</t>
+      <t indent="0" pn="section-2-6">The NCP will, of course, allow assignment of a socket generated in
+any of the above ways only if it is not already in use by the same
+or any other job.</t>
+    </section>
+    <section anchor="problems-in-the-ftp-server-implementation-5" numbered="false" removeInRFC="false" toc="exclude" pn="section-3">
+      <name slugifiedName="name-problems-in-the-ftp-server-implementation-5">PROBLEMS IN THE FTP SERVER IMPLEMENTATION 5</name>
+      <t indent="0" pn="section-3-1">The FTP server is implemented in a manner that some readers may
+find reminiscent of Padlipsky's "Unified User Level Protocol" (RFC
+451, NIC #14135). Rather than directly executing most FTP
+functions (in particular, system access and file transfer
+functions), it merely maps FTP commands into local commands which
+it "types" on a pseudo-Teletype (PTY) to a subjob, and similarly
+maps local responses into FTP responses.</t>
+      <t indent="0" pn="section-3-2">This scheme makes maximum use of existing software and
+mechanisms for user authentication, accounting, and file
+access, and eliminates the need for the (privileged) FTP server
+to perform them interpretively. (This conforms to the
+"principle of least privilege" described in RFC 501, NIC
+#15818.)</t>
+      <t indent="0" pn="section-3-3">In this implementation, FTP data transfers are performed by an
+entirely different process (with a different user identification)
+from the one that manages the server end of the Telnet connection.
+Hence, since server sockets S and S+1 belong to the server
+"control" job and sockets S+2 and S+3 are in the same 256-socket
+number range, the latter two sockets are inaccessible to the "data
+transfer" subjob.</t>
+      <t indent="0" pn="section-3-4">Those who attended last spring's FTP meeting may recall that I
+objected strenuously to the requirement that the FTP server use
+a fixed pair of data sockets relative to its Telnet sockets, as
+opposed to the old scheme in which the server has complete
+freedom in the choice of its data sockets. The principal
+reason is that it would seem to rule out the "two-process"
+scheme I have just described.</t>
+      <t indent="0" pn="section-3-5">In fact, in our case there is a way around the problem. The
+FTP server control job can open the data connections itself,
+then "reassign" the created "device" to the data transfer
+subjob. A kludgey solution at best, and one I would rather
+have avoided! Inter-job socket reassignment is hardly an
+operation one is likely to find available in most operating
+systems.</t>
+    </section>
+    <section anchor="difficulties-with-the-graphics-protocol" numbered="false" removeInRFC="false" toc="exclude" pn="section-4">
+      <name slugifiedName="name-difficulties-with-the-graphics-protocol">DIFFICULTIES WITH THE GRAPHICS PROTOCOL</name>
+      <t indent="0" pn="section-4-1">Providing a graphics connection parallel (at a fixed socket number
+distance) to the Telnet connection might potentially present the
+same difficulty as described above for FTP connections.</t>
+      <t indent="0" pn="section-4-2">In the most frequently used model of Telnet communication, as
+well as in many implementations, the server Telnet is a process
+quite distinct from the "user" process under its control. The
+two processes are typically interfaced through the operating
+system's terminal service in such a way that the "user" process
+perceives a ,terminal" as opposed to a "network connection".</t>
+      <t indent="0" pn="section-4-3">In Tenex, for example, a job controlled from a network
+terminal has no handle whatever on the server Telnet
+connection; hence, it has no way of obtaining control of
+sockets n+6 and n+7 for a graphics connection.</t>
+      <t indent="0" pn="section-4-4">In the Harvard-Carnegie 10/50 implementation, it happens (for
+largely accidental reasons) that a job logged in from the
+network does have control (i.e. is considered the owner) of the
+server Telnet sockets.</t>
+      <t indent="0" pn="section-4-5">However, there is another problem. Many operating systems provide
+means by which the association between terminals and jobs may be
+changed.</t>
+      <t indent="0" pn="section-4-6">To use familiar terminology, a terminal may be "detached" from
+one job and "attached" to another, in a manner which does not
+destroy any jobs or any network connections.</t>
+      <t indent="0" pn="section-4-7">Hence, it is entirely possible that a user could start up a
+program that uses sockets n+6 and n+7 (where n is the server
+Telnet receive socket), detach his terminal from that job, attach
+it to another, attempt to run a program using the Graphics
+Protocol, and have the attempted data connection fail because
+sockets n+6 and n+7 are already in use (for the same value of n,
+since we are referring to the same network terminal).</t>
+    </section>
+    <section anchor="conclusion-7" numbered="false" removeInRFC="false" toc="exclude" pn="section-5">
+      <name slugifiedName="name-conclusion-7">CONCLUSION 7</name>
+      <t indent="0" pn="section-5-1">There are, of course, a few network-wide socket number conventions
+necessary for establishing initial connection.</t>
+      <t indent="0" pn="section-5-2">Reserving sockets 0-255 for standard ICP functions is an
+example of one such convention.</t>
+      <t indent="0" pn="section-5-3">Additionally, I think that for the purpose of simplicity it is
+reasonable to expect any process to be able to gain control of
+a small block of "adjacent" sockets, such as an even-odd pair
+(as in ICP), if it asks for them at the same time.</t>
+      <t indent="0" pn="section-5-4">However, as the foregoing examples have demonstrated, to impose
+further fixed socket number requirements is to risk the danger of
+making unwarranted assumptions about the nature of protocol
+implementations, the structure of user processes, etc., at
+individual hosts.</t>
+      <t indent="0" pn="section-5-5">Once the initial Telnet connection is established, any other
+necessary connections should be established by negotiation over
+the Telnet connection (e.g. by messages of the form "Please
+connect to my socket xxxxxx", "OK, connecting via my socket
+yyyyyy"). There is absolutely no need for any protocol to specify
+fixed socket numbers, except for the purposes of the initial
+connection (ICP).</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

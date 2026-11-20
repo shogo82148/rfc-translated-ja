@@ -1,0 +1,250 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-degener-sieve-copy-03" indexInclude="true" number="3894" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-degener-sieve-copy-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3894" rel="alternate"/>
+  <front>
+    <title>Sieve Extension: Copying Without Side Effects</title>
+    <seriesInfo name="RFC" value="3894" stream="IETF"/>
+    <author fullname="J. Degener" initials="J." surname="Degener">
+      <organization showOnFrontPage="true">Sendmail, Inc.</organization>
+      <address/>
+    </author>
+    <date year="2004" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">The Sieve scripting language allows users to control handling and
+disposal of their incoming e-mail.  By default, an e-mail message
+that is processed by a Sieve script is saved in the owner's &quot;inbox&quot;.
+Actions such as &quot;fileinto&quot; and &quot;redirect&quot; cancel this default
+behavior.</t>
+      <t indent="0" pn="section-abstract-2">This document defines a new keyword parameter, &quot;:copy&quot;, to be used
+with the Sieve &quot;fileinto&quot; and &quot;redirect&quot; actions.  Adding &quot;:copy&quot; to
+an action suppresses cancellation of the default &quot;inbox&quot; save.  It
+allows users to add commands to an existing script without changing
+the meaning of the rest of the script.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document specifies an Internet standards track protocol for the
+Internet community, and requests discussion and suggestions for
+improvements.  Please refer to the current edition of the &quot;Internet
+Official Protocol Standards&quot; (STD 1) for the standardization state
+and status of this protocol.  Distribution of this memo is unlimited.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2004).</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">The Sieve scripting language <xref target="SIEVE" format="default" sectionFormat="of" derivedContent="SIEVE"/> allows users to control handling
+and disposal of their incoming e-mail.  Two frequently used Sieve
+commands are &quot;fileinto&quot; (saving into a local message store, such as
+an IMAP server) and &quot;redirect&quot; (forwarding to another e-mail
+address).  Both of these cancel the Sieve default behavior of saving
+into the user's &quot;inbox&quot;.</t>
+      <t indent="0" pn="section-1-2">But some users have the notion of forwarding an extra copy of a
+message for safekeeping to another e-mail address, or of saving a
+copy in a folder - in addition to the regular message delivery, which
+shouldn't be affected by the copy.</t>
+      <t indent="0" pn="section-1-3">If saving an extra copy is all the user wanted to do,</t>
+      <artwork name="" type="" align="left" alt="" pn="section-1-4"><![CDATA[
+      fileinto "unfiltered";
+      keep;
+]]></artwork>
+      <t indent="0" pn="section-1-5">would do the job.  The &quot;keep&quot; command does explicitly what the
+cancelled default behavior did.  But the explicit &quot;keep&quot; is a poor
+substitute for the implicit &quot;keep&quot; when more processing follows:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-1-6"><![CDATA[
+      fileinto "unfiltered";
+      keep;
+
+      if header "Subject" "MAKE MONEY FAST!!!"
+      {
+              discard;
+      }
+]]></artwork>
+      <t indent="0" pn="section-1-7">In this example, the &quot;discard&quot; is ineffective against the explicit
+&quot;keep&quot;; the discarded message still ends up in the user's inbox.</t>
+      <t indent="0" pn="section-1-8">It is possible to generate Sieve code that perfectly expresses a
+user's wishes, but such code quickly grows unwieldy because it needs
+to keep track of the state that the implicit &quot;keep&quot; would have had
+without the &quot;fileinto&quot; or &quot;redirect&quot; command.</t>
+      <t indent="0" pn="section-1-9">This extension tries to make life easier for user interface designers
+and script writers by allowing them to express the &quot;copy&quot; semantics
+directly.</t>
+    </section>
+    <section anchor="conventions-used" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-used">Conventions used</name>
+      <t indent="0" pn="section-2-1">Conventions for notations are as in <xref target="SIEVE" format="default" sectionFormat="of" derivedContent="SIEVE"/> section 1.1, including
+use of <xref target="KEYWORDS" format="default" sectionFormat="of" derivedContent="KEYWORDS"/> and &quot;Syntax:&quot; label for the definition of action
+and tagged arguments syntax.</t>
+      <t indent="0" pn="section-2-2">The capability string associated with extension defined in this
+document is &quot;copy&quot;.</t>
+    </section>
+    <section anchor="copy-extension-to-the-fileinto-and-redirect-commands" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-copy-extension-to-the-fileinto-and-redirect-commands">&quot;:copy&quot; extension to the &quot;fileinto&quot; and &quot;redirect&quot; commands</name>
+      <t indent="0" pn="section-3-1">Syntax:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-2"><![CDATA[
+        "fileinto" [":copy"] <folder: string>
+        "redirect" [":copy"] <address: string>
+]]></artwork>
+      <t indent="0" pn="section-3-3">If the optional &quot;:copy&quot; keyword is specified with &quot;fileinto&quot; or
+&quot;redirect&quot;, the tagged command does not cancel the implicit &quot;keep&quot;.
+Instead, it merely files or redirects a copy in addition to whatever
+else is happening to the message.</t>
+      <t indent="0" pn="section-3-4">Example:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-5"><![CDATA[
+      require ["copy", "fileinto"];
+      fileinto :copy "incoming";
+
+      # ... more processing follows ...
+]]></artwork>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-4-1">The &quot;copy&quot; extension makes it easier to eavesdrop on a user's message
+stream without the user noticing.  This was technically possible
+before if an attacker gained read/write access to a user's Sieve
+scripts, but now an attacker no longer needs to parse a script in
+order to modify it.  Write access to Sieve scripts must be protected
+as strongly as read/write access to e-mail, for example by using
+secure directory protocols such as correctly parameterized LDAP over
+TLS <xref target="LDAP" format="default" sectionFormat="of" derivedContent="LDAP"/>.</t>
+      <t indent="0" pn="section-4-2">Organizations that wish to monitor their users' e-mail traffic must
+familiarize themselves with local data protection laws before
+creating stores of old e-mail traffic without control, or perhaps
+even knowledge, of the sender or intended recipients.</t>
+      <t indent="0" pn="section-4-3">Organizations that legally use &quot;redirect :copy&quot; to eavesdrop on
+correspondence (for example, by keeping a log to answer questions
+about insider trading at a later time) can avoid future problems by
+setting users' privacy expectations correctly.</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANA Considerations</name>
+      <t indent="0" pn="section-5-1">The following template specifies the IANA registration of the &quot;copy&quot;
+Sieve extension specified in this document.</t>
+      <artwork name="" type="" align="left" alt="" pn="section-5-2"><![CDATA[
+   To: iana@iana.org
+   Subject: Registration of new Sieve extension
+
+   Capability name: copy
+   Capability keyword: copy
+   Capability arguments: N/A
+   Standards Track: RFC 3894
+   Person and email address to contact for further information:
+
+      Jutta Degener
+      Sendmail, Inc.
+      6425 Christie Ave, 4th Floor
+      Emeryville, CA 94608
+
+      Email: jutta@sendmail.com
+]]></artwork>
+      <t indent="0" pn="section-5-3">This information has been added to the list of Sieve extensions given
+on <eref target="http://www.iana.org/assignments/sieve-extensions" brackets="none"/>.</t>
+    </section>
+    <section anchor="acknowledgments" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-acknowledgments">Acknowledgments</name>
+      <t indent="0" pn="section-6-1">Thanks to Eric Allman, Ned Freed, Will Lee, Nigel Swinson, and Rand
+Wacker for corrections and comments.</t>
+    </section>
+  </middle>
+  <back>
+    <references anchor="references" pn="section-7">
+      <name slugifiedName="name-references">References</name>
+      <references anchor="normative-references" pn="section-7.1">
+        <name slugifiedName="name-normative-references">Normative References</name>
+        <reference anchor="KEYWORDS" quoteTitle="true" derivedAnchor="KEYWORDS">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+        </reference>
+        <reference anchor="SIEVE" quoteTitle="true" derivedAnchor="SIEVE">
+          <front>
+            <title>Sieve: A Mail Filtering Language</title>
+            <author fullname="T. Showalter" initials="T." surname="Showalter"/>
+            <date year="2001" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="3028"/>
+        </reference>
+      </references>
+      <references anchor="informative-references" pn="section-7.2">
+        <name slugifiedName="name-informative-references">Informative References</name>
+        <reference anchor="LDAP" quoteTitle="true" derivedAnchor="LDAP">
+          <front>
+            <title>Authentication Methods for LDAP</title>
+            <author fullname="M. Wahl" initials="M." surname="Wahl"/>
+            <author fullname="H. Alvestrand" initials="H." surname="Alvestrand"/>
+            <author fullname="J. Hodges" initials="J." surname="Hodges"/>
+            <author fullname="R. Morgan" initials="R." surname="Morgan"/>
+            <date year="2000" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="2829"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="Jutta Degener" initials="J." surname="Degener">
+        <organization showOnFrontPage="true">Sendmail, Inc.</organization>
+        <address>
+          <postal>
+            <street>6425 Christie Ave, 4th Floor</street>
+            <city>Emeryville</city>
+            <region>CA</region>
+            <code>94608</code>
+          </postal>
+          <email>jutta@sendmail.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">Full Copyright Statement</name>
+        <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2004).</t>
+        <t indent="0" pn="section-appendix.b-2">This document is subject to the rights, licenses and restrictions
+contained in BCP 78, and except as set forth therein, the authors
+retain all their rights.</t>
+        <t indent="0" pn="section-appendix.b-3">This document and the information contained herein are provided on an
+&quot;AS IS&quot; basis and THE CONTRIBUTOR, THE ORGANIZATION HE/S HE
+REPRESENTS OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE
+INTERNET ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF
+THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</t>
+      </section>
+    <section anchor="intellectual-property" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-intellectual-property">Intellectual Property</name>
+        <t indent="0" pn="section-appendix.c-1">The IETF takes no position regarding the validity or scope of any
+Intellectual Property Rights or other rights that might be claimed to
+pertain to the implementation or use of the technology described in
+this document or the extent to which any license under such rights
+might or might not be available; nor does it represent that it has
+made any independent effort to identify any such rights.  Information
+on the IETF's procedures with respect to rights in IETF Documents can
+be found in BCP 78 and BCP 79.</t>
+        <t indent="0" pn="section-appendix.c-2">Copies of IPR disclosures made to the IETF Secretariat and any
+assurances of licenses to be made available, or the result of an
+attempt made to obtain a general license or permission for the use of
+such proprietary rights by implementers or users of this
+specification can be obtained from the IETF on-line IPR repository at
+http://www.ietf.org/ipr.</t>
+        <t indent="0" pn="section-appendix.c-3">The IETF invites any interested party to bring to its attention any
+copyrights, patents or patent applications, or other proprietary
+rights that may cover technology that may be required to implement
+this standard.  Please address the information to the IETF at ietf-ipr@ietf.org.</t>
+      </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgement">Acknowledgement</name>
+        <t indent="0" pn="section-appendix.d-1">Funding for the RFC Editor function is currently provided by the
+Internet Society.</t>
+      </section>
+  </back>
+</rfc>

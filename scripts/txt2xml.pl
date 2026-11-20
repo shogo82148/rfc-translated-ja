@@ -10,17 +10,24 @@ use Getopt::Long qw(GetOptions);
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
 
-# usage: scripts/txt2xml.pl [--no-patch] [-o OUTPUT] <rfc-number>
-#   --no-patch  src/patches/rfcN.patch を当てない（環境変数 RFC_NO_PATCH=1 と同じ）
+# TXT 形式の RFC (src/rfcs/rfcN.txt) から英語 XML の初稿を生成します。
+# 出力は完全ではないので、変換の崩れを手で直したものを src/en-txt/rfcN.xml にコミットします。
+#
+# usage: scripts/txt2xml.pl [-o OUTPUT [--force]] <rfc-number>
 #   -o OUTPUT   標準出力の代わりに OUTPUT へ書き出す
-my $no_patch = $ENV{RFC_NO_PATCH};
+#   --force     OUTPUT がすでにあっても上書きする（手で直した内容は失われます）
+my $usage = "usage: $0 [-o OUTPUT [--force]] <rfc-number>\n";
 my $output_file;
+my $force;
 GetOptions(
-    "no-patch" => \$no_patch,
     "o|output=s" => \$output_file,
-) or die "usage: $0 [--no-patch] [-o OUTPUT] <rfc-number>\n";
+    "force" => \$force,
+) or die $usage;
 my $number = $ARGV[0];
-die "usage: $0 [--no-patch] [-o OUTPUT] <rfc-number>\n" unless defined $number && $number =~ /\A[0-9]+\z/;
+die $usage unless defined $number && $number =~ /\A[0-9]+\z/;
+if (defined $output_file && -e $output_file && !$force) {
+    die "$output_file already exists. Hand-fixed changes would be lost; use --force to overwrite.\n";
+}
 
 open my $buf, ">", \my $output or die "failed to open: $!";
 
@@ -32,29 +39,6 @@ sub slurp($file) {
     my $content = do { local $/; <$fh> };
     close $fh;
     return decode_utf8($content);
-}
-
-sub patch($input, $patch_file) {
-    use File::Temp qw/ tempfile tempdir /;
-    my $dir = tempdir( CLEANUP => 1 );
-    my ($fh, $filename) = tempfile( DIR => $dir );
-    print $fh encode_utf8($input);
-    close($fh);
-
-    # -f: 対話的な問い合わせをせず、当たらない hunk は失敗として扱う
-    open my $ph, "-|", "patch", "-f", "-i", $patch_file, $filename
-        or die "failed to run patch: $!\n";
-    my $log = do { local $/; <$ph> } // "";
-    close $ph;
-    if ($? != 0) {
-        my $reason = $? == -1 ? "failed to execute patch: $!"
-            : $? & 127 ? sprintf("patch died with signal %d", $? & 127)
-            : sprintf("patch exited with status %d", $? >> 8);
-        # 一時ディレクトリは終了時に消えるので、reject の内容もここで出しておく
-        my $rej = -f "$filename.rej" ? "rejected hunks:\n" . slurp("$filename.rej") : "";
-        die "failed to apply $patch_file: $reason\n" . decode_utf8($log) . $rej;
-    }
-    return slurp($filename);
 }
 
 sub escape($s) {
@@ -927,13 +911,6 @@ say $buf '  </back>';
 say $buf "</rfc>";
 
 close $buf;
-
-unless ($no_patch) {
-    my $patch_file = "src/patches/rfc$number.patch";
-    if (-f $patch_file) {
-        $output = patch($output, $patch_file)
-    }
-}
 
 if (defined $output_file) {
     open my $out, ">:utf8", $output_file or die "failed to open $output_file: $!";

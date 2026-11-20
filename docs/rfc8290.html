@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8290: Flow Queue CoDelパケットスケジューラーとアクティブキュー管理アルゴリズム（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>EXPERIMENTAL</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8290.html">RFC 8290</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8290">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8290">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8290</h1>
+<h1 id="title-en">The Flow Queue CoDel Packet Scheduler and Active Queue Management Algorithm</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8290</h1>
+<h1 id="title-ja">Flow Queue CoDelパケットスケジューラーとアクティブキュー管理アルゴリズム</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This memo presents the FQ-CoDel hybrid packet scheduler and Active
+Queue Management (AQM) algorithm, a powerful tool for fighting
+bufferbloat and reducing latency.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">このメモは、FQ-CoDelというハイブリッドなパケットスケジューラーとアクティブキュー管理（AQM）アルゴリズムを示します。これは、バッファーブロートと戦い、遅延を減らすための強力なツールです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">FQ-CoDel mixes packets from multiple flows and reduces the impact of
+head-of-line blocking from bursty traffic.  It provides isolation for
+low-rate traffic such as DNS, web, and videoconferencing traffic.  It
+improves utilisation across the networking fabric, especially for
+bidirectional traffic, by keeping queue lengths short, and it can be
+implemented in a memory- and CPU-efficient fashion across a wide
+range of hardware.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">FQ-CoDelは、複数のフローからのパケットを混ぜ合わせ、バースト性のあるトラフィックによるヘッドオブラインブロッキングの影響を軽減します。FQ-CoDelは、DNS、ウェブ、ビデオ会議のトラフィックのような低レートのトラフィックを分離します。FQ-CoDelは、キューの長さを短く保つことで、ネットワークファブリック全体の利用率を、特に双方向のトラフィックについて改善します。また、幅広いハードウェアで、メモリーとCPUの面で効率的な方法で実装できます。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for examination, experimental implementation, and
+evaluation.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document defines an Experimental Protocol for the Internet
+community.  This document is a product of the Internet Engineering
+Task Force (IETF).  It represents the consensus of the IETF
+community.  It has received public review and has been approved for
+publication by the Internet Engineering Steering Group (IESG).  Not
+all documents approved by the IESG are a candidate for any level of
+Internet Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8290" class="eref">https://www.rfc-editor.org/info/rfc8290</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="https://www.rfc-editor.org/info/rfc8290" class="eref">https://www.rfc-editor.org/info/rfc8290</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.1.1.1-en"><a href="#section-1.1-en">1.1</a>.  <a href="#name-conventions-used-in-this-document-en">Conventions Used in This Document</a></p>
+</li>
+            <li id="section-toc.1-1.1.2-en">
+              <p id="section-toc.1-1.1.2.1-en"><a href="#section-1.2-en">1.2</a>.  <a href="#name-terminology-and-concepts-en">Terminology and Concepts</a></p>
+</li>
+            <li id="section-toc.1-1.1.3-en">
+              <p id="section-toc.1-1.1.3.1-en"><a href="#section-1.3-en">1.3</a>.  <a href="#name-informal-summary-of-fq-codel-en">Informal Summary of FQ-CoDel</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-codel-en">CoDel</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-flow-queueing-en">Flow Queueing</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-the-fq-codel-scheduler-en">The FQ-CoDel Scheduler</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-enqueue-en">Enqueue</a></p>
+<ul id="section-toc.1-1.4.1.2-en">
+<li>
+                <p id="section-toc.1-1.4.1.1.1-en"><a href="#section-4.1.1-en">4.1.1</a>.  <a href="#name-alternative-classification-schemes-en">Alternative Classification Schemes</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.4.2-en">
+              <p id="section-toc.1-1.4.2.1-en"><a href="#section-4.2-en">4.2</a>.  <a href="#name-dequeue-en">Dequeue</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-implementation-considerations-en">Implementation Considerations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-data-structures-en">Data Structures</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-en">
+              <p id="section-toc.1-1.5.2.1-en"><a href="#section-5.2-en">5.2</a>.  <a href="#name-parameters-en">Parameters</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.5.2.1.1-en"><a href="#section-5.2.1-en">5.2.1</a>.  <a href="#name-interval-en">Interval</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.2-en">
+                <p id="section-toc.1-1.5.2.2.1-en"><a href="#section-5.2.2-en">5.2.2</a>.  <a href="#name-target-en">Target</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.3-en">
+                <p id="section-toc.1-1.5.2.3.1-en"><a href="#section-5.2.3-en">5.2.3</a>.  <a href="#name-packet-limit-en">Packet Limit</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.4-en">
+                <p id="section-toc.1-1.5.2.4.1-en"><a href="#section-5.2.4-en">5.2.4</a>.  <a href="#name-quantum-en">Quantum</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.5-en">
+                <p id="section-toc.1-1.5.2.5.1-en"><a href="#section-5.2.5-en">5.2.5</a>.  <a href="#name-flows-en">Flows</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.6-en">
+                <p id="section-toc.1-1.5.2.6.1-en"><a href="#section-5.2.6-en">5.2.6</a>.  <a href="#name-explicit-congestion-notification-(ecn)-en">Explicit Congestion Notification (ECN)</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.7-en">
+                <p id="section-toc.1-1.5.2.7.1-en"><a href="#section-5.2.7-en">5.2.7</a>.  <a href="#name-ce-threshold-en">CE Threshold</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.5.3-en">
+              <p id="section-toc.1-1.5.3.1-en"><a href="#section-5.3-en">5.3</a>.  <a href="#name-probability-of-hash-collisions-en">Probability of Hash Collisions</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-en">
+              <p id="section-toc.1-1.5.4.1-en"><a href="#section-5.4-en">5.4</a>.  <a href="#name-memory-overhead-en">Memory Overhead</a></p>
+</li>
+            <li id="section-toc.1-1.5.5-en">
+              <p id="section-toc.1-1.5.5.1-en"><a href="#section-5.5-en">5.5</a>.  <a href="#name-per-packet-timestamping-en">Per-Packet Timestamping</a></p>
+</li>
+            <li id="section-toc.1-1.5.6-en">
+              <p id="section-toc.1-1.5.6.1-en"><a href="#section-5.6-en">5.6</a>.  <a href="#name-limiting-queueing-in-lower-layers-en">Limiting Queueing in Lower Layers</a></p>
+</li>
+            <li id="section-toc.1-1.5.7-en">
+              <p id="section-toc.1-1.5.7.1-en"><a href="#section-5.7-en">5.7</a>.  <a href="#name-other-forms-of-fair-queueing-en">Other Forms of Fair Queueing</a></p>
+</li>
+            <li id="section-toc.1-1.5.8-en">
+              <p id="section-toc.1-1.5.8.1-en"><a href="#section-5.8-en">5.8</a>.  <a href="#name-differences-between-codel-and-fq-codel-behaviour-en">Differences between CoDel and FQ-CoDel Behaviour</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-limitations-of-flow-queueing-en">Limitations of Flow Queueing</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.6.1.1-en"><a href="#section-6.1-en">6.1</a>.  <a href="#name-fairness-between-things-other-than-flows-en">Fairness between Things Other Than Flows</a></p>
+</li>
+            <li id="section-toc.1-1.6.2-en">
+              <p id="section-toc.1-1.6.2.1-en"><a href="#section-6.2-en">6.2</a>.  <a href="#name-flow-bunching-by-opaque-encapsulation-en">Flow Bunching by Opaque Encapsulation</a></p>
+</li>
+            <li id="section-toc.1-1.6.3-en">
+              <p id="section-toc.1-1.6.3.1-en"><a href="#section-6.3-en">6.3</a>.  <a href="#name-low-priority-congestion-control-algorithms-en">Low-Priority Congestion Control Algorithms</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-deployment-status-and-future-work-en">Deployment Status and Future Work</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.10.1.1-en"><a href="#section-10.1-en">10.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.10.2-en">
+              <p id="section-toc.1-1.10.2.1-en"><a href="#section-10.2-en">10.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-en">
+            <p id="section-toc.1-1.a.1-en"><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.b-en">
+            <p id="section-toc.1-1.b.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.1.1.1-ja"><a href="#section-1.1-ja">1.1</a>.  <a href="#name-conventions-used-in-this-document-ja">この文書で使用する規約</a></p>
+</li>
+            <li id="section-toc.1-1.1.2-ja">
+              <p id="section-toc.1-1.1.2.1-ja"><a href="#section-1.2-ja">1.2</a>.  <a href="#name-terminology-and-concepts-ja">用語と概念</a></p>
+</li>
+            <li id="section-toc.1-1.1.3-ja">
+              <p id="section-toc.1-1.1.3.1-ja"><a href="#section-1.3-ja">1.3</a>.  <a href="#name-informal-summary-of-fq-codel-ja">FQ-CoDelの非形式的な概要</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-codel-ja">CoDel</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-flow-queueing-ja">フローキューイング</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-the-fq-codel-scheduler-ja">FQ-CoDelスケジューラー</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-enqueue-ja">エンキュー</a></p>
+<ul id="section-toc.1-1.4.1.2-ja">
+<li>
+                <p id="section-toc.1-1.4.1.1.1-ja"><a href="#section-4.1.1-ja">4.1.1</a>.  <a href="#name-alternative-classification-schemes-ja">代替の分類方式</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.4.2-ja">
+              <p id="section-toc.1-1.4.2.1-ja"><a href="#section-4.2-ja">4.2</a>.  <a href="#name-dequeue-ja">デキュー</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-implementation-considerations-ja">実装上の考慮事項</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-data-structures-ja">データ構造</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-ja">
+              <p id="section-toc.1-1.5.2.1-ja"><a href="#section-5.2-ja">5.2</a>.  <a href="#name-parameters-ja">パラメーター</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.5.2.1.1-ja"><a href="#section-5.2.1-ja">5.2.1</a>.  <a href="#name-interval-ja">インターバル</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.2-ja">
+                <p id="section-toc.1-1.5.2.2.1-ja"><a href="#section-5.2.2-ja">5.2.2</a>.  <a href="#name-target-ja">目標値</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.3-ja">
+                <p id="section-toc.1-1.5.2.3.1-ja"><a href="#section-5.2.3-ja">5.2.3</a>.  <a href="#name-packet-limit-ja">パケット数の上限</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.4-ja">
+                <p id="section-toc.1-1.5.2.4.1-ja"><a href="#section-5.2.4-ja">5.2.4</a>.  <a href="#name-quantum-ja">クォンタム</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.5-ja">
+                <p id="section-toc.1-1.5.2.5.1-ja"><a href="#section-5.2.5-ja">5.2.5</a>.  <a href="#name-flows-ja">フロー</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.6-ja">
+                <p id="section-toc.1-1.5.2.6.1-ja"><a href="#section-5.2.6-ja">5.2.6</a>.  <a href="#name-explicit-congestion-notification-(ecn)-ja">明示的輻輳通知（ECN）</a></p>
+</li>
+              <li id="section-toc.1-1.5.2.7-ja">
+                <p id="section-toc.1-1.5.2.7.1-ja"><a href="#section-5.2.7-ja">5.2.7</a>.  <a href="#name-ce-threshold-ja">CEしきい値</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.5.3-ja">
+              <p id="section-toc.1-1.5.3.1-ja"><a href="#section-5.3-ja">5.3</a>.  <a href="#name-probability-of-hash-collisions-ja">ハッシュ衝突の確率</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-ja">
+              <p id="section-toc.1-1.5.4.1-ja"><a href="#section-5.4-ja">5.4</a>.  <a href="#name-memory-overhead-ja">メモリーのオーバーヘッド</a></p>
+</li>
+            <li id="section-toc.1-1.5.5-ja">
+              <p id="section-toc.1-1.5.5.1-ja"><a href="#section-5.5-ja">5.5</a>.  <a href="#name-per-packet-timestamping-ja">パケットごとのタイムスタンプ</a></p>
+</li>
+            <li id="section-toc.1-1.5.6-ja">
+              <p id="section-toc.1-1.5.6.1-ja"><a href="#section-5.6-ja">5.6</a>.  <a href="#name-limiting-queueing-in-lower-layers-ja">下位レイヤーでのキューイングの制限</a></p>
+</li>
+            <li id="section-toc.1-1.5.7-ja">
+              <p id="section-toc.1-1.5.7.1-ja"><a href="#section-5.7-ja">5.7</a>.  <a href="#name-other-forms-of-fair-queueing-ja">その他の形式の公平キューイング</a></p>
+</li>
+            <li id="section-toc.1-1.5.8-ja">
+              <p id="section-toc.1-1.5.8.1-ja"><a href="#section-5.8-ja">5.8</a>.  <a href="#name-differences-between-codel-and-fq-codel-behaviour-ja">CoDelとFQ-CoDelの振る舞いの違い</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-limitations-of-flow-queueing-ja">フローキューイングの制限</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.6.1.1-ja"><a href="#section-6.1-ja">6.1</a>.  <a href="#name-fairness-between-things-other-than-flows-ja">フロー以外のものの間での公平性</a></p>
+</li>
+            <li id="section-toc.1-1.6.2-ja">
+              <p id="section-toc.1-1.6.2.1-ja"><a href="#section-6.2-ja">6.2</a>.  <a href="#name-flow-bunching-by-opaque-encapsulation-ja">不透明なカプセル化によるフローの束ね</a></p>
+</li>
+            <li id="section-toc.1-1.6.3-ja">
+              <p id="section-toc.1-1.6.3.1-ja"><a href="#section-6.3-ja">6.3</a>.  <a href="#name-low-priority-congestion-control-algorithms-ja">低優先度の輻輳制御アルゴリズム</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-deployment-status-and-future-work-ja">展開状況と今後の作業</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.10.1.1-ja"><a href="#section-10.1-ja">10.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.10.2-ja">
+              <p id="section-toc.1-1.10.2.1-ja"><a href="#section-10.2-ja">10.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-ja">
+            <p id="section-toc.1-1.a.1-ja"><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.b-ja">
+            <p id="section-toc.1-1.b.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">The Flow Queue CoDel (FQ-CoDel) algorithm is a combined packet
+scheduler and Active Queue Management (AQM) <span>[<a href="#RFC3168-en">RFC3168</a>]</span> algorithm
+developed as part of the bufferbloat-fighting community effort
+<span>[<a href="#BLOATWEB-en">BLOATWEB</a>]</span>.  It is based on a modified Deficit Round Robin (DRR)
+queue scheduler <span>[<a href="#DRR-en">DRR</a>]</span> <span>[<a href="#DRRPP-en">DRRPP</a>]</span> with the CoDel AQM <span>[<a href="#RFC8289-en">RFC8289</a>]</span> algorithm
+operating on each queue.  This document describes the combined
+algorithm; reference implementations are available for the ns-2 <span>[<a href="#NS2-en">NS2</a>]</span>
+and ns-3 <span>[<a href="#NS3-en">NS3</a>]</span> network simulators, and the algorithm is included in
+the mainline Linux kernel as the fq_codel queueing discipline
+<span>[<a href="#LINUXSRC-en">LINUXSRC</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">Flow Queue CoDel（FQ-CoDel）アルゴリズムは、パケットスケジューラーとアクティブキュー管理（AQM）<span>[<a href="#RFC3168-ja">RFC3168</a>]</span>アルゴリズムを組み合わせたもので、バッファーブロートと戦うコミュニティーの取り組み<span>[<a href="#BLOATWEB-ja">BLOATWEB</a>]</span>の一環として開発されました。FQ-CoDelは、修正を加えたDeficit Round Robin（DRR）キュースケジューラー<span>[<a href="#DRR-ja">DRR</a>]</span> <span>[<a href="#DRRPP-ja">DRRPP</a>]</span>に基づいており、各キューでCoDel AQM<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>アルゴリズムが動作します。この文書は、この組み合わせたアルゴリズムについて説明します。リファレンス実装がネットワークシミュレーターのns-2<span>[<a href="#NS2-ja">NS2</a>]</span>とns-3<span>[<a href="#NS3-ja">NS3</a>]</span>向けに利用可能であり、このアルゴリズムはfq_codelキューイング規律（queueing discipline）<span>[<a href="#LINUXSRC-ja">LINUXSRC</a>]</span>としてLinuxカーネルのメインラインに取り込まれています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">FQ-CoDel is a general, efficient, nearly parameterless queue
+management approach combining flow queueing with CoDel.  It is a
+powerful tool for solving bufferbloat <span>[<a href="#BLOAT-en">BLOAT</a>]</span> and has already been
+turned on by default in a number of Linux distributions.  In this
+document, we describe the Linux implementation in sufficient detail
+for others to independently implement the algorithm for deployment
+outside the Linux ecosystem.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">FQ-CoDelは、フローキューイングとCoDelを組み合わせた、汎用的で効率的な、ほとんどパラメーターを必要としないキュー管理のアプローチです。FQ-CoDelはバッファーブロート<span>[<a href="#BLOAT-ja">BLOAT</a>]</span>を解決するための強力なツールであり、すでに多くのLinuxディストリビューションでデフォルトで有効になっています。この文書では、他の人がLinuxエコシステムの外で展開するためにこのアルゴリズムを独自に実装できるよう、Linuxの実装を十分詳細に説明します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">Since the FQ-CoDel algorithm was originally developed in the Linux
+kernel, that implementation is still considered canonical.  This
+document describes the algorithm in the abstract in Sections 1-4 and
+separates out most implementation details in subsequent sections;
+however, the Linux implementation is used as a reference for default
+behaviour in the abstract algorithm description.</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">FQ-CoDelアルゴリズムはもともとLinuxカーネルで開発されたため、その実装が今でも正統なものとみなされています。この文書は、セクション1〜4でアルゴリズムを抽象的に説明し、実装の詳細のほとんどを後続のセクションに分けています。ただし、抽象的なアルゴリズムの説明におけるデフォルトの振る舞いについては、Linuxの実装を基準としています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">This document is structured as follows.  This section gives some
+concepts and terminology used in the rest of the document and gives a
+short informal summary of the FQ-CoDel algorithm.  <a href="#section-2-en">Section 2</a> gives an
+overview of the CoDel algorithm.  <a href="#section-3-en">Section 3</a> covers the flow hashing
+and DRR portion.  <a href="#section-4-en">Section 4</a> then describes the working of the
+algorithm in detail, while <a href="#section-5-en">Section 5</a> describes implementation details
+and considerations.  <a href="#section-6-en">Section 6</a> lists some of the limitations of using
+flow queueing.  <a href="#section-7-en">Section 7</a> outlines the current status of FQ-CoDel
+deployment and lists some possible future areas of inquiry.  Finally,
+<a href="#section-8-en">Section 8</a> reiterates some important security points that must be
+observed in the implementation.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">この文書の構成は次のとおりです。このセクションでは、文書の残りの部分で使用するいくつかの概念と用語を示し、FQ-CoDelアルゴリズムの簡単な非形式的な概要を示します。<a href="#section-2-ja">セクション2</a>では、CoDelアルゴリズムの概要を示します。<a href="#section-3-ja">セクション3</a>では、フローのハッシュ化とDRRの部分を扱います。続いて<a href="#section-4-ja">セクション4</a>でアルゴリズムの動作を詳細に説明し、<a href="#section-5-ja">セクション5</a>で実装の詳細と考慮事項を説明します。<a href="#section-6-ja">セクション6</a>では、フローキューイングを使用する場合の制限のいくつかを挙げます。<a href="#section-7-ja">セクション7</a>では、FQ-CoDelの展開の現状を概説し、今後検討しうる分野をいくつか挙げます。最後に、<a href="#section-8-ja">セクション8</a>では、実装において守らなければならないセキュリティー上の重要な点をいくつか改めて述べます。</p></div>
+</div>
+<section><span id="section-1.1"></span><span id="conventions-used-in-this-document-en"></span><span id="conventions-used-in-this-document-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-conventions-used-in-this-document-en" lang="en">
+<a id="section-1.1-en" href="#section-1.1-en" class="section-number selfRef">1.1.</a> <a href="#name-conventions-used-in-this-document-en" class="section-name selfRef">Conventions Used in This Document</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-conventions-used-in-this-document-ja" lang="ja">
+<a id="section-1.1-ja" href="#section-1.1-ja" class="section-number selfRef">1.1.</a> <a href="#name-conventions-used-in-this-document-ja" class="section-name selfRef">この文書で使用する規約</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-1-en">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in
+BCP 14 <span>[<a href="#RFC2119-en">RFC2119</a>]</span> <span>[<a href="#RFC8174-en">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+<div lang="ja" class="col"><p id="section-1.1-1-ja">キーワード「<span class="bcp14">しなければなりません（MUST）</span>」、「<span class="bcp14">してはなりません（MUST NOT）</span>」、
+「<span class="bcp14">要求されています（REQUIRED）</span>」、
+「<span class="bcp14">することになります（SHALL）</span>」、「<span class="bcp14">することはありません（SHALL NOT）</span>」、
+「<span class="bcp14">すべきです（SHOULD）</span>」、「<span class="bcp14">すべきではありません（SHOULD NOT）</span>」、
+「<span class="bcp14">推奨されます（RECOMMENDED）</span>」、「<span class="bcp14">推奨されません（NOT RECOMMENDED）</span>」、
+「<span class="bcp14">してもよいです（MAY）</span>」、「<span class="bcp14">選択できます（OPTIONAL）</span>」は、
+BCP 14 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span> <span>[<a href="#RFC8174-ja">RFC8174</a>]</span>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</p></div>
+</div></section><section><span id="section-1.2"></span><span id="terminology-and-concepts-en"></span><span id="terminology-and-concepts-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-terminology-and-concepts-en" lang="en">
+<a id="section-1.2-en" href="#section-1.2-en" class="section-number selfRef">1.2.</a> <a href="#name-terminology-and-concepts-en" class="section-name selfRef">Terminology and Concepts</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-terminology-and-concepts-ja" lang="ja">
+<a id="section-1.2-ja" href="#section-1.2-ja" class="section-number selfRef">1.2.</a> <a href="#name-terminology-and-concepts-ja" class="section-name selfRef">用語と概念</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-1.2-1-en">
+<dt id="section-1.2-1.1-en">Flow:</dt>
+          <dd id="section-1.2-1.2-en">A flow is typically identified by a 5-tuple of source IP
+address, destination IP address, source port number, destination
+port number, and protocol number.  It can also be identified by a
+superset or subset of those parameters, by Media Access Control
+(MAC) address, or by other means.  FQ-CoDel hashes flows into a
+configurable number of buckets to assign packets to internal
+queues.</dd>
+          <dt id="section-1.2-1.3-en">Queue:</dt>
+          <dd id="section-1.2-1.4-en">A queue of packets represented internally in FQ-CoDel.  In
+most instances, each flow gets its own queue; however, because of
+the possibility of hash collisions, this is not always the case.
+In an attempt to avoid confusion, the word "queue" is used to
+refer to the internal data structure, and "flow" is used to refer
+to the actual stream of packets being delivered to the FQ-CoDel
+algorithm.</dd>
+          <dt id="section-1.2-1.5-en">Scheduler:</dt>
+          <dd id="section-1.2-1.6-en">A mechanism to select which queue a packet is dequeued
+from.</dd>
+          <dt id="section-1.2-1.7-en">CoDel AQM:</dt>
+          <dd id="section-1.2-1.8-en">The Active Queue Management algorithm employed by
+FQ-CoDel as described in <span>[<a href="#RFC8289-en">RFC8289</a>]</span>.</dd>
+          <dt id="section-1.2-1.9-en">DRR:</dt>
+          <dd id="section-1.2-1.10-en">Deficit Round Robin scheduling <span>[<a href="#DRR-en">DRR</a>]</span>.</dd>
+          <dt id="section-1.2-1.11-en">Quantum:</dt>
+          <dd id="section-1.2-1.12-en">The maximum amount of bytes to be dequeued from a queue at
+once.</dd>
+          <dt id="section-1.2-1.13-en">Interval:</dt>
+          <dd id="section-1.2-1.14-en">Characteristic time period used by the control loop of
+CoDel to detect when a persistent queue is developing (see
+<span><a href="https://www.rfc-editor.org/rfc/rfc8289#section-4.2">Section 4.2</a> of [<a href="#RFC8289-en">RFC8289</a>]</span>).</dd>
+          <dt id="section-1.2-1.15-en">Target:</dt>
+          <dd id="section-1.2-1.16-en">Setpoint value of the minimum sojourn time of packets in a
+queue used as the target of the control loop in CoDel (see
+<span><a href="https://www.rfc-editor.org/rfc/rfc8289#section-4.3">Section 4.3</a> of [<a href="#RFC8289-en">RFC8289</a>]</span>).</dd>
+        </dl></div>
+<div lang="ja" class="col"><dl id="section-1.2-1-ja">
+<dt id="section-1.2-1.1-ja">フロー（Flow）：</dt>
+          <dd id="section-1.2-1.2-ja">フローは通常、送信元IPアドレス、宛先IPアドレス、送信元ポート番号、宛先ポート番号、プロトコル番号の5タプルによって識別されます。これらのパラメーターの上位集合や部分集合、メディアアクセス制御（MAC）アドレス、またはその他の手段によって識別することもできます。FQ-CoDelは、パケットを内部のキューに割り当てるために、フローを設定可能な数のバケットにハッシュします。</dd>
+          <dt id="section-1.2-1.3-ja">キュー（Queue）：</dt>
+          <dd id="section-1.2-1.4-ja">FQ-CoDelの内部で表現されるパケットのキューです。ほとんどの場合、各フローがそれぞれ独自のキューを持ちます。ただし、ハッシュ衝突の可能性があるため、常にそうなるとは限りません。混乱を避けるため、「キュー」という語は内部のデータ構造を指すのに使用し、「フロー」という語はFQ-CoDelアルゴリズムに届けられる実際のパケットの流れを指すのに使用します。</dd>
+          <dt id="section-1.2-1.5-ja">スケジューラー（Scheduler）：</dt>
+          <dd id="section-1.2-1.6-ja">パケットをどのキューからデキューするかを選択する仕組みです。</dd>
+          <dt id="section-1.2-1.7-ja">CoDel AQM：</dt>
+          <dd id="section-1.2-1.8-ja">
+<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>で説明されている、FQ-CoDelが用いるアクティブキュー管理アルゴリズムです。</dd>
+          <dt id="section-1.2-1.9-ja">DRR：</dt>
+          <dd id="section-1.2-1.10-ja">Deficit Round Robinスケジューリング<span>[<a href="#DRR-ja">DRR</a>]</span>です。</dd>
+          <dt id="section-1.2-1.11-ja">クォンタム（Quantum）：</dt>
+          <dd id="section-1.2-1.12-ja">1つのキューから一度にデキューされるバイト数の最大値です。</dd>
+          <dt id="section-1.2-1.13-ja">インターバル（Interval）：</dt>
+          <dd id="section-1.2-1.14-ja">持続的なキューが形成されつつあることを検出するために、CoDelの制御ループが用いる特性時間です（<span>[<a href="#RFC8289-ja">RFC8289</a>]の<a href="https://www.rfc-editor.org/rfc/rfc8289#section-4.2">セクション4.2</a></span>を参照）。</dd>
+          <dt id="section-1.2-1.15-ja">目標値（Target）：</dt>
+          <dd id="section-1.2-1.16-ja">CoDelの制御ループの目標として用いられる、キュー内のパケットの最小滞留時間の設定値です（<span>[<a href="#RFC8289-ja">RFC8289</a>]の<a href="https://www.rfc-editor.org/rfc/rfc8289#section-4.3">セクション4.3</a></span>を参照）。</dd>
+        </dl></div>
+</div></section><section><span id="section-1.3"></span><span id="informal-summary-of-fq-codel-en"></span><span id="informal-summary-of-fq-codel-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-informal-summary-of-fq-codel-en" lang="en">
+<a id="section-1.3-en" href="#section-1.3-en" class="section-number selfRef">1.3.</a> <a href="#name-informal-summary-of-fq-codel-en" class="section-name selfRef">Informal Summary of FQ-CoDel</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-informal-summary-of-fq-codel-ja" lang="ja">
+<a id="section-1.3-ja" href="#section-1.3-ja" class="section-number selfRef">1.3.</a> <a href="#name-informal-summary-of-fq-codel-ja" class="section-name selfRef">FQ-CoDelの非形式的な概要</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-1-en">FQ-CoDel is a hybrid of DRR <span>[<a href="#DRR-en">DRR</a>]</span> and CoDel <span>[<a href="#RFC8289-en">RFC8289</a>]</span>, with an
+optimisation for sparse flows similar to Shortest Queue First (SQF)
+<span>[<a href="#SQF-en">SQF</a>]</span> and DRR++ <span>[<a href="#DRRPP-en">DRRPP</a>]</span>.  We call this "flow queueing" rather than
+"fair queueing", as flows that build a queue are treated differently
+from flows that do not.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-1-ja">FQ-CoDelは、DRR<span>[<a href="#DRR-ja">DRR</a>]</span>とCoDel<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>のハイブリッドであり、Shortest Queue First（SQF）<span>[<a href="#SQF-ja">SQF</a>]</span>やDRR++<span>[<a href="#DRRPP-ja">DRRPP</a>]</span>に似た、疎なフローのための最適化を備えています。キューを形成するフローは、キューを形成しないフローとは異なる扱いを受けるため、私たちはこれを「公平キューイング（fair queueing）」ではなく「フローキューイング（flow queueing）」と呼びます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-2-en">By default, FQ-CoDel stochastically classifies incoming packets into
+different queues by hashing the 5-tuple of protocol number, source
+and destination IP addresses, and source and destination port
+numbers, perturbed with a random number selected at initiation time
+(although other flow classification schemes can optionally be
+configured instead; see <a href="#section-4.1.1-en">Section 4.1.1</a>).  Each queue is managed by the
+CoDel AQM algorithm <span>[<a href="#CODEL-en">CODEL</a>]</span> <span>[<a href="#RFC8289-en">RFC8289</a>]</span>.  Packet ordering within a
+queue is preserved, since queues have FIFO ordering.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-2-ja">デフォルトでは、FQ-CoDelは、プロトコル番号、送信元と宛先のIPアドレス、送信元と宛先のポート番号からなる5タプルを、初期化時に選択した乱数で摂動を加えてハッシュすることによって、到着したパケットを確率的に異なるキューに分類します（ただし、代わりに他のフロー分類方式を任意に設定することもできます。<a href="#section-4.1.1-ja">セクション4.1.1</a>を参照してください）。各キューは、CoDel AQMアルゴリズム<span>[<a href="#CODEL-ja">CODEL</a>]</span> <span>[<a href="#RFC8289-ja">RFC8289</a>]</span>によって管理されます。キューはFIFOの順序を持つため、キュー内のパケットの順序は保たれます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-3-en">The FQ-CoDel algorithm consists of two logical parts: (1) the
+scheduler, which selects which queue to dequeue a packet from, and
+(2) the CoDel AQM, which works on each of the queues.  The subtleties
+of FQ-CoDel are mostly in the scheduling part, whereas the
+interaction between the scheduler and the CoDel algorithm are fairly
+straightforward.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-3-ja">FQ-CoDelアルゴリズムは、2つの論理的な部分で構成されます。（1）どのキューからパケットをデキューするかを選択するスケジューラーと、（2）各キューで動作するCoDel AQMです。FQ-CoDelの微妙な点のほとんどはスケジューリングの部分にあり、スケジューラーとCoDelアルゴリズムとの間の相互作用はかなり単純です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-4-en">At initialisation, each queue is set up to have a separate set of
+CoDel state variables.  By default, 1024 queues are created.  The
+Linux implementation at the time of writing supports anywhere from
+one to 65535 separate queues, and each queue maintains the state
+variables throughout its lifetime, and so acts the same as the non-FQ
+variant of CoDel would.  This means that with only one queue,
+FQ-CoDel behaves essentially the same as CoDel by itself.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-4-ja">初期化時に、各キューはそれぞれ別個のCoDel状態変数の組を持つように設定されます。デフォルトでは、1024個のキューが作成されます。執筆時点のLinuxの実装は、1個から65535個までの個別のキューをサポートしています。各キューは、その存続期間を通じて状態変数を維持するため、FQではないCoDelの変種と同じように振る舞います。つまり、キューが1つだけの場合、FQ-CoDelは本質的にCoDel単体と同じように振る舞います。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-5-en">On dequeue, FQ-CoDel selects a queue from which to dequeue by a
+two-tier, round-robin scheme, in which each queue is allowed to dequeue
+up to a configurable quantum of bytes for each iteration.  Deviations
+from this quantum are maintained as byte credits for the queue, which
+serves to make the fairness scheme byte-based rather than
+packet-based.  The two-tier, round-robin mechanism distinguishes between
+"new" queues (which don't build up a standing queue) and "old" queues
+(which have queued enough data to be active for more than one
+iteration of the round-robin scheduler).</p></div>
+<div lang="ja" class="col"><p id="section-1.3-5-ja">デキュー時に、FQ-CoDelは、2階層のラウンドロビン方式によってデキューするキューを選択します。この方式では、各キューは各反復で設定可能なクォンタム分のバイト数までデキューできます。このクォンタムからのずれはキューのバイトクレジットとして保持され、これによって公平性の方式がパケット単位ではなくバイト単位になります。2階層のラウンドロビンの仕組みでは、「新しい」キュー（定常キューを形成しないもの）と「古い」キュー（ラウンドロビンスケジューラーの1回の反復を超えてアクティブであるのに十分なデータをキューに入れたもの）を区別します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-6-en">This new/old queue distinction has a particular consequence for
+queues that don't build up more than a quantum of bytes before being
+visited by the scheduler: such a queue will be removed from the list
+after it empties and then re-added as a new queue the next time a
+packet arrives for it.  This means it will effectively get priority
+over queues that do not empty out each round (a minor caveat is
+required here to protect against starvation, see below).  Exactly how
+little data a flow has to send to keep its queue in this state is
+somewhat difficult to reason about, because it depends on both the
+egress link speed and the number of concurrent flows.  However, in
+practice, many things that are beneficial to have prioritised for
+typical internet use (ACKs, DNS lookups, interactive Secure Shell
+(SSH), HTTP requests, Voice over IP (VoIP)) <em>tend</em> to fall in this
+category, which is why FQ-CoDel performs so well for many practical
+applications.  However, the implicitness of the prioritisation means
+that for applications that require guaranteed priority (for instance,
+multiplexing the network control plane over the network itself),
+explicit classification is still needed.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-6-ja">この新しいキューと古いキューの区別は、スケジューラーに訪問されるまでに1クォンタムを超えるバイト数を溜め込まないキューに対して特有の結果をもたらします。そのようなキューは、空になった後にリストから削除され、次にそのキュー宛てのパケットが到着したときに新しいキューとして再び追加されます。これは、そのキューが、ラウンドごとに空にならないキューよりも実質的に優先されることを意味します（ここでは枯渇から保護するためにちょっとした注意が必要です。後述を参照してください）。フローがキューをこの状態に保つためにどれだけ少ないデータを送信しなければならないかを正確に推論するのは、イグレスリンクの速度と同時に存在するフローの数の両方に依存するため、やや困難です。しかし実際には、典型的なインターネットの利用において優先されると有益な多くのもの（ACK、DNSルックアップ、対話型のSecure Shell（SSH）、HTTPリクエスト、Voice over IP（VoIP））がこのカテゴリーに入る<em>傾向があり</em>、FQ-CoDelが多くの実用的なアプリケーションで非常に良い性能を発揮するのはこのためです。ただし、優先付けが暗黙的であるため、保証された優先度を必要とするアプリケーション（たとえば、ネットワーク制御プレーンをそのネットワーク自体の上で多重化する場合）では、依然として明示的な分類が必要です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.3-7-en">This scheduling scheme has some subtlety to it, which is explained in
+detail in the remainder of this document.</p></div>
+<div lang="ja" class="col"><p id="section-1.3-7-ja">このスケジューリング方式にはいくつか微妙な点があり、それについてはこの文書の残りの部分で詳しく説明します。</p></div>
+</div></section></section><section><span id="section-2"></span><span id="codel-en"></span><span id="codel-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-codel-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-codel-en" class="section-name selfRef">CoDel</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-codel-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-codel-ja" class="section-name selfRef">CoDel</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">CoDel is described in the Communications of the ACM paper <span>[<a href="#CODEL-en">CODEL</a>]</span> and
+the IETF document <span>[<a href="#RFC8289-en">RFC8289</a>]</span>.  The basic idea is to control queue
+length, maintaining sufficient queueing to keep the outgoing link
+busy but avoiding building up the queue beyond that point.  This is
+done by preferentially dropping packets that remain in the queue for
+"too long".  Packets are dropped by head drop, which lowers the time
+for the drop signal to propagate back to the sender by the length of
+the queue and helps trigger TCP fast retransmit sooner.</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">CoDelは、Communications of the ACMの論文<span>[<a href="#CODEL-ja">CODEL</a>]</span>とIETFの文書<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>で説明されています。基本的な考え方は、出力リンクをビジーに保つのに十分なキューイングを維持しつつ、その点を超えてキューが形成されることを避けるように、キューの長さを制御することです。これは、キューに「長すぎる」時間とどまっているパケットを優先的にドロップすることで行われます。パケットは先頭ドロップ（head drop）によってドロップされます。これにより、ドロップのシグナルが送信者に伝わるまでの時間がキューの長さの分だけ短くなり、TCPの高速再送がより早く引き起こされやすくなります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-2-en">The CoDel algorithm itself will not be described here; instead, we
+refer the reader to the CoDel document <span>[<a href="#RFC8289-en">RFC8289</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-2-2-ja">CoDelアルゴリズム自体はここでは説明しません。代わりに、CoDelの文書<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>を参照してください。</p></div>
+</div></section><section><span id="section-3"></span><span id="flow-queueing-en"></span><span id="flow-queueing-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-flow-queueing-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-flow-queueing-en" class="section-name selfRef">Flow Queueing</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-flow-queueing-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-flow-queueing-ja" class="section-name selfRef">フローキューイング</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">The intention of FQ-CoDel's scheduler is to give each flow its own
+queue, hence the term "flow queueing".  Rather than a perfect
+realisation of this, a hashing-based scheme is used, where flows are
+hashed into a number of buckets, each of which has its own queue.
+The number of buckets is configurable and presently defaults to 1024
+in the Linux implementation.  This is enough to avoid hash collisions
+on a moderate number of flows as seen, for instance, in a home
+gateway.  Depending on the characteristics of the link, this can be
+tuned to trade off memory for a lower probability of hash collisions.
+See Sections <a href="#section-5.3-en">5.3</a> and <a href="#section-5.4-en">5.4</a> for a more in-depth discussion of this.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">FQ-CoDelのスケジューラーの意図は、各フローにそれぞれ独自のキューを与えることであり、そのため「フローキューイング」という用語を使っています。これを完全に実現するのではなく、ハッシュに基づく方式を使用します。この方式では、フローはいくつかのバケットにハッシュされ、各バケットがそれぞれ独自のキューを持ちます。バケットの数は設定可能で、現在のLinuxの実装でのデフォルトは1024です。これは、たとえばホームゲートウェイで見られるような程度の数のフローでハッシュ衝突を避けるのに十分です。リンクの特性に応じて、メモリーと引き換えにハッシュ衝突の確率を下げるようにこれを調整できます。これについてのより踏み込んだ議論は、セクション<a href="#section-5.3-ja">5.3</a>と<a href="#section-5.4-ja">5.4</a>を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">By default, the flow hashing is performed on the 5-tuple of source
+and destination IP addresses, source and destination port numbers,
+and protocol number.  While the hashing can be customised to match on
+arbitrary packet bytes, care should be taken when doing so; much of
+the benefit of the FQ-CoDel scheduler comes from this per-flow
+distinction.  However, the default hashing does have some
+limitations, as discussed in <a href="#section-6-en">Section 6</a>.</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">デフォルトでは、フローのハッシュは、送信元と宛先のIPアドレス、送信元と宛先のポート番号、プロトコル番号の5タプルに対して行われます。ハッシュはパケットの任意のバイトにマッチするようにカスタマイズできますが、そうする際には注意を払うべきです。FQ-CoDelスケジューラーの利点の多くは、このフローごとの区別から生じるためです。ただし、<a href="#section-6-ja">セクション6</a>で議論するように、デフォルトのハッシュにはいくつかの制限があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-3-en">FQ-CoDel's DRR scheduler is byte-based, employing a deficit
+round-robin mechanism between queues.  This works by keeping track of the
+current number of "byte credits" of each queue.  This number is
+initialised to the configurable quantum; each time a queue gets a
+dequeue opportunity, it gets to dequeue packets, thus decreasing the
+number of credits by the packet size for each packet.  This continues
+until the value of the byte credits counter becomes zero or less, at
+which point the counter is increased by one quantum, and the dequeue
+opportunity ends.</p></div>
+<div lang="ja" class="col"><p id="section-3-3-ja">FQ-CoDelのDRRスケジューラーはバイト単位であり、キューの間でDeficit Round Robinの仕組みを用います。これは、各キューの現在の「バイトクレジット」の数を追跡することで機能します。この数は設定可能なクォンタムに初期化されます。キューはデキューの機会を得るたびにパケットをデキューでき、その結果、パケットごとにパケットサイズの分だけクレジットの数が減ります。これはバイトクレジットのカウンターの値がゼロ以下になるまで続き、その時点でカウンターが1クォンタムだけ増やされ、デキューの機会が終了します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-4-en">This means that if one queue contains packets of, for instance, size
+quantum/3, and another contains quantum-sized packets, the first
+queue will dequeue three packets each time it gets a turn, whereas
+the second only dequeues one.  This means that flows that send small
+packets are not penalised by the difference in packet sizes; rather,
+the DRR scheme approximates a byte-based fairness queueing scheme.
+The size of the quantum determines the scheduling granularity, with
+the trade-off from too small a quantum being scheduling overhead.
+For small bandwidths, lowering the quantum from the default MTU size
+can be advantageous.</p></div>
+<div lang="ja" class="col"><p id="section-3-4-ja">これは、たとえば、あるキューがサイズquantum/3のパケットを含み、別のキューがクォンタムサイズのパケットを含む場合、1つ目のキューは順番が回ってくるたびに3つのパケットをデキューするのに対し、2つ目のキューは1つしかデキューしないことを意味します。つまり、小さなパケットを送信するフローがパケットサイズの違いによって不利にならず、むしろDRR方式はバイト単位の公平キューイング方式に近似します。クォンタムのサイズはスケジューリングの粒度を決定し、クォンタムが小さすぎることのトレードオフはスケジューリングのオーバーヘッドです。帯域幅が小さい場合は、クォンタムをデフォルトのMTUサイズより下げると有利なことがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-5-en">Unlike plain DRR, there are two sets of flows: a "new" list for flows
+that have not built a queue recently and an "old" list for queues
+that build a backlog.  This distinction is an integral part of the
+FQ-CoDel scheduler and is described in more detail in <a href="#section-4-en">Section 4</a>.</p></div>
+<div lang="ja" class="col"><p id="section-3-5-ja">通常のDRRとは異なり、フローの集合が2つあります。最近キューを形成していないフローのための「新しい」リストと、バックログを形成するキューのための「古い」リストです。この区別はFQ-CoDelスケジューラーに不可欠な部分であり、<a href="#section-4-ja">セクション4</a>でより詳しく説明します。</p></div>
+</div></section><section><span id="section-4"></span><span id="the-fq-codel-scheduler-en"></span><span id="the-fq-codel-scheduler-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-fq-codel-scheduler-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-the-fq-codel-scheduler-en" class="section-name selfRef">The FQ-CoDel Scheduler</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-fq-codel-scheduler-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-the-fq-codel-scheduler-ja" class="section-name selfRef">FQ-CoDelスケジューラー</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">To make its scheduling decisions, FQ-CoDel maintains two ordered
+lists of active queues: new and old queues.  When a packet is added
+to a queue that is not currently active, that queue becomes active by
+being added to the list of new queues.  Later on, it is moved to the
+list of old queues, from which it is removed when it is no longer
+active.  This behaviour is the source of some subtlety in the packet
+scheduling at dequeue time, as explained below.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">スケジューリングの決定を行うために、FQ-CoDelは、アクティブなキューの順序付きリストを2つ維持します。新しいキューと古いキューです。現在アクティブでないキューにパケットが追加されると、そのキューは新しいキューのリストに追加されることでアクティブになります。その後、そのキューは古いキューのリストに移され、アクティブでなくなるとそこから削除されます。後述するように、この振る舞いが、デキュー時のパケットスケジューリングにおけるいくつかの微妙な点の原因となっています。</p></div>
+</div>
+<section><span id="section-4.1"></span><span id="enqueue-en"></span><span id="enqueue-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-enqueue-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-enqueue-en" class="section-name selfRef">Enqueue</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-enqueue-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-enqueue-ja" class="section-name selfRef">エンキュー</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">The packet enqueue mechanism consists of three stages: classifying
+into a queue, timestamping and bookkeeping, and optionally dropping a
+packet when the total number of enqueued packets goes over the
+maximum.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">パケットのエンキューの仕組みは、3つの段階で構成されます。キューへの分類、タイムスタンプの付与と管理情報の更新、そしてエンキューされたパケットの総数が最大値を超えたときに任意で行うパケットのドロップです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-2-en">When a packet is enqueued, it is first classified into the
+appropriate queue.  By default, this is done by hashing (using a
+Jenkins hash function <span>[<a href="#JENKINS-en">JENKINS</a>]</span>) on the 5-tuple of IP protocol,
+source and destination IP addresses, and source and destination port
+numbers (if they exist) and then taking the hash value modulo the
+number of queues.  The hash is salted by modulo addition of a random
+value selected at initialisation time to prevent possible DoS attacks
+if the hash is predictable ahead of time (see <a href="#section-8-en">Section 8</a>).  The Linux
+kernel implements the Jenkins hash function by mixing three 32-bit
+values into a single 32-bit output value.  Inputs larger than 96 bits
+are reduced by additional mixing steps, 96 bits at a time.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-2-ja">パケットがエンキューされるとき、まず適切なキューに分類されます。デフォルトでは、これは、IPプロトコル、送信元と宛先のIPアドレス、送信元と宛先のポート番号（存在する場合）の5タプルに対して（Jenkinsハッシュ関数<span>[<a href="#JENKINS-ja">JENKINS</a>]</span>を用いて）ハッシュを行い、そのハッシュ値をキューの数で割った剰余を取ることで行われます。ハッシュが事前に予測できる場合に起こりうるDoS攻撃を防ぐため、初期化時に選択した乱数を剰余加算することでハッシュにソルトを加えます（<a href="#section-8-ja">セクション8</a>を参照）。Linuxカーネルは、3つの32ビット値を混合して1つの32ビットの出力値にすることでJenkinsハッシュ関数を実装しています。96ビットを超える入力は、追加の混合ステップによって96ビットずつ縮約されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-3-en">Once the packet has been successfully classified into a queue, it is
+handed over to the CoDel algorithm for timestamping.  It is then
+added to the tail of the selected queue, and the queue's byte count
+is updated by the packet size.  Then, if the queue is not currently
+active (i.e., if it is not in either the list of new queues or the
+list of old queues), it is added to the end of the list of new
+queues, and its number of credits is initiated to the configured
+quantum.  Otherwise, the queue is left in its current queue list.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-3-ja">パケットがキューへの分類に成功すると、タイムスタンプを付与するためにCoDelアルゴリズムに渡されます。その後、パケットは選択されたキューの末尾に追加され、キューのバイト数がパケットサイズの分だけ更新されます。次に、そのキューが現在アクティブでない場合（つまり、新しいキューのリストと古いキューのリストのどちらにも入っていない場合）、そのキューは新しいキューのリストの末尾に追加され、そのクレジットの数は設定されたクォンタムに初期化されます。そうでない場合、キューは現在のキューリストに残されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-4-en">Finally, to protect against overload, the total number of enqueued
+packets is compared with the configured limit.  If the limit is
+exceeded (which can happen since a packet was just enqueued), the
+queue with the largest current byte count is selected and half the
+number of packets from this queue (up to a maximum of 64 packets) are
+dropped from the head of that queue.  Dropping several packets at
+once helps amortise the cost of finding the longest queue,
+significantly lowering CPU usage in an overload situation.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-4-ja">最後に、過負荷から保護するために、エンキューされたパケットの総数が設定された上限と比較されます。上限を超えた場合（パケットがエンキューされたばかりなので起こりえます）、現在のバイト数が最も大きいキューが選択され、そのキューのパケット数の半分（最大64パケット）がそのキューの先頭からドロップされます。複数のパケットを一度にドロップすることで、最長のキューを見つけるコストを償却しやすくなり、過負荷の状況でのCPU使用率が大幅に下がります。</p></div>
+</div>
+<section><span id="section-4.1.1"></span><span id="alternative-classification-schemes-en"></span><span id="alternative-classification-schemes-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-alternative-classification-schemes-en" lang="en">
+<a id="section-4.1.1-en" href="#section-4.1.1-en" class="section-number selfRef">4.1.1.</a> <a href="#name-alternative-classification-schemes-en" class="section-name selfRef">Alternative Classification Schemes</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-alternative-classification-schemes-ja" lang="ja">
+<a id="section-4.1.1-ja" href="#section-4.1.1-ja" class="section-number selfRef">4.1.1.</a> <a href="#name-alternative-classification-schemes-ja" class="section-name selfRef">代替の分類方式</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-1-en">As mentioned previously, it is possible to modify the classification
+scheme to provide a different notion of a flow.  The Linux
+implementation provides this option in the form of the "tc filter"
+command.  While this can add capabilities (for instance, matching on
+other possible parameters such as MAC address, Diffserv code point
+values, firewall rules, flow-specific markings, IPv6 flow label,
+etc.), care should be taken to preserve the notion of flow because
+much of the benefit of the FQ-CoDel scheduler comes from keeping
+flows in separate queues.</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-1-ja">前述のように、分類方式を変更して、フローについて異なる概念を提供することができます。Linuxの実装は、このオプションを「tc filter」コマンドの形で提供しています。これにより能力を追加できますが（たとえば、MACアドレス、Diffservコードポイントの値、ファイアウォールのルール、フロー固有のマーキング、IPv6フローラベルなどの、他に考えられるパラメーターにマッチさせることができます）、FQ-CoDelスケジューラーの利点の多くはフローを別々のキューに保つことから生じるため、フローの概念を保つように注意を払うべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-2-en">For protocols that do not contain a port number (such as ICMP), the
+Linux implementation simply sets the port numbers to zero and
+performs the hashing as usual.  In practice, this results in such
+protocols each getting their own queue (except in the case of hash
+collisions).  An implementation can perform other classifications for
+protocols that have their own notion of a flow but <span class="bcp14">SHOULD</span> fall back
+to simply hashing on source and destination IP address and protocol
+number in the absence of other information.</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-2-ja">ポート番号を含まないプロトコル（ICMPなど）の場合、Linuxの実装は単にポート番号をゼロに設定し、通常どおりハッシュを行います。実際には、その結果、そのようなプロトコルはそれぞれ独自のキューを得ることになります（ハッシュ衝突の場合を除きます）。実装は、独自のフローの概念を持つプロトコルに対して他の分類を行うことができますが、他の情報がない場合は、単に送信元と宛先のIPアドレスとプロトコル番号に対するハッシュにフォールバック<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1.1-3-en">The default classification scheme can additionally be improved by
+performing decapsulation of tunnelled packets prior to hashing on the
+5-tuple in the encapsulated payload.  The Linux implementation does
+this for common encapsulations known to the kernel, such as 6in4
+<span>[<a href="#RFC4213-en">RFC4213</a>]</span>, IP-in-IP <span>[<a href="#RFC2003-en">RFC2003</a>]</span>, and Generic Routing Encapsulation
+(GRE) <span>[<a href="#RFC2890-en">RFC2890</a>]</span>.  This helps to distinguish between flows that share
+the same (outer) 5-tuple but, of course, is limited to unencrypted
+tunnels (see <a href="#section-6.2-en">Section 6.2</a> for a discussion of encrypted tunnels).</p></div>
+<div lang="ja" class="col"><p id="section-4.1.1-3-ja">デフォルトの分類方式は、さらに、トンネリングされたパケットのカプセル化を解除してから、カプセル化されたペイロード内の5タプルに対してハッシュを行うことで改善できます。Linuxの実装は、6in4<span>[<a href="#RFC4213-ja">RFC4213</a>]</span>、IP-in-IP<span>[<a href="#RFC2003-ja">RFC2003</a>]</span>、Generic Routing Encapsulation（GRE）<span>[<a href="#RFC2890-ja">RFC2890</a>]</span>などの、カーネルが知っている一般的なカプセル化に対してこれを行います。これは、同じ（外側の）5タプルを共有するフローを区別するのに役立ちますが、当然ながら暗号化されていないトンネルに限られます（暗号化されたトンネルについての議論は<a href="#section-6.2-ja">セクション6.2</a>を参照してください）。</p></div>
+</div></section></section><section><span id="section-4.2"></span><span id="dequeue-en"></span><span id="dequeue-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-dequeue-en" lang="en">
+<a id="section-4.2-en" href="#section-4.2-en" class="section-number selfRef">4.2.</a> <a href="#name-dequeue-en" class="section-name selfRef">Dequeue</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-dequeue-ja" lang="ja">
+<a id="section-4.2-ja" href="#section-4.2-ja" class="section-number selfRef">4.2.</a> <a href="#name-dequeue-ja" class="section-name selfRef">デキュー</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-1-en">Most of FQ-CoDel's work is done at packet dequeue time.  It consists
+of three parts: selecting a queue from which to dequeue a packet,
+actually dequeueing it (employing the CoDel algorithm in the
+process), and some final bookkeeping.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-1-ja">FQ-CoDelの作業のほとんどは、パケットのデキュー時に行われます。これは3つの部分で構成されます。パケットをデキューするキューの選択、（その過程でCoDelアルゴリズムを用いた）実際のデキュー、そして最後の管理情報の更新です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-2-en">For the first part, the scheduler first looks at the list of new
+queues; for the queue at the head of that list, if that queue has a
+negative number of credits (i.e., it has already dequeued at least a
+quantum of bytes), it is given an additional quantum of credits, the
+queue is put onto <em>the end of</em> the list of old queues, and the
+routine selects the next queue and starts again.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-2-ja">最初の部分では、スケジューラーはまず新しいキューのリストを調べます。そのリストの先頭にあるキューについて、そのキューのクレジットの数が負である場合（つまり、すでに少なくとも1クォンタム分のバイトをデキューしている場合）、そのキューに追加で1クォンタムのクレジットが与えられ、そのキューは古いキューのリストの<em>末尾に</em>置かれ、ルーチンは次のキューを選択してやり直します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-3-en">Otherwise, that queue is selected for dequeue.  If the list of new
+queues is empty, the scheduler proceeds down the list of old queues
+in the same fashion (checking the credits and either selecting the
+queue for dequeueing or adding credits and putting the queue back at
+the end of the list).</p></div>
+<div lang="ja" class="col"><p id="section-4.2-3-ja">そうでない場合、そのキューがデキュー対象として選択されます。新しいキューのリストが空の場合、スケジューラーは同じ方法で古いキューのリストを順にたどります（クレジットを確認し、そのキューをデキュー対象として選択するか、クレジットを追加してそのキューをリストの末尾に戻すかのどちらかを行います）。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-4-en">After having selected a queue from which to dequeue a packet, the
+CoDel algorithm is invoked on that queue.  This applies the CoDel
+control law, which is the mechanism CoDel uses to determine when to
+drop packets (see <span>[<a href="#RFC8289-en">RFC8289</a>]</span>).  As a result of this, one or more
+packets may be discarded from the head of the selected queue before
+the packet that should be dequeued is returned (or nothing is
+returned if the queue is or becomes empty while being handled by the
+CoDel algorithm).</p></div>
+<div lang="ja" class="col"><p id="section-4.2-4-ja">パケットをデキューするキューを選択した後、そのキューに対してCoDelアルゴリズムが呼び出されます。これにより、CoDelがパケットをいつドロップするかを決定するために使用する仕組みであるCoDelの制御則が適用されます（<span>[<a href="#RFC8289-ja">RFC8289</a>]</span>を参照）。その結果、デキューされるべきパケットが返される前に、選択されたキューの先頭から1つ以上のパケットが破棄されることがあります（または、CoDelアルゴリズムによる処理中にキューが空であるか空になった場合は何も返されません）。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-5-en">Finally, if the CoDel algorithm does not return a packet, then the
+queue must be empty, and the scheduler does one of two things.  If
+the queue selected for dequeue came from the list of new queues, it
+is moved to <em>the end of</em> the list of old queues.  If instead it came
+from the list of old queues, that queue is removed from the list, to
+be added back (as a new queue) the next time a packet arrives that
+hashes to that queue.  Then (since no packet was available for
+dequeue), the whole dequeue process is restarted from the beginning.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-5-ja">最後に、CoDelアルゴリズムがパケットを返さない場合、キューは空であるはずであり、スケジューラーは次の2つのうちどちらかを行います。デキュー対象として選択されたキューが新しいキューのリストから来たものである場合、そのキューは古いキューのリストの<em>末尾に</em>移されます。そうではなく古いキューのリストから来たものである場合、そのキューはリストから削除され、次にそのキューにハッシュされるパケットが到着したときに（新しいキューとして）再び追加されます。その後（デキューできるパケットがなかったため）、デキュー処理全体が最初からやり直されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-6-en">If, instead, the scheduler <em>did</em> get a packet back from the CoDel
+algorithm, it subtracts the size of the packet from the byte credits
+for the selected queue and returns the packet as the result of the
+dequeue operation.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-6-ja">そうではなく、スケジューラーがCoDelアルゴリズムからパケットを<em>実際に</em>受け取った場合、スケジューラーは選択されたキューのバイトクレジットからそのパケットのサイズを差し引き、そのパケットをデキュー操作の結果として返します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-7-en">The step that moves an empty queue from the list of new queues to the
+end of the list of old queues before it is removed is crucial to
+prevent starvation.  Otherwise, the queue could reappear (the next
+time a packet arrives for it) before the list of old queues is
+visited; this can go on indefinitely, even with a small number of
+active flows, if the flow providing packets to the queue in question
+transmits at just the right rate.  This is prevented by first moving
+the queue to the end of the list of old queues, forcing the scheduler
+to service all old queues before the empty queue is removed and thus
+preventing starvation.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-7-ja">空のキューを削除する前に、新しいキューのリストから古いキューのリストの末尾に移すステップは、枯渇を防ぐために非常に重要です。そうしないと、古いキューのリストが訪問される前に、そのキューが（次にそのキュー宛てのパケットが到着したときに）再び現れる可能性があります。そのキューにパケットを供給するフローがちょうどよいレートで送信していると、アクティブなフローの数が少なくても、これが無期限に続く可能性があります。これは、まずキューを古いキューのリストの末尾に移すことで防止されます。これにより、空のキューが削除される前にスケジューラーがすべての古いキューを処理することを強制し、枯渇を防ぎます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-8-en">The resulting migration of queues between the different states is
+summarised in the state diagram shown in <a href="#figure-1-en">Figure 1</a>.  Note that both
+the new and old queue states can additionally have arrival and
+dequeue events that do not change the state; these are omitted in the
+figure.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-8-ja">その結果として生じる異なる状態の間でのキューの移動を、<a href="#figure-1-ja">図1</a>に示す状態図にまとめます。新しいキューと古いキューの状態には、さらに状態を変更しない到着イベントとデキューイベントもありうることに注意してください。これらは図では省略しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-1-en"><div lang="" id="section-4.2-9.1-en"><pre tabindex="0" role="region" aria-label="Figure 1: Partial State Diagram for Queues between Different States">
++-----------------+                +------------------+
+|                 |     Empty      |                  |
+|     Empty       |&lt;---------------+       Old        +----+
+|                 |                |                  |    |
++-------+---------+                +------------------+    |
+        |                             ^            ^       |Credits
+        |Arrival                      |            |       |Exhausted
+        v                             |            |       |
++-----------------+                   |            |       |
+|                 |      Empty or     |            |       |
+|      New        +-------------------+            +-------+
+|                 | Credits Exhausted
++-----------------+
+</pre></div>
+<figcaption><span>Figure 1</span>:
+<span>Partial State Diagram for Queues between Different States</span>
+          </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-1-ja"><div lang="" id="section-4.2-9.1-ja"><pre tabindex="0" role="region" aria-label="図1: 異なる状態の間でのキューの部分的な状態図">
++-----------------+                +------------------+
+|                 |     Empty      |                  |
+|     Empty       |&lt;---------------+       Old        +----+
+|                 |                |                  |    |
++-------+---------+                +------------------+    |
+        |                             ^            ^       |Credits
+        |Arrival                      |            |       |Exhausted
+        v                             |            |       |
++-----------------+                   |            |       |
+|                 |      Empty or     |            |       |
+|      New        +-------------------+            +-------+
+|                 | Credits Exhausted
++-----------------+
+</pre></div>
+<figcaption><span>図1</span>:
+<span>異なる状態の間でのキューの部分的な状態図</span>
+          </figcaption></figure></div>
+</div></section></section><section><span id="section-5"></span><span id="implementation-considerations-en"></span><span id="implementation-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-considerations-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-implementation-considerations-en" class="section-name selfRef">Implementation Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-considerations-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-implementation-considerations-ja" class="section-name selfRef">実装上の考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">This section contains implementation details for the FQ-CoDel
+algorithm.  This includes the data structures and parameters used in
+the Linux implementation, as well as discussion of some required
+features of the target platform and other considerations.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">このセクションには、FQ-CoDelアルゴリズムの実装の詳細が含まれます。これには、Linuxの実装で使用されているデータ構造とパラメーターのほか、対象プラットフォームに必要ないくつかの機能やその他の考慮事項についての議論が含まれます。</p></div>
+</div>
+<section><span id="section-5.1"></span><span id="data-structures-en"></span><span id="data-structures-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-data-structures-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-data-structures-en" class="section-name selfRef">Data Structures</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-data-structures-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-data-structures-ja" class="section-name selfRef">データ構造</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-1-en">The main data structure of FQ-CoDel is the array of queues, which is
+instantiated with the number of queues specified by the "flows"
+parameter at instantiation time.  Each queue consists simply of an
+ordered list of packets with FIFO semantics, two state variables
+tracking the queue credits and total number of bytes enqueued, and
+the set of CoDel state variables.  Other state variables to track
+queue statistics can also be included; for instance, the Linux
+implementation keeps a count of dropped packets.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-1-ja">FQ-CoDelの主なデータ構造はキューの配列であり、インスタンス化の時点で「flows」パラメーターによって指定された数のキューでインスタンス化されます。各キューは、単に、FIFOのセマンティクスを持つパケットの順序付きリスト、キューのクレジットとエンキューされたバイトの総数を追跡する2つの状態変数、そしてCoDel状態変数の組で構成されます。キューの統計情報を追跡するための他の状態変数を含めることもできます。たとえば、Linuxの実装はドロップされたパケットの数を記録しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-2-en">In addition to the queue structures themselves, FQ-CoDel maintains
+two ordered lists containing references to the subset of queues that
+are currently active.  These are the lists of new and old queues, as
+explained in <a href="#section-4-en">Section 4</a> above.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-2-ja">キュー構造そのものに加えて、FQ-CoDelは、現在アクティブなキューの部分集合への参照を含む2つの順序付きリストを維持します。上記の<a href="#section-4-ja">セクション4</a>で説明したように、これらは新しいキューと古いキューのリストです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-3-en">In the Linux implementation, queue space is shared: there's a global
+limit on the number of packets the queues can hold, but not a limit
+for each queue.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-3-ja">Linuxの実装では、キューの領域は共有されています。キューが保持できるパケットの数には全体での上限がありますが、キューごとの上限はありません。</p></div>
+</div></section><section><span id="section-5.2"></span><span id="parameters-en"></span><span id="parameters-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-parameters-en" lang="en">
+<a id="section-5.2-en" href="#section-5.2-en" class="section-number selfRef">5.2.</a> <a href="#name-parameters-en" class="section-name selfRef">Parameters</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-parameters-ja" lang="ja">
+<a id="section-5.2-ja" href="#section-5.2-ja" class="section-number selfRef">5.2.</a> <a href="#name-parameters-ja" class="section-name selfRef">パラメーター</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-1-en">The following are the user configuration parameters exposed by the
+Linux implementation of FQ-CoDel.</p></div>
+<div lang="ja" class="col"><p id="section-5.2-1-ja">以下は、FQ-CoDelのLinuxの実装が公開しているユーザー設定パラメーターです。</p></div>
+</div>
+<section><span id="section-5.2.1"></span><span id="interval-en"></span><span id="interval-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-interval-en" lang="en">
+<a id="section-5.2.1-en" href="#section-5.2.1-en" class="section-number selfRef">5.2.1.</a> <a href="#name-interval-en" class="section-name selfRef">Interval</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-interval-ja" lang="ja">
+<a id="section-5.2.1-ja" href="#section-5.2.1-ja" class="section-number selfRef">5.2.1.</a> <a href="#name-interval-ja" class="section-name selfRef">インターバル</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.1-1-en">The "interval" parameter has the same semantics as CoDel and is used
+to ensure that the minimum sojourn time of packets in a queue used as
+an estimator by the CoDel control algorithm is a relatively
+up-to-date value.  That is, CoDel only reacts to delay experienced in the
+last epoch of length interval.  It <span class="bcp14">SHOULD</span> be set to be on the order
+of the worst-case RTT through the bottleneck to give end points
+sufficient time to react.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.1-1-ja">「interval」パラメーターはCoDelと同じセマンティクスを持ち、CoDelの制御アルゴリズムが推定器として使用する、キュー内のパケットの最小滞留時間が比較的最新の値であることを保証するために使用されます。つまり、CoDelは、長さintervalの直近の期間に経験された遅延にのみ反応します。端点が反応するのに十分な時間を与えるため、intervalは、ボトルネックを通過する最悪の場合のRTTと同程度に設定<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.1-2-en">The default interval value is 100 ms.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.1-2-ja">intervalのデフォルト値は100ミリ秒です。</p></div>
+</div></section><section><span id="section-5.2.2"></span><span id="target-en"></span><span id="target-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-target-en" lang="en">
+<a id="section-5.2.2-en" href="#section-5.2.2-en" class="section-number selfRef">5.2.2.</a> <a href="#name-target-en" class="section-name selfRef">Target</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-target-ja" lang="ja">
+<a id="section-5.2.2-ja" href="#section-5.2.2-ja" class="section-number selfRef">5.2.2.</a> <a href="#name-target-ja" class="section-name selfRef">目標値</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.2-1-en">The "target" parameter has the same semantics as CoDel.  It is the
+acceptable minimum standing/persistent queue delay for each FQ-CoDel
+queue.  This minimum delay is identified by tracking the local
+minimum queue delay that packets experience.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.2-1-ja">「target」パラメーターはCoDelと同じセマンティクスを持ちます。これは、FQ-CoDelの各キューについて許容できる、定常／持続的なキューの遅延の最小値です。この最小遅延は、パケットが経験するキュー遅延の局所的な最小値を追跡することで特定されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.2-2-en">The default target value is 5 ms, but this value should be tuned to
+be at least the transmission time of a single MTU-sized packet at the
+prevalent egress link speed (which, for example, is ~15 ms for 1 Mbps
+and MTU 1500).  This prevents CoDel from being too aggressive at low
+bandwidths.  It should otherwise be set to 5-10% of the configured
+interval.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.2-2-ja">targetのデフォルト値は5ミリ秒ですが、この値は、主要なイグレスリンクの速度でMTUサイズのパケット1つを送信する時間以上になるように調整すべきです（たとえば、1 MbpsでMTUが1500の場合は約15ミリ秒です）。これにより、低帯域幅でCoDelが積極的になりすぎることを防ぎます。それ以外の場合は、設定されたintervalの5〜10%に設定すべきです。</p></div>
+</div></section><section><span id="section-5.2.3"></span><span id="packet-limit-en"></span><span id="packet-limit-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-packet-limit-en" lang="en">
+<a id="section-5.2.3-en" href="#section-5.2.3-en" class="section-number selfRef">5.2.3.</a> <a href="#name-packet-limit-en" class="section-name selfRef">Packet Limit</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-packet-limit-ja" lang="ja">
+<a id="section-5.2.3-ja" href="#section-5.2.3-ja" class="section-number selfRef">5.2.3.</a> <a href="#name-packet-limit-ja" class="section-name selfRef">パケット数の上限</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.3-1-en">Routers do not have infinite memory, so some packet limit <span class="bcp14">MUST</span> be
+enforced.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.3-1-ja">ルーターのメモリーは無限ではないため、何らかのパケット数の上限を課さ<span class="bcp14">なければなりません（MUST）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.3-2-en">The "limit" parameter is the hard limit on the real queue size,
+measured in number of packets.  This limit is a global limit on the
+number of packets in all queues; each individual queue does not have
+an upper limit.  When the limit is reached and a new packet arrives
+for enqueue, packets are dropped from the head of the largest queue
+(measured in bytes) to make room for the new packet.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.3-2-ja">「limit」パラメーターは、実際のキューのサイズに対するハードリミットであり、パケット数で測定されます。この上限は、すべてのキューにあるパケットの数に対する全体での上限であり、個々のキューには上限がありません。上限に達しているときにエンキューする新しいパケットが到着すると、新しいパケットのための場所を空けるために、（バイト数で測定して）最大のキューの先頭からパケットがドロップされます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.3-3-en">In Linux, the default packet limit is 10240 packets, which is
+suitable for up to 10-Gigabit Ethernet speeds.  In practice, the hard
+limit is rarely (if ever) hit, as drops are performed by the CoDel
+algorithm long before the limit is hit.  For platforms that are
+severely memory constrained, a lower limit can be used.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.3-3-ja">Linuxでは、パケット数の上限のデフォルトは10240パケットであり、これは10ギガビットイーサネットまでの速度に適しています。実際には、上限に達するずっと前にCoDelアルゴリズムによってドロップが行われるため、ハードリミットに達することは（あったとしても）めったにありません。メモリーの制約が厳しいプラットフォームでは、より低い上限を使用できます。</p></div>
+</div></section><section><span id="section-5.2.4"></span><span id="quantum-en"></span><span id="quantum-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-quantum-en" lang="en">
+<a id="section-5.2.4-en" href="#section-5.2.4-en" class="section-number selfRef">5.2.4.</a> <a href="#name-quantum-en" class="section-name selfRef">Quantum</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-quantum-ja" lang="ja">
+<a id="section-5.2.4-ja" href="#section-5.2.4-ja" class="section-number selfRef">5.2.4.</a> <a href="#name-quantum-ja" class="section-name selfRef">クォンタム</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.4-1-en">The "quantum" parameter is the number of bytes each queue gets to
+dequeue on each round of the scheduling algorithm.  The default is
+set to 1514 bytes, which corresponds to the Ethernet MTU plus the
+hardware header length of 14 bytes.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.4-1-ja">「quantum」パラメーターは、スケジューリングアルゴリズムの各ラウンドで各キューがデキューできるバイト数です。デフォルトは1514バイトに設定されており、これはイーサネットのMTUに14バイトのハードウェアヘッダー長を加えたものに相当します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.4-2-en">In systems employing TCP Segmentation Offload (TSO), where a "packet"
+consists of an offloaded packet train, it can presently be as large
+as 64 kilobytes.  In systems using Generic Receive Offload (GRO),
+they can be up to 17 times the TCP max segment size (or 25
+kilobytes).  These mega-packets severely impact FQ-CoDel's ability to
+schedule traffic, and they hurt latency needlessly.  There is ongoing
+work in Linux to make smarter use of offload engines.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.4-2-ja">TCPセグメンテーションオフロード（TSO）を用いるシステムでは、「パケット」はオフロードされたパケット列で構成され、現在のところ64キロバイトもの大きさになることがあります。Generic Receive Offload（GRO）を使用するシステムでは、パケットはTCPの最大セグメントサイズの17倍（つまり25キロバイト）にまでなることがあります。これらの巨大なパケットは、FQ-CoDelがトラフィックをスケジュールする能力に深刻な影響を与え、不必要に遅延を悪化させます。Linuxでは、オフロードエンジンをより賢く使用するための作業が進行中です。</p></div>
+</div></section><section><span id="section-5.2.5"></span><span id="flows-en"></span><span id="flows-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-flows-en" lang="en">
+<a id="section-5.2.5-en" href="#section-5.2.5-en" class="section-number selfRef">5.2.5.</a> <a href="#name-flows-en" class="section-name selfRef">Flows</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-flows-ja" lang="ja">
+<a id="section-5.2.5-ja" href="#section-5.2.5-ja" class="section-number selfRef">5.2.5.</a> <a href="#name-flows-ja" class="section-name selfRef">フロー</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.5-1-en">The "flows" parameter sets the number of queues into which the
+incoming packets are classified.  Due to the stochastic nature of
+hashing, multiple flows may end up being hashed into the same slot.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.5-1-ja">「flows」パラメーターは、到着したパケットが分類されるキューの数を設定します。ハッシュの確率的な性質により、複数のフローが同じスロットにハッシュされることがあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.5-2-en">This parameter can be set only at initialisation time in the current
+implementation, since memory has to be allocated for the hash table.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.5-2-ja">ハッシュテーブルのためにメモリーを割り当てる必要があるため、現在の実装では、このパラメーターは初期化時にしか設定できません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.5-3-en">The default value is 1024 in the current Linux implementation.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.5-3-ja">現在のLinuxの実装でのデフォルト値は1024です。</p></div>
+</div></section><section><span id="section-5.2.6"></span><span id="explicit-congestion-notification-(ecn)-en"></span><span id="explicit-congestion-notification-(ecn)-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-explicit-congestion-notification-(ecn)-en" lang="en">
+<a id="section-5.2.6-en" href="#section-5.2.6-en" class="section-number selfRef">5.2.6.</a> <a href="#name-explicit-congestion-notification-(ecn)-en" class="section-name selfRef">Explicit Congestion Notification (ECN)</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-explicit-congestion-notification-(ecn)-ja" lang="ja">
+<a id="section-5.2.6-ja" href="#section-5.2.6-ja" class="section-number selfRef">5.2.6.</a> <a href="#name-explicit-congestion-notification-(ecn)-ja" class="section-name selfRef">明示的輻輳通知（ECN）</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.6-1-en">ECN <span>[<a href="#RFC3168-en">RFC3168</a>]</span> is enabled by default.  Rather than do anything special
+with misbehaved ECN flows, FQ-CoDel relies on the packet scheduling
+system to minimise their impact; thus, the number of unresponsive
+packets in a flow being marked with ECN can grow to the overall
+packet limit but will not otherwise affect the performance of the
+system.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.6-1-ja">ECN<span>[<a href="#RFC3168-ja">RFC3168</a>]</span>はデフォルトで有効です。FQ-CoDelは、不正な振る舞いをするECNフローに対して特別なことは何もせず、その影響を最小限に抑えることをパケットスケジューリングシステムに任せます。そのため、ECNでマークされる、反応しないフローのパケットの数は、全体のパケット数の上限まで増えることがありますが、それ以外にシステムの性能に影響を与えることはありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.6-2-en">ECN can be disabled by specifying the "noecn" parameter.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.6-2-ja">ECNは「noecn」パラメーターを指定することで無効にできます。</p></div>
+</div></section><section><span id="section-5.2.7"></span><span id="ce-threshold-en"></span><span id="ce-threshold-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-ce-threshold-en" lang="en">
+<a id="section-5.2.7-en" href="#section-5.2.7-en" class="section-number selfRef">5.2.7.</a> <a href="#name-ce-threshold-en" class="section-name selfRef">CE Threshold</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-ce-threshold-ja" lang="ja">
+<a id="section-5.2.7-ja" href="#section-5.2.7-ja" class="section-number selfRef">5.2.7.</a> <a href="#name-ce-threshold-ja" class="section-name selfRef">CEしきい値</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.7-1-en">This parameter enables DCTCP-like processing resulting in Congestion
+Encountered (CE) marking on ECN-Capable Transport (ECT) packets
+<span>[<a href="#RFC3168-en">RFC3168</a>]</span> starting at a lower sojourn delay setpoint than the default
+CoDel target.  Details of Data Center TCP (DCTCP) can be found in
+<span>[<a href="#RFC8257-en">RFC8257</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.7-1-ja">このパラメーターは、DCTCPのような処理を有効にします。これにより、デフォルトのCoDelのtargetよりも低い滞留遅延の設定値から、ECN対応トランスポート（ECT）パケット<span>[<a href="#RFC3168-ja">RFC3168</a>]</span>へのCongestion Encountered（CE）マーキングが始まります。Data Center TCP（DCTCP）の詳細は<span>[<a href="#RFC8257-ja">RFC8257</a>]</span>にあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2.7-2-en">The "ce_threshold" parameter is disabled by default; it can be
+enabled by setting it to a number of microseconds.</p></div>
+<div lang="ja" class="col"><p id="section-5.2.7-2-ja">「ce_threshold」パラメーターはデフォルトで無効です。マイクロ秒単位の数値を設定することで有効にできます。</p></div>
+</div></section></section><section><span id="section-5.3"></span><span id="probability-of-hash-collisions-en"></span><span id="probability-of-hash-collisions-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-probability-of-hash-collisions-en" lang="en">
+<a id="section-5.3-en" href="#section-5.3-en" class="section-number selfRef">5.3.</a> <a href="#name-probability-of-hash-collisions-en" class="section-name selfRef">Probability of Hash Collisions</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-probability-of-hash-collisions-ja" lang="ja">
+<a id="section-5.3-ja" href="#section-5.3-ja" class="section-number selfRef">5.3.</a> <a href="#name-probability-of-hash-collisions-ja" class="section-name selfRef">ハッシュ衝突の確率</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-1-en">Since the Linux FQ-CoDel implementation by default uses 1024 hash
+buckets, the probability that (say) 100 flows will all hash to the
+same bucket is something like ten to the power of minus 300.  Thus,
+at least one of the flows will almost certainly hash to some other
+queue.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-1-ja">LinuxのFQ-CoDelの実装はデフォルトで1024個のハッシュバケットを使用するため、（たとえば）100個のフローがすべて同じバケットにハッシュされる確率は、およそ10のマイナス300乗です。したがって、フローのうち少なくとも1つは、ほぼ確実に他のキューにハッシュされます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-2-en">Expanding on this, based on analytical equations for hash collision
+probabilities, for 100 flows, the probability of no collision is
+90.78%; the probability that no more than two of the 100 flows will
+be involved in any given collision is 99.57%; and the probability
+that no more than three of the 100 flows will be involved in any
+given collision is 99.99%.  These probabilities assume a hypothetical
+perfect hashing function, so in practice, they may be a bit lower.
+We have not found this difference to matter in practice.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-2-ja">これを発展させて、ハッシュ衝突の確率の解析的な式に基づくと、100個のフローについて、衝突がまったく起きない確率は90.78%です。100個のフローのうち、ある衝突に関与するのが2個以下である確率は99.57%であり、ある衝突に関与するのが3個以下である確率は99.99%です。これらの確率は仮想的な完全ハッシュ関数を前提としているため、実際には少し低くなる可能性があります。私たちは、実際にこの差が問題になるという事例を見つけていません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-3-en">These probabilities can be improved upon by using set-associative
+hashing, a technique used in the Cake algorithm currently being
+developed as a further refinement of the FQ-CoDel principles <span>[<a href="#CAKE-en">CAKE</a>]</span>.
+For a 4-way associative hash with the same number of total queues,
+the probability of no collisions for 100 flows is 99.93%, while for
+an 8-way associative hash, it is ~100%.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-3-ja">これらの確率は、セットアソシアティブハッシュを使用することで改善できます。これは、FQ-CoDelの原理をさらに改良したものとして現在開発中のCakeアルゴリズムで使用されている手法です<span>[<a href="#CAKE-ja">CAKE</a>]</span>。総キュー数が同じ4ウェイアソシアティブハッシュの場合、100個のフローで衝突が起きない確率は99.93%であり、8ウェイアソシアティブハッシュの場合は約100%です。</p></div>
+</div></section><section><span id="section-5.4"></span><span id="memory-overhead-en"></span><span id="memory-overhead-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-memory-overhead-en" lang="en">
+<a id="section-5.4-en" href="#section-5.4-en" class="section-number selfRef">5.4.</a> <a href="#name-memory-overhead-en" class="section-name selfRef">Memory Overhead</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-memory-overhead-ja" lang="ja">
+<a id="section-5.4-ja" href="#section-5.4-ja" class="section-number selfRef">5.4.</a> <a href="#name-memory-overhead-ja" class="section-name selfRef">メモリーのオーバーヘッド</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-1-en">FQ-CoDel can be implemented with a low memory footprint (less than 64
+bytes per queue on 64-bit systems).  These are the data structures
+used in the Linux implementation:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-1-ja">FQ-CoDelは、少ないメモリーフットプリント（64ビットシステムでキューあたり64バイト未満）で実装できます。Linuxの実装で使用されているデータ構造は次のとおりです：</p></div>
+</div>
+<div class="row">
+<div class="col">
+<div class="sourcecode lang-c" id="section-5.4-2-en"><pre tabindex="0" role="region" aria-label="Source code">
+struct codel_vars {
+   u32             count;             /* number of dropped packets */
+   u32             lastcount;     /* count entry to dropping state */
+   bool            dropping;                /* currently dropping? */
+   u16             rec_inv_sqrt;    /* reciprocal sqrt computation */
+   codel_time_t    first_above_time;    /* when delay above target */
+   codel_time_t    drop_next;                 /* next time to drop */
+   codel_time_t    ldelay; /* sojourn time of last dequeued packet */
+};
+
+struct fq_codel_flow {
+   struct sk_buff    *head;
+   struct sk_buff    *tail;
+   struct list_head  flowchain;
+   int               credits;   /* current number of queue credits */
+   u32               dropped; /* # of drops (or ECN marks) on flow */
+   struct codel_vars cvars;
+};
+</pre></div>
+        </div>
+<div class="col">
+<div class="sourcecode lang-c" id="section-5.4-2-ja"><pre tabindex="0" role="region" aria-label="ソースコード">
+struct codel_vars {
+   u32             count;             /* ドロップされたパケットの数 */
+   u32             lastcount;     /* ドロップ状態に入ったときのcount */
+   bool            dropping;                /* 現在ドロップ中か？ */
+   u16             rec_inv_sqrt;    /* 平方根の逆数の計算 */
+   codel_time_t    first_above_time;    /* 遅延がtargetを超えた時刻 */
+   codel_time_t    drop_next;                 /* 次にドロップする時刻 */
+   codel_time_t    ldelay; /* 最後にデキューしたパケットの滞留時間 */
+};
+
+struct fq_codel_flow {
+   struct sk_buff    *head;
+   struct sk_buff    *tail;
+   struct list_head  flowchain;
+   int               credits;   /* キューの現在のクレジット数 */
+   u32               dropped; /* フローでのドロップ（またはECNマーク）の数 */
+   struct codel_vars cvars;
+};
+</pre></div>
+        </div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-3-en">The master table managing all queues looks like this:</p></div>
+<div lang="ja" class="col"><p id="section-5.4-3-ja">すべてのキューを管理するマスターテーブルは次のようになります：</p></div>
+</div>
+<div class="row">
+<div class="col">
+<div class="sourcecode lang-c" id="section-5.4-4-en"><pre tabindex="0" role="region" aria-label="Source code">
+struct fq_codel_sched_data {
+   struct tcf_proto *filter_list;  /* optional external classifier */
+   struct fq_codel_flow *flows;    /* Flows table [flows_cnt] */
+   u32             *backlogs;      /* backlog table [flows_cnt] */
+   u32             flows_cnt;      /* number of flows */
+   u32             perturbation;   /* hash perturbation */
+   u32             quantum;        /* psched_mtu(qdisc_dev(sch)); */
+   struct codel_params cparams;
+   struct codel_stats cstats;
+   u32             drop_overlimit;
+   u32             new_flow_count;
+
+   struct list_head new_flows;     /* list of new flows */
+   struct list_head old_flows;     /* list of old flows */
+};
+</pre></div>
+      </div>
+<div class="col">
+<div class="sourcecode lang-c" id="section-5.4-4-ja"><pre tabindex="0" role="region" aria-label="ソースコード">
+struct fq_codel_sched_data {
+   struct tcf_proto *filter_list;  /* 任意の外部分類器 */
+   struct fq_codel_flow *flows;    /* フローテーブル [flows_cnt] */
+   u32             *backlogs;      /* バックログテーブル [flows_cnt] */
+   u32             flows_cnt;      /* フローの数 */
+   u32             perturbation;   /* ハッシュの摂動 */
+   u32             quantum;        /* psched_mtu(qdisc_dev(sch)); */
+   struct codel_params cparams;
+   struct codel_stats cstats;
+   u32             drop_overlimit;
+   u32             new_flow_count;
+
+   struct list_head new_flows;     /* 新しいフローのリスト */
+   struct list_head old_flows;     /* 古いフローのリスト */
+};
+</pre></div>
+      </div>
+</div></section><section><span id="section-5.5"></span><span id="per-packet-timestamping-en"></span><span id="per-packet-timestamping-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-per-packet-timestamping-en" lang="en">
+<a id="section-5.5-en" href="#section-5.5-en" class="section-number selfRef">5.5.</a> <a href="#name-per-packet-timestamping-en" class="section-name selfRef">Per-Packet Timestamping</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-per-packet-timestamping-ja" lang="ja">
+<a id="section-5.5-ja" href="#section-5.5-ja" class="section-number selfRef">5.5.</a> <a href="#name-per-packet-timestamping-ja" class="section-name selfRef">パケットごとのタイムスタンプ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.5-1-en">The CoDel portion of the algorithm requires per-packet timestamps be
+stored along with the packet.  While this approach works well for
+software-based routers, it may be impossible to retrofit devices that
+do most of their processing in silicon and lack the space or
+mechanism for timestamping.</p></div>
+<div lang="ja" class="col"><p id="section-5.5-1-ja">アルゴリズムのCoDelの部分では、パケットごとのタイムスタンプをパケットとともに保存する必要があります。このアプローチはソフトウェアベースのルーターではうまく機能しますが、処理のほとんどをシリコンで行い、タイムスタンプのための領域や仕組みを持たない機器に後から組み込むことは不可能な場合があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.5-2-en">Also, while perfect resolution is not needed, timestamp resolution
+finer than the CoDel target setting is necessary.  Furthermore,
+timestamping functions in the core OS need to be efficient, as they
+are called at least once on each packet enqueue and dequeue.</p></div>
+<div lang="ja" class="col"><p id="section-5.5-2-ja">また、完全な分解能は必要ありませんが、CoDelのtargetの設定値よりも細かいタイムスタンプの分解能は必要です。さらに、タイムスタンプ関数は、パケットのエンキューとデキューのたびに少なくとも1回は呼び出されるため、コアOSにおけるタイムスタンプ関数は効率的である必要があります。</p></div>
+</div></section><section><span id="section-5.6"></span><span id="limiting-queueing-in-lower-layers-en"></span><span id="limiting-queueing-in-lower-layers-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-limiting-queueing-in-lower-layers-en" lang="en">
+<a id="section-5.6-en" href="#section-5.6-en" class="section-number selfRef">5.6.</a> <a href="#name-limiting-queueing-in-lower-layers-en" class="section-name selfRef">Limiting Queueing in Lower Layers</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-limiting-queueing-in-lower-layers-ja" lang="ja">
+<a id="section-5.6-ja" href="#section-5.6-ja" class="section-number selfRef">5.6.</a> <a href="#name-limiting-queueing-in-lower-layers-ja" class="section-name selfRef">下位レイヤーでのキューイングの制限</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.6-1-en">When deploying a queue management algorithm such as FQ-CoDel, it is
+important to ensure that the algorithm actually runs in the right
+place to control the queue.  In particular, lower layers of the
+operating system networking stack can have queues of their own, as
+can device drivers and hardware.  Thus, it is desirable that the
+queue management algorithm runs as close to the hardware as possible.
+However, scheduling such complexity at interrupt time is difficult,
+so a small standing queue between the algorithm and the wire is often
+needed at higher transmit rates.</p></div>
+<div lang="ja" class="col"><p id="section-5.6-1-ja">FQ-CoDelのようなキュー管理アルゴリズムを展開する場合、キューを制御するために、アルゴリズムが実際に適切な場所で動作するようにすることが重要です。特に、オペレーティングシステムのネットワークスタックの下位レイヤーは、デバイスドライバーやハードウェアと同様に、独自のキューを持つことがあります。したがって、キュー管理アルゴリズムはできるだけハードウェアに近い場所で動作することが望ましいです。しかし、割り込み時にそのような複雑なスケジューリングを行うことは困難であるため、より高い送信レートでは、アルゴリズムと回線の間に小さな定常キューが必要になることがよくあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.6-2-en">In Linux, the mechanism to ensure these different needs are balanced
+is called "Byte Queue Limits" <span>[<a href="#BQL-en">BQL</a>]</span>; it controls the device driver
+ring buffer (for physical line rates).  For cases where this
+functionality is not available, the queue can be controlled by means
+of a software rate limiter such as Hierarchical Token Bucket <span>[<a href="#HTB-en">HTB</a>]</span> or
+Hierarchical Fair-Service Curve <span>[<a href="#HFSC-en">HFSC</a>]</span>.  The Cake algorithm <span>[<a href="#CAKE-en">CAKE</a>]</span>
+integrates a software rate limiter for this purpose.</p></div>
+<div lang="ja" class="col"><p id="section-5.6-2-ja">Linuxでは、これらの異なるニーズのバランスを確保する仕組みは「Byte Queue Limits」<span>[<a href="#BQL-ja">BQL</a>]</span>と呼ばれます。これは、（物理的な回線レートについて）デバイスドライバーのリングバッファーを制御します。この機能が利用できない場合は、Hierarchical Token Bucket<span>[<a href="#HTB-ja">HTB</a>]</span>やHierarchical Fair-Service Curve<span>[<a href="#HFSC-ja">HFSC</a>]</span>のようなソフトウェアのレートリミッターによってキューを制御できます。Cakeアルゴリズム<span>[<a href="#CAKE-ja">CAKE</a>]</span>は、この目的のためにソフトウェアのレートリミッターを統合しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.6-3-en">Other issues with queues at lower layers are described in <span>[<a href="#CODEL-en">CODEL</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-5.6-3-ja">下位レイヤーでのキューに関するその他の問題は、<span>[<a href="#CODEL-ja">CODEL</a>]</span>で説明されています。</p></div>
+</div></section><section><span id="section-5.7"></span><span id="other-forms-of-fair-queueing-en"></span><span id="other-forms-of-fair-queueing-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-other-forms-of-fair-queueing-en" lang="en">
+<a id="section-5.7-en" href="#section-5.7-en" class="section-number selfRef">5.7.</a> <a href="#name-other-forms-of-fair-queueing-en" class="section-name selfRef">Other Forms of Fair Queueing</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-other-forms-of-fair-queueing-ja" lang="ja">
+<a id="section-5.7-ja" href="#section-5.7-ja" class="section-number selfRef">5.7.</a> <a href="#name-other-forms-of-fair-queueing-ja" class="section-name selfRef">その他の形式の公平キューイング</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.7-1-en">Much of the scheduling portion of FQ-CoDel is derived from DRR and is
+substantially similar to DRR++.  Versions based on Stochastic Fair
+Queueing <span>[<a href="#SFQ-en">SFQ</a>]</span> have also been produced and tested in ns2.  Other
+forms of fair queueing, such as Weighted Fair Queueing <span>[<a href="#WFQ-en">WFQ</a>]</span> or Quick
+Fair Queueing <span>[<a href="#QFQ-en">QFQ</a>]</span>, have not been thoroughly explored, but there's
+no a priori reason why the round-robin scheduling of FQ-CoDel
+couldn't be replaced with something else.</p></div>
+<div lang="ja" class="col"><p id="section-5.7-1-ja">FQ-CoDelのスケジューリングの部分の多くはDRRから派生したものであり、DRR++と実質的に似ています。Stochastic Fair Queueing<span>[<a href="#SFQ-ja">SFQ</a>]</span>に基づくバージョンも作成され、ns2でテストされています。Weighted Fair Queueing<span>[<a href="#WFQ-ja">WFQ</a>]</span>やQuick Fair Queueing<span>[<a href="#QFQ-ja">QFQ</a>]</span>などの他の形式の公平キューイングは十分に検討されていませんが、FQ-CoDelのラウンドロビンスケジューリングを他のものに置き換えられない先験的な理由はありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.7-2-en">For a comprehensive discussion of fairness queueing algorithms and
+their combination with AQM, see <span>[<a href="#RFC7806-en">RFC7806</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-5.7-2-ja">公平キューイングアルゴリズムとそのAQMとの組み合わせについての包括的な議論は、<span>[<a href="#RFC7806-ja">RFC7806</a>]</span>を参照してください。</p></div>
+</div></section><section><span id="section-5.8"></span><span id="differences-between-codel-and-fq-codel-behaviour-en"></span><span id="differences-between-codel-and-fq-codel-behaviour-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-differences-between-codel-and-fq-codel-behaviour-en" lang="en">
+<a id="section-5.8-en" href="#section-5.8-en" class="section-number selfRef">5.8.</a> <a href="#name-differences-between-codel-and-fq-codel-behaviour-en" class="section-name selfRef">Differences between CoDel and FQ-CoDel Behaviour</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-differences-between-codel-and-fq-codel-behaviour-ja" lang="ja">
+<a id="section-5.8-ja" href="#section-5.8-ja" class="section-number selfRef">5.8.</a> <a href="#name-differences-between-codel-and-fq-codel-behaviour-ja" class="section-name selfRef">CoDelとFQ-CoDelの振る舞いの違い</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.8-1-en">CoDel can be applied to a single queue system as a straight AQM,
+where it converges towards an "ideal" drop rate (i.e., one that
+minimises delay while keeping a high link utilisation) and then
+optimises around that control point.</p></div>
+<div lang="ja" class="col"><p id="section-5.8-1-ja">CoDelは、単一キューのシステムに素のAQMとして適用できます。その場合、CoDelは「理想的な」ドロップ率（つまり、高いリンク利用率を保ちながら遅延を最小にするドロップ率）に向かって収束し、その制御点の周辺で最適化を行います。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.8-2-en">The scheduling of FQ-CoDel mixes packets of competing flows, which
+acts to pace bursty flows to better fill the pipe.  Additionally, a
+new flow gets substantial leeway over other flows until CoDel finds
+an ideal drop rate for it.  However, for a new flow that exceeds the
+configured quantum, more time passes before all of its data is
+delivered (as packets from it, too, are mixed across the other
+existing queue-building flows).  Thus, FQ-CoDel takes longer (as
+measured in time) to converge towards an ideal drop rate for a given
+new flow but does so within fewer delivered <em>packets</em> from that flow.</p></div>
+<div lang="ja" class="col"><p id="section-5.8-2-ja">FQ-CoDelのスケジューリングは、競合するフローのパケットを混ぜ合わせます。これは、バースト性のあるフローのペースを整えて、パイプをよりよく満たすように作用します。さらに、新しいフローは、CoDelがそのフローにとって理想的なドロップ率を見つけるまで、他のフローに比べてかなりの猶予を得ます。しかし、設定されたクォンタムを超える新しいフローについては、そのデータのすべてが配送されるまでにより多くの時間がかかります（そのフローからのパケットも、キューを形成している他の既存のフローの間に混ぜ合わされるためです）。したがって、FQ-CoDelは、ある新しいフローについて理想的なドロップ率に収束するまでに（時間で測定すると）より長くかかりますが、そのフローから配送される<em>パケット</em>の数はより少なくて済みます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.8-3-en">Finally, the flow isolation provided by FQ-CoDel means that the CoDel
+drop mechanism operates on the flows actually building queues; this
+results in packets being dropped more accurately from the largest
+flows than when only CoDel is used.  Additionally, flow isolation
+radically improves the transient behaviour of the network when
+traffic or link characteristics change (e.g., when new flows start up
+or the link bandwidth changes); while CoDel itself can take a while
+to respond, FQ-CoDel reacts almost immediately.</p></div>
+<div lang="ja" class="col"><p id="section-5.8-3-ja">最後に、FQ-CoDelが提供するフローの分離によって、CoDelのドロップの仕組みは、実際にキューを形成しているフローに対して動作します。その結果、CoDelだけを使用する場合よりも、最大のフローからより正確にパケットがドロップされます。さらに、フローの分離により、トラフィックやリンクの特性が変化したとき（たとえば、新しいフローが開始したときや、リンクの帯域幅が変化したとき）のネットワークの過渡的な振る舞いが根本的に改善されます。CoDel自体は反応するまでにしばらく時間がかかることがありますが、FQ-CoDelはほぼ即座に反応します。</p></div>
+</div></section></section><section><span id="section-6"></span><span id="limitations-of-flow-queueing-en"></span><span id="limitations-of-flow-queueing-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-limitations-of-flow-queueing-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-limitations-of-flow-queueing-en" class="section-name selfRef">Limitations of Flow Queueing</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-limitations-of-flow-queueing-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-limitations-of-flow-queueing-ja" class="section-name selfRef">フローキューイングの制限</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">While FQ-CoDel has been shown in many scenarios to offer significant
+performance gains compared to alternative queue management
+strategies, there are some scenarios where the scheduling algorithm
+in particular is not a good fit.  This section documents some of the
+known cases in which either the default behaviour may require
+tweaking or alternatives to flow queueing should be considered.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">FQ-CoDelは、多くのシナリオにおいて、他のキュー管理戦略と比べて大幅な性能向上をもたらすことが示されていますが、特にスケジューリングアルゴリズムがうまく適合しないシナリオもいくつかあります。このセクションでは、デフォルトの振る舞いを微調整する必要があるかもしれない場合や、フローキューイングの代替手段を検討すべき場合として知られているもののいくつかを記述します。</p></div>
+</div>
+<section><span id="section-6.1"></span><span id="fairness-between-things-other-than-flows-en"></span><span id="fairness-between-things-other-than-flows-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-fairness-between-things-other-than-flows-en" lang="en">
+<a id="section-6.1-en" href="#section-6.1-en" class="section-number selfRef">6.1.</a> <a href="#name-fairness-between-things-other-than-flows-en" class="section-name selfRef">Fairness between Things Other Than Flows</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-fairness-between-things-other-than-flows-ja" lang="ja">
+<a id="section-6.1-ja" href="#section-6.1-ja" class="section-number selfRef">6.1.</a> <a href="#name-fairness-between-things-other-than-flows-ja" class="section-name selfRef">フロー以外のものの間での公平性</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-1-en">In some parts of the network, enforcing flow-level fairness may not
+be desirable, or some other form of fairness may be more important.
+Some examples of this include an ISP that may be more interested in
+ensuring fairness between customers than between flows or a hosting
+or transit provider that wishes to ensure fairness between connecting
+Autonomous Systems or networks.  Another issue can be that the number
+of simultaneous flows experienced at a particular link can be too
+high for flow-based fairness queueing to be effective.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-1-ja">ネットワークのある部分では、フローレベルの公平性を強制することが望ましくない場合や、他の形式の公平性のほうが重要な場合があります。この例としては、フロー間よりも顧客間の公平性を確保することに関心があるかもしれないISPや、接続している自律システムやネットワークの間の公平性を確保したいホスティングプロバイダーやトランジットプロバイダーなどがあります。別の問題として、特定のリンクで経験される同時フローの数が多すぎて、フローベースの公平キューイングが効果的でない場合もあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-2-en">Whatever the reason, in a scenario where fairness between flows is
+not desirable, reconfiguring FQ-CoDel to match on a different
+characteristic can be a way forward.  The implementation in Linux can
+leverage the packet matching mechanism of the "tc" subsystem to use
+any available packet field to partition packets into virtual queues,
+for instance, to match on address or subnet source/destination pairs,
+application-layer characteristics, etc.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-2-ja">理由が何であれ、フロー間の公平性が望ましくないシナリオでは、異なる特性にマッチするようにFQ-CoDelを再設定することが1つの方法になりえます。Linuxの実装は、「tc」サブシステムのパケットマッチングの仕組みを利用して、利用可能な任意のパケットフィールドを使ってパケットを仮想的なキューに分割できます。たとえば、アドレスやサブネットの送信元と宛先の組、アプリケーション層の特性などにマッチさせることができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-3-en">Furthermore, as commonly deployed today, FQ-CoDel is used with three
+or more tiers of service classification, based on Diffserv markings:
+priority, best effort, and background.  Some products do more
+detailed classification, including deep packet inspection and
+destination-specific filters to achieve their desired result.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-3-ja">さらに、今日一般的に展開されている形では、FQ-CoDelは、Diffservのマーキングに基づく3つ以上の階層のサービス分類（優先、ベストエフォート、バックグラウンド）とともに使用されています。一部の製品は、望む結果を得るために、ディープパケットインスペクションや宛先固有のフィルターを含む、より詳細な分類を行っています。</p></div>
+</div></section><section><span id="section-6.2"></span><span id="flow-bunching-by-opaque-encapsulation-en"></span><span id="flow-bunching-by-opaque-encapsulation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-flow-bunching-by-opaque-encapsulation-en" lang="en">
+<a id="section-6.2-en" href="#section-6.2-en" class="section-number selfRef">6.2.</a> <a href="#name-flow-bunching-by-opaque-encapsulation-en" class="section-name selfRef">Flow Bunching by Opaque Encapsulation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-flow-bunching-by-opaque-encapsulation-ja" lang="ja">
+<a id="section-6.2-ja" href="#section-6.2-ja" class="section-number selfRef">6.2.</a> <a href="#name-flow-bunching-by-opaque-encapsulation-ja" class="section-name selfRef">不透明なカプセル化によるフローの束ね</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-1-en">Where possible, FQ-CoDel will attempt to decapsulate packets before
+matching on the header fields for the flow hashing.  However, for
+some encapsulation techniques, most notably encrypted VPNs, this is
+not possible.  If several flows are bunched into one such
+encapsulated tunnel, they will be seen as one flow by the FQ-CoDel
+algorithm.  This means that they will share a queue and drop
+behaviour, so flows inside the encapsulation will not benefit from
+the implicit prioritisation of FQ-CoDel but will continue to benefit
+from the reduced overall queue length from the CoDel algorithm
+operating on the queue.  In addition, when such an encapsulated bunch
+competes against other flows, it will count as one flow and not
+assigned a share of the bandwidth based on how many flows are inside
+the encapsulation.</p></div>
+<div lang="ja" class="col"><p id="section-6.2-1-ja">可能な場合、FQ-CoDelは、フローのハッシュのためにヘッダーフィールドとマッチングを行う前に、パケットのカプセル化を解除しようとします。しかし、一部のカプセル化技術、特に暗号化されたVPNでは、これは不可能です。複数のフローがそのようなカプセル化されたトンネル1つに束ねられている場合、それらはFQ-CoDelアルゴリズムから1つのフローとして見えます。これは、それらのフローがキューとドロップの振る舞いを共有することを意味します。そのため、カプセル化の内側のフローは、FQ-CoDelの暗黙的な優先付けの恩恵を受けませんが、キューで動作するCoDelアルゴリズムによって全体のキューの長さが短くなることの恩恵は引き続き受けます。さらに、そのようなカプセル化されたフローの束が他のフローと競合する場合、その束は1つのフローとして数えられ、カプセル化の内側にいくつのフローがあるかに基づいて帯域幅の割り当てを受けることはありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-2-en">Depending on the application, this may or may not be desirable
+behaviour.  In cases where it is not, changing FQ-CoDel's matching to
+not be flow-based (as detailed in the previous subsection above) can
+be a mitigation.  Going forward, having some mechanism for opaque
+encapsulations to express to the outer layer which flow a packet
+belongs to could be a way to mitigate this.  Naturally, care needs to
+be taken when designing such a mechanism to ensure no new privacy and
+security issues are raised by exposing information from inside the
+encapsulation to the outside world.  Keeping the extra information
+out of band and dropping it before it hits the network could be one
+way to achieve this.</p></div>
+<div lang="ja" class="col"><p id="section-6.2-2-ja">アプリケーションによっては、これは望ましい振る舞いである場合もそうでない場合もあります。望ましくない場合は、（前のサブセクションで詳しく説明したように）FQ-CoDelのマッチングをフローベースでないものに変更することが緩和策になりえます。今後は、不透明なカプセル化が、パケットがどのフローに属するかを外側のレイヤーに伝える何らかの仕組みを持つことが、これを緩和する方法になるかもしれません。当然ながら、そのような仕組みを設計する際には、カプセル化の内側の情報を外部に公開することによって新たなプライバシーやセキュリティーの問題が生じないように注意する必要があります。追加の情報を帯域外に保ち、ネットワークに出る前に取り除くことが、これを実現する1つの方法になりえます。</p></div>
+</div></section><section><span id="section-6.3"></span><span id="low-priority-congestion-control-algorithms-en"></span><span id="low-priority-congestion-control-algorithms-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-low-priority-congestion-control-algorithms-en" lang="en">
+<a id="section-6.3-en" href="#section-6.3-en" class="section-number selfRef">6.3.</a> <a href="#name-low-priority-congestion-control-algorithms-en" class="section-name selfRef">Low-Priority Congestion Control Algorithms</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-low-priority-congestion-control-algorithms-ja" lang="ja">
+<a id="section-6.3-ja" href="#section-6.3-ja" class="section-number selfRef">6.3.</a> <a href="#name-low-priority-congestion-control-algorithms-ja" class="section-name selfRef">低優先度の輻輳制御アルゴリズム</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.3-1-en">In the presence of queue management schemes that limit latency under
+load, low-priority congestion control algorithms such as Low Extra
+Delay Background Transport (LEDBAT) <span>[<a href="#RFC6817-en">RFC6817</a>]</span> (or, in general,
+algorithms that try to voluntarily use up less than their fair share
+of bandwidth) experience little added latency when the link is
+congested.  Thus, they lack the signal to back off that added latency
+previously afforded them.  This effect is seen with FQ-CoDel as well
+as with any effective AQM <span>[<a href="#GONG2014-en">GONG2014</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-6.3-1-ja">負荷時の遅延を制限するキュー管理方式が存在する場合、Low Extra Delay Background Transport（LEDBAT）<span>[<a href="#RFC6817-ja">RFC6817</a>]</span>のような低優先度の輻輳制御アルゴリズム（または、一般に、帯域幅の公平な取り分よりも少なく使用しようと自発的に試みるアルゴリズム）は、リンクが輻輳しているときにもほとんど遅延の増加を経験しません。そのため、これらのアルゴリズムは、以前は遅延の増加によって得られていた、送信を控えるためのシグナルを得られません。この効果は、効果的なAQMであればどれでも見られ、FQ-CoDelでも同様です<span>[<a href="#GONG2014-ja">GONG2014</a>]</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.3-2-en">As such, these delay-based algorithms tend to revert to loss-based
+congestion control and will consume the fair share of bandwidth
+afforded to them by the FQ-CoDel scheduler.  However, low-priority
+congestion control mechanisms may be able to take steps to continue
+to be low priority, for instance, by taking into account the vastly
+reduced level of delay afforded by an AQM or by using a coupled
+approach to observing the behaviour of multiple flows.</p></div>
+<div lang="ja" class="col"><p id="section-6.3-2-ja">そのため、これらの遅延ベースのアルゴリズムは損失ベースの輻輳制御に戻る傾向があり、FQ-CoDelスケジューラーによって与えられた帯域幅の公平な取り分を消費することになります。しかし、低優先度の輻輳制御の仕組みは、たとえば、AQMによってもたらされる大幅に低減された遅延のレベルを考慮に入れたり、複数のフローの振る舞いを観測する結合されたアプローチを使用したりすることで、低優先度であり続けるための手段を講じることができるかもしれません。</p></div>
+</div></section></section><section><span id="section-7"></span><span id="deployment-status-and-future-work-en"></span><span id="deployment-status-and-future-work-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-deployment-status-and-future-work-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-deployment-status-and-future-work-en" class="section-name selfRef">Deployment Status and Future Work</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-deployment-status-and-future-work-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-deployment-status-and-future-work-ja" class="section-name selfRef">展開状況と今後の作業</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">The FQ-CoDel algorithm as described in this document has been shipped
+as part of the Linux kernel since version 3.5 (released on the 21st
+of July, 2012), with the ce_threshold being added in version 4.2.
+The algorithm has seen widespread testing in a variety of contexts
+and is configured as the default queueing discipline in a number of
+mainline Linux distributions (as of this writing, at least OpenWRT,
+Arch Linux, and Fedora).  In addition, a BSD implementation is
+available.  All data resulting from these trials have shown FQ-CoDel
+to be a massive improvement over the previous default FIFO queue, and
+people are encouraged to turn it on.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">この文書で説明しているFQ-CoDelアルゴリズムは、バージョン3.5（2012年7月21日リリース）以降、Linuxカーネルの一部として出荷されており、ce_thresholdはバージョン4.2で追加されました。このアルゴリズムはさまざまな状況で広くテストされており、多くのメインラインのLinuxディストリビューション（執筆時点で、少なくともOpenWRT、Arch Linux、Fedora）でデフォルトのキューイング規律として設定されています。さらに、BSDの実装も利用可能です。これらの試行から得られたすべてのデータは、FQ-CoDelが以前のデフォルトのFIFOキューに比べて大幅な改善であることを示しており、FQ-CoDelを有効にすることが推奨されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-2-en">Of course, there is always room for improvement, and this document
+has listed some of the known limitations of the algorithm.  As such,
+we encourage further research into algorithm refinements and
+addressing of limitations.  One such effort has been undertaken by
+the bufferbloat community in the form of the Cake queue management
+scheme <span>[<a href="#CAKE-en">CAKE</a>]</span>.  In addition to this, we believe the following
+(non-exhaustive) list of issues to be worthy of further enquiry:</p></div>
+<div lang="ja" class="col"><p id="section-7-2-ja">もちろん、改善の余地は常にあり、この文書ではアルゴリズムの既知の制限のいくつかを挙げました。そのため、私たちは、アルゴリズムの改良と制限への対処についてのさらなる研究を奨励します。そのような取り組みの1つが、Cakeキュー管理方式<span>[<a href="#CAKE-ja">CAKE</a>]</span>という形でバッファーブロートのコミュニティーによって行われています。これに加えて、私たちは、以下の（網羅的ではない）問題の一覧がさらなる調査に値すると考えています：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7-3-en">
+<li id="section-7-3.1-en">Variations on the flow classification mechanism to fit different
+notions of flows.  For instance, an ISP might want to deploy per-subscriber
+scheduling, while in other cases, several flows can
+share a 5-tuple, as exemplified by the RTCWEB QoS recommendations
+<span>[<a href="#WEBRTC-QOS-en">WEBRTC-QOS</a>]</span>.</li>
+        <li id="section-7-3.2-en">Interactions between flow queueing and delay-based congestion
+control algorithms and scavenger protocols.</li>
+        <li id="section-7-3.3-en">Other scheduling mechanisms to replace the DRR portion of the
+algorithm, e.g., QFQ or WFQ.</li>
+        <li id="section-7-3.4-en">Sensitivity of parameters, most notably, the number of queues and
+the CoDel parameters.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-7-3-ja">
+<li id="section-7-3.1-ja">異なるフローの概念に適合させるための、フロー分類の仕組みのバリエーション。たとえば、ISPは加入者ごとのスケジューリングを展開したいかもしれません。一方、他の場合には、RTCWEBのQoSに関する推奨事項<span>[<a href="#WEBRTC-QOS-ja">WEBRTC-QOS</a>]</span>に例示されているように、複数のフローが5タプルを共有することがあります。</li>
+        <li id="section-7-3.2-ja">フローキューイングと、遅延ベースの輻輳制御アルゴリズムやスカベンジャープロトコルとの相互作用。</li>
+        <li id="section-7-3.3-ja">アルゴリズムのDRRの部分を置き換える他のスケジューリングの仕組み（たとえば、QFQやWFQ）。</li>
+        <li id="section-7-3.4-ja">パラメーターの感度、特にキューの数とCoDelのパラメーター。</li>
+      </ul></div>
+</div></section><section><span id="section-8"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">There are no specific security exposures associated with FQ-CoDel
+that are not also present in current FIFO systems.  On the contrary,
+some vulnerabilities of FIFO systems are reduced with FQ-CoDel (e.g.,
+simple minded packet floods).  However, some care is needed in the
+implementation to ensure this is the case.  These are included in the
+description above, but we reiterate them here:</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">現在のFIFOシステムには存在しない、FQ-CoDelに特有のセキュリティー上の危険性はありません。むしろ、FIFOシステムのいくつかの脆弱性（たとえば、単純なパケットフラッド）は、FQ-CoDelによって軽減されます。ただし、そうなることを確実にするためには、実装においていくつかの注意が必要です。これらは上記の説明に含まれていますが、ここで改めて述べます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-8-2-en">
+<li id="section-8-2.1-en">To prevent packets in the new queues from starving old queues, it
+is important that when a queue on the list of new queues empties,
+it is moved to <em>the end of</em> the list of old queues.  This is
+described at the end of <a href="#section-4.2-en">Section 4.2</a>.</li>
+        <li id="section-8-2.2-en">To prevent an attacker targeting a specific flow for a denial-of-service
+attack, the hash that maps packets to queues should not be
+predictable.  To achieve this, FQ-CoDel salts the hash, as
+described in the beginning of <a href="#section-4.1-en">Section 4.1</a>.  The size of the salt
+and the strength of the hash function is obviously a trade-off
+between performance and security.  The Linux implementation uses a
+32-bit random value as the salt and a Jenkins hash function.  This
+makes it possible to achieve high throughput, and we consider it
+sufficient to ward off the most obvious attacks.</li>
+        <li id="section-8-2.3-en">Packet fragments without a Layer 4 header can be hashed into
+different bins than the first fragment with the header intact.
+This can cause reordering and/or adversely affect the performance
+of the flow.  Keeping state to match the fragments to the
+beginning of the packet or simply putting all packet fragments
+(including the first fragment of each fragmented packet) into the
+same queue are two ways to alleviate this.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-8-2-ja">
+<li id="section-8-2.1-ja">新しいキューのパケットが古いキューを枯渇させることを防ぐため、新しいキューのリストにあるキューが空になったときに、そのキューを古いキューのリストの<em>末尾に</em>移すことが重要です。これについては<a href="#section-4.2-ja">セクション4.2</a>の最後で説明しています。</li>
+        <li id="section-8-2.2-ja">攻撃者が特定のフローを標的にしてサービス拒否攻撃を行うことを防ぐため、パケットをキューに対応付けるハッシュは予測可能であるべきではありません。これを実現するため、<a href="#section-4.1-ja">セクション4.1</a>の冒頭で説明したように、FQ-CoDelはハッシュにソルトを加えます。ソルトのサイズとハッシュ関数の強度は、当然ながら性能とセキュリティーとの間のトレードオフになります。Linuxの実装は、ソルトとして32ビットの乱数値を使用し、Jenkinsハッシュ関数を使用しています。これにより高いスループットを実現でき、私たちは、これが最も明白な攻撃を防ぐのに十分であると考えています。</li>
+        <li id="section-8-2.3-ja">レイヤー4ヘッダーを持たないパケットのフラグメントは、ヘッダーをそのまま持つ最初のフラグメントとは異なるビンにハッシュされることがあります。これにより、順序の入れ替わりが生じたり、フローの性能に悪影響を与えたりする可能性があります。フラグメントをパケットの先頭と対応付けるための状態を保持することや、単にすべてのパケットフラグメント（各フラグメント化されたパケットの最初のフラグメントを含む）を同じキューに入れることが、これを緩和する2つの方法です。</li>
+      </ul></div>
+</div></section><section><span id="section-9"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">This document does not require any IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">この文書にはIANAアクションはありません。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-10-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-10.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC7806-en">[RFC7806]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"On Queuing, Marking, and Dropping"</span>, <span class="seriesInfo">RFC 7806</span>, <span class="seriesInfo">DOI 10.17487/RFC7806</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7806">https://www.rfc-editor.org/info/rfc7806</a>&gt;</span>
+</dd>
+<dt id="RFC8174-en">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+<dt id="RFC8289-en">[RFC8289]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span>, <span class="refAuthor">Jacobson, V.</span>, <span class="refAuthor">McGregor, A., Ed.</span>, and <span class="refAuthor">J. Iyengar, Ed.</span>, <span></span><span class="refTitle">"Controlled Delay Active Queue Management"</span>, <span class="seriesInfo">RFC 8289</span>, <span class="seriesInfo">DOI 10.17487/RFC8289</span>, <time datetime="2018-01" class="refDate">January 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8289">https://www.rfc-editor.org/info/rfc8289</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-10.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="BLOAT-en">[BLOAT]</dt>
+<dd class="break">
+<span class="refAuthor">Gettys, J.</span> and <span class="refAuthor">K. Nichols</span>, <span></span><span class="refTitle">"Bufferbloat: Dark Buffers in the Internet"</span>, <span class="refContent">Communications of the ACM, Volume 55, Issue 1</span>, <span class="seriesInfo">DOI 10.1145/2063176.2063196</span>, <time datetime="2012-01" class="refDate">January 2012</time>, </dd>
+<dt id="BLOATWEB-en">[BLOATWEB]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Bufferbloat"</span>, <span>&lt;<a href="https://www.bufferbloat.net">https://www.bufferbloat.net</a>&gt;</span>
+</dd>
+<dt id="BQL-en">[BQL]</dt>
+<dd class="break">
+<span class="refAuthor">Herbert, T.</span>, <span></span><span class="refTitle">"bql: Byte Queue Limits"</span>, <time datetime="2011-08" class="refDate">August 2011</time>, <span>&lt;<a href="https://lwn.net/Articles/454378/">https://lwn.net/Articles/454378/</a>&gt;</span>
+</dd>
+<dt id="CAKE-en">[CAKE]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Cake - Common Applications Kept Enhanced"</span>, <span>&lt;<a href="http://www.bufferbloat.net/projects/codel/wiki/Cake">http://www.bufferbloat.net/projects/codel/wiki/Cake</a>&gt;</span>
+</dd>
+<dt id="CODEL-en">[CODEL]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Controlling Queue Delay"</span>, <span class="refContent">ACM Queue, Volume 10, Issue 5</span>, <span class="seriesInfo">DOI 10.1145/2208917.2209336</span>, <time datetime="2012-05" class="refDate">May 2012</time>, <span>&lt;<a href="http://queue.acm.org/detail.cfm?id=2209336">http://queue.acm.org/detail.cfm?id=2209336</a>&gt;</span>
+</dd>
+<dt id="DRR-en">[DRR]</dt>
+<dd class="break">
+<span class="refAuthor">Shreedhar, M.</span> and <span class="refAuthor">G. Varghese</span>, <span></span><span class="refTitle">"Efficient Fair Queueing Using Deficit Round Robin"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 4, Issue 3</span>, <span class="seriesInfo">DOI 10.1109/90.502236</span>, <time datetime="1996-06" class="refDate">June 1996</time>, </dd>
+<dt id="DRRPP-en">[DRRPP]</dt>
+<dd class="break">
+<span class="refAuthor">MacGregor, M.</span> and <span class="refAuthor">W. Shi</span>, <span></span><span class="refTitle">"Deficits for Bursty Latency-Critical Flows: DRR++"</span>, <span class="refContent">Proceedings of the IEEE International Conference on Networks 2000 (ICON 2000)</span>, <span class="seriesInfo">DOI 10.1109/ICON.2000.875803</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803">http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803</a>&gt;</span>
+</dd>
+<dt id="GONG2014-en">[GONG2014]</dt>
+<dd class="break">
+<span class="refAuthor">Gong, Y.</span>, <span class="refAuthor">Rossi, D.</span>, <span class="refAuthor">Testa, C.</span>, <span class="refAuthor">Valenti, S.</span>, and <span class="refAuthor">D. Taht</span>, <span></span><span class="refTitle">"Fighting the bufferbloat: On the coexistence of AQM and low priority congestion control"</span>, <span class="refContent">Elsevier Computer Networks, Volume 65</span>, <span class="seriesInfo">DOI 10.1016/j.bjp.2014.01.009</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.sciencedirect.com/science/article/pii/S1389128614000188">https://www.sciencedirect.com/science/article/pii/S1389128614000188</a>&gt;</span>
+</dd>
+<dt id="HFSC-en">[HFSC]</dt>
+<dd class="break">
+<span class="refAuthor">Stoica, I.</span>, <span class="refAuthor">Zhang, H.</span>, and <span class="refAuthor">T. Eugene Ng</span>, <span></span><span class="refTitle">"A Hierarchical Fair Service Curve Algorithm for Link-Sharing, Real-Time and Priority Services"</span>, <span class="refContent">Proceedings of ACM SIGCOMM</span>, <span class="seriesInfo">DOI 10.1145/263105.263175</span>, <time datetime="1997-09" class="refDate">September 1997</time>, <span>&lt;<a href="http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf">http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf</a>&gt;</span>
+</dd>
+<dt id="HTB-en">[HTB]</dt>
+<dd class="break">
+<span class="refAuthor">Wikipedia</span>, <span></span><span class="refTitle">"Token Bucket: Variations"</span>, <time datetime="2017-10" class="refDate">October 2017</time>, <span>&lt;<a href="https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657">https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657</a>&gt;</span>
+</dd>
+<dt id="JENKINS-en">[JENKINS]</dt>
+<dd class="break">
+<span class="refAuthor">Jenkins, B.</span>, <span></span><span class="refTitle">"A Hash Function for Hash Table Lookup"</span>, <span>&lt;<a href="http://www.burtleburtle.net/bob/hash/doobs.html">http://www.burtleburtle.net/bob/hash/doobs.html</a>&gt;</span>
+</dd>
+<dt id="LINUXSRC-en">[LINUXSRC]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Linux Kernel Source Tree"</span>, <span>&lt;<a href="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c">https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c</a>&gt;</span>
+</dd>
+<dt id="NS2-en">[NS2]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"ns-2"</span>, <time datetime="2014-12" class="refDate">December 2014</time>, <span>&lt;<a href="http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076">http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076</a>&gt;</span>
+</dd>
+<dt id="NS3-en">[NS3]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"ns-3"</span>, <time datetime="2016-02" class="refDate">February 2016</time>, <span>&lt;<a href="https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883">https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883</a>&gt;</span>
+</dd>
+<dt id="QFQ-en">[QFQ]</dt>
+<dd class="break">
+<span class="refAuthor">Checconi, F.</span>, <span class="refAuthor">Rizzo, L.</span>, and <span class="refAuthor">P. Valente</span>, <span></span><span class="refTitle">"QFQ: Efficient Packet Scheduling with Tight Guarantees"</span>, <span class="refContent">IEEE/ACM Transactions on Networking (TON), Volume 21, Issue 3, pp. 802-816</span>, <span class="seriesInfo">DOI 10.1109/TNET.2012.2215881</span>, <time datetime="2013-06" class="refDate">June 2013</time>, <span>&lt;<a href="http://dl.acm.org/citation.cfm?id=2525552">http://dl.acm.org/citation.cfm?id=2525552</a>&gt;</span>
+</dd>
+<dt id="RFC2003-en">[RFC2003]</dt>
+<dd class="break">
+<span class="refAuthor">Perkins, C.</span>, <span></span><span class="refTitle">"IP Encapsulation within IP"</span>, <span class="seriesInfo">RFC 2003</span>, <span class="seriesInfo">DOI 10.17487/RFC2003</span>, <time datetime="1996-10" class="refDate">October 1996</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2003">https://www.rfc-editor.org/info/rfc2003</a>&gt;</span>
+</dd>
+<dt id="RFC2890-en">[RFC2890]</dt>
+<dd class="break">
+<span class="refAuthor">Dommety, G.</span>, <span></span><span class="refTitle">"Key and Sequence Number Extensions to GRE"</span>, <span class="seriesInfo">RFC 2890</span>, <span class="seriesInfo">DOI 10.17487/RFC2890</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2890">https://www.rfc-editor.org/info/rfc2890</a>&gt;</span>
+</dd>
+<dt id="RFC3168-en">[RFC3168]</dt>
+<dd class="break">
+<span class="refAuthor">Ramakrishnan, K.</span>, <span class="refAuthor">Floyd, S.</span>, and <span class="refAuthor">D. Black</span>, <span></span><span class="refTitle">"The Addition of Explicit Congestion Notification (ECN) to IP"</span>, <span class="seriesInfo">RFC 3168</span>, <span class="seriesInfo">DOI 10.17487/RFC3168</span>, <time datetime="2001-09" class="refDate">September 2001</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3168">https://www.rfc-editor.org/info/rfc3168</a>&gt;</span>
+</dd>
+<dt id="RFC4213-en">[RFC4213]</dt>
+<dd class="break">
+<span class="refAuthor">Nordmark, E.</span> and <span class="refAuthor">R. Gilligan</span>, <span></span><span class="refTitle">"Basic Transition Mechanisms for IPv6 Hosts and Routers"</span>, <span class="seriesInfo">RFC 4213</span>, <span class="seriesInfo">DOI 10.17487/RFC4213</span>, <time datetime="2005-10" class="refDate">October 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4213">https://www.rfc-editor.org/info/rfc4213</a>&gt;</span>
+</dd>
+<dt id="RFC6817-en">[RFC6817]</dt>
+<dd class="break">
+<span class="refAuthor">Shalunov, S.</span>, <span class="refAuthor">Hazel, G.</span>, <span class="refAuthor">Iyengar, J.</span>, and <span class="refAuthor">M. Kuehlewind</span>, <span></span><span class="refTitle">"Low Extra Delay Background Transport (LEDBAT)"</span>, <span class="seriesInfo">RFC 6817</span>, <span class="seriesInfo">DOI 10.17487/RFC6817</span>, <time datetime="2012-12" class="refDate">December 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6817">https://www.rfc-editor.org/info/rfc6817</a>&gt;</span>
+</dd>
+<dt id="RFC8257-en">[RFC8257]</dt>
+<dd class="break">
+<span class="refAuthor">Bensley, S.</span>, <span class="refAuthor">Thaler, D.</span>, <span class="refAuthor">Balasubramanian, P.</span>, <span class="refAuthor">Eggert, L.</span>, and <span class="refAuthor">G. Judd</span>, <span></span><span class="refTitle">"Data Center TCP (DCTCP): TCP Congestion Control for Data Centers"</span>, <span class="seriesInfo">RFC 8257</span>, <span class="seriesInfo">DOI 10.17487/RFC8257</span>, <time datetime="2017-10" class="refDate">October 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8257">https://www.rfc-editor.org/info/rfc8257</a>&gt;</span>
+</dd>
+<dt id="SFQ-en">[SFQ]</dt>
+<dd class="break">
+<span class="refAuthor">McKenney, P.</span>, <span></span><span class="refTitle">"Stochastic Fairness Queueing"</span>, <span class="refContent">Proceedings of IEEE INFOCOM</span>, <span class="seriesInfo">DOI 10.1109/INFCOM.1990.91316</span>, <time datetime="1990-06" class="refDate">June 1990</time>, <span>&lt;<a href="http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf">http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf</a>&gt;</span>
+</dd>
+<dt id="SQF-en">[SQF]</dt>
+<dd class="break">
+<span class="refAuthor">Carofiglio, G.</span> and <span class="refAuthor">L. Muscariello</span>, <span></span><span class="refTitle">"On the Impact of TCP and Per-Flow Scheduling on Internet Performance"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 20, Issue 2</span>, <span class="seriesInfo">DOI 10.1109/TNET.2011.2164553</span>, <time datetime="2011-08" class="refDate">August 2011</time>, </dd>
+<dt id="WEBRTC-QOS-en">[WEBRTC-QOS]</dt>
+<dd class="break">
+<span class="refAuthor">Jones, P.</span>, <span class="refAuthor">Dhesikan, S.</span>, <span class="refAuthor">Jennings, C.</span>, and <span class="refAuthor">D. Druta</span>, <span></span><span class="refTitle">"DSCP Packet Markings for WebRTC QoS"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-tsvwg-rtcweb-qos-18</span>, <time datetime="2016-08" class="refDate">August 2016</time>, </dd>
+<dt id="WFQ-en">[WFQ]</dt>
+<dd class="break">
+<span class="refAuthor">Demers, A.</span>, <span class="refAuthor">Keshav, S.</span>, and <span class="refAuthor">S. Shenker</span>, <span></span><span class="refTitle">"Analysis and Simulation of a Fair Queueing Algorithm"</span>, <span class="refContent">ACM SIGCOMM Computer Communication Review, Volume 19, Issue 4, pp. 1-12</span>, <span class="seriesInfo">DOI 10.1145/75247.75248</span>, <time datetime="1989-09" class="refDate">September 1989</time>, <span>&lt;<a href="http://doi.acm.org/10.1145/75247.75248">http://doi.acm.org/10.1145/75247.75248</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-10-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-10.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC7806-ja">[RFC7806]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"On Queuing, Marking, and Dropping"</span>, <span class="seriesInfo">RFC 7806</span>, <span class="seriesInfo">DOI 10.17487/RFC7806</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7806">https://www.rfc-editor.org/info/rfc7806</a>&gt;</span>
+</dd>
+<dt id="RFC8174-ja">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+<dt id="RFC8289-ja">[RFC8289]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span>, <span class="refAuthor">Jacobson, V.</span>, <span class="refAuthor">McGregor, A., Ed.</span>, and <span class="refAuthor">J. Iyengar, Ed.</span>, <span></span><span class="refTitle">"Controlled Delay Active Queue Management"</span>, <span class="seriesInfo">RFC 8289</span>, <span class="seriesInfo">DOI 10.17487/RFC8289</span>, <time datetime="2018-01" class="refDate">January 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8289">https://www.rfc-editor.org/info/rfc8289</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-10.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="BLOAT-ja">[BLOAT]</dt>
+<dd class="break">
+<span class="refAuthor">Gettys, J.</span> and <span class="refAuthor">K. Nichols</span>, <span></span><span class="refTitle">"Bufferbloat: Dark Buffers in the Internet"</span>, <span class="refContent">Communications of the ACM, Volume 55, Issue 1</span>, <span class="seriesInfo">DOI 10.1145/2063176.2063196</span>, <time datetime="2012-01" class="refDate">January 2012</time>, </dd>
+<dt id="BLOATWEB-ja">[BLOATWEB]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Bufferbloat"</span>, <span>&lt;<a href="https://www.bufferbloat.net">https://www.bufferbloat.net</a>&gt;</span>
+</dd>
+<dt id="BQL-ja">[BQL]</dt>
+<dd class="break">
+<span class="refAuthor">Herbert, T.</span>, <span></span><span class="refTitle">"bql: Byte Queue Limits"</span>, <time datetime="2011-08" class="refDate">August 2011</time>, <span>&lt;<a href="https://lwn.net/Articles/454378/">https://lwn.net/Articles/454378/</a>&gt;</span>
+</dd>
+<dt id="CAKE-ja">[CAKE]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Cake - Common Applications Kept Enhanced"</span>, <span>&lt;<a href="http://www.bufferbloat.net/projects/codel/wiki/Cake">http://www.bufferbloat.net/projects/codel/wiki/Cake</a>&gt;</span>
+</dd>
+<dt id="CODEL-ja">[CODEL]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Controlling Queue Delay"</span>, <span class="refContent">ACM Queue, Volume 10, Issue 5</span>, <span class="seriesInfo">DOI 10.1145/2208917.2209336</span>, <time datetime="2012-05" class="refDate">May 2012</time>, <span>&lt;<a href="http://queue.acm.org/detail.cfm?id=2209336">http://queue.acm.org/detail.cfm?id=2209336</a>&gt;</span>
+</dd>
+<dt id="DRR-ja">[DRR]</dt>
+<dd class="break">
+<span class="refAuthor">Shreedhar, M.</span> and <span class="refAuthor">G. Varghese</span>, <span></span><span class="refTitle">"Efficient Fair Queueing Using Deficit Round Robin"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 4, Issue 3</span>, <span class="seriesInfo">DOI 10.1109/90.502236</span>, <time datetime="1996-06" class="refDate">June 1996</time>, </dd>
+<dt id="DRRPP-ja">[DRRPP]</dt>
+<dd class="break">
+<span class="refAuthor">MacGregor, M.</span> and <span class="refAuthor">W. Shi</span>, <span></span><span class="refTitle">"Deficits for Bursty Latency-Critical Flows: DRR++"</span>, <span class="refContent">Proceedings of the IEEE International Conference on Networks 2000 (ICON 2000)</span>, <span class="seriesInfo">DOI 10.1109/ICON.2000.875803</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803">http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803</a>&gt;</span>
+</dd>
+<dt id="GONG2014-ja">[GONG2014]</dt>
+<dd class="break">
+<span class="refAuthor">Gong, Y.</span>, <span class="refAuthor">Rossi, D.</span>, <span class="refAuthor">Testa, C.</span>, <span class="refAuthor">Valenti, S.</span>, and <span class="refAuthor">D. Taht</span>, <span></span><span class="refTitle">"Fighting the bufferbloat: On the coexistence of AQM and low priority congestion control"</span>, <span class="refContent">Elsevier Computer Networks, Volume 65</span>, <span class="seriesInfo">DOI 10.1016/j.bjp.2014.01.009</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="https://www.sciencedirect.com/science/article/pii/S1389128614000188">https://www.sciencedirect.com/science/article/pii/S1389128614000188</a>&gt;</span>
+</dd>
+<dt id="HFSC-ja">[HFSC]</dt>
+<dd class="break">
+<span class="refAuthor">Stoica, I.</span>, <span class="refAuthor">Zhang, H.</span>, and <span class="refAuthor">T. Eugene Ng</span>, <span></span><span class="refTitle">"A Hierarchical Fair Service Curve Algorithm for Link-Sharing, Real-Time and Priority Services"</span>, <span class="refContent">Proceedings of ACM SIGCOMM</span>, <span class="seriesInfo">DOI 10.1145/263105.263175</span>, <time datetime="1997-09" class="refDate">September 1997</time>, <span>&lt;<a href="http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf">http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf</a>&gt;</span>
+</dd>
+<dt id="HTB-ja">[HTB]</dt>
+<dd class="break">
+<span class="refAuthor">Wikipedia</span>, <span></span><span class="refTitle">"Token Bucket: Variations"</span>, <time datetime="2017-10" class="refDate">October 2017</time>, <span>&lt;<a href="https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657">https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657</a>&gt;</span>
+</dd>
+<dt id="JENKINS-ja">[JENKINS]</dt>
+<dd class="break">
+<span class="refAuthor">Jenkins, B.</span>, <span></span><span class="refTitle">"A Hash Function for Hash Table Lookup"</span>, <span>&lt;<a href="http://www.burtleburtle.net/bob/hash/doobs.html">http://www.burtleburtle.net/bob/hash/doobs.html</a>&gt;</span>
+</dd>
+<dt id="LINUXSRC-ja">[LINUXSRC]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"Linux Kernel Source Tree"</span>, <span>&lt;<a href="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c">https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c</a>&gt;</span>
+</dd>
+<dt id="NS2-ja">[NS2]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"ns-2"</span>, <time datetime="2014-12" class="refDate">December 2014</time>, <span>&lt;<a href="http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076">http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076</a>&gt;</span>
+</dd>
+<dt id="NS3-ja">[NS3]</dt>
+<dd class="break">
+<span></span><span class="refTitle">"ns-3"</span>, <time datetime="2016-02" class="refDate">February 2016</time>, <span>&lt;<a href="https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883">https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883</a>&gt;</span>
+</dd>
+<dt id="QFQ-ja">[QFQ]</dt>
+<dd class="break">
+<span class="refAuthor">Checconi, F.</span>, <span class="refAuthor">Rizzo, L.</span>, and <span class="refAuthor">P. Valente</span>, <span></span><span class="refTitle">"QFQ: Efficient Packet Scheduling with Tight Guarantees"</span>, <span class="refContent">IEEE/ACM Transactions on Networking (TON), Volume 21, Issue 3, pp. 802-816</span>, <span class="seriesInfo">DOI 10.1109/TNET.2012.2215881</span>, <time datetime="2013-06" class="refDate">June 2013</time>, <span>&lt;<a href="http://dl.acm.org/citation.cfm?id=2525552">http://dl.acm.org/citation.cfm?id=2525552</a>&gt;</span>
+</dd>
+<dt id="RFC2003-ja">[RFC2003]</dt>
+<dd class="break">
+<span class="refAuthor">Perkins, C.</span>, <span></span><span class="refTitle">"IP Encapsulation within IP"</span>, <span class="seriesInfo">RFC 2003</span>, <span class="seriesInfo">DOI 10.17487/RFC2003</span>, <time datetime="1996-10" class="refDate">October 1996</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2003">https://www.rfc-editor.org/info/rfc2003</a>&gt;</span>
+</dd>
+<dt id="RFC2890-ja">[RFC2890]</dt>
+<dd class="break">
+<span class="refAuthor">Dommety, G.</span>, <span></span><span class="refTitle">"Key and Sequence Number Extensions to GRE"</span>, <span class="seriesInfo">RFC 2890</span>, <span class="seriesInfo">DOI 10.17487/RFC2890</span>, <time datetime="2000-09" class="refDate">September 2000</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2890">https://www.rfc-editor.org/info/rfc2890</a>&gt;</span>
+</dd>
+<dt id="RFC3168-ja">[RFC3168]</dt>
+<dd class="break">
+<span class="refAuthor">Ramakrishnan, K.</span>, <span class="refAuthor">Floyd, S.</span>, and <span class="refAuthor">D. Black</span>, <span></span><span class="refTitle">"The Addition of Explicit Congestion Notification (ECN) to IP"</span>, <span class="seriesInfo">RFC 3168</span>, <span class="seriesInfo">DOI 10.17487/RFC3168</span>, <time datetime="2001-09" class="refDate">September 2001</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3168">https://www.rfc-editor.org/info/rfc3168</a>&gt;</span>
+</dd>
+<dt id="RFC4213-ja">[RFC4213]</dt>
+<dd class="break">
+<span class="refAuthor">Nordmark, E.</span> and <span class="refAuthor">R. Gilligan</span>, <span></span><span class="refTitle">"Basic Transition Mechanisms for IPv6 Hosts and Routers"</span>, <span class="seriesInfo">RFC 4213</span>, <span class="seriesInfo">DOI 10.17487/RFC4213</span>, <time datetime="2005-10" class="refDate">October 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4213">https://www.rfc-editor.org/info/rfc4213</a>&gt;</span>
+</dd>
+<dt id="RFC6817-ja">[RFC6817]</dt>
+<dd class="break">
+<span class="refAuthor">Shalunov, S.</span>, <span class="refAuthor">Hazel, G.</span>, <span class="refAuthor">Iyengar, J.</span>, and <span class="refAuthor">M. Kuehlewind</span>, <span></span><span class="refTitle">"Low Extra Delay Background Transport (LEDBAT)"</span>, <span class="seriesInfo">RFC 6817</span>, <span class="seriesInfo">DOI 10.17487/RFC6817</span>, <time datetime="2012-12" class="refDate">December 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6817">https://www.rfc-editor.org/info/rfc6817</a>&gt;</span>
+</dd>
+<dt id="RFC8257-ja">[RFC8257]</dt>
+<dd class="break">
+<span class="refAuthor">Bensley, S.</span>, <span class="refAuthor">Thaler, D.</span>, <span class="refAuthor">Balasubramanian, P.</span>, <span class="refAuthor">Eggert, L.</span>, and <span class="refAuthor">G. Judd</span>, <span></span><span class="refTitle">"Data Center TCP (DCTCP): TCP Congestion Control for Data Centers"</span>, <span class="seriesInfo">RFC 8257</span>, <span class="seriesInfo">DOI 10.17487/RFC8257</span>, <time datetime="2017-10" class="refDate">October 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8257">https://www.rfc-editor.org/info/rfc8257</a>&gt;</span>
+</dd>
+<dt id="SFQ-ja">[SFQ]</dt>
+<dd class="break">
+<span class="refAuthor">McKenney, P.</span>, <span></span><span class="refTitle">"Stochastic Fairness Queueing"</span>, <span class="refContent">Proceedings of IEEE INFOCOM</span>, <span class="seriesInfo">DOI 10.1109/INFCOM.1990.91316</span>, <time datetime="1990-06" class="refDate">June 1990</time>, <span>&lt;<a href="http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf">http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf</a>&gt;</span>
+</dd>
+<dt id="SQF-ja">[SQF]</dt>
+<dd class="break">
+<span class="refAuthor">Carofiglio, G.</span> and <span class="refAuthor">L. Muscariello</span>, <span></span><span class="refTitle">"On the Impact of TCP and Per-Flow Scheduling on Internet Performance"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 20, Issue 2</span>, <span class="seriesInfo">DOI 10.1109/TNET.2011.2164553</span>, <time datetime="2011-08" class="refDate">August 2011</time>, </dd>
+<dt id="WEBRTC-QOS-ja">[WEBRTC-QOS]</dt>
+<dd class="break">
+<span class="refAuthor">Jones, P.</span>, <span class="refAuthor">Dhesikan, S.</span>, <span class="refAuthor">Jennings, C.</span>, and <span class="refAuthor">D. Druta</span>, <span></span><span class="refTitle">"DSCP Packet Markings for WebRTC QoS"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-tsvwg-rtcweb-qos-18</span>, <time datetime="2016-08" class="refDate">August 2016</time>, </dd>
+<dt id="WFQ-ja">[WFQ]</dt>
+<dd class="break">
+<span class="refAuthor">Demers, A.</span>, <span class="refAuthor">Keshav, S.</span>, and <span class="refAuthor">S. Shenker</span>, <span></span><span class="refTitle">"Analysis and Simulation of a Fair Queueing Algorithm"</span>, <span class="refContent">ACM SIGCOMM Computer Communication Review, Volume 19, Issue 4, pp. 1-12</span>, <span class="seriesInfo">DOI 10.1145/75247.75248</span>, <time datetime="1989-09" class="refDate">September 1989</time>, <span>&lt;<a href="http://doi.acm.org/10.1145/75247.75248">http://doi.acm.org/10.1145/75247.75248</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">Our deepest thanks to Kathie Nichols, Van Jacobson, and all the
+members of the bufferbloat.net effort for all the help on developing
+and testing the algorithm.  In addition, our thanks to Anil Agarwal
+for his help with getting the hash collision probabilities in this
+document right.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">Kathie Nichols氏、Van Jacobson氏、そしてbufferbloat.netの取り組みのすべてのメンバーに、アルゴリズムの開発とテストにおけるあらゆる支援について心から感謝します。また、この文書のハッシュ衝突の確率を正しく求めるのを手伝ってくれたAnil Agarwal氏に感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Toke Hoeiland-Joergensen</div>
+<div class="author-org">Karlstad University</div>
+<div class="author-postal"><span class="extended-address">Dept. of Computer Science</span></div>
+<div class="author-postal"><span class="extended-address">Karlstad  65188</span></div>
+<div class="author-postal"><span class="extended-address">Sweden</span></div>
+<div class="author-email"><a href="mailto:toke@toke.dk">toke@toke.dk</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Toke Hoeiland-Joergensen</div>
+<div class="author-org">Karlstad University</div>
+<div class="author-postal"><span class="extended-address">Dept. of Computer Science</span></div>
+<div class="author-postal"><span class="extended-address">Karlstad  65188</span></div>
+<div class="author-postal"><span class="extended-address">Sweden</span></div>
+<div class="author-email"><a href="mailto:toke@toke.dk">toke@toke.dk</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Paul McKenney</div>
+<div class="author-org">IBM Linux Technology Center</div>
+<div class="author-postal"><span class="extended-address">1385 NW Amberglen Parkway</span></div>
+<div class="author-postal"><span class="extended-address">Hillsboro, OR  97006</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:paulmck@linux.vnet.ibm.com">paulmck@linux.vnet.ibm.com</a></div>
+<div class="author-uri"><a href="http://www2.rdrop.com/~paulmck/">http://www2.rdrop.com/~paulmck/</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Paul McKenney</div>
+<div class="author-org">IBM Linux Technology Center</div>
+<div class="author-postal"><span class="extended-address">1385 NW Amberglen Parkway</span></div>
+<div class="author-postal"><span class="extended-address">Hillsboro, OR  97006</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:paulmck@linux.vnet.ibm.com">paulmck@linux.vnet.ibm.com</a></div>
+<div class="author-uri"><a href="http://www2.rdrop.com/~paulmck/">http://www2.rdrop.com/~paulmck/</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Dave Taht</div>
+<div class="author-org">Teklibre</div>
+<div class="author-postal"><span class="extended-address">2104 W First street</span></div>
+<div class="author-postal"><span class="extended-address">Apt 2002</span></div>
+<div class="author-postal"><span class="extended-address">FT Myers, FL  33901</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:dave.taht@gmail.com">dave.taht@gmail.com</a></div>
+<div class="author-uri"><a href="http://www.teklibre.com/">http://www.teklibre.com/</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Dave Taht</div>
+<div class="author-org">Teklibre</div>
+<div class="author-postal"><span class="extended-address">2104 W First street</span></div>
+<div class="author-postal"><span class="extended-address">Apt 2002</span></div>
+<div class="author-postal"><span class="extended-address">FT Myers, FL  33901</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:dave.taht@gmail.com">dave.taht@gmail.com</a></div>
+<div class="author-uri"><a href="http://www.teklibre.com/">http://www.teklibre.com/</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Jim Gettys</div>
+<div class="author-postal"><span class="extended-address">21 Oak Knoll Road</span></div>
+<div class="author-postal"><span class="extended-address">Carlisle, MA  993</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:jg@freedesktop.org">jg@freedesktop.org</a></div>
+<div class="author-uri"><a href="https://en.wikipedia.org/wiki/Jim_Gettys">https://en.wikipedia.org/wiki/Jim_Gettys</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Jim Gettys</div>
+<div class="author-postal"><span class="extended-address">21 Oak Knoll Road</span></div>
+<div class="author-postal"><span class="extended-address">Carlisle, MA  993</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:jg@freedesktop.org">jg@freedesktop.org</a></div>
+<div class="author-uri"><a href="https://en.wikipedia.org/wiki/Jim_Gettys">https://en.wikipedia.org/wiki/Jim_Gettys</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Eric Dumazet</div>
+<div class="author-org">Google, Inc.</div>
+<div class="author-postal"><span class="extended-address">1600 Amphitheatre Pkwy</span></div>
+<div class="author-postal"><span class="extended-address">Mountain View, CA  94043</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:edumazet@gmail.com">edumazet@gmail.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Eric Dumazet</div>
+<div class="author-org">Google, Inc.</div>
+<div class="author-postal"><span class="extended-address">1600 Amphitheatre Pkwy</span></div>
+<div class="author-postal"><span class="extended-address">Mountain View, CA  94043</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:edumazet@gmail.com">edumazet@gmail.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

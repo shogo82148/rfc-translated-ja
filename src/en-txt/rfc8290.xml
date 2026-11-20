@@ -1,0 +1,1275 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-aqm-fq-codel-06" indexInclude="true" number="8290" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-aqm-fq-codel-06" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8290" rel="alternate"/>
+  <front>
+    <title>The Flow Queue CoDel Packet Scheduler and Active Queue Management Algorithm</title>
+    <seriesInfo name="RFC" value="8290" stream="IETF"/>
+    <date year="2018" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">This memo presents the FQ-CoDel hybrid packet scheduler and Active
+Queue Management (AQM) algorithm, a powerful tool for fighting
+bufferbloat and reducing latency.</t>
+      <t indent="0" pn="section-abstract-2">FQ-CoDel mixes packets from multiple flows and reduces the impact of
+head-of-line blocking from bursty traffic.  It provides isolation for
+low-rate traffic such as DNS, web, and videoconferencing traffic.  It
+improves utilisation across the networking fabric, especially for
+bidirectional traffic, by keeping queue lengths short, and it can be
+implemented in a memory- and CPU-efficient fashion across a wide
+range of hardware.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document is not an Internet Standards Track specification; it is
+published for examination, experimental implementation, and
+evaluation.</t>
+        <t indent="0" pn="section-boilerplate.1.2">This document defines an Experimental Protocol for the Internet
+community.  This document is a product of the Internet Engineering
+Task Force (IETF).  It represents the consensus of the IETF
+community.  It has received public review and has been approved for
+publication by the Internet Engineering Steering Group (IESG).  Not
+all documents approved by the IESG are a candidate for any level of
+Internet Standard; see Section 2 of RFC 7841.</t>
+        <t indent="0" pn="section-boilerplate.1.3">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<eref target="https://www.rfc-editor.org/info/rfc8290" brackets="none"/>.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<eref target="https://trustee.ietf.org/license-info" brackets="none"/>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">Table of Contents</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">Introduction</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+            <li pn="section-toc.1-1.1.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-used-in-this-document">Conventions Used in This Document</xref></t>
+            </li>
+            <li pn="section-toc.1-1.1.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology-and-concepts">Terminology and Concepts</xref></t>
+            </li>
+            <li pn="section-toc.1-1.1.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.3.1"><xref derivedContent="1.3" format="counter" sectionFormat="of" target="section-1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informal-summary-of-fq-codel">Informal Summary of FQ-CoDel</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-codel">CoDel</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flow-queueing">Flow Queueing</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-fq-codel-scheduler">The FQ-CoDel Scheduler</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-enqueue">Enqueue</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.1.2">
+              <li pn="section-toc.1-1.4.1.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-alternative-classification-schemes">Alternative Classification Schemes</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dequeue">Dequeue</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-considerations">Implementation Considerations</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-data-structures">Data Structures</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-parameters">Parameters</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.2.1" format="counter" sectionFormat="of" target="section-5.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-interval">Interval</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2.2" format="counter" sectionFormat="of" target="section-5.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-target">Target</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.2.3" format="counter" sectionFormat="of" target="section-5.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-packet-limit">Packet Limit</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.2.4" format="counter" sectionFormat="of" target="section-5.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-quantum">Quantum</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.5">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.5.1"><xref derivedContent="5.2.5" format="counter" sectionFormat="of" target="section-5.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flows">Flows</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.6">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.6.1"><xref derivedContent="5.2.6" format="counter" sectionFormat="of" target="section-5.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-congestion-notification-(ecn)">Explicit Congestion Notification (ECN)</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.7">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.7.1"><xref derivedContent="5.2.7" format="counter" sectionFormat="of" target="section-5.2.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ce-threshold">CE Threshold</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.5.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probability-of-hash-collisions">Probability of Hash Collisions</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-memory-overhead">Memory Overhead</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-packet-timestamping">Per-Packet Timestamping</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.6.1"><xref derivedContent="5.6" format="counter" sectionFormat="of" target="section-5.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limiting-queueing-in-lower-layers">Limiting Queueing in Lower Layers</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.7">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.7.1"><xref derivedContent="5.7" format="counter" sectionFormat="of" target="section-5.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-other-forms-of-fair-queueing">Other Forms of Fair Queueing</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.8">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.8.1"><xref derivedContent="5.8" format="counter" sectionFormat="of" target="section-5.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-differences-between-codel-and-fq-codel-behaviour">Differences between CoDel and FQ-CoDel Behaviour</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limitations-of-flow-queueing">Limitations of Flow Queueing</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+            <li pn="section-toc.1-1.6.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fairness-between-things-other-than-flows">Fairness between Things Other Than Flows</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flow-bunching-by-opaque-encapsulation">Flow Bunching by Opaque Encapsulation</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-low-priority-congestion-control-algorithms">Low-Priority Congestion Control Algorithms</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-status-and-future-work">Deployment Status and Future Work</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">Security Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANA Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">References</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">Normative References</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">Informative References</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">Acknowledgements</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">Authors' Addresses</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">The Flow Queue CoDel (FQ-CoDel) algorithm is a combined packet
+scheduler and Active Queue Management (AQM) <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> algorithm
+developed as part of the bufferbloat-fighting community effort
+<xref target="BLOATWEB" format="default" sectionFormat="of" derivedContent="BLOATWEB"/>.  It is based on a modified Deficit Round Robin (DRR)
+queue scheduler <xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/> <xref target="DRRPP" format="default" sectionFormat="of" derivedContent="DRRPP"/> with the CoDel AQM <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/> algorithm
+operating on each queue.  This document describes the combined
+algorithm; reference implementations are available for the ns-2 <xref target="NS2" format="default" sectionFormat="of" derivedContent="NS2"/>
+and ns-3 <xref target="NS3" format="default" sectionFormat="of" derivedContent="NS3"/> network simulators, and the algorithm is included in
+the mainline Linux kernel as the fq_codel queueing discipline
+<xref target="LINUXSRC" format="default" sectionFormat="of" derivedContent="LINUXSRC"/>.</t>
+      <t indent="0" pn="section-1-2">FQ-CoDel is a general, efficient, nearly parameterless queue
+management approach combining flow queueing with CoDel.  It is a
+powerful tool for solving bufferbloat <xref target="BLOAT" format="default" sectionFormat="of" derivedContent="BLOAT"/> and has already been
+turned on by default in a number of Linux distributions.  In this
+document, we describe the Linux implementation in sufficient detail
+for others to independently implement the algorithm for deployment
+outside the Linux ecosystem.</t>
+      <t indent="0" pn="section-1-3">Since the FQ-CoDel algorithm was originally developed in the Linux
+kernel, that implementation is still considered canonical.  This
+document describes the algorithm in the abstract in Sections 1-4 and
+separates out most implementation details in subsequent sections;
+however, the Linux implementation is used as a reference for default
+behaviour in the abstract algorithm description.</t>
+      <t indent="0" pn="section-1-4">This document is structured as follows.  This section gives some
+concepts and terminology used in the rest of the document and gives a
+short informal summary of the FQ-CoDel algorithm.  <xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/> gives an
+overview of the CoDel algorithm.  <xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/> covers the flow hashing
+and DRR portion.  <xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/> then describes the working of the
+algorithm in detail, while <xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/> describes implementation details
+and considerations.  <xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/> lists some of the limitations of using
+flow queueing.  <xref target="section-7" format="default" sectionFormat="of" derivedContent="Section 7"/> outlines the current status of FQ-CoDel
+deployment and lists some possible future areas of inquiry.  Finally,
+<xref target="section-8" format="default" sectionFormat="of" derivedContent="Section 8"/> reiterates some important security points that must be
+observed in the implementation.</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-document">Conventions Used in This Document</name>
+        <t indent="0" pn="section-1.1-1">The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;,
+&quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;, &quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>NOT RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and
+&quot;<bcp14>OPTIONAL</bcp14>&quot; in this document are to be interpreted as described in
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/> when, and only when, they appear in all
+capitals, as shown here.</t>
+      </section>
+      <section anchor="terminology-and-concepts" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-terminology-and-concepts">Terminology and Concepts</name>
+        <dl newline="false" spacing="normal" indent="3" pn="section-1.2-1">
+          <dt pn="section-1.2-1.1">Flow:</dt>
+          <dd pn="section-1.2-1.2">A flow is typically identified by a 5-tuple of source IP
+address, destination IP address, source port number, destination
+port number, and protocol number.  It can also be identified by a
+superset or subset of those parameters, by Media Access Control
+(MAC) address, or by other means.  FQ-CoDel hashes flows into a
+configurable number of buckets to assign packets to internal
+queues.</dd>
+          <dt pn="section-1.2-1.3">Queue:</dt>
+          <dd pn="section-1.2-1.4">A queue of packets represented internally in FQ-CoDel.  In
+most instances, each flow gets its own queue; however, because of
+the possibility of hash collisions, this is not always the case.
+In an attempt to avoid confusion, the word &quot;queue&quot; is used to
+refer to the internal data structure, and &quot;flow&quot; is used to refer
+to the actual stream of packets being delivered to the FQ-CoDel
+algorithm.</dd>
+          <dt pn="section-1.2-1.5">Scheduler:</dt>
+          <dd pn="section-1.2-1.6">A mechanism to select which queue a packet is dequeued
+from.</dd>
+          <dt pn="section-1.2-1.7">CoDel AQM:</dt>
+          <dd pn="section-1.2-1.8">The Active Queue Management algorithm employed by
+FQ-CoDel as described in <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>.</dd>
+          <dt pn="section-1.2-1.9">DRR:</dt>
+          <dd pn="section-1.2-1.10">Deficit Round Robin scheduling <xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/>.</dd>
+          <dt pn="section-1.2-1.11">Quantum:</dt>
+          <dd pn="section-1.2-1.12">The maximum amount of bytes to be dequeued from a queue at
+once.</dd>
+          <dt pn="section-1.2-1.13">Interval:</dt>
+          <dd pn="section-1.2-1.14">Characteristic time period used by the control loop of
+CoDel to detect when a persistent queue is developing (see
+<xref target="RFC8289" section="4.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8289#section-4.2" derivedContent="RFC8289"/>).</dd>
+          <dt pn="section-1.2-1.15">Target:</dt>
+          <dd pn="section-1.2-1.16">Setpoint value of the minimum sojourn time of packets in a
+queue used as the target of the control loop in CoDel (see
+<xref target="RFC8289" section="4.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8289#section-4.3" derivedContent="RFC8289"/>).</dd>
+        </dl>
+      </section>
+      <section anchor="informal-summary-of-fq-codel" numbered="true" removeInRFC="false" toc="include" pn="section-1.3">
+        <name slugifiedName="name-informal-summary-of-fq-codel">Informal Summary of FQ-CoDel</name>
+        <t indent="0" pn="section-1.3-1">FQ-CoDel is a hybrid of DRR <xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/> and CoDel <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>, with an
+optimisation for sparse flows similar to Shortest Queue First (SQF)
+<xref target="SQF" format="default" sectionFormat="of" derivedContent="SQF"/> and DRR++ <xref target="DRRPP" format="default" sectionFormat="of" derivedContent="DRRPP"/>.  We call this &quot;flow queueing&quot; rather than
+&quot;fair queueing&quot;, as flows that build a queue are treated differently
+from flows that do not.</t>
+        <t indent="0" pn="section-1.3-2">By default, FQ-CoDel stochastically classifies incoming packets into
+different queues by hashing the 5-tuple of protocol number, source
+and destination IP addresses, and source and destination port
+numbers, perturbed with a random number selected at initiation time
+(although other flow classification schemes can optionally be
+configured instead; see <xref target="section-4.1.1" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>).  Each queue is managed by the
+CoDel AQM algorithm <xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/> <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>.  Packet ordering within a
+queue is preserved, since queues have FIFO ordering.</t>
+        <t indent="0" pn="section-1.3-3">The FQ-CoDel algorithm consists of two logical parts: (1) the
+scheduler, which selects which queue to dequeue a packet from, and
+(2) the CoDel AQM, which works on each of the queues.  The subtleties
+of FQ-CoDel are mostly in the scheduling part, whereas the
+interaction between the scheduler and the CoDel algorithm are fairly
+straightforward.</t>
+        <t indent="0" pn="section-1.3-4">At initialisation, each queue is set up to have a separate set of
+CoDel state variables.  By default, 1024 queues are created.  The
+Linux implementation at the time of writing supports anywhere from
+one to 65535 separate queues, and each queue maintains the state
+variables throughout its lifetime, and so acts the same as the non-FQ
+variant of CoDel would.  This means that with only one queue,
+FQ-CoDel behaves essentially the same as CoDel by itself.</t>
+        <t indent="0" pn="section-1.3-5">On dequeue, FQ-CoDel selects a queue from which to dequeue by a
+two-tier, round-robin scheme, in which each queue is allowed to dequeue
+up to a configurable quantum of bytes for each iteration.  Deviations
+from this quantum are maintained as byte credits for the queue, which
+serves to make the fairness scheme byte-based rather than
+packet-based.  The two-tier, round-robin mechanism distinguishes between
+&quot;new&quot; queues (which don't build up a standing queue) and &quot;old&quot; queues
+(which have queued enough data to be active for more than one
+iteration of the round-robin scheduler).</t>
+        <t indent="0" pn="section-1.3-6">This new/old queue distinction has a particular consequence for
+queues that don't build up more than a quantum of bytes before being
+visited by the scheduler: such a queue will be removed from the list
+after it empties and then re-added as a new queue the next time a
+packet arrives for it.  This means it will effectively get priority
+over queues that do not empty out each round (a minor caveat is
+required here to protect against starvation, see below).  Exactly how
+little data a flow has to send to keep its queue in this state is
+somewhat difficult to reason about, because it depends on both the
+egress link speed and the number of concurrent flows.  However, in
+practice, many things that are beneficial to have prioritised for
+typical internet use (ACKs, DNS lookups, interactive Secure Shell
+(SSH), HTTP requests, Voice over IP (VoIP)) <em>tend</em> to fall in this
+category, which is why FQ-CoDel performs so well for many practical
+applications.  However, the implicitness of the prioritisation means
+that for applications that require guaranteed priority (for instance,
+multiplexing the network control plane over the network itself),
+explicit classification is still needed.</t>
+        <t indent="0" pn="section-1.3-7">This scheduling scheme has some subtlety to it, which is explained in
+detail in the remainder of this document.</t>
+      </section>
+    </section>
+    <section anchor="codel" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-codel">CoDel</name>
+      <t indent="0" pn="section-2-1">CoDel is described in the Communications of the ACM paper <xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/> and
+the IETF document <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>.  The basic idea is to control queue
+length, maintaining sufficient queueing to keep the outgoing link
+busy but avoiding building up the queue beyond that point.  This is
+done by preferentially dropping packets that remain in the queue for
+&quot;too long&quot;.  Packets are dropped by head drop, which lowers the time
+for the drop signal to propagate back to the sender by the length of
+the queue and helps trigger TCP fast retransmit sooner.</t>
+      <t indent="0" pn="section-2-2">The CoDel algorithm itself will not be described here; instead, we
+refer the reader to the CoDel document <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>.</t>
+    </section>
+    <section anchor="flow-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-flow-queueing">Flow Queueing</name>
+      <t indent="0" pn="section-3-1">The intention of FQ-CoDel's scheduler is to give each flow its own
+queue, hence the term &quot;flow queueing&quot;.  Rather than a perfect
+realisation of this, a hashing-based scheme is used, where flows are
+hashed into a number of buckets, each of which has its own queue.
+The number of buckets is configurable and presently defaults to 1024
+in the Linux implementation.  This is enough to avoid hash collisions
+on a moderate number of flows as seen, for instance, in a home
+gateway.  Depending on the characteristics of the link, this can be
+tuned to trade off memory for a lower probability of hash collisions.
+See Sections <xref target="section-5.3" format="counter" sectionFormat="of" derivedContent="5.3"/> and <xref target="section-5.4" format="counter" sectionFormat="of" derivedContent="5.4"/> for a more in-depth discussion of this.</t>
+      <t indent="0" pn="section-3-2">By default, the flow hashing is performed on the 5-tuple of source
+and destination IP addresses, source and destination port numbers,
+and protocol number.  While the hashing can be customised to match on
+arbitrary packet bytes, care should be taken when doing so; much of
+the benefit of the FQ-CoDel scheduler comes from this per-flow
+distinction.  However, the default hashing does have some
+limitations, as discussed in <xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>.</t>
+      <t indent="0" pn="section-3-3">FQ-CoDel's DRR scheduler is byte-based, employing a deficit
+round-robin mechanism between queues.  This works by keeping track of the
+current number of &quot;byte credits&quot; of each queue.  This number is
+initialised to the configurable quantum; each time a queue gets a
+dequeue opportunity, it gets to dequeue packets, thus decreasing the
+number of credits by the packet size for each packet.  This continues
+until the value of the byte credits counter becomes zero or less, at
+which point the counter is increased by one quantum, and the dequeue
+opportunity ends.</t>
+      <t indent="0" pn="section-3-4">This means that if one queue contains packets of, for instance, size
+quantum/3, and another contains quantum-sized packets, the first
+queue will dequeue three packets each time it gets a turn, whereas
+the second only dequeues one.  This means that flows that send small
+packets are not penalised by the difference in packet sizes; rather,
+the DRR scheme approximates a byte-based fairness queueing scheme.
+The size of the quantum determines the scheduling granularity, with
+the trade-off from too small a quantum being scheduling overhead.
+For small bandwidths, lowering the quantum from the default MTU size
+can be advantageous.</t>
+      <t indent="0" pn="section-3-5">Unlike plain DRR, there are two sets of flows: a &quot;new&quot; list for flows
+that have not built a queue recently and an &quot;old&quot; list for queues
+that build a backlog.  This distinction is an integral part of the
+FQ-CoDel scheduler and is described in more detail in <xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>.</t>
+    </section>
+    <section anchor="the-fq-codel-scheduler" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-the-fq-codel-scheduler">The FQ-CoDel Scheduler</name>
+      <t indent="0" pn="section-4-1">To make its scheduling decisions, FQ-CoDel maintains two ordered
+lists of active queues: new and old queues.  When a packet is added
+to a queue that is not currently active, that queue becomes active by
+being added to the list of new queues.  Later on, it is moved to the
+list of old queues, from which it is removed when it is no longer
+active.  This behaviour is the source of some subtlety in the packet
+scheduling at dequeue time, as explained below.</t>
+      <section anchor="enqueue" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-enqueue">Enqueue</name>
+        <t indent="0" pn="section-4.1-1">The packet enqueue mechanism consists of three stages: classifying
+into a queue, timestamping and bookkeeping, and optionally dropping a
+packet when the total number of enqueued packets goes over the
+maximum.</t>
+        <t indent="0" pn="section-4.1-2">When a packet is enqueued, it is first classified into the
+appropriate queue.  By default, this is done by hashing (using a
+Jenkins hash function <xref target="JENKINS" format="default" sectionFormat="of" derivedContent="JENKINS"/>) on the 5-tuple of IP protocol,
+source and destination IP addresses, and source and destination port
+numbers (if they exist) and then taking the hash value modulo the
+number of queues.  The hash is salted by modulo addition of a random
+value selected at initialisation time to prevent possible DoS attacks
+if the hash is predictable ahead of time (see <xref target="section-8" format="default" sectionFormat="of" derivedContent="Section 8"/>).  The Linux
+kernel implements the Jenkins hash function by mixing three 32-bit
+values into a single 32-bit output value.  Inputs larger than 96 bits
+are reduced by additional mixing steps, 96 bits at a time.</t>
+        <t indent="0" pn="section-4.1-3">Once the packet has been successfully classified into a queue, it is
+handed over to the CoDel algorithm for timestamping.  It is then
+added to the tail of the selected queue, and the queue's byte count
+is updated by the packet size.  Then, if the queue is not currently
+active (i.e., if it is not in either the list of new queues or the
+list of old queues), it is added to the end of the list of new
+queues, and its number of credits is initiated to the configured
+quantum.  Otherwise, the queue is left in its current queue list.</t>
+        <t indent="0" pn="section-4.1-4">Finally, to protect against overload, the total number of enqueued
+packets is compared with the configured limit.  If the limit is
+exceeded (which can happen since a packet was just enqueued), the
+queue with the largest current byte count is selected and half the
+number of packets from this queue (up to a maximum of 64 packets) are
+dropped from the head of that queue.  Dropping several packets at
+once helps amortise the cost of finding the longest queue,
+significantly lowering CPU usage in an overload situation.</t>
+        <section anchor="alternative-classification-schemes" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.1">
+          <name slugifiedName="name-alternative-classification-schemes">Alternative Classification Schemes</name>
+          <t indent="0" pn="section-4.1.1-1">As mentioned previously, it is possible to modify the classification
+scheme to provide a different notion of a flow.  The Linux
+implementation provides this option in the form of the &quot;tc filter&quot;
+command.  While this can add capabilities (for instance, matching on
+other possible parameters such as MAC address, Diffserv code point
+values, firewall rules, flow-specific markings, IPv6 flow label,
+etc.), care should be taken to preserve the notion of flow because
+much of the benefit of the FQ-CoDel scheduler comes from keeping
+flows in separate queues.</t>
+          <t indent="0" pn="section-4.1.1-2">For protocols that do not contain a port number (such as ICMP), the
+Linux implementation simply sets the port numbers to zero and
+performs the hashing as usual.  In practice, this results in such
+protocols each getting their own queue (except in the case of hash
+collisions).  An implementation can perform other classifications for
+protocols that have their own notion of a flow but <bcp14>SHOULD</bcp14> fall back
+to simply hashing on source and destination IP address and protocol
+number in the absence of other information.</t>
+          <t indent="0" pn="section-4.1.1-3">The default classification scheme can additionally be improved by
+performing decapsulation of tunnelled packets prior to hashing on the
+5-tuple in the encapsulated payload.  The Linux implementation does
+this for common encapsulations known to the kernel, such as 6in4
+<xref target="RFC4213" format="default" sectionFormat="of" derivedContent="RFC4213"/>, IP-in-IP <xref target="RFC2003" format="default" sectionFormat="of" derivedContent="RFC2003"/>, and Generic Routing Encapsulation
+(GRE) <xref target="RFC2890" format="default" sectionFormat="of" derivedContent="RFC2890"/>.  This helps to distinguish between flows that share
+the same (outer) 5-tuple but, of course, is limited to unencrypted
+tunnels (see <xref target="section-6.2" format="default" sectionFormat="of" derivedContent="Section 6.2"/> for a discussion of encrypted tunnels).</t>
+        </section>
+      </section>
+      <section anchor="dequeue" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-dequeue">Dequeue</name>
+        <t indent="0" pn="section-4.2-1">Most of FQ-CoDel's work is done at packet dequeue time.  It consists
+of three parts: selecting a queue from which to dequeue a packet,
+actually dequeueing it (employing the CoDel algorithm in the
+process), and some final bookkeeping.</t>
+        <t indent="0" pn="section-4.2-2">For the first part, the scheduler first looks at the list of new
+queues; for the queue at the head of that list, if that queue has a
+negative number of credits (i.e., it has already dequeued at least a
+quantum of bytes), it is given an additional quantum of credits, the
+queue is put onto <em>the end of</em> the list of old queues, and the
+routine selects the next queue and starts again.</t>
+        <t indent="0" pn="section-4.2-3">Otherwise, that queue is selected for dequeue.  If the list of new
+queues is empty, the scheduler proceeds down the list of old queues
+in the same fashion (checking the credits and either selecting the
+queue for dequeueing or adding credits and putting the queue back at
+the end of the list).</t>
+        <t indent="0" pn="section-4.2-4">After having selected a queue from which to dequeue a packet, the
+CoDel algorithm is invoked on that queue.  This applies the CoDel
+control law, which is the mechanism CoDel uses to determine when to
+drop packets (see <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>).  As a result of this, one or more
+packets may be discarded from the head of the selected queue before
+the packet that should be dequeued is returned (or nothing is
+returned if the queue is or becomes empty while being handled by the
+CoDel algorithm).</t>
+        <t indent="0" pn="section-4.2-5">Finally, if the CoDel algorithm does not return a packet, then the
+queue must be empty, and the scheduler does one of two things.  If
+the queue selected for dequeue came from the list of new queues, it
+is moved to <em>the end of</em> the list of old queues.  If instead it came
+from the list of old queues, that queue is removed from the list, to
+be added back (as a new queue) the next time a packet arrives that
+hashes to that queue.  Then (since no packet was available for
+dequeue), the whole dequeue process is restarted from the beginning.</t>
+        <t indent="0" pn="section-4.2-6">If, instead, the scheduler <em>did</em> get a packet back from the CoDel
+algorithm, it subtracts the size of the packet from the byte credits
+for the selected queue and returns the packet as the result of the
+dequeue operation.</t>
+        <t indent="0" pn="section-4.2-7">The step that moves an empty queue from the list of new queues to the
+end of the list of old queues before it is removed is crucial to
+prevent starvation.  Otherwise, the queue could reappear (the next
+time a packet arrives for it) before the list of old queues is
+visited; this can go on indefinitely, even with a small number of
+active flows, if the flow providing packets to the queue in question
+transmits at just the right rate.  This is prevented by first moving
+the queue to the end of the list of old queues, forcing the scheduler
+to service all old queues before the empty queue is removed and thus
+preventing starvation.</t>
+        <t indent="0" pn="section-4.2-8">The resulting migration of queues between the different states is
+summarised in the state diagram shown in <xref target="figure-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>.  Note that both
+the new and old queue states can additionally have arrival and
+dequeue events that do not change the state; these are omitted in the
+figure.</t>
+        <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-partial-state-diagram-for-queues-between-different-states">Partial State Diagram for Queues between Different States</name>
+          <artwork name="" type="" align="left" alt="" pn="section-4.2-9.1"><![CDATA[
++-----------------+                +------------------+
+|                 |     Empty      |                  |
+|     Empty       |<---------------+       Old        +----+
+|                 |                |                  |    |
++-------+---------+                +------------------+    |
+        |                             ^            ^       |Credits
+        |Arrival                      |            |       |Exhausted
+        v                             |            |       |
++-----------------+                   |            |       |
+|                 |      Empty or     |            |       |
+|      New        +-------------------+            +-------+
+|                 | Credits Exhausted
++-----------------+
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="implementation-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-implementation-considerations">Implementation Considerations</name>
+      <t indent="0" pn="section-5-1">This section contains implementation details for the FQ-CoDel
+algorithm.  This includes the data structures and parameters used in
+the Linux implementation, as well as discussion of some required
+features of the target platform and other considerations.</t>
+      <section anchor="data-structures" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-data-structures">Data Structures</name>
+        <t indent="0" pn="section-5.1-1">The main data structure of FQ-CoDel is the array of queues, which is
+instantiated with the number of queues specified by the &quot;flows&quot;
+parameter at instantiation time.  Each queue consists simply of an
+ordered list of packets with FIFO semantics, two state variables
+tracking the queue credits and total number of bytes enqueued, and
+the set of CoDel state variables.  Other state variables to track
+queue statistics can also be included; for instance, the Linux
+implementation keeps a count of dropped packets.</t>
+        <t indent="0" pn="section-5.1-2">In addition to the queue structures themselves, FQ-CoDel maintains
+two ordered lists containing references to the subset of queues that
+are currently active.  These are the lists of new and old queues, as
+explained in <xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/> above.</t>
+        <t indent="0" pn="section-5.1-3">In the Linux implementation, queue space is shared: there's a global
+limit on the number of packets the queues can hold, but not a limit
+for each queue.</t>
+      </section>
+      <section anchor="parameters" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-parameters">Parameters</name>
+        <t indent="0" pn="section-5.2-1">The following are the user configuration parameters exposed by the
+Linux implementation of FQ-CoDel.</t>
+        <section anchor="interval" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.1">
+          <name slugifiedName="name-interval">Interval</name>
+          <t indent="0" pn="section-5.2.1-1">The &quot;interval&quot; parameter has the same semantics as CoDel and is used
+to ensure that the minimum sojourn time of packets in a queue used as
+an estimator by the CoDel control algorithm is a relatively
+up-to-date value.  That is, CoDel only reacts to delay experienced in the
+last epoch of length interval.  It <bcp14>SHOULD</bcp14> be set to be on the order
+of the worst-case RTT through the bottleneck to give end points
+sufficient time to react.</t>
+          <t indent="0" pn="section-5.2.1-2">The default interval value is 100 ms.</t>
+        </section>
+        <section anchor="target" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.2">
+          <name slugifiedName="name-target">Target</name>
+          <t indent="0" pn="section-5.2.2-1">The &quot;target&quot; parameter has the same semantics as CoDel.  It is the
+acceptable minimum standing/persistent queue delay for each FQ-CoDel
+queue.  This minimum delay is identified by tracking the local
+minimum queue delay that packets experience.</t>
+          <t indent="0" pn="section-5.2.2-2">The default target value is 5 ms, but this value should be tuned to
+be at least the transmission time of a single MTU-sized packet at the
+prevalent egress link speed (which, for example, is ~15 ms for 1 Mbps
+and MTU 1500).  This prevents CoDel from being too aggressive at low
+bandwidths.  It should otherwise be set to 5-10% of the configured
+interval.</t>
+        </section>
+        <section anchor="packet-limit" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.3">
+          <name slugifiedName="name-packet-limit">Packet Limit</name>
+          <t indent="0" pn="section-5.2.3-1">Routers do not have infinite memory, so some packet limit <bcp14>MUST</bcp14> be
+enforced.</t>
+          <t indent="0" pn="section-5.2.3-2">The &quot;limit&quot; parameter is the hard limit on the real queue size,
+measured in number of packets.  This limit is a global limit on the
+number of packets in all queues; each individual queue does not have
+an upper limit.  When the limit is reached and a new packet arrives
+for enqueue, packets are dropped from the head of the largest queue
+(measured in bytes) to make room for the new packet.</t>
+          <t indent="0" pn="section-5.2.3-3">In Linux, the default packet limit is 10240 packets, which is
+suitable for up to 10-Gigabit Ethernet speeds.  In practice, the hard
+limit is rarely (if ever) hit, as drops are performed by the CoDel
+algorithm long before the limit is hit.  For platforms that are
+severely memory constrained, a lower limit can be used.</t>
+        </section>
+        <section anchor="quantum" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.4">
+          <name slugifiedName="name-quantum">Quantum</name>
+          <t indent="0" pn="section-5.2.4-1">The &quot;quantum&quot; parameter is the number of bytes each queue gets to
+dequeue on each round of the scheduling algorithm.  The default is
+set to 1514 bytes, which corresponds to the Ethernet MTU plus the
+hardware header length of 14 bytes.</t>
+          <t indent="0" pn="section-5.2.4-2">In systems employing TCP Segmentation Offload (TSO), where a &quot;packet&quot;
+consists of an offloaded packet train, it can presently be as large
+as 64 kilobytes.  In systems using Generic Receive Offload (GRO),
+they can be up to 17 times the TCP max segment size (or 25
+kilobytes).  These mega-packets severely impact FQ-CoDel's ability to
+schedule traffic, and they hurt latency needlessly.  There is ongoing
+work in Linux to make smarter use of offload engines.</t>
+        </section>
+        <section anchor="flows" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.5">
+          <name slugifiedName="name-flows">Flows</name>
+          <t indent="0" pn="section-5.2.5-1">The &quot;flows&quot; parameter sets the number of queues into which the
+incoming packets are classified.  Due to the stochastic nature of
+hashing, multiple flows may end up being hashed into the same slot.</t>
+          <t indent="0" pn="section-5.2.5-2">This parameter can be set only at initialisation time in the current
+implementation, since memory has to be allocated for the hash table.</t>
+          <t indent="0" pn="section-5.2.5-3">The default value is 1024 in the current Linux implementation.</t>
+        </section>
+        <section anchor="explicit-congestion-notification-(ecn)" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.6">
+          <name slugifiedName="name-explicit-congestion-notification-(ecn)">Explicit Congestion Notification (ECN)</name>
+          <t indent="0" pn="section-5.2.6-1">ECN <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> is enabled by default.  Rather than do anything special
+with misbehaved ECN flows, FQ-CoDel relies on the packet scheduling
+system to minimise their impact; thus, the number of unresponsive
+packets in a flow being marked with ECN can grow to the overall
+packet limit but will not otherwise affect the performance of the
+system.</t>
+          <t indent="0" pn="section-5.2.6-2">ECN can be disabled by specifying the &quot;noecn&quot; parameter.</t>
+        </section>
+        <section anchor="ce-threshold" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.7">
+          <name slugifiedName="name-ce-threshold">CE Threshold</name>
+          <t indent="0" pn="section-5.2.7-1">This parameter enables DCTCP-like processing resulting in Congestion
+Encountered (CE) marking on ECN-Capable Transport (ECT) packets
+<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> starting at a lower sojourn delay setpoint than the default
+CoDel target.  Details of Data Center TCP (DCTCP) can be found in
+<xref target="RFC8257" format="default" sectionFormat="of" derivedContent="RFC8257"/>.</t>
+          <t indent="0" pn="section-5.2.7-2">The &quot;ce_threshold&quot; parameter is disabled by default; it can be
+enabled by setting it to a number of microseconds.</t>
+        </section>
+      </section>
+      <section anchor="probability-of-hash-collisions" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-probability-of-hash-collisions">Probability of Hash Collisions</name>
+        <t indent="0" pn="section-5.3-1">Since the Linux FQ-CoDel implementation by default uses 1024 hash
+buckets, the probability that (say) 100 flows will all hash to the
+same bucket is something like ten to the power of minus 300.  Thus,
+at least one of the flows will almost certainly hash to some other
+queue.</t>
+        <t indent="0" pn="section-5.3-2">Expanding on this, based on analytical equations for hash collision
+probabilities, for 100 flows, the probability of no collision is
+90.78%; the probability that no more than two of the 100 flows will
+be involved in any given collision is 99.57%; and the probability
+that no more than three of the 100 flows will be involved in any
+given collision is 99.99%.  These probabilities assume a hypothetical
+perfect hashing function, so in practice, they may be a bit lower.
+We have not found this difference to matter in practice.</t>
+        <t indent="0" pn="section-5.3-3">These probabilities can be improved upon by using set-associative
+hashing, a technique used in the Cake algorithm currently being
+developed as a further refinement of the FQ-CoDel principles <xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>.
+For a 4-way associative hash with the same number of total queues,
+the probability of no collisions for 100 flows is 99.93%, while for
+an 8-way associative hash, it is ~100%.</t>
+      </section>
+      <section anchor="memory-overhead" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-memory-overhead">Memory Overhead</name>
+        <t indent="0" pn="section-5.4-1">FQ-CoDel can be implemented with a low memory footprint (less than 64
+bytes per queue on 64-bit systems).  These are the data structures
+used in the Linux implementation:</t>
+        <sourcecode type="c" markers="true" pn="section-5.4-2"><![CDATA[
+struct codel_vars {
+   u32             count;             /* number of dropped packets */
+   u32             lastcount;     /* count entry to dropping state */
+   bool            dropping;                /* currently dropping? */
+   u16             rec_inv_sqrt;    /* reciprocal sqrt computation */
+   codel_time_t    first_above_time;    /* when delay above target */
+   codel_time_t    drop_next;                 /* next time to drop */
+   codel_time_t    ldelay; /* sojourn time of last dequeued packet */
+};
+
+struct fq_codel_flow {
+   struct sk_buff    *head;
+   struct sk_buff    *tail;
+   struct list_head  flowchain;
+   int               credits;   /* current number of queue credits */
+   u32               dropped; /* # of drops (or ECN marks) on flow */
+   struct codel_vars cvars;
+};
+]]></sourcecode>
+        <t indent="0" pn="section-5.4-3">The master table managing all queues looks like this:</t>
+        <sourcecode type="c" markers="true" pn="section-5.4-4"><![CDATA[
+struct fq_codel_sched_data {
+   struct tcf_proto *filter_list;  /* optional external classifier */
+   struct fq_codel_flow *flows;    /* Flows table [flows_cnt] */
+   u32             *backlogs;      /* backlog table [flows_cnt] */
+   u32             flows_cnt;      /* number of flows */
+   u32             perturbation;   /* hash perturbation */
+   u32             quantum;        /* psched_mtu(qdisc_dev(sch)); */
+   struct codel_params cparams;
+   struct codel_stats cstats;
+   u32             drop_overlimit;
+   u32             new_flow_count;
+
+   struct list_head new_flows;     /* list of new flows */
+   struct list_head old_flows;     /* list of old flows */
+};
+]]></sourcecode>
+      </section>
+      <section anchor="per-packet-timestamping" numbered="true" removeInRFC="false" toc="include" pn="section-5.5">
+        <name slugifiedName="name-per-packet-timestamping">Per-Packet Timestamping</name>
+        <t indent="0" pn="section-5.5-1">The CoDel portion of the algorithm requires per-packet timestamps be
+stored along with the packet.  While this approach works well for
+software-based routers, it may be impossible to retrofit devices that
+do most of their processing in silicon and lack the space or
+mechanism for timestamping.</t>
+        <t indent="0" pn="section-5.5-2">Also, while perfect resolution is not needed, timestamp resolution
+finer than the CoDel target setting is necessary.  Furthermore,
+timestamping functions in the core OS need to be efficient, as they
+are called at least once on each packet enqueue and dequeue.</t>
+      </section>
+      <section anchor="limiting-queueing-in-lower-layers" numbered="true" removeInRFC="false" toc="include" pn="section-5.6">
+        <name slugifiedName="name-limiting-queueing-in-lower-layers">Limiting Queueing in Lower Layers</name>
+        <t indent="0" pn="section-5.6-1">When deploying a queue management algorithm such as FQ-CoDel, it is
+important to ensure that the algorithm actually runs in the right
+place to control the queue.  In particular, lower layers of the
+operating system networking stack can have queues of their own, as
+can device drivers and hardware.  Thus, it is desirable that the
+queue management algorithm runs as close to the hardware as possible.
+However, scheduling such complexity at interrupt time is difficult,
+so a small standing queue between the algorithm and the wire is often
+needed at higher transmit rates.</t>
+        <t indent="0" pn="section-5.6-2">In Linux, the mechanism to ensure these different needs are balanced
+is called &quot;Byte Queue Limits&quot; <xref target="BQL" format="default" sectionFormat="of" derivedContent="BQL"/>; it controls the device driver
+ring buffer (for physical line rates).  For cases where this
+functionality is not available, the queue can be controlled by means
+of a software rate limiter such as Hierarchical Token Bucket <xref target="HTB" format="default" sectionFormat="of" derivedContent="HTB"/> or
+Hierarchical Fair-Service Curve <xref target="HFSC" format="default" sectionFormat="of" derivedContent="HFSC"/>.  The Cake algorithm <xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>
+integrates a software rate limiter for this purpose.</t>
+        <t indent="0" pn="section-5.6-3">Other issues with queues at lower layers are described in <xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/>.</t>
+      </section>
+      <section anchor="other-forms-of-fair-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-5.7">
+        <name slugifiedName="name-other-forms-of-fair-queueing">Other Forms of Fair Queueing</name>
+        <t indent="0" pn="section-5.7-1">Much of the scheduling portion of FQ-CoDel is derived from DRR and is
+substantially similar to DRR++.  Versions based on Stochastic Fair
+Queueing <xref target="SFQ" format="default" sectionFormat="of" derivedContent="SFQ"/> have also been produced and tested in ns2.  Other
+forms of fair queueing, such as Weighted Fair Queueing <xref target="WFQ" format="default" sectionFormat="of" derivedContent="WFQ"/> or Quick
+Fair Queueing <xref target="QFQ" format="default" sectionFormat="of" derivedContent="QFQ"/>, have not been thoroughly explored, but there's
+no a priori reason why the round-robin scheduling of FQ-CoDel
+couldn't be replaced with something else.</t>
+        <t indent="0" pn="section-5.7-2">For a comprehensive discussion of fairness queueing algorithms and
+their combination with AQM, see <xref target="RFC7806" format="default" sectionFormat="of" derivedContent="RFC7806"/>.</t>
+      </section>
+      <section anchor="differences-between-codel-and-fq-codel-behaviour" numbered="true" removeInRFC="false" toc="include" pn="section-5.8">
+        <name slugifiedName="name-differences-between-codel-and-fq-codel-behaviour">Differences between CoDel and FQ-CoDel Behaviour</name>
+        <t indent="0" pn="section-5.8-1">CoDel can be applied to a single queue system as a straight AQM,
+where it converges towards an &quot;ideal&quot; drop rate (i.e., one that
+minimises delay while keeping a high link utilisation) and then
+optimises around that control point.</t>
+        <t indent="0" pn="section-5.8-2">The scheduling of FQ-CoDel mixes packets of competing flows, which
+acts to pace bursty flows to better fill the pipe.  Additionally, a
+new flow gets substantial leeway over other flows until CoDel finds
+an ideal drop rate for it.  However, for a new flow that exceeds the
+configured quantum, more time passes before all of its data is
+delivered (as packets from it, too, are mixed across the other
+existing queue-building flows).  Thus, FQ-CoDel takes longer (as
+measured in time) to converge towards an ideal drop rate for a given
+new flow but does so within fewer delivered <em>packets</em> from that flow.</t>
+        <t indent="0" pn="section-5.8-3">Finally, the flow isolation provided by FQ-CoDel means that the CoDel
+drop mechanism operates on the flows actually building queues; this
+results in packets being dropped more accurately from the largest
+flows than when only CoDel is used.  Additionally, flow isolation
+radically improves the transient behaviour of the network when
+traffic or link characteristics change (e.g., when new flows start up
+or the link bandwidth changes); while CoDel itself can take a while
+to respond, FQ-CoDel reacts almost immediately.</t>
+      </section>
+    </section>
+    <section anchor="limitations-of-flow-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-limitations-of-flow-queueing">Limitations of Flow Queueing</name>
+      <t indent="0" pn="section-6-1">While FQ-CoDel has been shown in many scenarios to offer significant
+performance gains compared to alternative queue management
+strategies, there are some scenarios where the scheduling algorithm
+in particular is not a good fit.  This section documents some of the
+known cases in which either the default behaviour may require
+tweaking or alternatives to flow queueing should be considered.</t>
+      <section anchor="fairness-between-things-other-than-flows" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-fairness-between-things-other-than-flows">Fairness between Things Other Than Flows</name>
+        <t indent="0" pn="section-6.1-1">In some parts of the network, enforcing flow-level fairness may not
+be desirable, or some other form of fairness may be more important.
+Some examples of this include an ISP that may be more interested in
+ensuring fairness between customers than between flows or a hosting
+or transit provider that wishes to ensure fairness between connecting
+Autonomous Systems or networks.  Another issue can be that the number
+of simultaneous flows experienced at a particular link can be too
+high for flow-based fairness queueing to be effective.</t>
+        <t indent="0" pn="section-6.1-2">Whatever the reason, in a scenario where fairness between flows is
+not desirable, reconfiguring FQ-CoDel to match on a different
+characteristic can be a way forward.  The implementation in Linux can
+leverage the packet matching mechanism of the &quot;tc&quot; subsystem to use
+any available packet field to partition packets into virtual queues,
+for instance, to match on address or subnet source/destination pairs,
+application-layer characteristics, etc.</t>
+        <t indent="0" pn="section-6.1-3">Furthermore, as commonly deployed today, FQ-CoDel is used with three
+or more tiers of service classification, based on Diffserv markings:
+priority, best effort, and background.  Some products do more
+detailed classification, including deep packet inspection and
+destination-specific filters to achieve their desired result.</t>
+      </section>
+      <section anchor="flow-bunching-by-opaque-encapsulation" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-flow-bunching-by-opaque-encapsulation">Flow Bunching by Opaque Encapsulation</name>
+        <t indent="0" pn="section-6.2-1">Where possible, FQ-CoDel will attempt to decapsulate packets before
+matching on the header fields for the flow hashing.  However, for
+some encapsulation techniques, most notably encrypted VPNs, this is
+not possible.  If several flows are bunched into one such
+encapsulated tunnel, they will be seen as one flow by the FQ-CoDel
+algorithm.  This means that they will share a queue and drop
+behaviour, so flows inside the encapsulation will not benefit from
+the implicit prioritisation of FQ-CoDel but will continue to benefit
+from the reduced overall queue length from the CoDel algorithm
+operating on the queue.  In addition, when such an encapsulated bunch
+competes against other flows, it will count as one flow and not
+assigned a share of the bandwidth based on how many flows are inside
+the encapsulation.</t>
+        <t indent="0" pn="section-6.2-2">Depending on the application, this may or may not be desirable
+behaviour.  In cases where it is not, changing FQ-CoDel's matching to
+not be flow-based (as detailed in the previous subsection above) can
+be a mitigation.  Going forward, having some mechanism for opaque
+encapsulations to express to the outer layer which flow a packet
+belongs to could be a way to mitigate this.  Naturally, care needs to
+be taken when designing such a mechanism to ensure no new privacy and
+security issues are raised by exposing information from inside the
+encapsulation to the outside world.  Keeping the extra information
+out of band and dropping it before it hits the network could be one
+way to achieve this.</t>
+      </section>
+      <section anchor="low-priority-congestion-control-algorithms" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-low-priority-congestion-control-algorithms">Low-Priority Congestion Control Algorithms</name>
+        <t indent="0" pn="section-6.3-1">In the presence of queue management schemes that limit latency under
+load, low-priority congestion control algorithms such as Low Extra
+Delay Background Transport (LEDBAT) <xref target="RFC6817" format="default" sectionFormat="of" derivedContent="RFC6817"/> (or, in general,
+algorithms that try to voluntarily use up less than their fair share
+of bandwidth) experience little added latency when the link is
+congested.  Thus, they lack the signal to back off that added latency
+previously afforded them.  This effect is seen with FQ-CoDel as well
+as with any effective AQM <xref target="GONG2014" format="default" sectionFormat="of" derivedContent="GONG2014"/>.</t>
+        <t indent="0" pn="section-6.3-2">As such, these delay-based algorithms tend to revert to loss-based
+congestion control and will consume the fair share of bandwidth
+afforded to them by the FQ-CoDel scheduler.  However, low-priority
+congestion control mechanisms may be able to take steps to continue
+to be low priority, for instance, by taking into account the vastly
+reduced level of delay afforded by an AQM or by using a coupled
+approach to observing the behaviour of multiple flows.</t>
+      </section>
+    </section>
+    <section anchor="deployment-status-and-future-work" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-deployment-status-and-future-work">Deployment Status and Future Work</name>
+      <t indent="0" pn="section-7-1">The FQ-CoDel algorithm as described in this document has been shipped
+as part of the Linux kernel since version 3.5 (released on the 21st
+of July, 2012), with the ce_threshold being added in version 4.2.
+The algorithm has seen widespread testing in a variety of contexts
+and is configured as the default queueing discipline in a number of
+mainline Linux distributions (as of this writing, at least OpenWRT,
+Arch Linux, and Fedora).  In addition, a BSD implementation is
+available.  All data resulting from these trials have shown FQ-CoDel
+to be a massive improvement over the previous default FIFO queue, and
+people are encouraged to turn it on.</t>
+      <t indent="0" pn="section-7-2">Of course, there is always room for improvement, and this document
+has listed some of the known limitations of the algorithm.  As such,
+we encourage further research into algorithm refinements and
+addressing of limitations.  One such effort has been undertaken by
+the bufferbloat community in the form of the Cake queue management
+scheme <xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>.  In addition to this, we believe the following
+(non-exhaustive) list of issues to be worthy of further enquiry:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7-3">
+        <li pn="section-7-3.1">Variations on the flow classification mechanism to fit different
+notions of flows.  For instance, an ISP might want to deploy per-subscriber
+scheduling, while in other cases, several flows can
+share a 5-tuple, as exemplified by the RTCWEB QoS recommendations
+<xref target="WEBRTC-QOS" format="default" sectionFormat="of" derivedContent="WEBRTC-QOS"/>.</li>
+        <li pn="section-7-3.2">Interactions between flow queueing and delay-based congestion
+control algorithms and scavenger protocols.</li>
+        <li pn="section-7-3.3">Other scheduling mechanisms to replace the DRR portion of the
+algorithm, e.g., QFQ or WFQ.</li>
+        <li pn="section-7-3.4">Sensitivity of parameters, most notably, the number of queues and
+the CoDel parameters.</li>
+      </ul>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-8-1">There are no specific security exposures associated with FQ-CoDel
+that are not also present in current FIFO systems.  On the contrary,
+some vulnerabilities of FIFO systems are reduced with FQ-CoDel (e.g.,
+simple minded packet floods).  However, some care is needed in the
+implementation to ensure this is the case.  These are included in the
+description above, but we reiterate them here:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-8-2">
+        <li pn="section-8-2.1">To prevent packets in the new queues from starving old queues, it
+is important that when a queue on the list of new queues empties,
+it is moved to <em>the end of</em> the list of old queues.  This is
+described at the end of <xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>.</li>
+        <li pn="section-8-2.2">To prevent an attacker targeting a specific flow for a denial-of-service
+attack, the hash that maps packets to queues should not be
+predictable.  To achieve this, FQ-CoDel salts the hash, as
+described in the beginning of <xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>.  The size of the salt
+and the strength of the hash function is obviously a trade-off
+between performance and security.  The Linux implementation uses a
+32-bit random value as the salt and a Jenkins hash function.  This
+makes it possible to achieve high throughput, and we consider it
+sufficient to ward off the most obvious attacks.</li>
+        <li pn="section-8-2.3">Packet fragments without a Layer 4 header can be hashed into
+different bins than the first fragment with the header intact.
+This can cause reordering and/or adversely affect the performance
+of the flow.  Keeping state to match the fragments to the
+beginning of the packet or simply putting all packet fragments
+(including the first fragment of each fragmented packet) into the
+same queue are two ways to alleviate this.</li>
+      </ul>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANA Considerations</name>
+      <t indent="0" pn="section-9-1">This document does not require any IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">References</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">Normative References</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7806" target="https://www.rfc-editor.org/info/rfc7806" quoteTitle="true" derivedAnchor="RFC7806">
+          <front>
+            <title>On Queuing, Marking, and Dropping</title>
+            <author fullname="F. Baker" initials="F." surname="Baker"/>
+            <author fullname="R. Pan" initials="R." surname="Pan"/>
+            <date year="2016" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="7806"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7806"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8289" target="https://www.rfc-editor.org/info/rfc8289" quoteTitle="true" derivedAnchor="RFC8289">
+          <front>
+            <title>Controlled Delay Active Queue Management</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <author fullname="A. McGregor" initials="A." surname="McGregor" role="editor"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar" role="editor"/>
+            <date year="2018" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="8289"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8289"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">Informative References</name>
+        <reference anchor="BLOAT" quoteTitle="true" derivedAnchor="BLOAT">
+          <front>
+            <title>Bufferbloat: Dark Buffers in the Internet</title>
+            <author fullname="J. Gettys" initials="J." surname="Gettys"/>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <date year="2012" month="January"/>
+          </front>
+          <refcontent>Communications of the ACM, Volume 55, Issue 1</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2063176.2063196"/>
+        </reference>
+        <reference anchor="BLOATWEB" target="https://www.bufferbloat.net" quoteTitle="true" derivedAnchor="BLOATWEB">
+          <front>
+            <title>Bufferbloat</title>
+          </front>
+        </reference>
+        <reference anchor="BQL" target="https://lwn.net/Articles/454378/" quoteTitle="true" derivedAnchor="BQL">
+          <front>
+            <title>bql: Byte Queue Limits</title>
+            <author fullname="T. Herbert" initials="T." surname="Herbert"/>
+            <date year="2011" month="August"/>
+          </front>
+        </reference>
+        <reference anchor="CAKE" target="http://www.bufferbloat.net/projects/codel/wiki/Cake" quoteTitle="true" derivedAnchor="CAKE">
+          <front>
+            <title>Cake - Common Applications Kept Enhanced</title>
+          </front>
+        </reference>
+        <reference anchor="CODEL" target="http://queue.acm.org/detail.cfm?id=2209336" quoteTitle="true" derivedAnchor="CODEL">
+          <front>
+            <title>Controlling Queue Delay</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <date year="2012" month="May"/>
+          </front>
+          <refcontent>ACM Queue, Volume 10, Issue 5</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2208917.2209336"/>
+        </reference>
+        <reference anchor="DRR" quoteTitle="true" derivedAnchor="DRR">
+          <front>
+            <title>Efficient Fair Queueing Using Deficit Round Robin</title>
+            <author fullname="M. Shreedhar" initials="M." surname="Shreedhar"/>
+            <author fullname="G. Varghese" initials="G." surname="Varghese"/>
+            <date year="1996" month="June"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking, Volume 4, Issue 3</refcontent>
+          <seriesInfo name="DOI" value="10.1109/90.502236"/>
+        </reference>
+        <reference anchor="DRRPP" target="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803" quoteTitle="true" derivedAnchor="DRRPP">
+          <front>
+            <title>Deficits for Bursty Latency-Critical Flows: DRR++</title>
+            <author fullname="M. MacGregor" initials="M." surname="MacGregor"/>
+            <author fullname="W. Shi" initials="W." surname="Shi"/>
+            <date year="2000" month="September"/>
+          </front>
+          <refcontent>Proceedings of the IEEE International Conference on Networks 2000 (ICON 2000)</refcontent>
+          <seriesInfo name="DOI" value="10.1109/ICON.2000.875803"/>
+        </reference>
+        <reference anchor="GONG2014" target="https://www.sciencedirect.com/science/article/pii/S1389128614000188" quoteTitle="true" derivedAnchor="GONG2014">
+          <front>
+            <title>Fighting the bufferbloat: On the coexistence of AQM and low priority congestion control</title>
+            <author fullname="Y. Gong" initials="Y." surname="Gong"/>
+            <author fullname="D. Rossi" initials="D." surname="Rossi"/>
+            <author fullname="C. Testa" initials="C." surname="Testa"/>
+            <author fullname="S. Valenti" initials="S." surname="Valenti"/>
+            <author fullname="D. Taht" initials="D." surname="Taht"/>
+            <date year="2014" month="June"/>
+          </front>
+          <refcontent>Elsevier Computer Networks, Volume 65</refcontent>
+          <seriesInfo name="DOI" value="10.1016/j.bjp.2014.01.009"/>
+        </reference>
+        <reference anchor="HFSC" target="http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf" quoteTitle="true" derivedAnchor="HFSC">
+          <front>
+            <title>A Hierarchical Fair Service Curve Algorithm for Link-Sharing, Real-Time and Priority Services</title>
+            <author fullname="I. Stoica" initials="I." surname="Stoica"/>
+            <author fullname="H. Zhang" initials="H." surname="Zhang"/>
+            <author fullname="T. Eugene Ng" initials="T." surname="Eugene Ng"/>
+            <date year="1997" month="September"/>
+          </front>
+          <refcontent>Proceedings of ACM SIGCOMM</refcontent>
+          <seriesInfo name="DOI" value="10.1145/263105.263175"/>
+        </reference>
+        <reference anchor="HTB" target="https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657" quoteTitle="true" derivedAnchor="HTB">
+          <front>
+            <title>Token Bucket: Variations</title>
+            <author><organization showOnFrontPage="true">Wikipedia</organization></author>
+            <date year="2017" month="October"/>
+          </front>
+        </reference>
+        <reference anchor="JENKINS" target="http://www.burtleburtle.net/bob/hash/doobs.html" quoteTitle="true" derivedAnchor="JENKINS">
+          <front>
+            <title>A Hash Function for Hash Table Lookup</title>
+            <author fullname="B. Jenkins" initials="B." surname="Jenkins"/>
+          </front>
+        </reference>
+        <reference anchor="LINUXSRC" target="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c" quoteTitle="true" derivedAnchor="LINUXSRC">
+          <front>
+            <title>Linux Kernel Source Tree</title>
+          </front>
+        </reference>
+        <reference anchor="NS2" target="http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076" quoteTitle="true" derivedAnchor="NS2">
+          <front>
+            <title>ns-2</title>
+            <date year="2014" month="December"/>
+          </front>
+        </reference>
+        <reference anchor="NS3" target="https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883" quoteTitle="true" derivedAnchor="NS3">
+          <front>
+            <title>ns-3</title>
+            <date year="2016" month="February"/>
+          </front>
+        </reference>
+        <reference anchor="QFQ" target="http://dl.acm.org/citation.cfm?id=2525552" quoteTitle="true" derivedAnchor="QFQ">
+          <front>
+            <title>QFQ: Efficient Packet Scheduling with Tight Guarantees</title>
+            <author fullname="F. Checconi" initials="F." surname="Checconi"/>
+            <author fullname="L. Rizzo" initials="L." surname="Rizzo"/>
+            <author fullname="P. Valente" initials="P." surname="Valente"/>
+            <date year="2013" month="June"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking (TON), Volume 21, Issue 3, pp. 802-816</refcontent>
+          <seriesInfo name="DOI" value="10.1109/TNET.2012.2215881"/>
+        </reference>
+        <reference anchor="RFC2003" target="https://www.rfc-editor.org/info/rfc2003" quoteTitle="true" derivedAnchor="RFC2003">
+          <front>
+            <title>IP Encapsulation within IP</title>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="1996" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="2003"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2003"/>
+        </reference>
+        <reference anchor="RFC2890" target="https://www.rfc-editor.org/info/rfc2890" quoteTitle="true" derivedAnchor="RFC2890">
+          <front>
+            <title>Key and Sequence Number Extensions to GRE</title>
+            <author fullname="G. Dommety" initials="G." surname="Dommety"/>
+            <date year="2000" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="2890"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2890"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC4213" target="https://www.rfc-editor.org/info/rfc4213" quoteTitle="true" derivedAnchor="RFC4213">
+          <front>
+            <title>Basic Transition Mechanisms for IPv6 Hosts and Routers</title>
+            <author fullname="E. Nordmark" initials="E." surname="Nordmark"/>
+            <author fullname="R. Gilligan" initials="R." surname="Gilligan"/>
+            <date year="2005" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="4213"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4213"/>
+        </reference>
+        <reference anchor="RFC6817" target="https://www.rfc-editor.org/info/rfc6817" quoteTitle="true" derivedAnchor="RFC6817">
+          <front>
+            <title>Low Extra Delay Background Transport (LEDBAT)</title>
+            <author fullname="S. Shalunov" initials="S." surname="Shalunov"/>
+            <author fullname="G. Hazel" initials="G." surname="Hazel"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar"/>
+            <author fullname="M. Kuehlewind" initials="M." surname="Kuehlewind"/>
+            <date year="2012" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="6817"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6817"/>
+        </reference>
+        <reference anchor="RFC8257" target="https://www.rfc-editor.org/info/rfc8257" quoteTitle="true" derivedAnchor="RFC8257">
+          <front>
+            <title>Data Center TCP (DCTCP): TCP Congestion Control for Data Centers</title>
+            <author fullname="S. Bensley" initials="S." surname="Bensley"/>
+            <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+            <author fullname="P. Balasubramanian" initials="P." surname="Balasubramanian"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date year="2017" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="8257"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8257"/>
+        </reference>
+        <reference anchor="SFQ" target="http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf" quoteTitle="true" derivedAnchor="SFQ">
+          <front>
+            <title>Stochastic Fairness Queueing</title>
+            <author fullname="P. McKenney" initials="P." surname="McKenney"/>
+            <date year="1990" month="June"/>
+          </front>
+          <refcontent>Proceedings of IEEE INFOCOM</refcontent>
+          <seriesInfo name="DOI" value="10.1109/INFCOM.1990.91316"/>
+        </reference>
+        <reference anchor="SQF" quoteTitle="true" derivedAnchor="SQF">
+          <front>
+            <title>On the Impact of TCP and Per-Flow Scheduling on Internet Performance</title>
+            <author fullname="G. Carofiglio" initials="G." surname="Carofiglio"/>
+            <author fullname="L. Muscariello" initials="L." surname="Muscariello"/>
+            <date year="2011" month="August"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking, Volume 20, Issue 2</refcontent>
+          <seriesInfo name="DOI" value="10.1109/TNET.2011.2164553"/>
+        </reference>
+        <reference anchor="WEBRTC-QOS" quoteTitle="true" derivedAnchor="WEBRTC-QOS">
+          <front>
+            <title>DSCP Packet Markings for WebRTC QoS</title>
+            <author fullname="P. Jones" initials="P." surname="Jones"/>
+            <author fullname="S. Dhesikan" initials="S." surname="Dhesikan"/>
+            <author fullname="C. Jennings" initials="C." surname="Jennings"/>
+            <author fullname="D. Druta" initials="D." surname="Druta"/>
+            <date year="2016" month="August"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tsvwg-rtcweb-qos-18"/>
+        </reference>
+        <reference anchor="WFQ" target="http://doi.acm.org/10.1145/75247.75248" quoteTitle="true" derivedAnchor="WFQ">
+          <front>
+            <title>Analysis and Simulation of a Fair Queueing Algorithm</title>
+            <author fullname="A. Demers" initials="A." surname="Demers"/>
+            <author fullname="S. Keshav" initials="S." surname="Keshav"/>
+            <author fullname="S. Shenker" initials="S." surname="Shenker"/>
+            <date year="1989" month="September"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review, Volume 19, Issue 4, pp. 1-12</refcontent>
+          <seriesInfo name="DOI" value="10.1145/75247.75248"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+      <t indent="0" pn="section-appendix.a-1">Our deepest thanks to Kathie Nichols, Van Jacobson, and all the
+members of the bufferbloat.net effort for all the help on developing
+and testing the algorithm.  In addition, our thanks to Anil Agarwal
+for his help with getting the hash collision probabilities in this
+document right.</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">Authors' Addresses</name>
+      <author fullname="Toke Hoeiland-Joergensen" initials="T." surname="Hoeiland-Joergensen">
+        <organization showOnFrontPage="true">Karlstad University</organization>
+        <address>
+          <postal>
+            <postalLine>Dept. of Computer Science</postalLine>
+            <postalLine>Karlstad  65188</postalLine>
+            <postalLine>Sweden</postalLine>
+          </postal>
+          <email>toke@toke.dk</email>
+        </address>
+      </author>
+      <author fullname="Paul McKenney" initials="P." surname="McKenney">
+        <organization showOnFrontPage="true">IBM Linux Technology Center</organization>
+        <address>
+          <postal>
+            <postalLine>1385 NW Amberglen Parkway</postalLine>
+            <postalLine>Hillsboro, OR  97006</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>paulmck@linux.vnet.ibm.com</email>
+          <uri>http://www2.rdrop.com/~paulmck/</uri>
+        </address>
+      </author>
+      <author fullname="Dave Taht" initials="D." surname="Taht">
+        <organization showOnFrontPage="true">Teklibre</organization>
+        <address>
+          <postal>
+            <postalLine>2104 W First street</postalLine>
+            <postalLine>Apt 2002</postalLine>
+            <postalLine>FT Myers, FL  33901</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>dave.taht@gmail.com</email>
+          <uri>http://www.teklibre.com/</uri>
+        </address>
+      </author>
+      <author fullname="Jim Gettys" initials="J." surname="Gettys">
+        <address>
+          <postal>
+            <postalLine>21 Oak Knoll Road</postalLine>
+            <postalLine>Carlisle, MA  993</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>jg@freedesktop.org</email>
+          <uri>https://en.wikipedia.org/wiki/Jim_Gettys</uri>
+        </address>
+      </author>
+      <author fullname="Eric Dumazet" initials="E." surname="Dumazet">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <postal>
+            <postalLine>1600 Amphitheatre Pkwy</postalLine>
+            <postalLine>Mountain View, CA  94043</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>edumazet@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

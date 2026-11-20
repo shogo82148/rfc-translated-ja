@@ -1,0 +1,905 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tcpm-dctcp-10" indexInclude="true" number="8257" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-dctcp-10" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8257" rel="alternate"/>
+  <front>
+    <title>Data Center TCP (DCTCP): TCP Congestion Control for Data Centers</title>
+    <seriesInfo name="RFC" value="8257" stream="IETF"/>
+    <date year="2017" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">This Informational RFC describes Data Center TCP (DCTCP): a TCP
+congestion control scheme for data-center traffic.  DCTCP extends the
+Explicit Congestion Notification (ECN) processing to estimate the
+fraction of bytes that encounter congestion rather than simply
+detecting that some congestion has occurred.  DCTCP then scales the
+TCP congestion window based on this estimate.  This method achieves
+high-burst tolerance, low latency, and high throughput with shallow-buffered
+switches.  This memo also discusses deployment issues
+related to the coexistence of DCTCP and conventional TCP, discusses
+the lack of a negotiating mechanism between sender and receiver, and
+presents some possible mitigations.  This memo documents DCTCP as
+currently implemented by several major operating systems.  DCTCP, as
+described in this specification, is applicable to deployments in
+controlled environments like data centers, but it must not be
+deployed over the public Internet without additional measures.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</t>
+        <t indent="0" pn="section-boilerplate.1.2">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Not all documents
+approved by the IESG are a candidate for any level of Internet
+Standard; see Section 2 of RFC 7841.</t>
+        <t indent="0" pn="section-boilerplate.1.3">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+https://www.rfc-editor.org/info/rfc8257.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(https://trustee.ietf.org/license-info) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">Table of Contents</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">Introduction</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">Terminology</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dctcp-algorithm">DCTCP Algorithm</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-marking-congestion-on-the-l3-switches-and-routers">Marking Congestion on the L3 Switches and Routers</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-echoing-congestion-information-on-the-receiver">Echoing Congestion Information on the Receiver</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-processing-echoed-congestion-indications-on-the-sender">Processing Echoed Congestion Indications on the Sender</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-congestion-window-growth">Handling of Congestion Window Growth</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-packet-loss">Handling of Packet Loss</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.6.1"><xref derivedContent="3.6" format="counter" sectionFormat="of" target="section-3.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-syn-syn-ack-and-rst-packets">Handling of SYN, SYN-ACK, and RST Packets</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-issues">Implementation Issues</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-configuration-of-dctcp">Configuration of DCTCP</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-computation-of-dctcp.alpha">Computation of DCTCP.Alpha</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-issues">Deployment Issues</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-known-issues">Known Issues</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">Security Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANA Considerations</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">References</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+            <li pn="section-toc.1-1.9.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">Normative References</xref></t>
+            </li>
+            <li pn="section-toc.1-1.9.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">Informative References</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">Acknowledgments</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">Authors' Addresses</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">Large data centers necessarily need many network switches to
+interconnect their many servers.  Therefore, a data center can
+greatly reduce its capital expenditure by leveraging low-cost
+switches.  However, such low-cost switches tend to have limited queue
+capacities; thus, they are more susceptible to packet loss due to
+congestion.</t>
+      <t indent="0" pn="section-1-2">Network traffic in a data center is often a mix of short and long
+flows, where the short flows require low latencies and the long flows
+require high throughputs.  Data centers also experience incast
+bursts, where many servers send traffic to a single server at the
+same time.  For example, this traffic pattern is a natural
+consequence of the MapReduce <xref target="MAPREDUCE" format="default" sectionFormat="of" derivedContent="MAPREDUCE"/> workload: the worker nodes
+complete at approximately the same time, and all reply to the master
+node concurrently.</t>
+      <t indent="0" pn="section-1-3">These factors place some conflicting demands on the queue occupancy
+of a switch:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-4">
+        <li pn="section-1-4.1">The queue must be short enough that it does not impose excessive
+latency on short flows.</li>
+        <li pn="section-1-4.2">The queue must be long enough to buffer sufficient data for the
+long flows to saturate the path capacity.</li>
+        <li pn="section-1-4.3">The queue must be long enough to absorb incast bursts without
+excessive packet loss.</li>
+      </ul>
+      <t indent="0" pn="section-1-5">Standard TCP congestion control <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/> relies on packet loss to
+detect congestion.  This does not meet the demands described above.
+First, short flows will start to experience unacceptable latencies
+before packet loss occurs.  Second, by the time TCP congestion
+control kicks in on the senders, most of the incast burst has already
+been dropped.</t>
+      <t indent="0" pn="section-1-6"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> describes a mechanism for using Explicit Congestion
+Notification (ECN) from the switches for detection of congestion.
+However, this method only detects the presence of congestion, not its
+extent.  In the presence of mild congestion, the TCP congestion
+window is reduced too aggressively, and this unnecessarily reduces
+the throughput of long flows.</t>
+      <t indent="0" pn="section-1-7">Data Center TCP (DCTCP) changes traditional ECN processing by
+estimating the fraction of bytes that encounter congestion rather
+than simply detecting that some congestion has occurred.  DCTCP then
+scales the TCP congestion window based on this estimate.  This method
+achieves high-burst tolerance, low latency, and high throughput with
+shallow-buffered switches.  DCTCP is a modification to the processing
+of ECN by a conventional TCP and requires that standard TCP
+congestion control be used for handling packet loss.</t>
+      <t indent="0" pn="section-1-8">DCTCP should only be deployed in an intra-data-center environment
+where both endpoints and the switching fabric are under a single
+administrative domain.  DCTCP <bcp14>MUST NOT</bcp14> be deployed over the public
+Internet without additional measures, as detailed in <xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>.</t>
+      <t indent="0" pn="section-1-9">The objective of this Informational RFC is to document DCTCP as a new
+approach (which is known to be widely implemented and deployed) to
+address TCP congestion control in data centers.  The IETF TCPM
+Working Group reached consensus regarding the fact that a DCTCP
+standard would require further work.  A precise documentation of
+running code enables follow-up Experimental or Standards Track RFCs
+through the IETF stream.</t>
+      <t indent="0" pn="section-1-10">This document describes DCTCP as implemented in Microsoft Windows
+Server 2012 <xref target="WINDOWS" format="default" sectionFormat="of" derivedContent="WINDOWS"/>.  The Linux <xref target="LINUX" format="default" sectionFormat="of" derivedContent="LINUX"/> and FreeBSD <xref target="FREEBSD" format="default" sectionFormat="of" derivedContent="FREEBSD"/>
+operating systems have also implemented support for DCTCP in a way
+that is believed to follow this document.  Deployment experiences
+with DCTCP have been documented in <xref target="MORGANSTANLEY" format="default" sectionFormat="of" derivedContent="MORGANSTANLEY"/>.</t>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">Terminology</name>
+      <t indent="0" pn="section-2-1">The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;,
+&quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;, &quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>NOT RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and
+&quot;<bcp14>OPTIONAL</bcp14>&quot; in this document are to be interpreted as described in
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/> when, and only when, they appear in all
+capitals, as shown here.</t>
+      <t indent="0" pn="section-2-2">Normative language is used to describe how necessary the various
+aspects of a DCTCP implementation are for interoperability, but even
+compliant implementations without the measures in Sections 4-6 would
+still only be safe to deploy in controlled environments, i.e., not
+over the public Internet.</t>
+    </section>
+    <section anchor="dctcp-algorithm" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-dctcp-algorithm">DCTCP Algorithm</name>
+      <t indent="0" pn="section-3-1">There are three components involved in the DCTCP algorithm:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-2">
+        <li pn="section-3-2.1">The switches (or other intermediate devices in the network) detect
+congestion and set the Congestion Encountered (CE) codepoint in
+the IP header.</li>
+        <li pn="section-3-2.2">The receiver echoes the congestion information back to the sender,
+using the ECN-Echo (ECE) flag in the TCP header.</li>
+        <li pn="section-3-2.3">The sender computes a congestion estimate and reacts by reducing
+the TCP congestion window (cwnd) accordingly.</li>
+      </ul>
+      <section anchor="marking-congestion-on-the-l3-switches-and-routers" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-marking-congestion-on-the-l3-switches-and-routers">Marking Congestion on the L3 Switches and Routers</name>
+        <t indent="0" pn="section-3.1-1">The Layer 3 (L3) switches and routers in a data-center fabric
+indicate congestion to the end nodes by setting the CE codepoint in
+the IP header as specified in <xref target="RFC3168" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3168#section-5" derivedContent="RFC3168"/>.  For example,
+the switches may be configured with a congestion threshold.  When a
+packet arrives at a switch and its queue length is greater than the
+congestion threshold, the switch sets the CE codepoint in the packet.
+For example, Section 3.4 of <xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/> suggests threshold marking with
+a threshold of K &gt; (RTT * C)/7, where C is the link rate in packets
+per second.  In typical deployments, the marking threshold is set to
+be a small value to maintain a short average queueing delay.
+However, the actual algorithm for marking congestion is an
+implementation detail of the switch and will generally not be known
+to the sender and receiver.  Therefore, the sender and receiver
+should not assume that a particular marking algorithm is implemented
+by the switching fabric.</t>
+      </section>
+      <section anchor="echoing-congestion-information-on-the-receiver" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-echoing-congestion-information-on-the-receiver">Echoing Congestion Information on the Receiver</name>
+        <t indent="0" pn="section-3.2-1">According to <xref target="RFC3168" section="6.1.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3168#section-6.1.3" derivedContent="RFC3168"/>, the receiver sets the ECE
+flag if any of the packets being acknowledged had the CE codepoint
+set.  The receiver then continues to set the ECE flag until it
+receives a packet with the Congestion Window Reduced (CWR) flag set.
+However, the DCTCP algorithm requires more-detailed congestion
+information.  In particular, the sender must be able to determine the
+number of bytes sent that encountered congestion.  Thus, the scheme
+described in <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> does not suffice.</t>
+        <t indent="0" pn="section-3.2-2">One possible solution is to ACK every packet and set the ECE flag in
+the ACK if and only if the CE codepoint was set in the packet being
+acknowledged.  However, this prevents the use of delayed ACKs, which
+are an important performance optimization in data centers.  If the
+delayed ACK frequency is n, then an ACK is generated every n packets.
+The typical value of n is 2, but it could be affected by ACK
+throttling or packet-coalescing techniques designed to improve
+performance.</t>
+        <t indent="0" pn="section-3.2-3">Instead, DCTCP introduces a new Boolean TCP state variable, DCTCP
+Congestion Encountered (DCTCP.CE), which is initialized to false and
+stored in the Transmission Control Block (TCB).  When sending an ACK,
+the ECE flag <bcp14>MUST</bcp14> be set if and only if DCTCP.CE is true.  When
+receiving packets, the CE codepoint <bcp14>MUST</bcp14> be processed as follows:</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-3.2-4">
+          <li pn="section-3.2-4.1" derivedCounter="1.">If the CE codepoint is set and DCTCP.CE is false, set DCTCP.CE to
+true and send an immediate ACK.</li>
+          <li pn="section-3.2-4.2" derivedCounter="2.">If the CE codepoint is not set and DCTCP.CE is true, set DCTCP.CE
+to false and send an immediate ACK.</li>
+          <li pn="section-3.2-4.3" derivedCounter="3.">Otherwise, ignore the CE codepoint.</li>
+        </ol>
+        <t indent="0" pn="section-3.2-5">Since the immediate ACK reflects the new DCTCP.CE state, it may
+acknowledge any previously unacknowledged packets in the old state.
+This can lead to an incorrect rate computation at the sender per
+<xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>.  To avoid this, an implementation <bcp14>MAY</bcp14> choose to send two
+ACKs: one for previously unacknowledged packets and another
+acknowledging the most recently received packet.</t>
+        <t indent="0" pn="section-3.2-6">Receiver handling of the CWR bit is also per <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> (including
+<xref target="Err3639" format="default" sectionFormat="of" derivedContent="Err3639"/>).  That is, on receipt of a segment with both the CE and
+CWR bits set, CWR is processed first and then CE is processed.</t>
+        <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-ack-generation-state-machine">ACK Generation State Machine</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-7.1"><![CDATA[
+                          Send immediate
+                          ACK with ECE=0
+              .-----.     .--------------.     .-----.
+ Send 1 ACK  /      v     v              |     |      \
+  for every |     .------------.    .------------.     | Send 1 ACK
+  n packets |     | DCTCP.CE=0 |    | DCTCP.CE=1 |     | for every
+ with ECE=0 |     '------------'    '------------'     | n packets
+             \      |     |              ^     ^      /  with ECE=1
+              '-----'     '--------------'     '-----'
+                           Send immediate
+                           ACK with ECE=1
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="processing-echoed-congestion-indications-on-the-sender" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-processing-echoed-congestion-indications-on-the-sender">Processing Echoed Congestion Indications on the Sender</name>
+        <t indent="0" pn="section-3.3-1">The sender estimates the fraction of bytes sent that encountered
+congestion.  The current estimate is stored in a new TCP state
+variable, DCTCP.Alpha, which is initialized to 1 and <bcp14>SHOULD</bcp14> be
+updated as follows:</t>
+        <artwork name="" type="" align="left" alt="" pn="section-3.3-2"><![CDATA[
+   DCTCP.Alpha = DCTCP.Alpha * (1 - g) + g * M
+]]></artwork>
+        <t indent="0" pn="section-3.3-3">where:</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.3-4">
+          <li pn="section-3.3-4.1">g is the estimation gain, a real number between 0 and 1.  The
+selection of g is left to the implementation.  See <xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/> for
+further considerations.</li>
+          <li pn="section-3.3-4.2">M is the fraction of bytes sent that encountered congestion during
+the previous observation window, where the observation window is
+chosen to be approximately the Round-Trip Time (RTT).  In
+particular, an observation window ends when all bytes in flight at
+the beginning of the window have been acknowledged.</li>
+        </ul>
+        <t indent="0" pn="section-3.3-5">In order to update DCTCP.Alpha, the TCP state variables defined in
+<xref target="RFC0793" format="default" sectionFormat="of" derivedContent="RFC0793"/> are used, and three additional TCP state variables are
+introduced:</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.3-6">
+          <li pn="section-3.3-6.1">DCTCP.WindowEnd: the TCP sequence number threshold when one
+observation window ends and another is to begin; initialized to
+SND.UNA.</li>
+          <li pn="section-3.3-6.2">DCTCP.BytesAcked: the number of sent bytes acknowledged during the
+current observation window; initialized to 0.</li>
+          <li pn="section-3.3-6.3">DCTCP.BytesMarked: the number of bytes sent during the current
+observation window that encountered congestion; initialized to 0.</li>
+        </ul>
+        <t indent="0" pn="section-3.3-7">The congestion estimator on the sender <bcp14>MUST</bcp14> process acceptable ACKs
+as follows:</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-3.3-8">
+          <li pn="section-3.3-8.1" derivedCounter="1.">
+            <t indent="0" pn="section-3.3-8.1.1">Compute the bytes acknowledged (TCP Selective Acknowledgment
+(SACK) options <xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/> are ignored for this computation):</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.1.2"><![CDATA[
+   BytesAcked = SEG.ACK - SND.UNA
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.2" derivedCounter="2.">
+            <t indent="0" pn="section-3.3-8.2.1">Update the bytes sent:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.2.2"><![CDATA[
+   DCTCP.BytesAcked += BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.3" derivedCounter="3.">
+            <t indent="0" pn="section-3.3-8.3.1">If the ECE flag is set, update the bytes marked:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.3.2"><![CDATA[
+   DCTCP.BytesMarked += BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.4" derivedCounter="4.">If the acknowledgment number is less than or equal to
+DCTCP.WindowEnd, stop processing.  Otherwise, the end of the
+observation window has been reached, so proceed to update the
+congestion estimate as follows:</li>
+          <li pn="section-3.3-8.5" derivedCounter="5.">
+            <t indent="0" pn="section-3.3-8.5.1">Compute the congestion level for the current observation window:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.5.2"><![CDATA[
+   M = DCTCP.BytesMarked / DCTCP.BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.6" derivedCounter="6.">
+            <t indent="0" pn="section-3.3-8.6.1">Update the congestion estimate:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.6.2"><![CDATA[
+   DCTCP.Alpha = DCTCP.Alpha * (1 - g) + g * M
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.7" derivedCounter="7.">
+            <t indent="0" pn="section-3.3-8.7.1">Determine the end of the next observation window:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.7.2"><![CDATA[
+   DCTCP.WindowEnd = SND.NXT
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.8" derivedCounter="8.">
+            <t indent="0" pn="section-3.3-8.8.1">Reset the byte counters:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.8.2"><![CDATA[
+   DCTCP.BytesAcked = DCTCP.BytesMarked = 0
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.9" derivedCounter="9.">
+            <t indent="0" pn="section-3.3-8.9.1">Rather than always halving the congestion window as described in
+<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>, the sender <bcp14>SHOULD</bcp14> update cwnd as follows:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.9.2"><![CDATA[
+   cwnd = cwnd * (1 - DCTCP.Alpha / 2)
+]]></artwork>
+          </li>
+        </ol>
+        <t indent="0" pn="section-3.3-9">Just as specified in <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>, DCTCP does not react to congestion
+indications more than once for every window of data.  The setting of
+the CWR bit is also as per <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>.  This is required for
+interoperation with classic ECN receivers due to potential
+misconfigurations.</t>
+      </section>
+      <section anchor="handling-of-congestion-window-growth" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-handling-of-congestion-window-growth">Handling of Congestion Window Growth</name>
+        <t indent="0" pn="section-3.4-1">A DCTCP sender grows its congestion window in the same way as
+conventional TCP.  Slow start and congestion avoidance algorithms are
+handled as specified in <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>.</t>
+      </section>
+      <section anchor="handling-of-packet-loss" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-handling-of-packet-loss">Handling of Packet Loss</name>
+        <t indent="0" pn="section-3.5-1">A DCTCP sender <bcp14>MUST</bcp14> react to loss episodes in the same way as
+conventional TCP, including fast retransmit and fast recovery
+algorithms, as specified in <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>.  For cases where the packet
+loss is inferred and not explicitly signaled by ECN, the cwnd and
+other state variables like ssthresh <bcp14>MUST</bcp14> be changed in the same way
+that a conventional TCP would have changed them.  As with ECN, a
+DCTCP sender will only reduce the cwnd once per window of data across
+all loss signals.  Just as specified in <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>, upon a timeout,
+the cwnd <bcp14>MUST</bcp14> be set to no more than the loss window (1 full-sized
+segment), regardless of previous cwnd reductions in a given window of
+data.</t>
+      </section>
+      <section anchor="handling-of-syn-syn-ack-and-rst-packets" numbered="true" removeInRFC="false" toc="include" pn="section-3.6">
+        <name slugifiedName="name-handling-of-syn-syn-ack-and-rst-packets">Handling of SYN, SYN-ACK, and RST Packets</name>
+        <t indent="0" pn="section-3.6-1">If SYN, SYN-ACK, and RST packets for DCTCP connections have the ECN-Capable
+Transport (ECT) codepoint set in the IP header, they will
+receive the same treatment as other DCTCP packets when forwarded by a
+switching fabric under load.  Lack of ECT in these packets can result
+in a higher drop rate, depending on the switching fabric
+configuration.  Hence, for DCTCP connections, the sender <bcp14>SHOULD</bcp14> set
+ECT for SYN, SYN-ACK, and RST packets.  A DCTCP receiver ignores CE
+codepoints set on any SYN, SYN-ACK, or RST packets.</t>
+      </section>
+    </section>
+    <section anchor="implementation-issues" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-implementation-issues">Implementation Issues</name>
+      <section anchor="configuration-of-dctcp" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-configuration-of-dctcp">Configuration of DCTCP</name>
+        <t indent="0" pn="section-4.1-1">An implementation needs to know when to use DCTCP.  Data-center
+servers may need to communicate with endpoints outside the data
+center, where DCTCP is unsuitable or unsupported.  Thus, a global
+configuration setting to enable DCTCP will generally not suffice.
+DCTCP provides no mechanism for negotiating its use.  Thus,
+additional management and configuration functionality is needed to
+ensure that DCTCP is not used with non-DCTCP endpoints.</t>
+        <t indent="0" pn="section-4.1-2">Known solutions rely on either configuration or heuristics.
+Heuristics need to allow endpoints to individually enable DCTCP to
+ensure a DCTCP sender is always paired with a DCTCP receiver.  One
+approach is to enable DCTCP based on the IP address of the remote
+endpoint.  Another approach is to detect connections that transmit
+within the bounds of a data center.  For example, an implementation
+could support automatic selection of DCTCP if the estimated RTT is
+less than a threshold (like 10 msec) and ECN is successfully
+negotiated under the assumption that if the RTT is low, then the two
+endpoints are likely in the same data-center network.</t>
+        <t indent="0" pn="section-4.1-3"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> forbids the ECN-marking of pure ACK packets because of the
+inability of TCP to mitigate ACK-path congestion.  RFC 3168 also
+forbids ECN-marking of retransmissions, window probes, and RSTs.
+However, dropping all these control packets -- rather than ECN-marking
+them -- has considerable performance disadvantages.  It is
+<bcp14>RECOMMENDED</bcp14> that an implementation provide a configuration knob that
+will cause ECT to be set on such control packets, which can be used
+in environments where such concerns do not apply.  See
+<xref target="ECN-EXPERIMENTATION" format="default" sectionFormat="of" derivedContent="ECN-EXPERIMENTATION"/> for details.</t>
+        <t indent="0" pn="section-4.1-4">It is useful to implement DCTCP as an additional action on top of an
+existing congestion control algorithm like Reno <xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>.  The DCTCP
+implementation <bcp14>MAY</bcp14> also allow configuration of resetting the value of
+DCTCP.Alpha as part of processing any loss episodes.</t>
+      </section>
+      <section anchor="computation-of-dctcp.alpha" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-computation-of-dctcp.alpha">Computation of DCTCP.Alpha</name>
+        <t indent="0" pn="section-4.2-1">As noted in <xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>, the implementation will need to choose a
+suitable estimation gain.  <xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/> provides a theoretical basis for
+selecting the gain.  However, it may be more practical to use
+experimentation to select a suitable gain for a particular network
+and workload.  A fixed estimation gain of 1/16 is used in some
+implementations.  (It should be noted that values of 0 or 1 for g
+result in problematic behavior; g=0 fixes DCTCP.Alpha to its initial
+value, and g=1 sets it to M without any smoothing.)</t>
+        <t indent="0" pn="section-4.2-2">The DCTCP.Alpha computation as per the formula in <xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>
+involves fractions.  An efficient kernel implementation <bcp14>MAY</bcp14> scale the
+DCTCP.Alpha value for efficient computation using shift operations.
+For example, if the implementation chooses g as 1/16, multiplications
+of DCTCP.Alpha by g become right-shifts by 4.  A scaling
+implementation <bcp14>SHOULD</bcp14> ensure that DCTCP.Alpha is able to reach 0 once
+it falls below the smallest shifted value (16 in the above example).
+At the other extreme, a scaled update needs to ensure DCTCP.Alpha
+does not exceed the scaling factor, which would be equivalent to
+greater than 100% congestion.  So, DCTCP.Alpha <bcp14>MUST</bcp14> be clamped after
+an update.</t>
+        <t indent="0" pn="section-4.2-3">This results in the following computations replacing steps 5 and 6 in
+<xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>, where SCF is the chosen scaling factor (65536 in the
+example), and SHF is the shift factor (4 in the example):</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-4.2-4">
+          <li pn="section-4.2-4.1" derivedCounter="1.">
+            <t indent="0" pn="section-4.2-4.1.1">Compute the congestion level for the current observation window:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-4.2-4.1.2"><![CDATA[
+   ScaledM = SCF * DCTCP.BytesMarked / DCTCP.BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-4.2-4.2" derivedCounter="2.">
+            <t indent="0" pn="section-4.2-4.2.1">Update the congestion estimate:</t>
+            <artwork name="" type="" align="left" alt="" pn="section-4.2-4.2.2"><![CDATA[
+   if (DCTCP.Alpha >> SHF) == 0, then DCTCP.Alpha = 0
+
+   DCTCP.Alpha += (ScaledM >> SHF) - (DCTCP.Alpha >> SHF)
+
+   if DCTCP.Alpha > SCF, then DCTCP.Alpha = SCF
+]]></artwork>
+          </li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="deployment-issues" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-deployment-issues">Deployment Issues</name>
+      <t indent="0" pn="section-5-1">DCTCP and conventional TCP congestion control do not coexist well in
+the same network.  In typical DCTCP deployments, the marking
+threshold in the switching fabric is set to a very low value to
+reduce queueing delay, and a relatively small amount of congestion
+will exceed the marking threshold.  During such periods of
+congestion, conventional TCP will suffer packet loss and quickly and
+drastically reduce cwnd.  DCTCP, on the other hand, will use the
+fraction of marked packets to reduce cwnd more gradually.  Thus, the
+rate reduction in DCTCP will be much slower than that of conventional
+TCP, and DCTCP traffic will gain a larger share of the capacity
+compared to conventional TCP traffic traversing the same path.  If
+the traffic in the data center is a mix of conventional TCP and
+DCTCP, it is <bcp14>RECOMMENDED</bcp14> that DCTCP traffic be segregated from
+conventional TCP traffic.  <xref target="MORGANSTANLEY" format="default" sectionFormat="of" derivedContent="MORGANSTANLEY"/> describes a deployment
+that uses the IP Differentiated Services Codepoint (DSCP) bits to
+segregate the network such that Active Queue Management (AQM)
+<xref target="RFC7567" format="default" sectionFormat="of" derivedContent="RFC7567"/> is applied to DCTCP traffic, whereas TCP traffic is managed
+via drop-tail queueing.</t>
+      <t indent="0" pn="section-5-2">Deployments should take into account segregation of non-TCP traffic
+as well.  Today's commodity switches allow configuration of different
+marking/drop profiles for non-TCP and non-IP packets.  Non-TCP and
+non-IP packets should be able to pass through such switches, unless
+they really run out of buffer space.</t>
+      <t indent="0" pn="section-5-3">Since DCTCP relies on congestion marking by the switches, DCTCP's
+potential can only be realized in data centers where the entire
+network infrastructure supports ECN.  The switches may also support
+configuration of the congestion threshold used for marking.  The
+proposed parameterization can be configured with switches that
+implement Random Early Detection (RED) <xref target="RFC2309" format="default" sectionFormat="of" derivedContent="RFC2309"/>.  <xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/> provides
+a theoretical basis for selecting the congestion threshold, but, as
+with the estimation gain, it may be more practical to rely on
+experimentation or simply to use the default configuration of the
+device.  DCTCP will revert to loss-based congestion control when
+packet loss is experienced (e.g., when transiting a congested drop-tail
+link, or a link with an AQM drop behavior).</t>
+      <t indent="0" pn="section-5-4">DCTCP requires changes on both the sender and the receiver, so both
+endpoints must support DCTCP.  Furthermore, DCTCP provides no
+mechanism for negotiating its use, so both endpoints must be
+configured through some out-of-band mechanism to use DCTCP.  A
+variant of DCTCP that can be deployed unilaterally and that only
+requires standard ECN behavior has been described in <xref target="ODCTCP" format="default" sectionFormat="of" derivedContent="ODCTCP"/> and
+<xref target="BSDCAN" format="default" sectionFormat="of" derivedContent="BSDCAN"/>, but it requires additional experimental evaluation.</t>
+    </section>
+    <section anchor="known-issues" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-known-issues">Known Issues</name>
+      <t indent="0" pn="section-6-1">DCTCP relies on the sender's ability to reconstruct the stream of CE
+codepoints received by the remote endpoint.  To accomplish this,
+DCTCP avoids using a single ACK packet to acknowledge segments
+received both with and without the CE codepoint set.  However, if one
+or more ACK packets are dropped, it is possible that a subsequent ACK
+will cumulatively acknowledge a mix of CE and non-CE segments.  This
+will, of course, result in a less-accurate congestion estimate.
+There are some potential considerations:</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6-2">
+        <li pn="section-6-2.1">Even with an inaccurate congestion estimate, DCTCP may still
+perform better than <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>.</li>
+        <li pn="section-6-2.2">If the estimation gain is small relative to the packet loss rate,
+the estimate may not be too inaccurate.</li>
+        <li pn="section-6-2.3">If ACK packet loss mostly occurs under heavy congestion, most
+drops will occur during an unbroken string of CE packets, and the
+estimate will be unaffected.</li>
+      </ul>
+      <t indent="0" pn="section-6-3">However, the effect of packet drops on DCTCP under real-world
+conditions has not been analyzed.</t>
+      <t indent="0" pn="section-6-4">DCTCP provides no mechanism for negotiating its use.  The effect of
+using DCTCP with a standard ECN endpoint has been analyzed in
+<xref target="ODCTCP" format="default" sectionFormat="of" derivedContent="ODCTCP"/> and <xref target="BSDCAN" format="default" sectionFormat="of" derivedContent="BSDCAN"/>.  Furthermore, it is possible that other
+implementations may also modify behavior in the <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> style
+without negotiation, causing further interoperability issues.</t>
+      <t indent="0" pn="section-6-5">Much like standard TCP, DCTCP is biased against flows with longer
+RTTs.  A method for improving the RTT fairness of DCTCP has been
+proposed in <xref target="ADCTCP" format="default" sectionFormat="of" derivedContent="ADCTCP"/>, but it requires additional experimental
+evaluation.</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-7-1">DCTCP enhances ECN; thus, it inherits the general security
+considerations discussed in <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>, although additional mitigation
+options exist due to the limited intra-data-center deployment of
+DCTCP.</t>
+      <t indent="0" pn="section-7-2">The processing changes introduced by DCTCP do not exacerbate the
+considerations in <xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> or introduce new ones.  In particular,
+with either algorithm, the network infrastructure or the remote
+endpoint can falsely report congestion and, thus, cause the sender to
+reduce cwnd.  However, this is no worse than what can be achieved by
+simply dropping packets.</t>
+      <t indent="0" pn="section-7-3"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/> requires that a compliant TCP must not set ECT on SYN or
+SYN-ACK packets.  <xref target="RFC5562" format="default" sectionFormat="of" derivedContent="RFC5562"/> proposes setting ECT on SYN-ACK packets
+but maintains the restriction of no ECT on SYN packets.  Both these
+RFCs prohibit ECT in SYN packets due to security concerns regarding
+malicious SYN packets with ECT set.  However, these RFCs are intended
+for general Internet use; they do not directly apply to a controlled
+data-center environment.  The security concerns addressed by both of
+these RFCs might not apply in controlled environments like data
+centers, and it might not be necessary to account for the presence of
+non-ECN servers.  Beyond the security considerations related to
+virtual servers, additional security can be imposed in the physical
+servers to intercept and drop traffic resembling an attack.</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANA Considerations</name>
+      <t indent="0" pn="section-8-1">This document does not require any IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">References</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">Normative References</name>
+        <reference anchor="RFC0793" target="https://www.rfc-editor.org/info/rfc793" quoteTitle="true" derivedAnchor="RFC0793">
+          <front>
+            <title>Transmission Control Protocol</title>
+            <author fullname="J. Postel" initials="J." surname="Postel"/>
+            <date year="1981" month="September"/>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="793"/>
+          <seriesInfo name="DOI" value="10.17487/RFC0793"/>
+        </reference>
+        <reference anchor="RFC2018" target="https://www.rfc-editor.org/info/rfc2018" quoteTitle="true" derivedAnchor="RFC2018">
+          <front>
+            <title>TCP Selective Acknowledgment Options</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="J. Mahdavi" initials="J." surname="Mahdavi"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="A. Romanow" initials="A." surname="Romanow"/>
+            <date year="1996" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="2018"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2018"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC5562" target="https://www.rfc-editor.org/info/rfc5562" quoteTitle="true" derivedAnchor="RFC5562">
+          <front>
+            <title>Adding Explicit Congestion Notification (ECN) Capability to TCP's SYN/ACK Packets</title>
+            <author fullname="A. Kuzmanovic" initials="A." surname="Kuzmanovic"/>
+            <author fullname="A. Mondal" initials="A." surname="Mondal"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <date year="2009" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="5562"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5562"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date year="2009" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">Informative References</name>
+        <reference anchor="ADCTCP" target="https://dl.acm.org/citation.cfm?id=1993753" quoteTitle="true" derivedAnchor="ADCTCP">
+          <front>
+            <title>Analysis of DCTCP: Stability, Convergence, and Fairness</title>
+            <author fullname="M. Alizadeh" initials="M." surname="Alizadeh"/>
+            <author fullname="A. Javanmard" initials="A." surname="Javanmard"/>
+            <author fullname="B. Prabhakar" initials="B." surname="Prabhakar"/>
+            <date year="2011" month="June"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/1993744.1993753"/>
+          <refcontent>Proceedings of the ACM SIGMETRICS Joint International Conference on Measurement and Modeling of Computer Systems</refcontent>
+        </reference>
+        <reference anchor="BSDCAN" target="https://www.bsdcan.org/2015/schedule/events/559.en.html" quoteTitle="true" derivedAnchor="BSDCAN">
+          <front>
+            <title>Extensions to FreeBSD Datacenter TCP for Incremental Deployment Support</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="A. Zimmermann" initials="A." surname="Zimmermann"/>
+            <author fullname="R. van Meter" initials="R." surname="van Meter"/>
+            <author fullname="H. Tokuda" initials="H." surname="Tokuda"/>
+            <date year="2015" month="June"/>
+          </front>
+          <refcontent>BSDCan 2015</refcontent>
+        </reference>
+        <reference anchor="DCTCP10" target="http://dl.acm.org/citation.cfm?doid=1851182.1851192" quoteTitle="true" derivedAnchor="DCTCP10">
+          <front>
+            <title>Data Center TCP (DCTCP)</title>
+            <author fullname="M. Alizadeh" initials="M." surname="Alizadeh"/>
+            <author fullname="A. Greenberg" initials="A." surname="Greenberg"/>
+            <author fullname="D. Maltz" initials="D." surname="Maltz"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="P. Patel" initials="P." surname="Patel"/>
+            <author fullname="B. Prabhakar" initials="B." surname="Prabhakar"/>
+            <author fullname="S. Sengupta" initials="S." surname="Sengupta"/>
+            <author fullname="M. Sridharan" initials="M." surname="Sridharan"/>
+            <date year="2010" month="August"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/1851182.1851192"/>
+          <refcontent>Proceedings of the ACM SIGCOMM 2010 Conference</refcontent>
+        </reference>
+        <reference anchor="ECN-EXPERIMENTATION" quoteTitle="true" derivedAnchor="ECN-EXPERIMENTATION">
+          <front>
+            <title>Explicit Congestion Notification (ECN) Experimentation</title>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2017" month="September"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tsvwg-ecn-experimentation-06"/>
+        </reference>
+        <reference anchor="Err3639" target="https://www.rfc-editor.org/errata/eid3639" quoteTitle="true" derivedAnchor="Err3639">
+          <front>
+            <title>Erratum ID 3639</title>
+            <author>
+              <organization showOnFrontPage="true">RFC Errata</organization>
+            </author>
+          </front>
+          <refcontent>RFC 3168</refcontent>
+        </reference>
+        <reference anchor="FREEBSD" target="https://github.com/freebsd/freebsd/commit/8ad879445281027858a7fa706d13e458095b595f" quoteTitle="true" derivedAnchor="FREEBSD">
+          <front>
+            <title>DCTCP (Data Center TCP) implementation</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <author fullname="H. Panchasara" initials="H." surname="Panchasara"/>
+            <date year="2015" month="January"/>
+          </front>
+        </reference>
+        <reference anchor="LINUX" target="https://git.kernel.org/cgit/linux/kernel/git/davem/net-next.git/commit/?id=e3118e8359bb7c59555aca60c725106e6d78c5ce" quoteTitle="true" derivedAnchor="LINUX">
+          <front>
+            <title>net: tcp: add DCTCP congestion control algorithm</title>
+            <author fullname="D. Borkmann" initials="D." surname="Borkmann"/>
+            <author fullname="F. Westphal" initials="F." surname="Westphal"/>
+            <author fullname="Glenn. Judd" initials="Glenn." surname="Judd"/>
+            <date year="2014" month="September"/>
+          </front>
+          <refcontent>LINUX DCTCP Patch</refcontent>
+        </reference>
+        <reference anchor="MAPREDUCE" target="https://www.usenix.org/legacy/publications/library/proceedings/osdi04/tech/dean.html" quoteTitle="true" derivedAnchor="MAPREDUCE">
+          <front>
+            <title>MapReduce: Simplified Data Processing on Large Clusters</title>
+            <author fullname="J. Dean" initials="J." surname="Dean"/>
+            <author fullname="S. Ghemawat" initials="S." surname="Ghemawat"/>
+            <date year="2004" month="October"/>
+          </front>
+          <refcontent>Proceedings of the 6th ACM/USENIX Symposium on Operating Systems Design and Implementation</refcontent>
+        </reference>
+        <reference anchor="MORGANSTANLEY" target="https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/judd" quoteTitle="true" derivedAnchor="MORGANSTANLEY">
+          <front>
+            <title>Attaining the Promise and Avoiding the Pitfalls of TCP in the Datacenter</title>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date year="2015" month="May"/>
+          </front>
+          <refcontent>Proceedings of the 12th USENIX Symposium on Networked Systems Design and Implementation</refcontent>
+        </reference>
+        <reference anchor="ODCTCP" target="http://eggert.org/students/kato-thesis.pdf" quoteTitle="true" derivedAnchor="ODCTCP">
+          <front>
+            <title>Improving Transmission Performance with One-Sided Datacenter TCP</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <date year="2013"/>
+          </front>
+          <refcontent>M.S. Thesis, Keio University</refcontent>
+        </reference>
+        <reference anchor="RFC2309" target="https://www.rfc-editor.org/info/rfc2309" quoteTitle="true" derivedAnchor="RFC2309">
+          <front>
+            <title>Recommendations on Queue Management and Congestion Avoidance in the Internet</title>
+            <author fullname="B. Braden" initials="B." surname="Braden"/>
+            <author fullname="D. Clark" initials="D." surname="Clark"/>
+            <author fullname="J. Crowcroft" initials="J." surname="Crowcroft"/>
+            <author fullname="B. Davie" initials="B." surname="Davie"/>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <author fullname="D. Estrin" initials="D." surname="Estrin"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <author fullname="G. Minshall" initials="G." surname="Minshall"/>
+            <author fullname="C. Partridge" initials="C." surname="Partridge"/>
+            <author fullname="L. Peterson" initials="L." surname="Peterson"/>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Shenker" initials="S." surname="Shenker"/>
+            <author fullname="J. Wroclawski" initials="J." surname="Wroclawski"/>
+            <author fullname="L. Zhang" initials="L." surname="Zhang"/>
+            <date year="1998" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="2309"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2309"/>
+        </reference>
+        <reference anchor="RFC7567" target="https://www.rfc-editor.org/info/rfc7567" quoteTitle="true" derivedAnchor="RFC7567">
+          <front>
+            <title>IETF Recommendations Regarding Active Queue Management</title>
+            <author fullname="F. Baker" initials="F." surname="Baker" role="editor"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst" role="editor"/>
+            <date year="2015" month="July"/>
+          </front>
+          <seriesInfo name="BCP" value="197"/>
+          <seriesInfo name="RFC" value="7567"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7567"/>
+        </reference>
+        <reference anchor="WINDOWS" target="https://technet.microsoft.com/en-us/library/hh997028(v=ws.11).aspx" quoteTitle="true" derivedAnchor="WINDOWS">
+          <front>
+            <title>Data Center Transmission Control Protocol (DCTCP)</title>
+            <author>
+              <organization showOnFrontPage="true">Microsoft</organization>
+            </author>
+            <date year="2012" month="May"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">Acknowledgments</name>
+      <t indent="0" pn="section-appendix.a-1">The DCTCP algorithm was originally proposed and analyzed in <xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/>
+by Mohammad Alizadeh, Albert Greenberg, Dave Maltz, Jitu Padhye,
+Parveen Patel, Balaji Prabhakar, Sudipta Sengupta, and Murari
+Sridharan.</t>
+      <t indent="0" pn="section-appendix.a-2">We would like to thank Andrew Shewmaker for identifying the problem
+of clamping DCTCP.Alpha and proposing a solution for it.</t>
+      <t indent="0" pn="section-appendix.a-3">Lars Eggert has received funding from the European Union's Horizon
+2020 research and innovation program 2014-2018 under grant agreement
+No. 644866 ("SSICLOPS").  This document reflects only the authors'
+views and the European Commission is not responsible for any use that
+may be made of the information it contains.</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">Authors' Addresses</name>
+      <author fullname="Stephen Bensley" initials="S." surname="Bensley">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <postal>
+            <street>One Microsoft Way</street>
+            <city>Redmond</city>
+            <region>WA</region>
+            <code>98052</code>
+            <country>United States of America</country>
+          </postal>
+          <phone>+1 425 703 5570</phone>
+          <email>sbens@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Dave Thaler" initials="D." surname="Thaler">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <phone>+1 425 703 8835</phone>
+          <email>dthaler@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Praveen Balasubramanian" initials="P." surname="Balasubramanian">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <phone>+1 425 538 2782</phone>
+          <email>pravb@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Lars Eggert" initials="L." surname="Eggert">
+        <organization showOnFrontPage="true">NetApp</organization>
+        <address>
+          <postal>
+            <street>Sonnenallee 1</street>
+            <city>Kirchheim</city>
+            <code>85551</code>
+            <country>Germany</country>
+          </postal>
+          <phone>+49 151 120 55791</phone>
+          <email>lars@netapp.com</email>
+          <uri>http://eggert.org/</uri>
+        </address>
+      </author>
+      <author fullname="Glenn Judd" initials="G." surname="Judd">
+        <organization showOnFrontPage="true">Morgan Stanley</organization>
+        <address>
+          <phone>+1 973 979 6481</phone>
+          <email>glenn.judd@morganstanley.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

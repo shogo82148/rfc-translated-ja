@@ -1,0 +1,985 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-bier-architecture-08" indexInclude="true" number="8279" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-bier-architecture-08" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8279" rel="alternate"/>
+  <front>
+    <title>ビットインデックス明示的複製（BIER）を用いたマルチキャスト</title>
+    <seriesInfo name="RFC" value="8279" stream="IETF"/>
+    <date year="2017" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この文書は、マルチキャストデータパケットを転送するための新しいアーキテクチャーを規定します。このアーキテクチャーは、「マルチキャストドメイン」を通じたマルチキャストパケットの最適な転送を提供します。しかし、マルチキャスト配信ツリーを明示的に構築するためのプロトコルを必要とせず、中間ノードにフローごとの状態を維持させる必要もありません。このアーキテクチャーは「ビットインデックス明示的複製（Bit Index Explicit Replication）」（BIER）と呼ばれます。マルチキャストデータパケットがドメインに入ると、入口ルーターはそのパケットを送信する必要がある出口ルーターの集合を決定します。次に、入口ルーターはそのパケットをBIERヘッダーでカプセル化します。BIERヘッダーにはビット列が含まれており、その各ビットはドメイン内のちょうど1つの出口ルーターを表します。パケットを特定の出口ルーターの集合に転送するには、それらのルーターに対応するビットをBIERヘッダー内でセットします。BIERヘッダーに基づいてパケットを転送する手順は、この文書で規定します。フローごとの状態と明示的なツリー構築プロトコルをなくすことで、大幅な簡素化が実現されます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+https://www.rfc-editor.org/info/rfc8279で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bfr-identifier-and-bfr-prefix">BFR識別子とBFR-Prefix</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-encoding-bfr-identifiers-in-bitstrings">BitStringにおけるBFR識別子の符号化</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-layering">階層化</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-routing-underlay">ルーティングアンダーレイ</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-layer">BIER層</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-multicast-flow-overlay">マルチキャストフローオーバーレイ</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-advertising-bfr-ids-and-bfr-prefixes">BFR-idとBFR-Prefixの広告</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bier-intra-domain-forwarding-procedures">BIERのドメイン内転送手順</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+            <li pn="section-toc.1-1.6.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bfr-neighbors">BFR近隣</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bit-index-routing-table">ビットインデックスルーティングテーブル</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.4.1"><xref derivedContent="6.4" format="counter" sectionFormat="of" target="section-6.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bit-index-forwarding-table">ビットインデックス転送テーブル</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.5.1"><xref derivedContent="6.5" format="counter" sectionFormat="of" target="section-6.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-bier-forwarding-procedure">BIER転送手順</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.6.1"><xref derivedContent="6.6" format="counter" sectionFormat="of" target="section-6.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-examples-of-bier-forwarding">BIER転送の例</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.6.2">
+              <li pn="section-toc.1-1.6.6.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.6.1.1"><xref derivedContent="6.6.1" format="counter" sectionFormat="of" target="section-6.6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-1">例1</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.6.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.6.2.1"><xref derivedContent="6.6.2" format="counter" sectionFormat="of" target="section-6.6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-example-2">例2</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.6.7">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.7.1"><xref derivedContent="6.7" format="counter" sectionFormat="of" target="section-6.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-equal-cost-multipath-forwarding">等コストマルチパス転送</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.7.2">
+              <li pn="section-toc.1-1.6.7.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.7.1.1"><xref derivedContent="6.7.1" format="counter" sectionFormat="of" target="section-6.7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-non-deterministic-ecmp">非決定的ECMP</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.7.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.7.2.1"><xref derivedContent="6.7.2" format="counter" sectionFormat="of" target="section-6.7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deterministic-ecmp">決定的ECMP</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.6.8">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.8.1"><xref derivedContent="6.8" format="counter" sectionFormat="of" target="section-6.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-prevention-of-loops-and-duplicates">ループと重複の防止</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.9">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.9.1"><xref derivedContent="6.9" format="counter" sectionFormat="of" target="section-6.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-when-some-nodes-do-not-support-bier">一部のノードがBIERをサポートしない場合</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.10">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.10.1"><xref derivedContent="6.10" format="counter" sectionFormat="of" target="section-6.10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-use-of-different-bitstringlengths-within-a-domain">ドメイン内での異なるBitStringLengthの使用</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.10.2">
+              <li pn="section-toc.1-1.6.10.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.10.1.1"><xref derivedContent="6.10.1" format="counter" sectionFormat="of" target="section-6.10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-bitstringlength-compatibility-check">BitStringLength互換性チェック</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.10.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.10.2.1"><xref derivedContent="6.10.2" format="counter" sectionFormat="of" target="section-6.10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-bitstringlength-mismatches">BitStringLengthの不一致の処理</xref></t>
+              </li>
+              <li pn="section-toc.1-1.6.10.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.10.3.1"><xref derivedContent="6.10.3" format="counter" sectionFormat="of" target="section-6.10.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-transitioning-from-one-bitstringlength-to-another">あるBitStringLengthから別のBitStringLengthへの移行</xref></t>
+              </li>
+              </ul>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-operational-considerations">運用上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+            <li pn="section-toc.1-1.7.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-configuration">設定</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-contributors">貢献者</xref></t>
+          </li>
+          <li pn="section-toc.1-1.c">
+            <t indent="0" pn="section-toc.1-1.c.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.c"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">この文書は、マルチキャストデータパケットを転送するための新しいアーキテクチャーを規定します。このアーキテクチャーは、「マルチキャストドメイン」を通じたマルチキャストデータパケットの最適な転送を提供します。しかし、マルチキャスト配信ツリーを明示的に構築するためのプロトコルの使用を必要とせず、中間ノードにフローごとの状態を維持させる必要もありません。このアーキテクチャーは「ビットインデックス明示的複製（Bit Index Explicit Replication）」（BIER）と呼ばれます。</t>
+      <t indent="0" pn="section-1-2">BIERをサポートするルーターは「ビット転送ルーター（Bit-Forwarding Router）」（BFR）と呼ばれます。BIERのコントロールプレーンプロトコル（<xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>を参照）は「BIERドメイン」内で動作し、そのドメイン内のBFRが、BIERを使って互いにパケットを転送するのに必要な情報を交換できるようにします。</t>
+      <t indent="0" pn="section-1-3">マルチキャストデータパケットは、「ビット転送入口ルーター（Bit-Forwarding Ingress Router）」（BFIR）でBIERドメインに入り、1つ以上の「ビット転送出口ルーター（Bit-Forwarding Egress Router）」（BFER）でBIERドメインから出ます。同じBIERドメイン内の別のBFRからマルチキャストデータパケットを受信し、そのパケットを同じBIERドメイン内のさらに別のBFRに転送するBFRを、そのパケットについての「トランジットBFR」と呼びます。1つのBFRが、あるマルチキャストトラフィックについてはBFIRであり、同時に別のマルチキャストトラフィックについてはBFERであり、さらに別のマルチキャストトラフィックについてはトランジットBFRであることもあります。実際、ある特定のパケットについて、BFRがBFIR、トランジットBFR、そのパケットのBFER（の1つ）のうちの1つ以上を兼ねることもあります。</t>
+      <t indent="0" pn="section-1-4">BIERドメインには、1つ以上のサブドメインを含めることができます。各BIERドメインは、少なくとも1つのサブドメイン、すなわち「デフォルトサブドメイン」（「サブドメイン0」とも表記します）を含ま<bcp14>なければなりません（MUST）</bcp14>。BIERドメインが複数のサブドメインを含む場合、ドメイン内の各BFRは、自身が属するサブドメインの集合を認識するようにプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。各サブドメインは、[0,255]の範囲のsub-domain-idによって識別されます。</t>
+      <t indent="0" pn="section-1-5">あるBFRが属する各サブドメインについて、そのBFRがBFIRまたはBFERとして動作できる場合、そのBFRには、そのサブドメイン内で一意な「BFR-id」がプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。BFR-idは、構造を持たない小さな正の整数です。たとえば、あるBIERサブドメインに1,374個のBFRが含まれる場合、それぞれに[1,1374]の範囲のBFR-idを与えることができます。</t>
+      <t indent="0" pn="section-1-6">あるBFRが複数のサブドメインに属する場合、そのBFRはサブドメインごとに異なるBFR-idを持つこともできます（必ずしもそうする必要はありません）。</t>
+      <t indent="0" pn="section-1-7">マルチキャストパケットがドメインの外部からBFIRに到着すると、BFIRはそのパケットの送信先となるBFERの集合を決定します。BFIRは、そのパケットを送信するサブドメインも決定します。あるパケットを送信するサブドメインを決定することを、「パケットをサブドメインに割り当てる」と呼びます。特定のパケットを割り当てるサブドメインを選択する手順は、この文書の範囲外です。ただし、特定のパケットがいったん特定のサブドメインに割り当てられると、そのパケットはBIERドメインから出るまでそのサブドメインに割り当てられたままです。つまり、パケットがBIERドメインを通過している間、そのパケットが割り当てられたサブドメインを変更しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      <t indent="0" pn="section-1-8">BFIRは、あるパケットについてサブドメインとBFERの集合を決定すると、そのパケットを「BIERヘッダー」でカプセル化します。BIERヘッダーにはビット列が含まれており、その各ビットは1つのBFR-idを表します。特定のBFERがあるパケットを受信すべきであることを示すために、BFIRは、パケットが割り当てられたサブドメインにおけるそのBFERのBFR-idに対応するビットをセットします。BIERヘッダー内のビット列フィールドを指すのに「BitString」という用語を使います。また、カプセル化されたパケットを指すのに「ペイロード」という用語を使います。したがって、「BIERでカプセル化された」パケットは、「BIERヘッダー」とそれに続く「ペイロード」から構成されます。</t>
+      <t indent="0" pn="section-1-9">あるパケットを転送できるBFERの数は、BIERヘッダー内のBitStringの長さによってのみ制限されます。展開によって異なるBitStringの長さを使うことができます。BitStringのビット数を指すのに「BitStringLength」という用語を使います。展開によっては、あるサブドメイン内のBFERの数がBitStringのビット数よりも多くなる可能性があります。この場合に対応するため、BIERカプセル化には、BitStringと「セット識別子（Set Identifier）」（SI）の両方が含まれます。あるパケットを配送するBFERの集合を決定するのは、BitStringとSIの組み合わせです。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-10">
+        <li pn="section-1-10.1">慣例により、BitStringの最下位（最も右）のビットを「ビット1」とし、最上位（最も左）のビットを「ビットBitStringLength」とします。</li>
+        <li pn="section-1-10.2">BIERでカプセル化されたパケットのSIがnで、BitStringのビットkがセットされている場合、そのパケットは、（パケットが割り当てられたサブドメインにおける）BFR-idがn*BitStringLength+kであるBFERに配送されなければなりません。</li>
+      </ul>
+      <t indent="0" pn="section-1-11">たとえば、BIERカプセル化で256ビットのBitStringLengthを使うとします。慣例により、最下位（最も右）のビットがビット1、最上位（最も左）のビットがビット256です。あるパケットがサブドメイン0に割り当てられており、3つのBFERに配送する必要があり、それらのBFERのサブドメイン0におけるBFR-idがそれぞれ13、126、235であるとします。BFIRは、SIを0に設定し、BitStringのビット13、126、235をセットしたBIERカプセル化を作成します（BitStringのその他のビットはすべてクリアされます）。そのパケットをBFR-idが257のBFERにも送信する必要がある場合、BFIRはパケットの2つ目のコピーを作成しなければならず、そのBIERカプセル化では、SIを1とし、BitStringのビット1をセットしてその他のビットをすべてクリアします。</t>
+      <t indent="0" pn="section-1-12">一般に、できるだけ多くのBFERを1つのビット列で表せるように、あるサブドメインのBFR-idを割り当てると有利です。</t>
+      <t indent="0" pn="section-1-13">あるBFR（「BFR-A」と呼びます）が、BIERカプセル化でSIが0と指定され、BitStringのビット13、26、235がセットされたパケットを受信したとします。BFR-AにはBFR-BとBFR-Cという2つのBFR近隣があり、BFER 13と26への最適パスはBFR-B経由で、BFER 235への最適パスはBFR-C経由であるとします。このときBFR-Aはパケットを複製し、BFR-BとBFR-Cにそれぞれ1つずつコピーを送信します。ただし、BFR-Aは、BFR-Bに送信するパケットのコピーではBitStringのビット235をクリアし、BFR-Cに送信するパケットのコピーではBitStringのビット13と26をクリアします。その結果、BFR-BはパケットをBFER 13と26に向けてのみ転送し、BFR-CはパケットをBFER 235に向けてのみ転送します。これにより、各BFERがパケットのコピーを1つだけ受信することが保証されます。</t>
+      <t indent="0" pn="section-1-14">BIERでカプセル化されたパケットをBIERドメインを通じて転送する詳細な手順は、<xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>にあります。</t>
+      <t indent="0" pn="section-1-15">この転送手順により、マルチキャストデータパケットは、そのBFIRから各BFERまで最適なパスをたどることができます。さらに、あるパケットのBFERの集合はBIERヘッダーに明示的に符号化されるため、そのパケットを受信する必要のないBFERにパケットが送信されることはありません。これにより、マルチキャストトラフィックの最適な転送が可能になります。この最適な転送は、トランジットBFRがフローごとの状態を維持したり、マルチキャストツリー構築プロトコルを実行したりすることなく実現されます。</t>
+      <t indent="0" pn="section-1-16">マルチキャストパケットのヘッダーに出口ノードの集合を符号化するという考え方は、新しいものではありません。たとえば、<xref target="Boivie_Feldman" format="default" sectionFormat="of" derivedContent="Boivie_Feldman"/>は、出口ノードの集合をIPアドレスの集合として符号化することを提案しており、この文書で説明するものといくつかの点で似たメカニズムと手順を提案しています。しかし、BIERは各BFR-idをビット列内の1ビットとして符号化するため、1つのBFERのIPv6アドレスを運ぶのに必要なのと同じビット数で、最大128個のBFERを表せます。したがって、BIERはパケットあたりの出口ノードの数について、はるかに大きな規模まで拡張できます。</t>
+      <t indent="0" pn="section-1-17">BIERでは、各トランジットBFRが、BIERヘッダーで識別される各BFERへの最適パスを検索する必要はありません。1つのパケットの転送パスで必要な検索の回数は、近隣BFRの数に限定でき、これはBFERの数よりもはるかに少なくなりえます。詳細は<xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>（特に<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>）を参照してください。</t>
+      <t indent="0" pn="section-1-18">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+    </section>
+    <section anchor="the-bfr-identifier-and-bfr-prefix" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-the-bfr-identifier-and-bfr-prefix">BFR識別子とBFR-Prefix</name>
+      <t indent="0" pn="section-2-1">各BFRには、自身が属するサブドメインごとに1つの「BFR-prefix」が割り当てられ<bcp14>なければなりません（MUST）</bcp14>。BFRのBFR-prefixは、そのBFRのIPアドレス（IPv4またはIPv6）で<bcp14>なければなりません（MUST）</bcp14>。BFR-prefixは、そのBFRのループバックアドレスであることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      <t indent="0" pn="section-2-2">あるBFRが複数のサブドメインに属する場合、そのBFRはサブドメインごとに異なるBFR-prefixを持つこともできます（必ずしもそうする必要はありません）。</t>
+      <t indent="0" pn="section-2-3">あるサブドメイン内で使われるすべてのBFR-prefixは、同じアドレスファミリー（IPv4またはIPv6）に属さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-2-4">あるサブドメインにおけるあるBFRのBFR-prefixは、そのサブドメイン内でルーティング可能で<bcp14>なければなりません（MUST）</bcp14>。特定のBFR-prefixがあるサブドメイン内でルーティング可能かどうかは、そのサブドメインに関連付けられた「ルーティングアンダーレイ」に依存します。「ルーティングアンダーレイ」の概念は<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>で説明します。</t>
+      <t indent="0" pn="section-2-5">「BFR識別子（BFR Identifier）」（BFR-id）は、[1,65535]の範囲の数値です。あるサブドメイン内で、BFIRまたはBFERとして機能する必要がありうるすべてのBFRは、そのサブドメイン内でそのBFRを一意に識別する1つのBFR-idを持た<bcp14>なければなりません（MUST）</bcp14>。あるサブドメインでBFIRまたはBFERとして機能する必要のないBFRは、そのサブドメインでBFR-idを持つ必要はありません。</t>
+      <t indent="0" pn="section-2-6">値0は正当なBFR-idではありません。</t>
+      <t indent="0" pn="section-2-7">特定のBFRに特定のBFR-idを割り当てる手順は、この文書の範囲外です。ただし、各サブドメインのBFR-idは番号空間から「密に」割り当てることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。そうすることで、より効率的な符号化になるためです（<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>を参照）。つまり、BFERが256個以下の場合、すべてのBFR-idを[1,256]の範囲から割り当てることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。BFERが256個を超え512個未満の場合、すべてのBFR-idを[1,512]の範囲から割り当て、前の方の範囲にはできるだけ「穴」を作らないことが<bcp14>推奨されます（RECOMMENDED）</bcp14>。ただし、展開によっては、この推奨から外れる方が有利な場合もあります。これについては<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>でさらに議論します。</t>
+      <t indent="0" pn="section-2-8">展開によっては、（あるサブドメインで）65,535個のBFR-idの全範囲をサポートできない場合があります。たとえば、あるサブドメイン内のBFRが16個のSIしかサポートせず、256以下のBitStringLengthしかサポートしない場合、そのサブドメインでサポートできるBFR-idは16*256=4,096個だけです。</t>
+    </section>
+    <section anchor="encoding-bfr-identifiers-in-bitstrings" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-encoding-bfr-identifiers-in-bitstrings">BitStringにおけるBFR識別子の符号化</name>
+      <t indent="0" pn="section-3-1">BIERデータパケット内でBFR-idを符号化するには、BFR-idをSIとBitStringに変換しなければなりません。この変換は、「BitStringLength」と呼んでいるパラメーターに依存します。変換は次のように行います。BFR-idがNの場合、</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-2">
+        <li pn="section-3-2.1">SIは、商(N-1)/BitStringLengthの整数部です。</li>
+        <li pn="section-3-2.2">BitStringでは、1つのビット位置がセットされます。最下位ビットをビット1、最上位ビットをビットBitStringLengthとすると、BFR-id Nを表すビット位置は((N-1) modulo BitStringLength)+1です。</li>
+      </ul>
+      <t indent="0" pn="section-3-3">複数の異なるBFR-idがすべて同じSIになる場合、それらのBFR-idはすべて1つのBitStringで表せます。それらすべてのBFR-idのBitStringは、ビットごとの論理和（OR）演算で結合されます。</t>
+      <t indent="0" pn="section-3-4">あるBIERドメイン内（あるいはあるBIERサブドメイン内であっても）では、異なるBitStringLengthの値を使用できます。各BFRは、次のことを認識するようにプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-5">
+        <li pn="section-3-5.1">特定のパケットの集合に（BFIRとして）BIERカプセル化を付与するときに使うBitStringLength（「Imposition BitStringLength」）とサブドメイン（「Imposition sub-domain」）</li>
+        <li pn="section-3-5.2">特定のサブドメインからパケットを（BFRまたはBFERとして）受信したときに処理するBitStringLength（「Disposition BitStringLength」）</li>
+      </ul>
+      <t indent="0" pn="section-3-6">BFIRが、BIERカプセル化を付与するすべてのパケットについて、同じImposition BitStringLengthや同じImposition sub-domainを使うことは要求されません。しかし、特定のBFIRが、あるパケットの集合にカプセル化を付与するときに特定のImposition BitStringLengthと特定のImposition sub-domainを使うようにプロビジョニングされている場合、そのサブドメインにBFR-idを持つ他のすべてのBFRは、そのBitStringLengthの受信BIERパケットを処理するようにプロビジョニングされる<bcp14>べきです（SHOULD）</bcp14>。（つまり、そのサブドメインにBFR-idを持つ他のすべてのBFRには、そのサブドメインのDisposition BitStringLengthとしてそのBitStringLengthがプロビジョニングされる<bcp14>べきです（SHOULD）</bcp14>。）特定の条件のもとでは、この規則に例外を設けても<bcp14>よいです（MAY）</bcp14>。これについては<xref target="section-6.10" format="default" sectionFormat="of" derivedContent="Section 6.10"/>で議論します。</t>
+      <t indent="0" pn="section-3-7">BIERカプセル化を規定する場合、その仕様は、そのカプセル化のデフォルトのBitStringLengthを定義し<bcp14>なければなりません（MUST）</bcp14>。そのカプセル化をサポートするすべてのBFIRは、そのデフォルトのBitStringLengthを自身のImposition BitStringLengthとしてプロビジョニングできる<bcp14>必要があります（MUST）</bcp14>。そのカプセル化をサポートするすべてのBFRとBFERは、そのデフォルトのBitStringLengthをDisposition BitStringLengthとしてプロビジョニングできる<bcp14>必要があります（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-8">BIERカプセル化の仕様は、他のBitStringLengthの使用を許可しても<bcp14>よいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-3-9">BFRが、あるBitStringLengthの値をImposition BitStringLengthとしてプロビジョニングできる場合、そのBFRは、同じ値を自身のDisposition BitStringLengthの1つとしてもプロビジョニングできる<bcp14>必要があります（MUST）</bcp14>。また、それより小さい正当な各BitStringLengthの値を、(a)自身のImposition BitStringLength、および(b)自身のDisposition BitStringLengthの1つとしてプロビジョニングできる<bcp14>べきです（SHOULD）</bcp14>。</t>
+      <t indent="0" pn="section-3-10">あるBitStringLengthから別のBitStringLengthへの移行をサポートするために、すべてのBFRは、2つの異なるDisposition BitStringLengthを同時に使うようにプロビジョニングできる<bcp14>必要があります（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-11">BFRは、[0,15]の範囲のSI値をサポートし<bcp14>なければなりません（MUST）</bcp14>。また、[0,255]の範囲のSI値をサポートしても<bcp14>よいです（MAY）</bcp14>。（ここでいう「ある範囲の値をサポートする」とは、その範囲内のどの値も正当であり、適切に解釈されることを意味します。）あるBitStringLengthについて、表現できるBFR-idの総数は、BitStringLengthとサポートされるSIの数の積であることに注意してください。たとえば、ある展開が（あるサブドメインで）64のBitStringLengthを使い、256個のSIをサポートする場合、その展開がそのサブドメインでサポートできるBFR-idは16384個だけです。256個のSIをサポートする展開であっても、256以上のBitStringLengthを使わない限り、65,535個のBFR-idをサポートすることはできません。</t>
+      <t indent="0" pn="section-3-12">BFIRは、あるサブドメインに割り当てられたマルチキャストデータパケットを特定の宛先BFERの集合に転送する必要があると判断すると、そのBFERの集合をいくつかの部分集合に分割します。各部分集合には、そのサブドメインにおけるBFR-idがすべて同じSIになる対象BFERが含まれます。これらをパケットの「SI-subset」と呼びます。各SI-subsetは1つのBitStringで表せます。BFIRは、SI-subsetごとにパケットのコピーを作成します。次に、各パケットにBIERカプセル化が適用されます。カプセル化は、各パケットについて1つのSIを指定し、対応するSI-subset内のすべてのBFR-idを表すBitStringを含みます。もちろん、BitStringを適切に解釈するには、カプセル化からsub-domain-idも推測できなければなりません。</t>
+      <t indent="0" pn="section-3-13">たとえば、BFIRが、あるパケットを3つのBFERに転送する必要があると判断し、それらの（該当するサブドメインにおける）BFR-idが27、235、497であるとします。BFIRは、パケットのコピーを2つ転送しなければなりません。SI=0に関連付けられた一方のコピーは、ビット27と235がセットされたBitStringを持ちます。SI=1に関連付けられたもう一方のコピーは、ビット241がセットされたBitStringを持ちます。</t>
+      <t indent="0" pn="section-3-14">あるマルチキャストパケットについて作成しなければならないコピーの数を最小限にするために、あるサブドメインで使うBFR-idは番号空間から「密に」（<xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/>を参照）割り当てることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。そうすることで、そのサブドメインで使わなければならないSIの数が最小限になります。ただし、特定の展開の詳細によっては、他の割り当て方法の方が有利な場合もあります。たとえば、ある展開において、すべてのマルチキャストフローが「東海岸」と「西海岸」のどちらか一方を対象とし、両方の海岸を対象とすることはないとします。このような展開では、「西海岸」のBFR-idがすべて同じSI-subsetに入り、「東海岸」のBFR-idもすべて同じSI-subsetに入るようにBFR-idを割り当てると有利です。</t>
+      <t indent="0" pn="section-3-15">BFRは、BIERデータパケットを受信すると、カプセル化からSIを推測します。そして、パケットの転送先となる必要があるBFERの集合を、SIとBitStringから推測できます。</t>
+      <t indent="0" pn="section-3-16">この文書で後に示す例のいくつかでは、BitStringLengthを4とし、BFR-idを「SI:xyzw」の形式で表します。ここで、SIはそのBFR-idの（BitStringLengthを4と仮定した場合の）セット識別子であり、xyzwは4ビットの列です。BitStringLengthの4は例でのみ使うものであり、実際の展開でこれほど小さなBitStringLengthを使うことは想定していません。</t>
+      <t indent="0" pn="section-3-17">BIERカプセル化について、複数の異なる形式が開発される可能性があります。その場合、ある展開で使われる特定のカプセル化は、BIERドメインを実現するために使われるネットワークインフラストラクチャーの種類に依存します。BIERカプセル化の詳細は、関連文書で示します。MPLSネットワークで使うためのカプセル化は<xref target="MPLS_BIER_ENCAPS" format="default" sectionFormat="of" derivedContent="MPLS_BIER_ENCAPS"/>で説明されています。その文書では、非MPLSネットワークで使用できる非常によく似たカプセル化についても説明しています。</t>
+    </section>
+    <section anchor="layering" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-layering">階層化</name>
+      <t indent="0" pn="section-4-1">BIERアーキテクチャーは、「ルーティングアンダーレイ」、「BIER層」、「マルチキャストフローオーバーレイ」の3つの層から構成されると考えると便利です。</t>
+      <section anchor="the-routing-underlay" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-the-routing-underlay">ルーティングアンダーレイ</name>
+        <t indent="0" pn="section-4.1-1">「ルーティングアンダーレイ」は、BFRのペア間に「隣接関係」を確立し、あるBFRからあるBFRの集合への1つ以上の「最適パス」を決定します。そのような各パスは、BFR(k+j)がBFR(k+j+1)に「隣接」している（0&lt;=j&lt;nについて）ようなBFRの列&lt;BFR(k), BFR(k+1), ..., BFR(k+n)&gt;です。</t>
+        <t indent="0" pn="section-4.1-2">あるBFR（たとえばBFR-A）において、ルーティングアンダーレイは、BIERドメイン内のBFRのアドレスであるすべてのIPアドレスについて、そのIPアドレスを1つ以上の「等コスト」の隣接関係の集合に対応付けます。BIERデータパケットをBFR-AがあるBFER（たとえばBFER-B）に転送しなければならない場合、そのパケットは、ルーティングアンダーレイが決定したBFR-AからBFER-Bへのパスをたどります。</t>
+        <t indent="0" pn="section-4.1-3">典型的な展開では、ルーティングアンダーレイは、内部ゲートウェイプロトコル（Interior Gateway Protocol: IGP）（たとえばOSPF）がユニキャストルーティングに使うデフォルトトポロジーになると想定されます。その場合、アンダーレイの隣接関係はOSPFの隣接関係そのものです。BFR-AからBFER-Bへ向かうBIERデータパケットは、BFR-AからBFER-BへのユニキャストトラフィックのためにOSPFが選択したパスをたどります。</t>
+        <t indent="0" pn="section-4.1-4">BFR-AからBFER-Bへのマルチキャストトラフィックを、BFR-AからBFER-Bへのユニキャストトラフィックが使うパスとは異なるパスで送りたい場合、別のアンダーレイを使うことができます。たとえば、マルチトポロジーOSPFを使っている場合、一方のOSPFトポロジーをユニキャストトラフィックに、もう一方をマルチキャストトラフィックに使うことができます。（各トポロジーは異なるアンダーレイとみなされます。）あるいは、何らかの種類のマルチキャスト固有のツリーを作成するルーティングアンダーレイを展開することもできます。そうすれば、ユニキャストパケットが「通常の」OSPFの最適パスをたどる一方で、BIERを使ってマルチキャストデータパケットをマルチキャスト固有のツリーに沿って転送できます。（このような場合、多数のマルチキャストフローが1つのツリーに沿って流れることがあり、特定のパケットが運ぶBitStringは、そのパケットを受信する必要があるツリーのノードを識別します。）データパケットのBIERカプセル化から、そのパケットにどのアンダーレイが使われているかを推測できる限り、BIERで複数のルーティングアンダーレイを使うことさえ可能です。</t>
+        <t indent="0" pn="section-4.1-5">1つのBIERドメインで複数のルーティングアンダーレイを使う場合、各BIERサブドメインは、1つのルーティングアンダーレイに関連付けられ<bcp14>なければなりません（MUST）</bcp14>（ただし、複数のサブドメインを同じルーティングアンダーレイに関連付けることはできます）。複数のサブドメインに属するBFRは、各サブドメインがどのルーティングアンダーレイを使うかを認識するようにプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。デフォルトでは（つまり、それに反するプロビジョニングがない場合には）、各サブドメインはユニキャストIGPのデフォルトトポロジーをルーティングアンダーレイとして使います。</t>
+        <t indent="0" pn="section-4.1-6">外部BGP（External BGP: EBGP）をIGPとして使うシナリオでは、アンダーレイの隣接関係は、デフォルトではBGPの隣接関係です。</t>
+        <t indent="0" pn="section-4.1-7">ルーティングアンダーレイのプロトコルと手順の仕様は、この文書の範囲外です。</t>
+      </section>
+      <section anchor="the-bier-layer" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-the-bier-layer">BIER層</name>
+        <t indent="0" pn="section-4.2-1">BIER層は、マルチキャストデータパケットを、BIERドメインを横断してそのBFIRからBFERへ送信するために使われるプロトコルと手順から構成されます。これには次の構成要素が含まれます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-2">
+          <li pn="section-4.2-2.1">
+            <t indent="0" pn="section-4.2-2.1.1">あるBFRが、同じBIERドメイン内の他のすべてのBFRに次のものを広告するために使うプロトコルと手順</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.2-2.1.2">
+              <li pn="section-4.2-2.1.2.1">自身のBFR-prefix</li>
+              <li pn="section-4.2-2.1.2.2">BFR-idがプロビジョニングされている各サブドメインにおける、自身のBFR-id</li>
+              <li pn="section-4.2-2.1.2.3">各サブドメインについて使うようにプロビジョニングされているDisposition BitStringLengthの集合</li>
+              <li pn="section-4.2-2.1.2.4">任意で、各サブドメインに関連付けられたルーティングアンダーレイについての情報</li>
+            </ul>
+          </li>
+          <li pn="section-4.2-2.2">BFIRがマルチキャストデータパケットにBIERヘッダーを付与するために使う手順</li>
+          <li pn="section-4.2-2.3">BIERでカプセル化されたパケットを転送し、転送中にBIERヘッダーを変更するための手順</li>
+          <li pn="section-4.2-2.4">BFERがBIERパケットのカプセル化を解除し、適切に振り分けるために使う手順</li>
+        </ul>
+      </section>
+      <section anchor="the-multicast-flow-overlay" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-the-multicast-flow-overlay">マルチキャストフローオーバーレイ</name>
+        <t indent="0" pn="section-4.3-1">「マルチキャストフローオーバーレイ」は、次の一連の機能を可能にするプロトコルと手順の集合から構成されます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4.3-2">
+          <li pn="section-4.3-2.1">BFIRがBIERドメインの外部からマルチキャストデータパケットを受信したとき、BFIRはそのパケットのBFERの集合を決定しなければなりません。この情報は、マルチキャストフローオーバーレイによって提供されます。</li>
+          <li pn="section-4.3-2.2">BFERがBIERドメインの内部からBIERでカプセル化されたパケットを受信したとき、BFERはそのパケットをさらにどのように転送するかを決定しなければなりません。この情報は、マルチキャストフローオーバーレイによって提供されます。</li>
+        </ul>
+        <t indent="0" pn="section-4.3-3">たとえば、BFIRとBFERが、マルチキャスト仮想プライベートネットワーク（Multicast Virtual Private Network: MVPN）サービスを提供するプロバイダーエッジ（Provider Edge: PE）ルーターであるとします。マルチキャストフローオーバーレイは、<xref target="RFC6513" format="default" sectionFormat="of" derivedContent="RFC6513"/>と<xref target="RFC6514" format="default" sectionFormat="of" derivedContent="RFC6514"/>で説明されているプロトコルと手順から構成されます。それらのRFCで説明されているMVPNシグナリングにより、イングレスPEは、あるマルチキャストフロー（またはフローの集合）についてのイグレスPEの集合を決定できます。また、イグレスPEは、バックボーンネットワークからのマルチキャストパケットを送るべき「仮想ルーティング転送テーブル（Virtual Routing and Forwarding Tables）」（VRF）を決定できます。MVPNシグナリングには、ネットワークを通じてマルチキャストデータを運ぶために使われる「トンネリング技術」の種類に依存する構成要素もいくつかあります。BIERは事実上、新しい種類の「トンネリング技術」であるため、マルチキャストフローオーバーレイとBIER層を適切に接続するには、MVPNシグナリングにいくつかの拡張が必要です。これらは<xref target="BIER_MVPN" format="default" sectionFormat="of" derivedContent="BIER_MVPN"/>で規定されています。</t>
+        <t indent="0" pn="section-4.3-4">MVPNは、マルチキャストフローオーバーレイの一例にすぎません。他のオーバーレイのためのプロトコルと手順は、関連文書で提供されます。「ソフトウェア定義ネットワーク（Software-Defined Network）」（SDN）コントローラーによってマルチキャストフローオーバーレイを実装することも可能です。マルチキャストフローオーバーレイのプロトコルと手順の仕様は、この文書の範囲外です。</t>
+      </section>
+    </section>
+    <section anchor="advertising-bfr-ids-and-bfr-prefixes" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-advertising-bfr-ids-and-bfr-prefixes">BFR-idとBFR-Prefixの広告</name>
+      <t indent="0" pn="section-5-1"><xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/>で述べたように、各BFERには（プロビジョニングによって）（あるBIERサブドメインについての）BFR-idが割り当てられます。各BFERは、これらの割り当てをドメイン内の他のすべてのBFRに広告しなければなりません。同様に、各BFRには（プロビジョニングによって）（あるBIERドメインについての）BFR-prefixが割り当てられ、この割り当てをドメイン内の他のすべてのBFRに広告しなければなりません。最後に、各BFRは、各サブドメインについて特定のDisposition BitStringLengthの集合を使うようにプロビジョニングされており、これらをドメイン内の他のすべてのBFRに広告しなければなりません。</t>
+      <t indent="0" pn="section-5-2">BIERドメインがリンクステートルーティングのIGPドメイン（つまり、OSPFまたはIS-ISのドメイン）でもある場合、BFR-prefix、&lt;sub-domain-id, BFR-id&gt;、BitStringLengthの広告は、IGPの広告機能を使って行えます。たとえば、BIERドメインがOSPFドメインでもある場合、これらの広告は、OSPFの「Opaque Link State Advertisement」（Opaque LSA）メカニズムを使って行えます。OSPFとIS-ISに必要な拡張の詳細は、関連文書で提供されます。（<xref target="OSPF_BIER_EXTENSIONS" format="default" sectionFormat="of" derivedContent="OSPF_BIER_EXTENSIONS"/>と<xref target="ISIS_BIER_EXTENSIONS" format="default" sectionFormat="of" derivedContent="ISIS_BIER_EXTENSIONS"/>を参照してください。）</t>
+      <t indent="0" pn="section-5-3">特定の展開において、BIERドメインがOSPFやIS-ISのドメインでない場合、この情報を広告するためには、その展開に適した手順を使わなければなりません。必要な手順の詳細は、関連文書で提供されます。たとえば、BGPがBIERドメインで使われる唯一のルーティングアルゴリズムである場合、<xref target="BGP_BIER_EXTENSIONS" format="default" sectionFormat="of" derivedContent="BGP_BIER_EXTENSIONS"/>の手順を使うことができます。</t>
+      <t indent="0" pn="section-5-4">これらの広告により、各BFRは、ある&lt;sub-domain-id, BFR-id&gt;をあるBFR-prefixに関連付けることができます。この文書の後続のセクションで見るように、この関連付けを知っていることは、転送処理の重要な部分です。</t>
+      <t indent="0" pn="section-5-5">各BFRは（各サブドメインで）一意なBFR-idを持つ必要があるため、プロビジョニングの誤りがない限り、2つの異なるBFRが同じ&lt;sub-domain-id, BFR-id&gt;の所有を広告することはありません。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-5-6">
+        <li pn="section-5-6.1">
+          <t indent="0" pn="section-5-6.1.1">BFR-Aが、BFR-BとBFR-Cの両方が同じサブドメインについて同じBFR-idを広告していると判断した場合、BFR-Aはエラーをログに記録し<bcp14>なければなりません（MUST）</bcp14>。重複したBFR-idを「N」とします。BFR-AがBFIRとして機能しているとき、BFR-Aは、パケットをBFR-BとBFR-Cの一方または両方が受信する必要があると判断した場合であっても、そのサブドメインに割り当てられたどのパケットのBIERカプセル化にも、BFR-idの値Nを符号化しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+          <t indent="0" pn="section-5-6.1.2">これは、プロビジョニングの誤りが修正されるまで、BFR-BとBFR-Cがそのサブドメインでマルチキャストトラフィックをまったく受信できないことを意味します。しかし、それらが互いのトラフィックを受信してしまうよりは望ましいことです。</t>
+        </li>
+        <li pn="section-5-6.2">
+          <t indent="0" pn="section-5-6.2.1">BFR-Aが特定のサブドメインについてBFR-id Nでプロビジョニングされているものの、そのサブドメインについてのBFR-id Nの所有をまだ広告していないとします。また、BFR-Aが、同じサブドメインについてBFR-id Nの所有を広告している別のBFR（たとえばBFR-B）からの広告を受信したとします。このような場合、BFR-Aはエラーをログに記録す<bcp14>べきです（SHOULD）</bcp14>。また、BFR-Bからの広告が存在する限り、BFR-Aはそのサブドメインについての自身のBFR-id Nの所有を広告しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+          <t indent="0" pn="section-5-6.2.2">この手順により、新しいBFRの偶発的な設定誤りが既存のBFRに影響を与えることを防げる場合があります。</t>
+        </li>
+      </ul>
+      <t indent="0" pn="section-5-7">BFRが、特定のサブドメインでBFR-idとして0を持つと広告した場合、その広告を受信した他のBFRは、その広告を、広告元のBFRがそのサブドメインでBFR-idを持たないという意味に解釈し<bcp14>なければなりません（MUST）</bcp14>。</t>
+    </section>
+    <section anchor="bier-intra-domain-forwarding-procedures" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-bier-intra-domain-forwarding-procedures">BIERのドメイン内転送手順</name>
+      <t indent="0" pn="section-6-1">このセクションでは、BIERでカプセル化されたデータパケットをBIERドメイン内で転送するための規則を規定します。これらの規則は、実装の戦略を規定することを意図したものではありません。この仕様に準拠するには、実装はこれらの規則が生み出すのと同じ結果を生み出しさえすればよいです。</t>
+      <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-overview">概要</name>
+        <t indent="0" pn="section-6.1-1">このセクションでは、BIERの転送手順の簡単な概要を示します。以降のサブセクションで、手順をより詳細に規定します。</t>
+        <t indent="0" pn="section-6.1-2">BIERでカプセル化されたパケットを転送するには、次のようにします。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.1-3">
+          <li pn="section-6.1-3.1">パケットのサブドメインを決定します。</li>
+          <li pn="section-6.1-3.2">パケットのBitStringLengthとBitStringを決定します。</li>
+          <li pn="section-6.1-3.3">パケットのSIを決定します。</li>
+          <li pn="section-6.1-3.4">サブドメイン、SI、BitStringから、パケットの宛先BFERの集合を決定します。</li>
+          <li pn="section-6.1-3.5">パケットのサブドメインに関連付けられたルーティングアンダーレイが提供する情報を使って、各宛先BFERについてのネクストホップの隣接関係を決定します。</li>
+          <li pn="section-6.1-3.6">パケットのBitStringに、使われていないBFR-idに対応するビットが1つ以上含まれている可能性があります。また、パケットのBitStringに、到達不能な（つまり、ネクストホップの隣接関係を持たない）BFERに対応するビットが1つ以上含まれている可能性もあります。以下では、そのようなすべてのビット位置の「ネクストホップの隣接関係」を、「ヌル」ネクストホップとみなします。</li>
+          <li pn="section-6.1-3.7">1つの区画内のすべてのBFERが同じネクストホップを持つように、宛先BFERの集合を区画に分割します。各区画は、1つのネクストホップに関連付けられていると表現します。</li>
+          <li pn="section-6.1-3.8">
+            <t indent="0" pn="section-6.1-3.8.1">各区画について、次のようにします。</t>
+            <ol spacing="normal" type="a" indent="adaptive" start="1" pn="section-6.1-3.8.2">
+              <li pn="section-6.1-3.8.2.1">パケットのコピーを作成します。</li>
+              <li pn="section-6.1-3.8.2.2">パケットのBitStringのうち、その区画にないBFERを識別するビットをすべてクリアします。</li>
+              <li pn="section-6.1-3.8.2.3">関連付けられたネクストホップにパケットを送信します。（ネクストホップがヌルネクストホップの場合、パケットは破棄されます。）</li>
+            </ol>
+          </li>
+        </ol>
+        <t indent="0" pn="section-6.1-4">BFRが、&lt;sub-domain, SI, BitString&gt;の3つ組がそのBFR自身を識別するような、BIERでカプセル化されたパケットを受信した場合、そのBFRはそのパケットについてのBFERでもあります。BFERとして、そのBFRはペイロードをマルチキャストフローオーバーレイに渡さなければなりません。BitStringで他のBFRのビットがセットされている場合、そのパケットはBIERドメイン内でさらに転送される必要もあります。そのBF(E)RがBIERドメイン内でパケットのコピーを1つ以上転送する場合、そのBFR自身のBFR-idを表すビットは、すべてのコピーでクリアされてい<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-6.1-5">BFER上のBIERがパケットをマルチキャストフローオーバーレイに渡すとき、当然ながら、BIERヘッダーを取り除いてパケットのカプセル化を解除します。しかし、BIERカプセル化から得られたコンテキスト情報をマルチキャストフローオーバーレイに提供する必要がある場合があります。BIER層とマルチキャストフローオーバーレイの間で受け渡す必要がある情報は、マルチキャストフローオーバーレイに固有です。BIER層とマルチキャストフローオーバーレイの間の相互作用の仕様は、この仕様の範囲外です。</t>
+        <t indent="0" pn="section-6.1-6">BIERカプセル化に「生存時間（Time to Live）」（TTL）の値が含まれている場合、この値は、デフォルトではペイロードに継承されません。特定のマルチキャストフローオーバーレイがTTLの値を知る必要がある場合、そのことを、BIERとそのマルチキャストフローオーバーレイの間の相互作用を定義する仕様で規定する必要があります。</t>
+        <t indent="0" pn="section-6.1-7">BIERカプセル化にTraffic Classフィールド、Type of Serviceフィールド、Differentiated Servicesフィールド、またはその種類の何らかのフィールドが含まれている場合、そのフィールドの値は、デフォルトではマルチキャストフローオーバーレイに渡されません。特定のマルチキャストフローオーバーレイがそのようなフィールドの値を知る必要がある場合、そのことを、BIERとそのマルチキャストフローオーバーレイの間の相互作用を定義する仕様で規定する必要があります。</t>
+        <t indent="0" pn="section-6.1-8">BFER上のBIERがパケットをマルチキャストフローオーバーレイに渡すと、オーバーレイがそのパケットをさらにどのように振り分けるかを決定します。パケットを別のBIERドメインに転送する必要がある場合、そのBFRは、一方のBIERドメインではBFERとして、もう一方のBIERドメインではBFIRとして動作します。</t>
+        <t indent="0" pn="section-6.1-9">BIERでカプセル化されたパケットは、あるBIERドメインから別のBIERドメインに直接渡ることはできません。BIERドメイン間の境界では、パケットのカプセル化を解除し、マルチキャストフローオーバーレイに渡さなければなりません。</t>
+        <t indent="0" pn="section-6.1-10">BFRがBIERドメイン内でパケットの複数のコピーを送信する場合、あるBFERを宛先とするコピーは1つだけであることに注意してください。したがって、BIERでカプセル化されたパケットが、あるBFERに2回以上配送されることはありえません。</t>
+      </section>
+      <section anchor="bfr-neighbors" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-bfr-neighbors">BFR近隣</name>
+        <t indent="0" pn="section-6.2-1">あるBFR（たとえばBFR-A）の「BFR近隣（BFR Neighbors）」（BFR-NBR）とは、ルーティングアンダーレイによればBFR-Aの隣接関係にあるBFRのことです。各BFR-NBRはBFR-prefixを持ちます。</t>
+        <t indent="0" pn="section-6.2-2">BIERでカプセル化されたパケットがBFR-Aに到着したとします。BFR-Aは、パケットのカプセル化から、(a)パケットのサブドメインと、(b)パケットの宛先となるBFERの（そのサブドメインにおける）BFR-idを知ります。次に、<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>に従って広告された情報を使って、BFR-Aは各宛先BFERのBFR-prefixを見つけることができます。特定の宛先BFER（たとえばBFER-D）のBFR-prefixが与えられると、BFR-Aは、（パケットのサブドメインに関連付けられた）ルーティングアンダーレイから、BFR-AからBFER-Dへのパス上のネクストホップであるBFRのIPアドレスを知ります。このネクストホップを「BFR-B」と呼びましょう。次に、BFR-AはBFR-BのBFR-prefixを決定しなければなりません。（この決定は、<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>に従って広告された情報から行えます。）このBFR-prefixが、BFR-AからBFER-Dへのパス上におけるBFR-AのBFR-NBRです。</t>
+        <t indent="0" pn="section-6.2-3">ルーティングアンダーレイがBFR-AからBFER-Dへの複数の等コストパスを提供する場合、BFR-AはBFER-Dについて複数のBFR-NBRを持つことがあることに注意してください。</t>
+        <t indent="0" pn="section-6.2-4">特定の状況では、BFRが、（特定のルーティングアンダーレイにおいて）BFRではない隣接関係を持つことがあります。そのような状況の扱い方についての議論は、<xref target="section-6.9" format="default" sectionFormat="of" derivedContent="Section 6.9"/>を参照してください。</t>
+      </section>
+      <section anchor="the-bit-index-routing-table" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-the-bit-index-routing-table">ビットインデックスルーティングテーブル</name>
+        <t indent="0" pn="section-6.3-1">「ビットインデックスルーティングテーブル（Bit Index Routing Table）」（BIRT）は、BFERの（特定のサブドメインにおける）BFR-idを、そのBFERのBFR-prefixと、そのBFERへのパス上のBFR-NBRに対応付けるテーブルです。例として、<xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示すトポロジーを考えます。この図では、各BFRのBFR-idを、<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>で説明したSI:xyzwの形式で表します。</t>
+        <figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
+<name slugifiedName="name-bier-topology-1">BIERトポロジー1</name>
+<artwork name="" type="" align="left" alt="" pn="section-6.3-2.1"><![CDATA[
+   ( A ) ------------ ( B ) ------------ ( C ) ------------ ( D )
+  4 (0:1000)             \                  \           1 (0:0001)
+                          \                  \
+                          ( E )              ( F )
+                        3 (0:0100)         2 (0:0010)
+]]></artwork>
+</figure>
+        <t indent="0" pn="section-6.3-3">このトポロジーにより、BFR-Bでは<xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>のBIRTになります。最初の列は、BFR-idを数値で示すとともに、（括弧内に）BitStringLengthが4の場合に対応するSI:BitStringの形式でも示しています。（実際のBitStringLengthの最小値は64ですが、例では4を使います。）</t>
+        <t indent="0" pn="section-6.3-4">BIRTは特定のBIERサブドメインに固有であることに注意してください。</t>
+        <figure anchor="fig-2" align="left" suppress-title="false" pn="figure-2">
+<name slugifiedName="name-bit-index-routing-table-at-bfr-b">BFR-Bにおけるビットインデックスルーティングテーブル</name>
+<artwork name="" type="" align="left" alt="" pn="section-6.3-5.1"><![CDATA[
+            --------------------------------------------
+            |     BFR-id     |  BFR-Prefix  | BFR-NBR  |
+            | (SI:BitString) | of Dest BFER |          |
+            ============================================
+            |   4 (0:1000)   |     A        |     A    |
+            --------------------------------------------
+            |   1 (0:0001)   |     D        |     C    |
+            --------------------------------------------
+            |   3 (0:0100)   |     E        |     E    |
+            --------------------------------------------
+            |   2 (0:0010)   |     F        |     C    |
+            --------------------------------------------
+]]></artwork>
+</figure>
+      </section>
+      <section anchor="the-bit-index-forwarding-table" numbered="true" removeInRFC="false" toc="include" pn="section-6.4">
+        <name slugifiedName="name-the-bit-index-forwarding-table">ビットインデックス転送テーブル</name>
+        <t indent="0" pn="section-6.4-1">「ビットインデックス転送テーブル（Bit Index Forwarding Table）」（BIFT）は、次のようにしてBIRTから導出されます。（BIFTは特定のサブドメインに固有であることに注意してください。）</t>
+        <t indent="0" pn="section-6.4-2">BIRT内の複数の行が同じSIと同じBFR-NBRを持つとします。それらの行のBitStringの論理和（OR）をとることで、そのSIとBFR-NBRの組み合わせに対応するビットマスクが得られます。このビットマスクを、その&lt;SI, BFR-NBR&gt;の組み合わせについての「転送ビットマスク（Forwarding Bit Mask）」（F-BM）と呼びます。</t>
+        <t indent="0" pn="section-6.4-3">たとえば、<xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>では、2つの行が同じSI（0）と同じBFR-NBR（C）を持っていることがわかります。&lt;SI=0, BFR-NBR-C&gt;に対応するビットマスクは0011（「0001」と「0010」のOR）です。</t>
+        <t indent="0" pn="section-6.4-4">BIFTは、BFERのBFR-idを、対応するF-BMとBFR-NBRに対応付けるために使われます。たとえば、<xref target="fig-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>は、<xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>のBIRTから導出されるBIFTを示しています。BFR-id 1と2は同じSIと同じBFR-NBRを持つため、同じF-BMを持つことに注意してください。</t>
+        <figure anchor="fig-3" align="left" suppress-title="false" pn="figure-3">
+<name slugifiedName="name-bit-index-forwarding-table">ビットインデックス転送テーブル</name>
+<artwork name="" type="" align="left" alt="" pn="section-6.4-5.1"><![CDATA[
+                -------------------------------------
+                |      BFR-id    |  F-BM  | BFR-NBR |
+                | (SI:BitString) |        |         |
+                =====================================
+                |   1 (0:0001)   |  0011  |    C    |
+                -------------------------------------
+                |   2 (0:0010)   |  0011  |    C    |
+                -------------------------------------
+                |   3 (0:0100)   |  0100  |    E    |
+                -------------------------------------
+                |   4 (0:1000)   |  1000  |    A    |
+                -------------------------------------
+]]></artwork>
+</figure>
+        <t indent="0" pn="section-6.4-6">このBIFTはデータプレーンにプログラムされ、以下の<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>で規定する規則を適用してパケットを転送するために使われます。</t>
+      </section>
+      <section anchor="the-bier-forwarding-procedure" numbered="true" removeInRFC="false" toc="include" pn="section-6.5">
+        <name slugifiedName="name-the-bier-forwarding-procedure">BIER転送手順</name>
+        <t indent="0" pn="section-6.5-1">以下は、BFRがBIERでカプセル化されたパケットを転送するために使う手順です。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.5-2">
+          <li pn="section-6.5-2.1">パケットのSI、BitStringLength、サブドメインを決定します。</li>
+          <li pn="section-6.5-2.2">BitStringがすべて0から成る場合、パケットを破棄します。転送処理は完了です。そうでない場合は、ステップ3に進みます。</li>
+          <li pn="section-6.5-2.3">パケットのBitStringでセットされている最下位の（つまり、最も右の）ビットの位置（「k」と呼びます）を見つけます。（ビットは最下位ビットから始めて1から番号付けされることを思い出してください。）</li>
+          <li pn="section-6.5-2.4">ビットkがそのBFR自身を識別する場合、パケットをコピーし、そのコピーをマルチキャストフローオーバーレイに送ります。次に、元のパケットのビットkをクリアし、ステップ2に進みます。そうでない場合は、ステップ5に進みます。</li>
+          <li pn="section-6.5-2.5">値kを、SI、サブドメイン、BitStringLengthとともに、BIFTへの「インデックス」として使います。</li>
+          <li pn="section-6.5-2.6">BIFTからF-BMとBFR-NBRを取り出します。</li>
+          <li pn="section-6.5-2.7">パケットをコピーします。コピーのBitStringを、F-BMとのANDをとることで更新します（つまり、PacketCopy-&gt;BitString &amp;= F-BM）。次に、コピーをBFR-NBRに転送します。（BFR-NBRがヌルの場合、コピーは単に破棄されます。）パケットが特定のBFR-NBRに転送されるとき、そのBitStringは、そのBFR-NBR経由で到達すべきBFERだけを識別することに注意してください。</li>
+          <li pn="section-6.5-2.8">次に、元のパケットのBitStringを、F-BMの反転（INVERSE）とのANDをとることで更新します（つまり、Packet-&gt;BitString &amp;= ~F-BM）。（これにより、パケットのコピーが転送されたばかりのBFERを識別するビットがクリアされます。）ステップ2に進みます。</li>
+        </ol>
+        <t indent="0" pn="section-6.5-3">この手順により、パケットは特定のBFR-NBRに一度だけ転送されます。BIFTの検索回数は、パケットを転送しなければならないBFR-NBRの数と同じであり、宛先BFERごとに個別の検索を行う必要はありません。</t>
+        <t indent="0" pn="section-6.5-4">パケットが特定のBFR-NBRに送信されるとき、変更が必要なBIERヘッダーの部分はBitStringだけではありません。BIERヘッダーにTTLフィールドがある場合、それをデクリメントする必要があります。さらに、<xref target="MPLS_BIER_ENCAPS" format="default" sectionFormat="of" derivedContent="MPLS_BIER_ENCAPS"/>のいずれかのカプセル化が使われる場合、パケットの送信先であるBFR-NBRからのシグナリングに基づいて、BIFT-idフィールドの変更が必要になる可能性が高いです。受信したBIERパケットのBIFT-idフィールドは、SI、サブドメイン、BitStringLengthを暗黙的に識別します。パケットが特定のBFR-NBRに送信される場合、BIFT-idフィールドは、そのBFR-NBRが同じSI、サブドメイン、BitStringLengthについて広告した値に変更されなければなりません。（<xref target="MPLS_BIER_ENCAPS" section="2.1" format="default" sectionFormat="of" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-bier-mpls-encapsulation-12#section-2.1" derivedContent="MPLS_BIER_ENCAPS"/>のカプセル化が使われる場合、これは本質的にMPLSラベルのスワップ操作です。）</t>
+        <t indent="0" pn="section-6.5-5">（上記の規則によって）パケットを特定のBFR-NBRに送信すると決定されたとします。そのBFR-NBRが複数の並列インターフェイスを介して接続されている場合、何らかの形の負荷分散を適用することが望ましい場合があります。負荷分散のアルゴリズムは、この文書の範囲外です。ただし、パケットのカプセル化にエントロピーフィールドが含まれている場合、エントロピーフィールドを尊重す<bcp14>べきです（SHOULD）</bcp14>。エントロピーフィールドの値が同じ2つのパケットは、（可能であれば）同じインターフェイスで送信される<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-6.5-6">場合によっては、ルーティングアンダーレイが、あるBFERへの（異なるBFR-NBRを経由する）複数の等コストパスを提供することがあります。これは「等コストマルチパス（Equal-Cost Multipath）」（ECMP）と呼ばれます。ECMPでの負荷分散をサポートするためには、このセクションで説明する手順を拡張しなければなりません。必要な拡張は<xref target="section-6.7" format="default" sectionFormat="of" derivedContent="Section 6.7"/>にあります。</t>
+        <t indent="0" pn="section-6.5-7">BFR-NBRへのユニキャストトラフィックが何らかの「バイパストンネル」を介して送信されている場合、BFR-NBRに送信されるBIERでカプセル化されたマルチキャストトラフィックも、そのトンネルを介して送信される<bcp14>べきです（SHOULD）</bcp14>。これにより、既存の「高速リルート」の仕組みを、ユニキャストトラフィックだけでなくマルチキャストトラフィックにも適用できます。</t>
+        <t indent="0" pn="section-6.5-8">これらの転送手順の例は<xref target="section-6.6" format="default" sectionFormat="of" derivedContent="Section 6.6"/>にあります。</t>
+        <t indent="0" pn="section-6.5-9">このセクションで示した規則は、次の疑似コードで表せます。</t>
+        <figure anchor="fig-4" align="left" suppress-title="false" pn="figure-4">
+<name slugifiedName="name-pseudocode">疑似コード</name>
+<sourcecode name="" type="pseudocode" markers="false" pn="section-6.5-10.1"><![CDATA[
+void ForwardBitMaskPacket (Packet)
+{
+    SI=GetPacketSI(Packet);
+    Offset=SI*BitStringLength;
+    for (Index = GetFirstBitPosition(Packet->BitString); Index ;
+         Index = GetNextBitPosition(Packet->BitString, Index)) {
+        F-BM = BIFT[Index+Offset]->F-BM;
+        if (!F-BM) continue;
+        BFR-NBR = BIFT[Index+Offset]->BFR-NBR;
+        PacketCopy = Copy(Packet);
+        PacketCopy->BitString &= F-BM;
+        PacketSend(PacketCopy, BFR-NBR);
+        Packet->BitString &= ~F-BM;
+    }
+}
+]]></sourcecode>
+</figure>
+        <t indent="0" pn="section-6.5-11">この疑似コードは、あるBFERにおいて、そのBFER自身のBFR-idに対応するBFR-NBRエントリーが、そのBFER自身のBFR-prefixになることを前提としています。また、対応するF-BMでは、そのBFER自身を表すビットの1つだけがセットされていることも前提としています。この場合、「PacketSend」関数はパケットをマルチキャストフローオーバーレイに送ります。</t>
+        <t indent="0" pn="section-6.5-12">この疑似コードはまた、ヌルネクストホップのF-BMが、あるビット位置に1を含むのは、そのビット位置が使われていないBFR-idまたは到達不能なBFERに対応する場合であり、かつその場合に限ることも前提としています。BFR-NBRがヌルの場合、「PacketSend」関数はパケットを破棄します。</t>
+      </section>
+      <section anchor="examples-of-bier-forwarding" numbered="true" removeInRFC="false" toc="include" pn="section-6.6">
+        <name slugifiedName="name-examples-of-bier-forwarding">BIER転送の例</name>
+        <t indent="0" pn="section-6.6-1">このセクションでは、<xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>のトポロジーに基づいて、BIER転送の例を2つ示します。これらの例では、すべてのパケットはデフォルトサブドメインに割り当てられ、すべてのパケットのSIは0で、BitStringLengthは4です。<xref target="fig-5" format="default" sectionFormat="of" derivedContent="Figure 5"/>は、SI=0のBIFTエントリーだけを示しています。簡潔にするため、BIFTの最初の列であるBFR-idは整数としてのみ示します。</t>
+        <figure anchor="fig-5" align="left" suppress-title="false" pn="figure-5">
+<name slugifiedName="name-bifts-used-in-the-forwarding-examples">転送の例で使うBIFT</name>
+<artwork name="" type="" align="left" alt="" pn="section-6.6-2.1"><![CDATA[
+        BFR-A BIFT            BFR-B BIFT            BFR-C BIFT
+   -------------------   -------------------   -------------------
+   | Id | F-BM | NBR |   | Id | F-BM | NBR |   | Id | F-BM | NBR |
+   ===================   ===================   ===================
+   |  1 | 0111 |  B  |   |  1 | 0011 |  C  |   |  1 | 0001 |  D  |
+   -------------------   -------------------   -------------------
+   |  2 | 0111 |  B  |   |  2 | 0011 |  C  |   |  2 | 0010 |  F  |
+   -------------------   -------------------   -------------------
+   |  3 | 0111 |  B  |   |  3 | 0100 |  E  |   |  3 | 1100 |  B  |
+   -------------------   -------------------   -------------------
+   |  4 | 1000 |  A  |   |  4 | 1000 |  A  |   |  4 | 1100 |  B  |
+   -------------------   -------------------   -------------------
+]]></artwork>
+</figure>
+        <section anchor="example-1" numbered="true" removeInRFC="false" toc="include" pn="section-6.6.1">
+          <name slugifiedName="name-example-1">例1</name>
+          <t indent="0" pn="section-6.6.1-1">BFR-D、BFR-E、BFR-FはBFERです。BFR-AはBFIRです。BFIR-Aが、マルチキャストフローオーバーレイから、BFER-Dがあるマルチキャストフローに関心を持っていることを知ったとします。BFIR-Aは、そのフローのパケットをBIERドメインの外部から受信すると、そのパケットにBIERカプセル化を適用します。カプセル化は、SIが0となるものでなければなりません。カプセル化には、ビット1だけがセットされ、その他のビットはすべてクリアされた（つまり0001の）BitStringも含まれます。これは、そのパケットを受信する必要があるBFERがBFER-Dだけであることを示します。次に、BFIR-Aは<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の手順に次のように従います。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.6.1-2">
+            <li pn="section-6.6.1-2.1">パケットのBitStringは0001なので、BFIR-Aは、列の最初のビットがビット1であることを見つけます。BIFTのエントリー1を見て、BFR-Aは、ビットマスクF-BMが0111で、BFR-NBRがBFR-Bであると判断します。</li>
+            <li pn="section-6.6.1-2.2">次に、BFR-Aはパケットのコピーを作成し、そのコピーにF-BMを適用します：Copy-&gt;BitString &amp;= 0111。コピーのBitStringはこれで0001（0001 &amp; 0111）になります。</li>
+            <li pn="section-6.6.1-2.3">次に、コピーがBFR-Bに送信されます。</li>
+            <li pn="section-6.6.1-2.4">次に、BFR-Aは、F-BMの反転を適用してパケットのBitStringを更新します：Packet-&gt;BitString &amp;= ~F-BM。その結果、パケットのBitStringは0000（0001 &amp; 1000）になります。</li>
+            <li pn="section-6.6.1-2.5">パケットのBitStringが0になったので、転送手順は完了です。</li>
+          </ul>
+          <t indent="0" pn="section-6.6.1-3">BFR-Bは、BFR-Aからマルチキャストパケットを受信すると、同じ手順に従います。その結果、BitStringが0001のパケットのコピーがBFR-Cに送信されます。BFR-Cも同じ手順を適用し、その結果、BitStringが0001のパケットのコピーをBFR-Dに送信します。</t>
+          <t indent="0" pn="section-6.6.1-4">BFER-Dでは、BFR-id 1についての（図示されていない）BIFTエントリーは、F-BMとして0001を、BFR-NBRとしてBFR-D自身を指定します。これにより、パケットのコピーがBFR-Dのマルチキャストフローオーバーレイに配送されます。パケットのBitStringは0000に設定され、パケットはそれ以上転送されません。</t>
+        </section>
+        <section anchor="example-2" numbered="true" removeInRFC="false" toc="include" pn="section-6.6.2">
+          <name slugifiedName="name-example-2">例2</name>
+          <t indent="0" pn="section-6.6.2-1">この例は例1と似ていますが、BFIR-Aが、マルチキャストフローオーバーレイから、BFER-DとBFER-Eの両方があるマルチキャストフローに関心を持っていることを知った点が異なります。BFIR-Aは、そのフローのパケットをBIERドメインの外部から受信すると、そのパケットにBIERカプセル化を適用します。カプセル化は、SIが0となるものでなければなりません。カプセル化には、2つのビットがセットされたBitStringも含まれます。（例1と同様に）BFR-DがこのパケットについてのBFERであることを示すためにビット1がセットされ、BFR-EがこのパケットについてのBFERであることを示すためにビット3がセットされます。つまり、BitStringは（ここでもBitStringLengthを4と仮定して）0101です。パケットを転送するために、BFIR-Aは<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の手順に次のように従います。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.6.2-2">
+            <li pn="section-6.6.2-2.1">パケットのBitStringは0101なので、BFIR-Aは、列の最初のビットがビット1であることを見つけます。BIFTのエントリー1を見て、BFR-Aは、ビットマスクF-BMが0111で、BFR-NBRがBFR-Bであると判断します。</li>
+            <li pn="section-6.6.2-2.2">次に、BFR-Aはパケットのコピーを作成し、そのコピーにF-BMを適用します：Copy-&gt;BitString &amp;= 0111。コピーのBitStringはこれで0101（0101 &amp; 0111）になります。</li>
+            <li pn="section-6.6.2-2.3">次に、コピーがBFR-Bに送信されます。</li>
+            <li pn="section-6.6.2-2.4">次に、BFR-Aは、F-BMの反転を適用してパケットのBitStringを更新します：Packet-&gt;BitString &amp;= ~F-BM。その結果、パケットのBitStringは0000（0101 &amp; 1000）になります。</li>
+            <li pn="section-6.6.2-2.5">パケットのBitStringが0になったので、転送手順は完了です。</li>
+          </ul>
+          <t indent="0" pn="section-6.6.2-3">BFR-Bは、BFR-Aからマルチキャストパケットを受信すると、<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の手順に次のように従います。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.6.2-4">
+            <li pn="section-6.6.2-4.1">パケットのBitStringは0101なので、BFR-Bは、列の最初のビットがビット1であることを見つけます。BIFTのエントリー1を見て、BFR-Bは、ビットマスクF-BMが0011で、BFR-NBRがBFR-Cであると判断します。</li>
+            <li pn="section-6.6.2-4.2">次に、BFR-Bはパケットのコピーを作成し、そのコピーにF-BMを適用します：Copy-&gt;BitString &amp;= 0011。コピーのBitStringはこれで0001（0101 &amp; 0011）になります。</li>
+            <li pn="section-6.6.2-4.3">次に、コピーがBFR-Cに送信されます。</li>
+            <li pn="section-6.6.2-4.4">次に、BFR-Bは、F-BMの反転を適用してパケットのBitStringを更新します：Packet-&gt;BitString &amp;= ~F-BM。その結果、パケットのBitStringは0100（0101 &amp; 1100）になります。</li>
+            <li pn="section-6.6.2-4.5">次に、BFR-Bは、パケットの（変更された）BitStringの次のビットを見つけます。これはビット3です。BIFTのエントリー3を見て、BFR-Bは、F-BMが0100で、BFR-NBRがBFR-Eであると判断します。</li>
+            <li pn="section-6.6.2-4.6">次に、BFR-Bはパケットのコピーを作成し、そのコピーにF-BMを適用します：Copy-&gt;BitString &amp;= 0100。コピーのBitStringはこれで0100（0100 &amp; 0100）になります。</li>
+            <li pn="section-6.6.2-4.7">次に、コピーがBFR-Eに送信されます。</li>
+            <li pn="section-6.6.2-4.8">次に、BFR-Bは、F-BMの反転を適用してパケットのBitStringを更新します：Packet-&gt;BitString &amp;= ~F-BM。その結果、パケットのBitStringは0000（0100 &amp; 1011）になります。</li>
+            <li pn="section-6.6.2-4.9">パケットのBitStringが0になったので、転送手順は完了です。</li>
+          </ul>
+          <t indent="0" pn="section-6.6.2-5">このように、BFR-Bはパケットのコピーを2つ転送します。BitStringが0001のパケットのコピーの一方は、これでBFR-BからBFR-Cに送信されました。同じ手順に従って、BFR-CはパケットをBFER-Dに転送します。</t>
+          <t indent="0" pn="section-6.6.2-6">BFER-Dでは、BFR-id 1についての（図示されていない）BIFTエントリーは、F-BMとして0001を、BFR-NBRとしてBFR-D自身を指定します。これにより、パケットのコピーがBFR-Dのマルチキャストフローオーバーレイに配送されます。パケットのBitStringは0000に設定され、パケットはそれ以上転送されません。</t>
+          <t indent="0" pn="section-6.6.2-7">パケットのもう一方のコピーは、BitStringが0100で、BFR-BからBFER-Eに送信されました。</t>
+          <t indent="0" pn="section-6.6.2-8">BFER-Eでは、BFR-id 3についての（図示されていない）BIFTエントリーは、F-BMとして0100を、BFR-NBRとしてBFR-E自身を指定します。これにより、パケットのコピーがBFR-Eのマルチキャストフローオーバーレイに配送されます。パケットのBitStringは0000に設定され、パケットはそれ以上転送されません。</t>
+        </section>
+      </section>
+      <section anchor="equal-cost-multipath-forwarding" numbered="true" removeInRFC="false" toc="include" pn="section-6.7">
+        <name slugifiedName="name-equal-cost-multipath-forwarding">等コストマルチパス転送</name>
+        <t indent="0" pn="section-6.7-1">多くのネットワークでは、ルーティングアンダーレイが、あるBFRからあるBFERへの複数の等コストパスを提供します。ネットワークを通じてマルチキャストパケットを転送する際には、それらのパスの間で負荷分散することで、これを活用すると有益な場合があります。この機能は「等コストマルチパス（Equal-Cost Multipath: ECMP）転送」と呼ばれます。</t>
+        <t indent="0" pn="section-6.7-2">BIERはECMP転送をサポートしますが、<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の手順をわずかに修正しなければなりません。2つのECMP手順を定義します。1つ目（<xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>で説明）では、あるパケットがあるBFRからあるBFERへ向かう際に等コストパスのうちどれをとるかは、(a)ルーティング、(b)パケットのエントロピー、(c)そのパケットの宛先となる他のBFER、に依存します。2つ目（<xref target="section-6.7.2" format="default" sectionFormat="of" derivedContent="Section 6.7.2"/>で説明）では、その選択はパケットのエントロピーだけに依存します。</t>
+        <t indent="0" pn="section-6.7-3">ここで説明する2つの転送手順には、トレードオフがあります。<xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>の手順では、パケットの複製の数が最小限になります。<xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>の手順は、BFRで使うメモリーも少なくなります。<xref target="section-6.7.2" format="default" sectionFormat="of" derivedContent="Section 6.7.2"/>の手順では、あるパケットがあるBFRからあるBFERまでたどるパスは、そのパケットの宛先となる他のBFERとは無関係です。<xref target="section-6.7.2" format="default" sectionFormat="of" derivedContent="Section 6.7.2"/>の手順は、より多くの複製を生じる可能性がありますが、より予測可能な動作を提供します。</t>
+        <t indent="0" pn="section-6.7-4">ここで説明する2つの手順は、同一のパケット形式で動作し、正しく相互運用できます。ただし、決定的な動作が望まれる場合は、すべてのBFRが<xref target="section-6.7.2" format="default" sectionFormat="of" derivedContent="Section 6.7.2"/>の手順を使う必要があります。</t>
+        <section anchor="non-deterministic-ecmp" numbered="true" removeInRFC="false" toc="include" pn="section-6.7.1">
+          <name slugifiedName="name-non-deterministic-ecmp">非決定的ECMP</name>
+          <t indent="0" pn="section-6.7.1-1"><xref target="fig-6" format="default" sectionFormat="of" derivedContent="Figure 6"/>は、BIERにおける非決定的ECMPの動作を示しています。</t>
+          <figure anchor="fig-6" align="left" suppress-title="false" pn="figure-6">
+<name slugifiedName="name-example-of-non-deterministic-ecmp">非決定的ECMPの例</name>
+<artwork name="" type="" align="left" alt="" pn="section-6.7.1-2.1"><![CDATA[
+       BFR-A BIFT            BFR-B BIFT            BFR-C BIFT
+  -------------------   -------------------   -------------------
+  | Id | F-BM | NBR |   | Id | F-BM | NBR |   | Id | F-BM | NBR |
+  ===================   ===================   ===================
+  | 1  | 0111 |  B  |   | 1  | 0011 |  C  |   | 1  | 0001 |  D  |
+  -------------------   -------------------   -------------------
+  | 2  | 0111 |  B  |   | 2  | 0011 |  C  |   | 2  | 0010 |  F  |
+  -------------------   |    | 0110 |  E  |   -------------------
+  | 3  | 0111 |  B  |   -------------------   | 3  | 1100 |  B  |
+  -------------------   | 3  | 0110 |  E  |   -------------------
+  | 4  | 1000 |  A  |   ------------------|   | 4  | 1100 |  B  |
+  -------------------   | 4  | 1000 |  A  |   -------------------
+                        -------------------
+
+   ( A ) ------------ ( B ) ------------ ( C ) ------------ ( D )
+  4 (0:1000)             \                  \           1 (0:0001)
+                          \                  \
+                          ( E ) ------------ ( F )
+                        3 (0:0100)         2 (0:0010)
+]]></artwork>
+</figure>
+          <t indent="0" pn="section-6.7.1-3">この例では、BFR-BはBFER-Fに到達するための等コストパスを2つ持っています。1つはBFR-C経由、もう1つはBFR-E経由です。BFER-FのBFR-idは2なので、これはBFR-BのBIFTのエントリー2に反映されています。エントリー2は、BFR-BがBFER-Bについて2つのBFR-NBRを選択でき、それぞれの選択に異なるF-BMが関連付けられていることを示しています。BFR-BはBIFTでエントリー2を検索するとき、どちらのBFR-NBRを選択してもかまいません。ただし、<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の手順に従う際には、選択したBFR-NBRに対応するF-BMを使わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-6.7.1-4">選択の方法は実装上の問題です。ただし、ECMPの通常の規則が適用されます。すなわち、あるフローのパケットを2つのパスに分割す<bcp14>べきではありません（SHOULD NOT）</bcp14>。また、パケットのカプセル化内のエントロピーフィールドを尊重す<bcp14>べきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-6.7.1-5">ただし、<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>の規則により、BFER-DとBFER-Fの両方を宛先とするパケットはすべてBFR-C経由で送信されることに注意してください。</t>
+        </section>
+        <section anchor="deterministic-ecmp" numbered="true" removeInRFC="false" toc="include" pn="section-6.7.2">
+          <name slugifiedName="name-deterministic-ecmp">決定的ECMP</name>
+          <t indent="0" pn="section-6.7.2-1"><xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>の手順では、ECMPパスが存在する場合、パケットが特定のBFERに到達するためにとるパスは、ルーティングとパケットのエントロピーだけでなく、そのパケットの宛先となる他のBFERの集合にも依存します。</t>
+          <t indent="0" pn="section-6.7.2-2">たとえば、<xref target="fig-6" format="default" sectionFormat="of" derivedContent="Figure 6"/>のネットワークにおける次のシナリオを考えます。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.7.2-3">
+            <li pn="section-6.7.2-3.1">BFR-Aが送信している一連のパケットがあり、その一部はDとFの両方を宛先とし、一部はFだけを宛先とします。</li>
+            <li pn="section-6.7.2-3.2">この一連のパケットはすべて同じエントロピー値（「Q」と呼びます）を持ちます。</li>
+            <li pn="section-6.7.2-3.3">BFR-Bでは、エントロピー値Qを持つパケットがBIFTのエントリー2を介して転送される場合、そのパケットはEに送信されます。</li>
+          </ul>
+          <t indent="0" pn="section-6.7.2-4"><xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>の転送手順を使うと、この一連のパケットのうちDとFの両方を宛先とするものは、BIFTのエントリー1に従って転送されるため、パスA-B-C-Fを経由してFに到達します。しかし、この一連のパケットのうちFだけを宛先とするものは、BIFTのエントリー2に従って転送されるため、パスA-B-E-Fを経由してFに到達します。</t>
+          <t indent="0" pn="section-6.7.2-5">この手順により、BFR-Bが送信するパケットの数は最小限になります。しかし、次のシナリオを考えてみてください。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.7.2-6">
+            <li pn="section-6.7.2-6.1">時刻t0以降、問題のマルチキャストフローはBFER-Fだけ（ONLY）が受信する必要があります。</li>
+            <li pn="section-6.7.2-6.2">その後の時刻t1以降、そのフローはBFER-DとBFER-Fの両方が受信する必要があります。</li>
+            <li pn="section-6.7.2-6.3">さらにその後の時刻t2以降、そのフローはDが受信する必要はなくなりますが、引き続きFは受信する必要があります。</li>
+          </ul>
+          <t indent="0" pn="section-6.7.2-7">すると、t0からt1までは、フローはパスA-B-E-Fを経由してFに向かいます。t1からt2までは、フローはパスA-B-C-Fを経由してFに向かいます。そしてt2以降は、フローは再びパスA-B-E-Fを経由してFに向かいます。</t>
+          <t indent="0" pn="section-6.7.2-8">問題は、Dがフローへの参加と離脱を繰り返すと、BからFへのフローのパスが切り替わり続けることです。これにより、Fがパケットを順序どおりに受信できなくなる可能性があります。また、トラブルシューティングも難しくなります。たとえば、E-Fリンクに何らかの問題がある場合、Fの受信者は、フローがDにも向かっているときには（E-Fリンクを避けるため）良好なサービスを受けますが、フローがDに向かっていないときには劣悪なサービスを受けます。ある時点でどのパスが使われているかを知るのは難しいため、これはトラブルシューティングが難しい可能性があります。また、ある時点でフローがとっているパスをたどることがわかっているtracerouteを実行するのは非常に困難です。</t>
+          <t indent="0" pn="section-6.7.2-9">この困難の原因は、<xref target="section-6.7.1" format="default" sectionFormat="of" derivedContent="Section 6.7.1"/>の手順では、特定のフローが特定のBFERまでとるパスが、そのフローを受信している、より小さい番号のBFERが存在するかどうかに依存することです。したがって、ECMPパスの選択は根本的に非決定的です。</t>
+          <t indent="0" pn="section-6.7.2-10">決定的な転送は、複数のBIFTを使うことで実現できます。その際、BIFTの各行には各宛先へのパスが1つだけあり、特定の宛先への複数のECMPパスは複数のテーブルに分散されるようにします。BIERでカプセル化されたパケットが転送のために到着すると、BFRはBIERのエントロピーフィールドのハッシュを使ってどのBIFTを使うかを決定し、選択したBIFTを用いて通常のBIER転送アルゴリズム（セクション<xref target="section-6.5" format="counter" sectionFormat="of" derivedContent="6.5"/>と<xref target="section-6.6" format="counter" sectionFormat="of" derivedContent="6.6"/>で説明）を使います。</t>
+          <t indent="0" pn="section-6.7.2-11">例として、宛先Xへのパスが2つ（「X1」と「X2」と呼びます）、宛先Yへのパスが4つ（「Y1」、「Y2」、「Y3」、「Y4」と呼びます）あるとします。たとえばBIFTが4つある場合、1つ目のBIFTはパスX1とY1を、2つ目はX1とY2を、3つ目はX2とY3を、4つ目はX2とY4を持つことになります。Xへのトラフィックがこれら4つのBIFTの間で均等に分割されれば、そのトラフィックはXへの2つのパスの間で均等に分割されます。Yへのトラフィックがこれら4つのBIFTの間で均等に分割されれば、そのトラフィックはYへの4つのパスの間で均等に分割されます。</t>
+          <t indent="0" pn="section-6.7.2-12">ある宛先へのパスが3つ、別の宛先へのパスが4つある場合、それら2つの宛先のそれぞれへの負荷を均等に分割するには、12個のBIFTが必要になることに注意してください。もちろん、各BIFTはいくらかのメモリーを使うため、BIFTの数を減らすために、最適ではない分割を許容することもあるでしょう。そのトレードオフをどのように行うかは、実装または展開上の判断です。</t>
+        </section>
+      </section>
+      <section anchor="prevention-of-loops-and-duplicates" numbered="true" removeInRFC="false" toc="include" pn="section-6.8">
+        <name slugifiedName="name-prevention-of-loops-and-duplicates">ループと重複の防止</name>
+        <t indent="0" pn="section-6.8-1">BIERでカプセル化されたパケットのBitStringは、そのパケットの転送先となるBFERの集合を指定します。BIERでカプセル化されたパケットが複製されるとき、パケットのどの2つのコピーも共通のBFERを持つことはありません。パケットのBFERの1つがパケットをさらに転送する場合、そのBFERは最初に自分自身を識別するビットをクリアします。その結果、BIERではパケットの重複配送は起こりえません。</t>
+        <t indent="0" pn="section-6.8-2">ルーティングアンダーレイがBFRの各ペアの間にループのないパスを提供する限り、BIERでカプセル化されたパケットがループすることはありません。BIER層は独自のパスを作成しないため、<xref target="section-6.5" format="default" sectionFormat="of" derivedContent="Section 6.5"/>で規定する転送手順以外に、BIER固有のループ防止技術は必要ありません。</t>
+        <t indent="0" pn="section-6.8-3">ある時点でルーティングアンダーレイがBFIR-AとBFER-Bの間にループのないパスを提供していない場合、BIERでカプセル化されたパケットは、BFIR-AからBFER-Bに向かう間にループする可能性があります。しかし、そのようなループによって、BFER-Bに重複したパケットが配送されることは決してありません。</t>
+        <t indent="0" pn="section-6.8-4">BIERのこれらの特性により、従来のIPマルチキャスト転送で使われている「リバースパスフォワーディング（Reverse Path Forwarding）」（RPF）チェックが不要になります。</t>
+      </section>
+      <section anchor="when-some-nodes-do-not-support-bier" numbered="true" removeInRFC="false" toc="include" pn="section-6.9">
+        <name slugifiedName="name-when-some-nodes-do-not-support-bier">一部のノードがBIERをサポートしない場合</name>
+        <t indent="0" pn="section-6.9-1"><xref target="section-6.2" format="default" sectionFormat="of" derivedContent="Section 6.2"/>の手順は、あるBIERドメイン内で、あるルーティングアンダーレイにおいてあるBFRに隣接するすべてのノードもBFRであることを前提としています。しかし、入口ノードと出口ノードがBFRである限り、そうでない場合でもBIERを使うことは可能です。このセクションでは、ルーティングアンダーレイが、各ノードからドメイン内の他のすべてのノードへの最短パスツリーを計算する、SPFベースのIGPである場合に使用できる手順を説明します。</t>
+        <t indent="0" pn="section-6.9-2">あるBFR（たとえば「BFR-B」）において、BFR-Bからドメイン内の各ルーターへの、IGPが計算した最短パスツリーのコピーから始めます。（このツリーはIGPのSPFアルゴリズムによって計算されます。）このコピーを「BFR-Bをルートとする（rooted at BFR-B）BIER-SPFツリー」と呼びましょう。次に、BFR-Bは、このBIER-SPFツリーを次のように修正します。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.9-3">
+          <li pn="section-6.9-3.1">BFR-Bは、BIER-SPFツリー上の自身の子ノードを順に調べます。</li>
+          <li pn="section-6.9-3.2">子ノードの1つがBIERをサポートしていない場合、BFR-Bはそのノードをツリーから取り除きます。次に、取り除いたばかりのノードの子ノードの親をツリー上で付け替え、BFR-Bがそれらの親になるようにします。</li>
+          <li pn="section-6.9-3.3">次に、BFR-Bは、前のステップの結果としてBFR-Bに親を付け替えたノードも含めて、自身の各子ノードを引き続き調べます。</li>
+        </ol>
+        <t indent="0" pn="section-6.9-4">すべての子ノード（元の子ノードと新しい子ノード）を調べ終えると、BIER-SPFツリー上のBFR-Bの子はすべてBFRになります。</t>
+        <t indent="0" pn="section-6.9-5">BIFTを構築するときには、BIER-SPFツリー上のBFR-Bの子ノードをBFR-NBRとみなします。F-BMは、BFR-NBRに基づいて適切に計算されなければなりません。</t>
+        <t indent="0" pn="section-6.9-6">BFR-Bは、この時点で、レイヤー2を介してBFR-Bに「直接接続」されていないBFR-NBRを持つことがあります。これらのBFR-NBRのいずれかにパケットを送信するには、BFR-Bはユニキャストトンネルを通じてパケットを送信しなければなりません。MPLSネットワークでは、これは、子ノードへのIGPユニキャストネクストホップを見つけ、IGPネクストホップが子ノードのアドレスにバインドしたMPLSラベルを（BIERカプセル化ヘッダーの上に）プッシュするだけで済む場合があります。（これは、パケットが、<xref target="MPLS_BIER_ENCAPS" section="2.1" format="default" sectionFormat="of" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-bier-mpls-encapsulation-12#section-2.1" derivedContent="MPLS_BIER_ENCAPS"/>で規定されているようなMPLSベースのBIERカプセル化を使っていることを前提としています。）もちろん、BIERカプセル化ヘッダー内のBIFT-idは、パケットのSI、サブドメイン、BitStringLengthについて子ノードが広告したBIFT-idでなければなりません。</t>
+        <t indent="0" pn="section-6.9-7">何らかの理由でユニキャストトンネルをMPLSトンネルにできない場合、そのトンネルタイプのカプセル化に、ペイロードがBIERでカプセル化されたパケットであることを示す方法がある限り、他の種類のトンネルを使うことができます。</t>
+        <t indent="0" pn="section-6.9-8">BIERでカプセル化されたパケットがMPLSベースのBIERカプセル化を使っていない場合、トンネルがBIERパケットだけを運ぶことがわかっていない限り、そのパケットをMPLSトンネルで送信することはできないことに注意してください。これは、MPLSには「次のプロトコルタイプ」フィールドがないためです。MPLSベースのBIERカプセル化を使う場合には、これは問題になりません。その場合、BIERカプセル化は、そのパケットがBIERでカプセル化されたパケットであることを識別するMPLSラベルで始まるからです。</t>
+        <t indent="0" pn="section-6.9-9">もちろん、上記は実装技術として意図されたものではなく、機能的な説明にすぎません。</t>
+        <t indent="0" pn="section-6.9-10">上記の説明はルーティングアンダーレイがSPFツリーを提供することを前提としていますが、他の種類のルーティングアンダーレイにも適用できる場合があります。</t>
+        <t indent="0" pn="section-6.9-11">上記の技術は、「ノード保護」を提供する（つまり、故障したと考えられるノードを迂回する高速リルートを提供する）ためにも使えます。BFR-BのBFR-NBRが故障した場合、BFR-Bは、故障したBFR-NBRをBIER-SPFツリーから取り除き、故障したBFR-NBRの子BFR-NBRの親を付け替えて、それらがツリー上でBFR-B自身の子ノードに見える（つまり、BFR-BのBFR-NBRに見える）ようにすることができます。その後は、通常のBIER転送手順が適用されます。ただし、BFR-Bから故障したBFR-NBRの子ノードへパケットを届けるのは少し複雑です。故障したノードを迂回するために、ユニキャストのバイパストンネルを使う必要がある場合があるからです。</t>
+        <t indent="0" pn="section-6.9-12">上記のステップ2のより単純な変形は、次のようになります。</t>
+        <blockquote pn="section-6.9-13">
+          <t indent="0" pn="section-6.9-13.1">子ノードの1つがBIERをサポートしていない場合、BFR-Bはそのノードをツリーから取り除きます。次に、その子ノードを経由して到達するすべてのBFERの親をツリー上で付け替え、BFR-Bがそれらの親になるようにします。</t>
+        </blockquote>
+        <t indent="0" pn="section-6.9-14">この変形の方が単純なのは、BFR-Bの特定の子ノードを経由して到達するBFERの集合を、BIFT内のF-BMから決定できるからです。ただし、この変形を使う場合、パケットはBFR-Bから、BIER非対応の子ノードを経由して到達可能なBFERへ直接ユニキャストされるため、結果はあまり最適ではなくなります。</t>
+        <t indent="0" pn="section-6.9-15">ユニキャストMPLSトンネルを使ってパケットをBFR-NBRに届ける場合、次のようにします。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.9-16">
+          <li pn="section-6.9-16.1">トンネルを表すMPLSラベルエントリーのTTLは、BIERカプセル化ヘッダーのTTL値からコピーするのではなく、大きな値に設定される<bcp14>べきです（SHOULD）</bcp14>。</li>
+          <li pn="section-6.9-16.2">トンネルラベルがポップされるとき、トンネルラベルのTTLをBIERカプセル化ヘッダーにコピーす<bcp14>べきではありません（SHOULD NOT）</bcp14>。</li>
+        </ul>
+        <t indent="0" pn="section-6.9-17">言い換えると、トンネルのTTL処理は、「Pipe Model」および「Short Pipe Model」のラベルスイッチドパス（Label Switched Path: LSP）について<xref target="RFC3443" format="default" sectionFormat="of" derivedContent="RFC3443"/>で規定されているとおりである<bcp14>べきです（SHOULD）</bcp14>。トンネルがMPLSトンネルでない場合にも、同じ原則が適用されます。BIERパケットは、トンネルのカプセル化からTTLを継承す<bcp14>べきではありません（SHOULD NOT）</bcp14>。そうすることで、BIERカプセル化ヘッダーのTTLは、ホップの総数ではなく、パケットが通過できるBFRの数だけを制約することになります。</t>
+        <t indent="0" pn="section-6.9-18">2つのBIERパケットが、それぞれのBIERヘッダーのエントロピーフィールドに同じ値を持ち、両方があるトンネルを通じて送信される場合、トンネルのカプセル化が、2つのパケットが同じエントロピーを持つという事実を保持することが望ましいです。</t>
+        <t indent="0" pn="section-6.9-19">このセクションの内容は、あるルーターがBFRであれば、そのルーターはすべてのインターフェイスでBIERをサポートすることを前提としています。しかし、ルーターが、BIERをサポートするラインカードとサポートしないラインカードを備えている可能性もあります。そのような場合、そのルーターを、一部のインターフェイスでのみBIERをサポートする「部分的BFR」と考えることができます。そのような部分的BFRを展開したい場合、IGPのマルチトポロジー機能を使って、BIER固有のトポロジーを設定できます。このトポロジーでは、BFRに接続するBIER非対応のインターフェイスをすべて除外します。そのうえで、BIERは、このトポロジーにバインドされたサブドメインで実行する必要があります。BFR以外のノードを迂回するためにユニキャストトンネルを使う場合、(a)トンネルをこのトポロジーに制限するか、(b)トンネルの端点を、BIER非対応のインターフェイスを持たないBFRにする必要があります。</t>
+      </section>
+      <section anchor="use-of-different-bitstringlengths-within-a-domain" numbered="true" removeInRFC="false" toc="include" pn="section-6.10">
+        <name slugifiedName="name-use-of-different-bitstringlengths-within-a-domain">ドメイン内での異なるBitStringLengthの使用</name>
+        <t indent="0" pn="section-6.10-1">このセクションの手順は、BIERドメイン全体で同じカプセル化を使う場合にのみ適用されます。あるBIERドメインで複数のカプセル化と複数のBitStringLengthの両方を使うシナリオの検討は、この文書の範囲外です。</t>
+        <t indent="0" pn="section-6.10-2">BIERドメイン内の異なるBFRが、異なるImposition BitStringLengthやDisposition BitStringLengthを使っている可能性があります。<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>で述べたように、</t>
+        <t indent="0" pn="section-6.10-3">「特定のBFIRが、あるパケットの集合にカプセル化を付与するときに特定のImposition BitStringLengthと特定のImposition sub-domainを使うようにプロビジョニングされている場合、そのサブドメインにBFR-idを持つ他のすべてのBFRは、そのBitStringLengthの受信BIERパケットを処理するようにプロビジョニングされる<bcp14>べきです（SHOULD）</bcp14>。（つまり、そのサブドメインにBFR-idを持つ他のすべてのBFRには、そのサブドメインのDisposition BitStringLengthとしてそのBitStringLengthがプロビジョニングされる<bcp14>べきです（SHOULD）</bcp14>。）」</t>
+        <t indent="0" pn="section-6.10-4">プロビジョニングの誤りが「ブラックホール」を生じる可能性があることに注意してください。BFIRが特定のBitStringLengthでBIERパケットを作成し、そのパケットが、そのBitStringLengthの受信BIERパケットを処理できないBFRを通過する必要がある場合、BIERヘッダーで識別されるすべてのBFERにパケットを転送できない可能性があります。<xref target="section-6.10.1" format="default" sectionFormat="of" derivedContent="Section 6.10.1"/>では、そのようなブラックホールの可能性を検出するために使用できる「BitStringLength互換性チェック（BitStringLength Compatibility Check）」という手順を定義します。</t>
+        <t indent="0" pn="section-6.10-5">ただし、BitStringLength互換性チェックが失敗しても、必ずしもブラックホールが生じるわけではありません。<xref target="section-6.10.2" format="default" sectionFormat="of" derivedContent="Section 6.10.2"/>では、BitStringLength互換性チェックが失敗した場合でも、ブラックホールを生じることなくBIER転送を進められるようにする、<bcp14>選択可能な（OPTIONAL）</bcp14>手順を規定します。</t>
+        <t indent="0" pn="section-6.10-6"><xref target="section-6.10.2" format="default" sectionFormat="of" derivedContent="Section 6.10.2"/>の手順が展開されておらず、あるBFIRでBitStringLength互換性チェックが失敗した場合、そのBFIRには次の2つの選択肢があります。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.10-7">
+          <li pn="section-6.10-7.1">パケットがBitStringで識別されるすべてのBFERに到達できない可能性があるとしても、プロビジョニングされたImposition BitStringLengthでBIERパケットを作成します。</li>
+          <li pn="section-6.10-7.2">プロビジョニングされたImposition BitStringLengthではないとしても、互換性チェックに合格するImposition BitStringLength（存在すると仮定して）を使います。</li>
+        </ul>
+        <t indent="0" pn="section-6.10-8"><xref target="section-6.10.1" format="default" sectionFormat="of" derivedContent="Section 6.10.1"/>では、これらの選択肢のどちらかを選んだ場合の影響について議論します。</t>
+        <t indent="0" pn="section-6.10-9">運用者が、特定のBIERドメインで使われるBitStringLengthを変更したい場合もあるでしょう。<xref target="section-6.10.3" format="default" sectionFormat="of" derivedContent="Section 6.10.3"/>では、BIERドメインをあるBitStringLengthから別のBitStringLengthに移行するために使用できる簡単な手順を規定します。</t>
+        <section anchor="bitstringlength-compatibility-check" numbered="true" removeInRFC="false" toc="include" pn="section-6.10.1">
+          <name slugifiedName="name-bitstringlength-compatibility-check">BitStringLength互換性チェック</name>
+          <t indent="0" pn="section-6.10.1-1">BFIRは、パケットをカプセル化する必要がある場合、まずそのパケットをサブドメインに割り当てます。次に、BFIRはそのパケットのImposition BitStringLength Lを選択します。Imposition BitStringLengthの選択は、プロビジョニングによって決まります。ただし、BFIRは、以下で定義するBitStringLength互換性チェックも実行すべきです。</t>
+          <t indent="0" pn="section-6.10.1-2">サブドメインSとImposition BitStringLength Lの組み合わせは、次の条件が成り立つ場合に限り、BitStringLength互換性チェックに合格します。</t>
+          <blockquote pn="section-6.10.1-3">
+            <t indent="0" pn="section-6.10.1-3.1">サブドメインSへの所属を広告したすべてのBFRが、そのサブドメインでDisposition BitStringLength L（および場合によっては他のBitStringLengthも）を使っていることも広告しています。（MPLSカプセル化（<xref target="MPLS_BIER_ENCAPS" section="2.1" format="default" sectionFormat="of" derivedLink="https://datatracker.ietf.org/doc/html/draft-ietf-bier-mpls-encapsulation-12#section-2.1" derivedContent="MPLS_BIER_ENCAPS"/>）が使われている場合、これは、サブドメインSについてのラベルを広告しているすべてのBFRが、サブドメインSとDisposition BitStringLength Lの組み合わせについてのラベルを広告していることを意味します。）</t>
+          </blockquote>
+          <t indent="0" pn="section-6.10.1-4">BFIRが、あるパケットの集合について特定のImposition BitStringLengthと特定のサブドメインを使うようにプロビジョニングされており、そのImposition BitStringLengthとサブドメインの組み合わせがBitStringLength互換性チェックに合格しない場合、BFIRはこの事実をエラーとしてログに記録す<bcp14>べきです（SHOULD）</bcp14>。そのうえで、BFIRには、それらのパケットをどう扱うかについて次の2つの選択肢があります。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.10.1-5">
+            <li pn="section-6.10.1-5.1">BFIRは、それでもプロビジョニングされたImposition BitStringLengthを使っても<bcp14>よいです（MAY）</bcp14>。<xref target="section-6.10.2" format="default" sectionFormat="of" derivedContent="Section 6.10.2"/>のオプション2またはオプション3のいずれかの手順が展開されていれば、これによってブラックホールが生じることはなく、実際に最適な結果になる場合もあります。ただし、BFIRは、それらの手順が展開されているかどうかをシグナリングによって判断できないことを理解しておくべきです。</li>
+            <li pn="section-6.10.1-5.2">BFIRが、特定のサブドメインについてBitStringLength互換性チェックに合格するImposition BitStringLengthを使える場合、BFIRは代わりにそのImposition BitStringLengthを使っても<bcp14>よいです（MAY）</bcp14>。</li>
+          </ol>
+          <t indent="0" pn="section-6.10.1-6">これら2つの選択肢のどちらを選ぶかも、プロビジョニングによって決まります。</t>
+          <t indent="0" pn="section-6.10.1-7">パケットを破棄することは、許される選択肢の1つではないことに注意してください。たとえば、すべてのBFIRが特定のサブドメインSについてImposition BitStringLength Lを使うようにプロビジョニングされているものの、1つのBFRがサブドメインSについてDisposition BitStringLength Lを使うようにプロビジョニングされていないとします。この場合、BitStringLength互換性チェックは失敗します。BFIRがBitStringLength LとサブドメインSでパケットを送信すると、プロビジョニングを誤ったBFRはそれらのパケットを転送できず、その結果、パケットは宛先となるBFERの一部にしか到達できない可能性があります。しかし、これでも、BFIRがパケットを破棄するよりはましです。BFIRがパケットを破棄すると、パケットは宛先となるBFERのどれにもまったく到達しません。</t>
+          <t indent="0" pn="section-6.10.1-8"><xref target="section-6.10.2" format="default" sectionFormat="of" derivedContent="Section 6.10.2"/>の手順が展開されていない場合、上記の選択肢2の方が良い選択肢に見えるかもしれません。しかし、あるBFIRが使えるImposition BitStringLengthのうち、BitStringLength互換性チェックにも合格するものが存在しない可能性もあります。特定の展開で選択肢2を使いたい場合は、次のような「Fallback Disposition BitStringLength」（「F」と呼びます）が存在すべきです。</t>
+          <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6.10.1-9">
+            <li pn="section-6.10.1-9.1">すべてのBFRが、すべてのサブドメインについてBitStringLength FをDisposition BitStringLengthとして使うことを広告します。</li>
+            <li pn="section-6.10.1-9.2">BFIRが、あるクラスのパケットについてImposition BitStringLength XとImposition sub-domain Sを使うようにプロビジョニングされているものの、BitStringLength XとサブドメインSの組み合わせについてBitStringLength互換性チェックが失敗する場合、BFIRは、Imposition sub-domainがSであるときは常に、Imposition BitStringLengthとしてBitStringLength Fを使うようにフォールバックします。</li>
+          </ul>
+          <t indent="0" pn="section-6.10.1-10">Fの値は、使用されているカプセル化のデフォルトのBitStringLengthにすることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+        </section>
+        <section anchor="handling-bitstringlength-mismatches" numbered="true" removeInRFC="false" toc="include" pn="section-6.10.2">
+          <name slugifiedName="name-handling-bitstringlength-mismatches">BitStringLengthの不一致の処理</name>
+          <t indent="0" pn="section-6.10.2-1">あるパケットがBitStringLengthの値XでBIERカプセル化され、そのパケットがBFR-Aに到着したとします。ここで、ルーティングアンダーレイによればネクストホップはBFR-Bですが、BFR-BはXを自身のDisposition BitStringLengthの1つとして使っていないとします。BFR-Aはこのパケットをどう扱うべきでしょうか。BFR-Aには3つのオプションがあります。BFR-Aは3つのうちのいずれかを行わ<bcp14>なければなりません（MUST）</bcp14>が、どの手順に従うかの選択はローカルな問題です。3つのオプションは次のとおりです。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.10.2-2">
+            <li pn="section-6.10.2-2.1">BFR-Aは、パケットを破棄しても<bcp14>よいです（MAY）</bcp14>。</li>
+            <li pn="section-6.10.2-2.2">
+              <t indent="0" pn="section-6.10.2-2.2.1">BFR-Aは、BFR-BがサポートするBitStringLengthの値を持つBIERヘッダーを使って、パケットを再カプセル化しても<bcp14>よいです（MAY）</bcp14>。</t>
+              <t indent="0" pn="section-6.10.2-2.2.2">BFR-Bが、パケットのBitStringLengthの値よりも小さいDisposition BitStringLengthの値しか使わない場合、パケットの追加のコピーを作成する必要が生じる可能性があることに注意してください。追加のコピーを実際に作成しなければならないかどうかは、元のパケットのBitStringで実際にセットされているビットに依存します。</t>
+            </li>
+            <li pn="section-6.10.2-2.3">BFR-Aは、BFR-BがBIERをまったくサポートしていないかのようにBFR-Bを扱っても<bcp14>よいです（MAY）</bcp14>。その場合、BFR-Aは<xref target="section-6.9" format="default" sectionFormat="of" derivedContent="Section 6.9"/>の規則を適用します。</li>
+          </ol>
+          <t indent="0" pn="section-6.10.2-3">BFRが3つのオプションのうちどれを使うかを広告できるようにするシグナリングは存在しないことに注意してください。</t>
+          <t indent="0" pn="section-6.10.2-4">オプション2は、BFRが長いBitStringLengthを使える領域と、BFRがより短いBitStringLengthしか使えない領域が、BIERドメイン内にある場合に役立ちます。</t>
+        </section>
+        <section anchor="transitioning-from-one-bitstringlength-to-another" numbered="true" removeInRFC="false" toc="include" pn="section-6.10.3">
+          <name slugifiedName="name-transitioning-from-one-bitstringlength-to-another">あるBitStringLengthから別のBitStringLengthへの移行</name>
+          <t indent="0" pn="section-6.10.3-1">特定のBIERドメインで使われるBitStringLengthを、ある値（X）から別の値（Y）に移行したいとします。次の移行手順を使うことができます。この手順では、BFRを1台ずつ再プロビジョニングでき、「フラグデー」を必要としません。</t>
+          <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-6.10.3-2">
+            <li pn="section-6.10.3-2.1">ドメイン内のすべてのBFRをアップグレードし、値Xと値Yの両方をDisposition BitStringLengthとして使うようにします。</li>
+            <li pn="section-6.10.3-2.2">BFIRを再プロビジョニングし、Imposition BitStringLengthとしてBitStringLengthの値Yを使うようにします。</li>
+            <li pn="section-6.10.3-2.3">その後、任意で、すべてのBFRを再プロビジョニングし、Disposition BitStringLength Xを使わないようにできます。</li>
+          </ol>
+        </section>
+      </section>
+    </section>
+    <section anchor="operational-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-operational-considerations">運用上の考慮事項</name>
+      <t indent="0" pn="section-7-1">BIERは、現在のIPマルチキャストの運用に比べて抜本的な簡素化を提供します。ツリー構築のためのコントロールプレーンも、フローごとの転送状態も、リバースパスフォワーディング（Reverse Path Forwarding: RPF）も、ランデブーポイント（Rendezvous Point: RP）なども不要です。BIERのパケット転送／複製は、パケット内でセットされた各ビット位置へのユニキャストパスに沿って行われるため、カプセル化されたマルチキャストパケットは、ヘッダー内でセットされた各ビットに対してユニキャストと同じパスをたどることが保証されます。BIERのFIBは、SPFで計算されたユニキャストFIBから導出することも、帯域内または帯域外の他の任意の転送パス計算から導出することもできます。各ビットは、BIERドメインの入口から、そのビットが割り当てられたエッジデバイスまで、このユニキャストパスをたどります。</t>
+      <t indent="0" pn="section-7-2">これらの違いにより、従来のマルチキャストソリューションに対する運用上の期待はBIERドメインには当てはまりません。各ノードには、ツリーを定義する細かなフローごとの状態はありません。転送プレーンのレベル（(S,G)エントリー）でのフローの監視は、BIERノードでは提供されません。BIERのFIBのパケットカウンターは、BFR-idやネクストホップの近隣ごとに維持できます。フローベースのメトリクスには、より深いパケット検査が必要になります。この話題はこの文書の範囲外です。このように、BIERはここでもユニキャストに近いものです。</t>
+      <t indent="0" pn="section-7-3">BIERの主要な運用上の利点の1つである決定的な収束を可能にしているのは、まさにこの状態の削減です。BIERのFIBは、リンクを通過しているマルチキャストフローの数にかかわらず、ユニキャストFIBの直後に収束できます。BIERドメイン内では、(S,G)の使用状況を注意深く監視する必要はありません。</t>
+      <section anchor="configuration" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-configuration">設定</name>
+        <t indent="0" pn="section-7.1-1">BIERドメインでは、各エッジノード（BFER）に、BIERマスク内の一意なビット位置（BFR-id）を与える必要があります。BFR-idは、各BFERで設定され、そのBFERの一意なIPアドレスに関連付けられなければなりません。既存の手動または自動の設定ツールは、BIER固有の設定へのアクセスを提供しなければなりません。BFR-idと、それが割り当てられたBFERの一意なアドレスとの関連付けも、BIERドメインのIGPに広告されなければなりません。これは、BIERの設定から暗黙的に導かれる場合もあれば、IGP固有の設定を必要とする場合もあります。この文書は、特定の設定方法を規定するものではありません。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">この文書にはIANAアクションはありません。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">BIERを特定のマルチキャストフローオーバーレイと組み合わせる場合、BIERはその層のセキュリティーに関する考慮事項を引き継ぎます。同様に、BIERを特定のルーティングアンダーレイと組み合わせる場合、BIERはその層のセキュリティーに関する考慮事項を引き継ぎます。</t>
+      <t indent="0" pn="section-9-2">特定のパケットのBIERカプセル化が、BFIRが意図したものとは異なるSIやBitStringを指定している場合、そのパケットは誤配送される可能性が高いです。パケットのBIERカプセル化が、（誤りや悪意によって）この文書で規定されている以外の方法で変更された場合、そのパケットは誤配送される可能性があります。BIERカプセル化の変更の中には、たとえばBitStringのすべてのビットをセットするといった、（意図的か否かにかかわらず）サービス拒否（DoS）攻撃につながるものもあります。</t>
+      <t indent="0" pn="section-9-3">BFIRが侵害された場合、BitStringのすべてのビットをセットしたBIERカプセル化を付与する可能性があります。これもDoS攻撃につながります。</t>
+      <t indent="0" pn="section-9-4">すべてのBFRは、自身のインターフェイスのうちどれがBIERドメインにつながり、どれがつながらないかを認識するようにプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。BIERでカプセル化されたパケットを、BIERドメインの外部から受け入れては<bcp14>なりません（MUST NOT）</bcp14>。（BIERドメインの外部からBIERでカプセル化されたパケットを受信すると、攻撃者がBitStringのすべてのビットをセットする可能性があるため、DoS攻撃の攻撃ベクトルを生み出すことになります。）</t>
+      <t indent="0" pn="section-9-5">2つのインターフェイスが異なるBIERドメインにつながっている場合、BFRは、それら2つのインターフェイスが異なるBIERドメインにつながっていることを認識するようにプロビジョニングされ<bcp14>なければなりません（MUST）</bcp14>。プロビジョニングが正しくない場合、あるBIERドメインからのBIERでカプセル化されたパケットが別のBIERドメインに「漏れる」可能性があります。これは、パケットの誤配送につながる可能性が高いです。</t>
+      <t indent="0" pn="section-9-6">DoS攻撃は、（誤りや悪意による）BFRの不正なプロビジョニングによっても生じる可能性があります。</t>
+      <t indent="0" pn="section-9-7">BFR-idとBFR-prefixの広告に使われる手順が安全でない場合、それらの手順への攻撃によって、BIERでカプセル化されたパケットが正しく配送されなくなる可能性があります。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3443" target="https://www.rfc-editor.org/info/rfc3443" quoteTitle="true" derivedAnchor="RFC3443">
+          <front>
+            <title>Time To Live (TTL) Processing in Multi-Protocol Label Switching (MPLS) Networks</title>
+            <author fullname="P. Agarwal" initials="P." surname="Agarwal"/>
+            <author fullname="B. Akyol" initials="B." surname="Akyol"/>
+            <date year="2003" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="3443"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3443"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="BGP_BIER_EXTENSIONS" quoteTitle="true" derivedAnchor="BGP_BIER_EXTENSIONS">
+          <front>
+            <title>BGP Extensions for BIER</title>
+            <author fullname="X. Xu" initials="X." surname="Xu" role="editor"/>
+            <author fullname="M. Chen" initials="M." surname="Chen"/>
+            <author fullname="K. Patel" initials="K." surname="Patel"/>
+            <author fullname="IJ. Wijnands" initials="IJ." surname="Wijnands"/>
+            <author fullname="A. Przygienda" initials="A." surname="Przygienda"/>
+            <date year="2017" month="August"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-idr-extensions-03"/>
+        </reference>
+        <reference anchor="BIER_MVPN" quoteTitle="true" derivedAnchor="BIER_MVPN">
+          <front>
+            <title>Multicast VPN Using BIER</title>
+            <author fullname="E. Rosen" initials="E." surname="Rosen" role="editor"/>
+            <author fullname="M. Sivakumar" initials="M." surname="Sivakumar"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <date year="2017" month="November"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-mvpn-09"/>
+        </reference>
+        <reference anchor="Boivie_Feldman" quoteTitle="true" derivedAnchor="Boivie_Feldman">
+          <front>
+            <title>Small Group Multicast</title>
+            <author fullname="R. Boivie" initials="R." surname="Boivie"/>
+            <author fullname="N. Feldman" initials="N." surname="Feldman"/>
+            <date year="2001" month="February"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-boivie-sgm-02"/>
+        </reference>
+        <reference anchor="ISIS_BIER_EXTENSIONS" quoteTitle="true" derivedAnchor="ISIS_BIER_EXTENSIONS">
+          <front>
+            <title>BIER Support via ISIS</title>
+            <author fullname="L. Ginsberg" initials="L." surname="Ginsberg" role="editor"/>
+            <author fullname="A. Przygienda" initials="A." surname="Przygienda"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="J. Zhang" initials="J." surname="Zhang"/>
+            <date year="2017" month="October"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-isis-extensions-06"/>
+        </reference>
+        <reference anchor="MPLS_BIER_ENCAPS" quoteTitle="true" derivedAnchor="MPLS_BIER_ENCAPS">
+          <front>
+            <title>Encapsulation for Bit Index Explicit Replication in MPLS and non-MPLS Networks</title>
+            <author fullname="IJ. Wijnands" initials="IJ." surname="Wijnands" role="editor"/>
+            <author fullname="E. Rosen" initials="E." surname="Rosen" role="editor"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="J. Tantsura" initials="J." surname="Tantsura"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <author fullname="I. Meilik" initials="I." surname="Meilik"/>
+            <date year="2017" month="October"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-mpls-encapsulation-12"/>
+        </reference>
+        <reference anchor="OSPF_BIER_EXTENSIONS" quoteTitle="true" derivedAnchor="OSPF_BIER_EXTENSIONS">
+          <front>
+            <title>OSPF Extensions for BIER</title>
+            <author fullname="P. Psenak" initials="P." surname="Psenak" role="editor"/>
+            <author fullname="N. Kumar" initials="N." surname="Kumar"/>
+            <author fullname="IJ. Wijnands" initials="IJ." surname="Wijnands"/>
+            <author fullname="A. Dolganow" initials="A." surname="Dolganow"/>
+            <author fullname="T. Przygienda" initials="T." surname="Przygienda"/>
+            <author fullname="J. Zhang" initials="J." surname="Zhang"/>
+            <author fullname="S. Aldrin" initials="S." surname="Aldrin"/>
+            <date year="2017" month="October"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-bier-ospf-bier-extensions-09"/>
+        </reference>
+        <reference anchor="RFC6513" target="https://www.rfc-editor.org/info/rfc6513" quoteTitle="true" derivedAnchor="RFC6513">
+          <front>
+            <title>Multicast in MPLS/BGP IP VPNs</title>
+            <author fullname="E. Rosen" initials="E." surname="Rosen" role="editor"/>
+            <author fullname="R. Aggarwal" initials="R." surname="Aggarwal" role="editor"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6513"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6513"/>
+        </reference>
+        <reference anchor="RFC6514" target="https://www.rfc-editor.org/info/rfc6514" quoteTitle="true" derivedAnchor="RFC6514">
+          <front>
+            <title>BGP Encodings and Procedures for Multicast in MPLS/BGP IP VPNs</title>
+            <author fullname="R. Aggarwal" initials="R." surname="Aggarwal"/>
+            <author fullname="E. Rosen" initials="E." surname="Rosen"/>
+            <author fullname="T. Morin" initials="T." surname="Morin"/>
+            <author fullname="Y. Rekhter" initials="Y." surname="Rekhter"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6514"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6514"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、この作業へのアイデアと貢献について、Rajiv Asati、Alia Atlas、John Bettink、Ross Callon（決定的ECMPに関するテキストの多くを寄稿しました）、Nagendra Kumar、Christian Martin、Neale Ranns、Albert Tian、Ramji Vaithianathan、Xiaohu Xu、Jeffrey Zhangに感謝します。</t>
+      <t indent="0" pn="section-appendix.a-2">著者らはまた、この文書をレビューしてくれたSue Hares、Victor Kuarsingh、Dan Romascanuに感謝します。</t>
+    </section>
+    <section anchor="contributors" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-contributors">貢献者</name>
+      <t indent="0" pn="section-appendix.b-1">次の人々は、この文書の内容に大きく貢献しており、共著者とみなされるべきです。</t>
+      <contact fullname="Gregory Cauchie" initials="G." surname="Cauchie">
+        <organization showOnFrontPage="true">Bouygues Telecom</organization>
+        <address>
+          <email>gcauchie@bouyguestelecom.fr</email>
+        </address>
+      </contact>
+      <contact fullname="Mach(Guoyi) Chen" initials="M." surname="Chen">
+        <organization showOnFrontPage="true">Huawei</organization>
+        <address>
+          <email>mach.chen@huawei.com</email>
+        </address>
+      </contact>
+      <contact fullname="Arkadiy Gulko" initials="A." surname="Gulko">
+        <organization showOnFrontPage="true">Thomson Reuters</organization>
+        <address>
+          <postal>
+            <street>195 Broadway</street>
+            <city>New York</city>
+            <region>NY</region>
+            <code>10007</code>
+            <country>United States of America</country>
+          </postal>
+          <email>arkadiy.gulko@thomsonreuters.com</email>
+        </address>
+      </contact>
+      <contact fullname="Wim Henderickx" initials="W." surname="Henderickx">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>Copernicuslaan 50</street>
+            <city>Antwerp</city>
+            <code>2018</code>
+            <country>Belgium</country>
+          </postal>
+          <email>wim.henderickx@nokia.com</email>
+        </address>
+      </contact>
+      <contact fullname="Martin Horneffer" initials="M." surname="Horneffer">
+        <organization showOnFrontPage="true">Deutsche Telekom</organization>
+        <address>
+          <postal>
+            <street>Hammer Str. 216-226</street>
+            <city>Muenster</city>
+            <code>48153</code>
+            <country>Germany</country>
+          </postal>
+          <email>Martin.Horneffer@telekom.de</email>
+        </address>
+      </contact>
+      <contact fullname="Luay Jalil" initials="L." surname="Jalil">
+        <organization showOnFrontPage="true">Verizon</organization>
+        <address>
+          <postal>
+            <street>1201 East Arapaho Rd.</street>
+            <city>Richardson</city>
+            <region>TX</region>
+            <code>75081</code>
+            <country>United States of America</country>
+          </postal>
+          <email>luay.jalil@verizon.com</email>
+        </address>
+      </contact>
+      <contact fullname="Uwe Joorde" initials="U." surname="Joorde">
+        <organization showOnFrontPage="true">Deutsche Telekom</organization>
+        <address>
+          <postal>
+            <street>Hammer Str. 216-226</street>
+            <city>Muenster</city>
+            <code>D-48153</code>
+            <country>Germany</country>
+          </postal>
+          <email>Uwe.Joorde@telekom.de</email>
+        </address>
+      </contact>
+      <contact fullname="Greg Shepherd" initials="G." surname="Shepherd">
+        <organization showOnFrontPage="true">Cisco Systems</organization>
+        <address>
+          <postal>
+            <street>170 West Tasman Drive</street>
+            <city>San Jose</city>
+            <region>CA</region>
+            <code>95134</code>
+            <country>United States of America</country>
+          </postal>
+          <email>shep@cisco.com</email>
+        </address>
+      </contact>
+      <contact fullname="Jeff Tantsura" initials="J." surname="Tantsura">
+        <address>
+          <email>jefftant.ietf@gmail.com</email>
+        </address>
+      </contact>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="IJsbrand Wijnands" initials="IJ." surname="Wijnands" role="editor">
+        <organization showOnFrontPage="true">Cisco Systems, Inc.</organization>
+        <address>
+          <postal>
+            <street>De Kleetlaan 6a</street>
+            <city>Diegem</city>
+            <code>1831</code>
+            <country>Belgium</country>
+          </postal>
+          <email>ice@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Eric C. Rosen" initials="E." surname="Rosen" role="editor">
+        <organization showOnFrontPage="true">Juniper Networks, Inc.</organization>
+        <address>
+          <postal>
+            <street>10 Technology Park Drive</street>
+            <city>Westford</city>
+            <region>Massachusetts</region>
+            <code>01886</code>
+            <country>United States of America</country>
+          </postal>
+          <email>erosen@juniper.net</email>
+        </address>
+      </author>
+      <author fullname="Andrew Dolganow" initials="A." surname="Dolganow">
+        <organization showOnFrontPage="true">Nokia</organization>
+        <address>
+          <postal>
+            <street>438B Alexandra Rd #08-07/10</street>
+            <street>Alexandra Technopark</street>
+            <city>Singapore</city>
+            <code>119968</code>
+            <country>Singapore</country>
+          </postal>
+          <email>andrew.dolganow@nokia.com</email>
+        </address>
+      </author>
+      <author fullname="Tony Przygienda" initials="T." surname="Przygienda">
+        <organization showOnFrontPage="true">Juniper Networks, Inc.</organization>
+        <address>
+          <postal>
+            <street>1194 N. Mathilda Ave.</street>
+            <city>Sunnyvale</city>
+            <region>California</region>
+            <code>94089</code>
+            <country>United States of America</country>
+          </postal>
+          <email>prz@juniper.net</email>
+        </address>
+      </author>
+      <author fullname="Sam K. Aldrin" initials="S." surname="Aldrin">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <postal>
+            <street>1600 Amphitheatre Parkway</street>
+            <city>Mountain View</city>
+            <region>California</region>
+            <code>94043</code>
+            <country>United States of America</country>
+          </postal>
+          <email>aldrin.ietf@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

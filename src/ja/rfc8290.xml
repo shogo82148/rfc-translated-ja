@@ -1,0 +1,790 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-aqm-fq-codel-06" indexInclude="true" number="8290" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-aqm-fq-codel-06" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8290" rel="alternate"/>
+  <front>
+    <title>Flow Queue CoDelパケットスケジューラーとアクティブキュー管理アルゴリズム</title>
+    <seriesInfo name="RFC" value="8290" stream="IETF"/>
+    <date year="2018" month="January"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">このメモは、FQ-CoDelというハイブリッドなパケットスケジューラーとアクティブキュー管理（AQM）アルゴリズムを示します。これは、バッファーブロートと戦い、遅延を減らすための強力なツールです。</t>
+      <t indent="0" pn="section-abstract-2">FQ-CoDelは、複数のフローからのパケットを混ぜ合わせ、バースト性のあるトラフィックによるヘッドオブラインブロッキングの影響を軽減します。FQ-CoDelは、DNS、ウェブ、ビデオ会議のトラフィックのような低レートのトラフィックを分離します。FQ-CoDelは、キューの長さを短く保つことで、ネットワークファブリック全体の利用率を、特に双方向のトラフィックについて改善します。また、幅広いハードウェアで、メモリーとCPUの面で効率的な方法で実装できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+https://www.rfc-editor.org/info/rfc8290で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+            <li pn="section-toc.1-1.1.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-used-in-this-document">この文書で使用する規約</xref></t>
+            </li>
+            <li pn="section-toc.1-1.1.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology-and-concepts">用語と概念</xref></t>
+            </li>
+            <li pn="section-toc.1-1.1.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.3.1"><xref derivedContent="1.3" format="counter" sectionFormat="of" target="section-1.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informal-summary-of-fq-codel">FQ-CoDelの非形式的な概要</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-codel">CoDel</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flow-queueing">フローキューイング</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-fq-codel-scheduler">FQ-CoDelスケジューラー</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-enqueue">エンキュー</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.1.2">
+              <li pn="section-toc.1-1.4.1.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1.1"><xref derivedContent="4.1.1" format="counter" sectionFormat="of" target="section-4.1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-alternative-classification-schemes">代替の分類方式</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dequeue">デキュー</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-considerations">実装上の考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-data-structures">データ構造</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-parameters">パラメーター</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2.2">
+              <li pn="section-toc.1-1.5.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1.1"><xref derivedContent="5.2.1" format="counter" sectionFormat="of" target="section-5.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-interval">インターバル</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.2.1"><xref derivedContent="5.2.2" format="counter" sectionFormat="of" target="section-5.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-target">目標値</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.3.1"><xref derivedContent="5.2.3" format="counter" sectionFormat="of" target="section-5.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-packet-limit">パケット数の上限</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.4.1"><xref derivedContent="5.2.4" format="counter" sectionFormat="of" target="section-5.2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-quantum">クォンタム</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.5">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.5.1"><xref derivedContent="5.2.5" format="counter" sectionFormat="of" target="section-5.2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flows">フロー</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.6">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.6.1"><xref derivedContent="5.2.6" format="counter" sectionFormat="of" target="section-5.2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-congestion-notification-(ecn)">明示的輻輳通知（ECN）</xref></t>
+              </li>
+              <li pn="section-toc.1-1.5.2.7">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.7.1"><xref derivedContent="5.2.7" format="counter" sectionFormat="of" target="section-5.2.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ce-threshold">CEしきい値</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.5.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-probability-of-hash-collisions">ハッシュ衝突の確率</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-memory-overhead">メモリーのオーバーヘッド</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-per-packet-timestamping">パケットごとのタイムスタンプ</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.6.1"><xref derivedContent="5.6" format="counter" sectionFormat="of" target="section-5.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limiting-queueing-in-lower-layers">下位レイヤーでのキューイングの制限</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.7">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.7.1"><xref derivedContent="5.7" format="counter" sectionFormat="of" target="section-5.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-other-forms-of-fair-queueing">その他の形式の公平キューイング</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.8">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.8.1"><xref derivedContent="5.8" format="counter" sectionFormat="of" target="section-5.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-differences-between-codel-and-fq-codel-behaviour">CoDelとFQ-CoDelの振る舞いの違い</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-limitations-of-flow-queueing">フローキューイングの制限</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.6.2">
+            <li pn="section-toc.1-1.6.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1.1"><xref derivedContent="6.1" format="counter" sectionFormat="of" target="section-6.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fairness-between-things-other-than-flows">フロー以外のものの間での公平性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.2.1"><xref derivedContent="6.2" format="counter" sectionFormat="of" target="section-6.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-flow-bunching-by-opaque-encapsulation">不透明なカプセル化によるフローの束ね</xref></t>
+            </li>
+            <li pn="section-toc.1-1.6.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.3.1"><xref derivedContent="6.3" format="counter" sectionFormat="of" target="section-6.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-low-priority-congestion-control-algorithms">低優先度の輻輳制御アルゴリズム</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-status-and-future-work">展開状況と今後の作業</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">Flow Queue CoDel（FQ-CoDel）アルゴリズムは、パケットスケジューラーとアクティブキュー管理（AQM）<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>アルゴリズムを組み合わせたもので、バッファーブロートと戦うコミュニティーの取り組み<xref target="BLOATWEB" format="default" sectionFormat="of" derivedContent="BLOATWEB"/>の一環として開発されました。FQ-CoDelは、修正を加えたDeficit Round Robin（DRR）キュースケジューラー<xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/> <xref target="DRRPP" format="default" sectionFormat="of" derivedContent="DRRPP"/>に基づいており、各キューでCoDel AQM<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>アルゴリズムが動作します。この文書は、この組み合わせたアルゴリズムについて説明します。リファレンス実装がネットワークシミュレーターのns-2<xref target="NS2" format="default" sectionFormat="of" derivedContent="NS2"/>とns-3<xref target="NS3" format="default" sectionFormat="of" derivedContent="NS3"/>向けに利用可能であり、このアルゴリズムはfq_codelキューイング規律（queueing discipline）<xref target="LINUXSRC" format="default" sectionFormat="of" derivedContent="LINUXSRC"/>としてLinuxカーネルのメインラインに取り込まれています。</t>
+      <t indent="0" pn="section-1-2">FQ-CoDelは、フローキューイングとCoDelを組み合わせた、汎用的で効率的な、ほとんどパラメーターを必要としないキュー管理のアプローチです。FQ-CoDelはバッファーブロート<xref target="BLOAT" format="default" sectionFormat="of" derivedContent="BLOAT"/>を解決するための強力なツールであり、すでに多くのLinuxディストリビューションでデフォルトで有効になっています。この文書では、他の人がLinuxエコシステムの外で展開するためにこのアルゴリズムを独自に実装できるよう、Linuxの実装を十分詳細に説明します。</t>
+      <t indent="0" pn="section-1-3">FQ-CoDelアルゴリズムはもともとLinuxカーネルで開発されたため、その実装が今でも正統なものとみなされています。この文書は、セクション1〜4でアルゴリズムを抽象的に説明し、実装の詳細のほとんどを後続のセクションに分けています。ただし、抽象的なアルゴリズムの説明におけるデフォルトの振る舞いについては、Linuxの実装を基準としています。</t>
+      <t indent="0" pn="section-1-4">この文書の構成は次のとおりです。このセクションでは、文書の残りの部分で使用するいくつかの概念と用語を示し、FQ-CoDelアルゴリズムの簡単な非形式的な概要を示します。<xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/>では、CoDelアルゴリズムの概要を示します。<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>では、フローのハッシュ化とDRRの部分を扱います。続いて<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>でアルゴリズムの動作を詳細に説明し、<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>で実装の詳細と考慮事項を説明します。<xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>では、フローキューイングを使用する場合の制限のいくつかを挙げます。<xref target="section-7" format="default" sectionFormat="of" derivedContent="Section 7"/>では、FQ-CoDelの展開の現状を概説し、今後検討しうる分野をいくつか挙げます。最後に、<xref target="section-8" format="default" sectionFormat="of" derivedContent="Section 8"/>では、実装において守らなければならないセキュリティー上の重要な点をいくつか改めて述べます。</t>
+      <section anchor="conventions-used-in-this-document" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-conventions-used-in-this-document">この文書で使用する規約</name>
+        <t indent="0" pn="section-1.1-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      </section>
+      <section anchor="terminology-and-concepts" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-terminology-and-concepts">用語と概念</name>
+        <dl newline="false" spacing="normal" indent="3" pn="section-1.2-1">
+          <dt pn="section-1.2-1.1">フロー（Flow）：</dt>
+          <dd pn="section-1.2-1.2">フローは通常、送信元IPアドレス、宛先IPアドレス、送信元ポート番号、宛先ポート番号、プロトコル番号の5タプルによって識別されます。これらのパラメーターの上位集合や部分集合、メディアアクセス制御（MAC）アドレス、またはその他の手段によって識別することもできます。FQ-CoDelは、パケットを内部のキューに割り当てるために、フローを設定可能な数のバケットにハッシュします。</dd>
+          <dt pn="section-1.2-1.3">キュー（Queue）：</dt>
+          <dd pn="section-1.2-1.4">FQ-CoDelの内部で表現されるパケットのキューです。ほとんどの場合、各フローがそれぞれ独自のキューを持ちます。ただし、ハッシュ衝突の可能性があるため、常にそうなるとは限りません。混乱を避けるため、「キュー」という語は内部のデータ構造を指すのに使用し、「フロー」という語はFQ-CoDelアルゴリズムに届けられる実際のパケットの流れを指すのに使用します。</dd>
+          <dt pn="section-1.2-1.5">スケジューラー（Scheduler）：</dt>
+          <dd pn="section-1.2-1.6">パケットをどのキューからデキューするかを選択する仕組みです。</dd>
+          <dt pn="section-1.2-1.7">CoDel AQM：</dt>
+          <dd pn="section-1.2-1.8"><xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>で説明されている、FQ-CoDelが用いるアクティブキュー管理アルゴリズムです。</dd>
+          <dt pn="section-1.2-1.9">DRR：</dt>
+          <dd pn="section-1.2-1.10">Deficit Round Robinスケジューリング<xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/>です。</dd>
+          <dt pn="section-1.2-1.11">クォンタム（Quantum）：</dt>
+          <dd pn="section-1.2-1.12">1つのキューから一度にデキューされるバイト数の最大値です。</dd>
+          <dt pn="section-1.2-1.13">インターバル（Interval）：</dt>
+          <dd pn="section-1.2-1.14">持続的なキューが形成されつつあることを検出するために、CoDelの制御ループが用いる特性時間です（<xref target="RFC8289" section="4.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8289#section-4.2" derivedContent="RFC8289"/>を参照）。</dd>
+          <dt pn="section-1.2-1.15">目標値（Target）：</dt>
+          <dd pn="section-1.2-1.16">CoDelの制御ループの目標として用いられる、キュー内のパケットの最小滞留時間の設定値です（<xref target="RFC8289" section="4.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8289#section-4.3" derivedContent="RFC8289"/>を参照）。</dd>
+        </dl>
+      </section>
+      <section anchor="informal-summary-of-fq-codel" numbered="true" removeInRFC="false" toc="include" pn="section-1.3">
+        <name slugifiedName="name-informal-summary-of-fq-codel">FQ-CoDelの非形式的な概要</name>
+        <t indent="0" pn="section-1.3-1">FQ-CoDelは、DRR<xref target="DRR" format="default" sectionFormat="of" derivedContent="DRR"/>とCoDel<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>のハイブリッドであり、Shortest Queue First（SQF）<xref target="SQF" format="default" sectionFormat="of" derivedContent="SQF"/>やDRR++<xref target="DRRPP" format="default" sectionFormat="of" derivedContent="DRRPP"/>に似た、疎なフローのための最適化を備えています。キューを形成するフローは、キューを形成しないフローとは異なる扱いを受けるため、私たちはこれを「公平キューイング（fair queueing）」ではなく「フローキューイング（flow queueing）」と呼びます。</t>
+        <t indent="0" pn="section-1.3-2">デフォルトでは、FQ-CoDelは、プロトコル番号、送信元と宛先のIPアドレス、送信元と宛先のポート番号からなる5タプルを、初期化時に選択した乱数で摂動を加えてハッシュすることによって、到着したパケットを確率的に異なるキューに分類します（ただし、代わりに他のフロー分類方式を任意に設定することもできます。<xref target="section-4.1.1" format="default" sectionFormat="of" derivedContent="Section 4.1.1"/>を参照してください）。各キューは、CoDel AQMアルゴリズム<xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/> <xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>によって管理されます。キューはFIFOの順序を持つため、キュー内のパケットの順序は保たれます。</t>
+        <t indent="0" pn="section-1.3-3">FQ-CoDelアルゴリズムは、2つの論理的な部分で構成されます。（1）どのキューからパケットをデキューするかを選択するスケジューラーと、（2）各キューで動作するCoDel AQMです。FQ-CoDelの微妙な点のほとんどはスケジューリングの部分にあり、スケジューラーとCoDelアルゴリズムとの間の相互作用はかなり単純です。</t>
+        <t indent="0" pn="section-1.3-4">初期化時に、各キューはそれぞれ別個のCoDel状態変数の組を持つように設定されます。デフォルトでは、1024個のキューが作成されます。執筆時点のLinuxの実装は、1個から65535個までの個別のキューをサポートしています。各キューは、その存続期間を通じて状態変数を維持するため、FQではないCoDelの変種と同じように振る舞います。つまり、キューが1つだけの場合、FQ-CoDelは本質的にCoDel単体と同じように振る舞います。</t>
+        <t indent="0" pn="section-1.3-5">デキュー時に、FQ-CoDelは、2階層のラウンドロビン方式によってデキューするキューを選択します。この方式では、各キューは各反復で設定可能なクォンタム分のバイト数までデキューできます。このクォンタムからのずれはキューのバイトクレジットとして保持され、これによって公平性の方式がパケット単位ではなくバイト単位になります。2階層のラウンドロビンの仕組みでは、「新しい」キュー（定常キューを形成しないもの）と「古い」キュー（ラウンドロビンスケジューラーの1回の反復を超えてアクティブであるのに十分なデータをキューに入れたもの）を区別します。</t>
+        <t indent="0" pn="section-1.3-6">この新しいキューと古いキューの区別は、スケジューラーに訪問されるまでに1クォンタムを超えるバイト数を溜め込まないキューに対して特有の結果をもたらします。そのようなキューは、空になった後にリストから削除され、次にそのキュー宛てのパケットが到着したときに新しいキューとして再び追加されます。これは、そのキューが、ラウンドごとに空にならないキューよりも実質的に優先されることを意味します（ここでは枯渇から保護するためにちょっとした注意が必要です。後述を参照してください）。フローがキューをこの状態に保つためにどれだけ少ないデータを送信しなければならないかを正確に推論するのは、イグレスリンクの速度と同時に存在するフローの数の両方に依存するため、やや困難です。しかし実際には、典型的なインターネットの利用において優先されると有益な多くのもの（ACK、DNSルックアップ、対話型のSecure Shell（SSH）、HTTPリクエスト、Voice over IP（VoIP））がこのカテゴリーに入る<em>傾向があり</em>、FQ-CoDelが多くの実用的なアプリケーションで非常に良い性能を発揮するのはこのためです。ただし、優先付けが暗黙的であるため、保証された優先度を必要とするアプリケーション（たとえば、ネットワーク制御プレーンをそのネットワーク自体の上で多重化する場合）では、依然として明示的な分類が必要です。</t>
+        <t indent="0" pn="section-1.3-7">このスケジューリング方式にはいくつか微妙な点があり、それについてはこの文書の残りの部分で詳しく説明します。</t>
+      </section>
+    </section>
+    <section anchor="codel" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-codel">CoDel</name>
+      <t indent="0" pn="section-2-1">CoDelは、Communications of the ACMの論文<xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/>とIETFの文書<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>で説明されています。基本的な考え方は、出力リンクをビジーに保つのに十分なキューイングを維持しつつ、その点を超えてキューが形成されることを避けるように、キューの長さを制御することです。これは、キューに「長すぎる」時間とどまっているパケットを優先的にドロップすることで行われます。パケットは先頭ドロップ（head drop）によってドロップされます。これにより、ドロップのシグナルが送信者に伝わるまでの時間がキューの長さの分だけ短くなり、TCPの高速再送がより早く引き起こされやすくなります。</t>
+      <t indent="0" pn="section-2-2">CoDelアルゴリズム自体はここでは説明しません。代わりに、CoDelの文書<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>を参照してください。</t>
+    </section>
+    <section anchor="flow-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-flow-queueing">フローキューイング</name>
+      <t indent="0" pn="section-3-1">FQ-CoDelのスケジューラーの意図は、各フローにそれぞれ独自のキューを与えることであり、そのため「フローキューイング」という用語を使っています。これを完全に実現するのではなく、ハッシュに基づく方式を使用します。この方式では、フローはいくつかのバケットにハッシュされ、各バケットがそれぞれ独自のキューを持ちます。バケットの数は設定可能で、現在のLinuxの実装でのデフォルトは1024です。これは、たとえばホームゲートウェイで見られるような程度の数のフローでハッシュ衝突を避けるのに十分です。リンクの特性に応じて、メモリーと引き換えにハッシュ衝突の確率を下げるようにこれを調整できます。これについてのより踏み込んだ議論は、セクション<xref target="section-5.3" format="counter" sectionFormat="of" derivedContent="5.3"/>と<xref target="section-5.4" format="counter" sectionFormat="of" derivedContent="5.4"/>を参照してください。</t>
+      <t indent="0" pn="section-3-2">デフォルトでは、フローのハッシュは、送信元と宛先のIPアドレス、送信元と宛先のポート番号、プロトコル番号の5タプルに対して行われます。ハッシュはパケットの任意のバイトにマッチするようにカスタマイズできますが、そうする際には注意を払うべきです。FQ-CoDelスケジューラーの利点の多くは、このフローごとの区別から生じるためです。ただし、<xref target="section-6" format="default" sectionFormat="of" derivedContent="Section 6"/>で議論するように、デフォルトのハッシュにはいくつかの制限があります。</t>
+      <t indent="0" pn="section-3-3">FQ-CoDelのDRRスケジューラーはバイト単位であり、キューの間でDeficit Round Robinの仕組みを用います。これは、各キューの現在の「バイトクレジット」の数を追跡することで機能します。この数は設定可能なクォンタムに初期化されます。キューはデキューの機会を得るたびにパケットをデキューでき、その結果、パケットごとにパケットサイズの分だけクレジットの数が減ります。これはバイトクレジットのカウンターの値がゼロ以下になるまで続き、その時点でカウンターが1クォンタムだけ増やされ、デキューの機会が終了します。</t>
+      <t indent="0" pn="section-3-4">これは、たとえば、あるキューがサイズquantum/3のパケットを含み、別のキューがクォンタムサイズのパケットを含む場合、1つ目のキューは順番が回ってくるたびに3つのパケットをデキューするのに対し、2つ目のキューは1つしかデキューしないことを意味します。つまり、小さなパケットを送信するフローがパケットサイズの違いによって不利にならず、むしろDRR方式はバイト単位の公平キューイング方式に近似します。クォンタムのサイズはスケジューリングの粒度を決定し、クォンタムが小さすぎることのトレードオフはスケジューリングのオーバーヘッドです。帯域幅が小さい場合は、クォンタムをデフォルトのMTUサイズより下げると有利なことがあります。</t>
+      <t indent="0" pn="section-3-5">通常のDRRとは異なり、フローの集合が2つあります。最近キューを形成していないフローのための「新しい」リストと、バックログを形成するキューのための「古い」リストです。この区別はFQ-CoDelスケジューラーに不可欠な部分であり、<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>でより詳しく説明します。</t>
+    </section>
+    <section anchor="the-fq-codel-scheduler" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-the-fq-codel-scheduler">FQ-CoDelスケジューラー</name>
+      <t indent="0" pn="section-4-1">スケジューリングの決定を行うために、FQ-CoDelは、アクティブなキューの順序付きリストを2つ維持します。新しいキューと古いキューです。現在アクティブでないキューにパケットが追加されると、そのキューは新しいキューのリストに追加されることでアクティブになります。その後、そのキューは古いキューのリストに移され、アクティブでなくなるとそこから削除されます。後述するように、この振る舞いが、デキュー時のパケットスケジューリングにおけるいくつかの微妙な点の原因となっています。</t>
+      <section anchor="enqueue" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-enqueue">エンキュー</name>
+        <t indent="0" pn="section-4.1-1">パケットのエンキューの仕組みは、3つの段階で構成されます。キューへの分類、タイムスタンプの付与と管理情報の更新、そしてエンキューされたパケットの総数が最大値を超えたときに任意で行うパケットのドロップです。</t>
+        <t indent="0" pn="section-4.1-2">パケットがエンキューされるとき、まず適切なキューに分類されます。デフォルトでは、これは、IPプロトコル、送信元と宛先のIPアドレス、送信元と宛先のポート番号（存在する場合）の5タプルに対して（Jenkinsハッシュ関数<xref target="JENKINS" format="default" sectionFormat="of" derivedContent="JENKINS"/>を用いて）ハッシュを行い、そのハッシュ値をキューの数で割った剰余を取ることで行われます。ハッシュが事前に予測できる場合に起こりうるDoS攻撃を防ぐため、初期化時に選択した乱数を剰余加算することでハッシュにソルトを加えます（<xref target="section-8" format="default" sectionFormat="of" derivedContent="Section 8"/>を参照）。Linuxカーネルは、3つの32ビット値を混合して1つの32ビットの出力値にすることでJenkinsハッシュ関数を実装しています。96ビットを超える入力は、追加の混合ステップによって96ビットずつ縮約されます。</t>
+        <t indent="0" pn="section-4.1-3">パケットがキューへの分類に成功すると、タイムスタンプを付与するためにCoDelアルゴリズムに渡されます。その後、パケットは選択されたキューの末尾に追加され、キューのバイト数がパケットサイズの分だけ更新されます。次に、そのキューが現在アクティブでない場合（つまり、新しいキューのリストと古いキューのリストのどちらにも入っていない場合）、そのキューは新しいキューのリストの末尾に追加され、そのクレジットの数は設定されたクォンタムに初期化されます。そうでない場合、キューは現在のキューリストに残されます。</t>
+        <t indent="0" pn="section-4.1-4">最後に、過負荷から保護するために、エンキューされたパケットの総数が設定された上限と比較されます。上限を超えた場合（パケットがエンキューされたばかりなので起こりえます）、現在のバイト数が最も大きいキューが選択され、そのキューのパケット数の半分（最大64パケット）がそのキューの先頭からドロップされます。複数のパケットを一度にドロップすることで、最長のキューを見つけるコストを償却しやすくなり、過負荷の状況でのCPU使用率が大幅に下がります。</t>
+        <section anchor="alternative-classification-schemes" numbered="true" removeInRFC="false" toc="include" pn="section-4.1.1">
+          <name slugifiedName="name-alternative-classification-schemes">代替の分類方式</name>
+          <t indent="0" pn="section-4.1.1-1">前述のように、分類方式を変更して、フローについて異なる概念を提供することができます。Linuxの実装は、このオプションを「tc filter」コマンドの形で提供しています。これにより能力を追加できますが（たとえば、MACアドレス、Diffservコードポイントの値、ファイアウォールのルール、フロー固有のマーキング、IPv6フローラベルなどの、他に考えられるパラメーターにマッチさせることができます）、FQ-CoDelスケジューラーの利点の多くはフローを別々のキューに保つことから生じるため、フローの概念を保つように注意を払うべきです。</t>
+          <t indent="0" pn="section-4.1.1-2">ポート番号を含まないプロトコル（ICMPなど）の場合、Linuxの実装は単にポート番号をゼロに設定し、通常どおりハッシュを行います。実際には、その結果、そのようなプロトコルはそれぞれ独自のキューを得ることになります（ハッシュ衝突の場合を除きます）。実装は、独自のフローの概念を持つプロトコルに対して他の分類を行うことができますが、他の情報がない場合は、単に送信元と宛先のIPアドレスとプロトコル番号に対するハッシュにフォールバック<bcp14>すべきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-4.1.1-3">デフォルトの分類方式は、さらに、トンネリングされたパケットのカプセル化を解除してから、カプセル化されたペイロード内の5タプルに対してハッシュを行うことで改善できます。Linuxの実装は、6in4<xref target="RFC4213" format="default" sectionFormat="of" derivedContent="RFC4213"/>、IP-in-IP<xref target="RFC2003" format="default" sectionFormat="of" derivedContent="RFC2003"/>、Generic Routing Encapsulation（GRE）<xref target="RFC2890" format="default" sectionFormat="of" derivedContent="RFC2890"/>などの、カーネルが知っている一般的なカプセル化に対してこれを行います。これは、同じ（外側の）5タプルを共有するフローを区別するのに役立ちますが、当然ながら暗号化されていないトンネルに限られます（暗号化されたトンネルについての議論は<xref target="section-6.2" format="default" sectionFormat="of" derivedContent="Section 6.2"/>を参照してください）。</t>
+        </section>
+      </section>
+      <section anchor="dequeue" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-dequeue">デキュー</name>
+        <t indent="0" pn="section-4.2-1">FQ-CoDelの作業のほとんどは、パケットのデキュー時に行われます。これは3つの部分で構成されます。パケットをデキューするキューの選択、（その過程でCoDelアルゴリズムを用いた）実際のデキュー、そして最後の管理情報の更新です。</t>
+        <t indent="0" pn="section-4.2-2">最初の部分では、スケジューラーはまず新しいキューのリストを調べます。そのリストの先頭にあるキューについて、そのキューのクレジットの数が負である場合（つまり、すでに少なくとも1クォンタム分のバイトをデキューしている場合）、そのキューに追加で1クォンタムのクレジットが与えられ、そのキューは古いキューのリストの<em>末尾に</em>置かれ、ルーチンは次のキューを選択してやり直します。</t>
+        <t indent="0" pn="section-4.2-3">そうでない場合、そのキューがデキュー対象として選択されます。新しいキューのリストが空の場合、スケジューラーは同じ方法で古いキューのリストを順にたどります（クレジットを確認し、そのキューをデキュー対象として選択するか、クレジットを追加してそのキューをリストの末尾に戻すかのどちらかを行います）。</t>
+        <t indent="0" pn="section-4.2-4">パケットをデキューするキューを選択した後、そのキューに対してCoDelアルゴリズムが呼び出されます。これにより、CoDelがパケットをいつドロップするかを決定するために使用する仕組みであるCoDelの制御則が適用されます（<xref target="RFC8289" format="default" sectionFormat="of" derivedContent="RFC8289"/>を参照）。その結果、デキューされるべきパケットが返される前に、選択されたキューの先頭から1つ以上のパケットが破棄されることがあります（または、CoDelアルゴリズムによる処理中にキューが空であるか空になった場合は何も返されません）。</t>
+        <t indent="0" pn="section-4.2-5">最後に、CoDelアルゴリズムがパケットを返さない場合、キューは空であるはずであり、スケジューラーは次の2つのうちどちらかを行います。デキュー対象として選択されたキューが新しいキューのリストから来たものである場合、そのキューは古いキューのリストの<em>末尾に</em>移されます。そうではなく古いキューのリストから来たものである場合、そのキューはリストから削除され、次にそのキューにハッシュされるパケットが到着したときに（新しいキューとして）再び追加されます。その後（デキューできるパケットがなかったため）、デキュー処理全体が最初からやり直されます。</t>
+        <t indent="0" pn="section-4.2-6">そうではなく、スケジューラーがCoDelアルゴリズムからパケットを<em>実際に</em>受け取った場合、スケジューラーは選択されたキューのバイトクレジットからそのパケットのサイズを差し引き、そのパケットをデキュー操作の結果として返します。</t>
+        <t indent="0" pn="section-4.2-7">空のキューを削除する前に、新しいキューのリストから古いキューのリストの末尾に移すステップは、枯渇を防ぐために非常に重要です。そうしないと、古いキューのリストが訪問される前に、そのキューが（次にそのキュー宛てのパケットが到着したときに）再び現れる可能性があります。そのキューにパケットを供給するフローがちょうどよいレートで送信していると、アクティブなフローの数が少なくても、これが無期限に続く可能性があります。これは、まずキューを古いキューのリストの末尾に移すことで防止されます。これにより、空のキューが削除される前にスケジューラーがすべての古いキューを処理することを強制し、枯渇を防ぎます。</t>
+        <t indent="0" pn="section-4.2-8">その結果として生じる異なる状態の間でのキューの移動を、<xref target="figure-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>に示す状態図にまとめます。新しいキューと古いキューの状態には、さらに状態を変更しない到着イベントとデキューイベントもありうることに注意してください。これらは図では省略しています。</t>
+        <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-partial-state-diagram-for-queues-between-different-states">異なる状態の間でのキューの部分的な状態図</name>
+          <artwork name="" type="" align="left" alt="" pn="section-4.2-9.1"><![CDATA[
++-----------------+                +------------------+
+|                 |     Empty      |                  |
+|     Empty       |<---------------+       Old        +----+
+|                 |                |                  |    |
++-------+---------+                +------------------+    |
+        |                             ^            ^       |Credits
+        |Arrival                      |            |       |Exhausted
+        v                             |            |       |
++-----------------+                   |            |       |
+|                 |      Empty or     |            |       |
+|      New        +-------------------+            +-------+
+|                 | Credits Exhausted
++-----------------+
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="implementation-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-implementation-considerations">実装上の考慮事項</name>
+      <t indent="0" pn="section-5-1">このセクションには、FQ-CoDelアルゴリズムの実装の詳細が含まれます。これには、Linuxの実装で使用されているデータ構造とパラメーターのほか、対象プラットフォームに必要ないくつかの機能やその他の考慮事項についての議論が含まれます。</t>
+      <section anchor="data-structures" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-data-structures">データ構造</name>
+        <t indent="0" pn="section-5.1-1">FQ-CoDelの主なデータ構造はキューの配列であり、インスタンス化の時点で「flows」パラメーターによって指定された数のキューでインスタンス化されます。各キューは、単に、FIFOのセマンティクスを持つパケットの順序付きリスト、キューのクレジットとエンキューされたバイトの総数を追跡する2つの状態変数、そしてCoDel状態変数の組で構成されます。キューの統計情報を追跡するための他の状態変数を含めることもできます。たとえば、Linuxの実装はドロップされたパケットの数を記録しています。</t>
+        <t indent="0" pn="section-5.1-2">キュー構造そのものに加えて、FQ-CoDelは、現在アクティブなキューの部分集合への参照を含む2つの順序付きリストを維持します。上記の<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明したように、これらは新しいキューと古いキューのリストです。</t>
+        <t indent="0" pn="section-5.1-3">Linuxの実装では、キューの領域は共有されています。キューが保持できるパケットの数には全体での上限がありますが、キューごとの上限はありません。</t>
+      </section>
+      <section anchor="parameters" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-parameters">パラメーター</name>
+        <t indent="0" pn="section-5.2-1">以下は、FQ-CoDelのLinuxの実装が公開しているユーザー設定パラメーターです。</t>
+        <section anchor="interval" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.1">
+          <name slugifiedName="name-interval">インターバル</name>
+          <t indent="0" pn="section-5.2.1-1">「interval」パラメーターはCoDelと同じセマンティクスを持ち、CoDelの制御アルゴリズムが推定器として使用する、キュー内のパケットの最小滞留時間が比較的最新の値であることを保証するために使用されます。つまり、CoDelは、長さintervalの直近の期間に経験された遅延にのみ反応します。端点が反応するのに十分な時間を与えるため、intervalは、ボトルネックを通過する最悪の場合のRTTと同程度に設定<bcp14>すべきです（SHOULD）</bcp14>。</t>
+          <t indent="0" pn="section-5.2.1-2">intervalのデフォルト値は100ミリ秒です。</t>
+        </section>
+        <section anchor="target" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.2">
+          <name slugifiedName="name-target">目標値</name>
+          <t indent="0" pn="section-5.2.2-1">「target」パラメーターはCoDelと同じセマンティクスを持ちます。これは、FQ-CoDelの各キューについて許容できる、定常／持続的なキューの遅延の最小値です。この最小遅延は、パケットが経験するキュー遅延の局所的な最小値を追跡することで特定されます。</t>
+          <t indent="0" pn="section-5.2.2-2">targetのデフォルト値は5ミリ秒ですが、この値は、主要なイグレスリンクの速度でMTUサイズのパケット1つを送信する時間以上になるように調整すべきです（たとえば、1 MbpsでMTUが1500の場合は約15ミリ秒です）。これにより、低帯域幅でCoDelが積極的になりすぎることを防ぎます。それ以外の場合は、設定されたintervalの5〜10%に設定すべきです。</t>
+        </section>
+        <section anchor="packet-limit" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.3">
+          <name slugifiedName="name-packet-limit">パケット数の上限</name>
+          <t indent="0" pn="section-5.2.3-1">ルーターのメモリーは無限ではないため、何らかのパケット数の上限を課さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-5.2.3-2">「limit」パラメーターは、実際のキューのサイズに対するハードリミットであり、パケット数で測定されます。この上限は、すべてのキューにあるパケットの数に対する全体での上限であり、個々のキューには上限がありません。上限に達しているときにエンキューする新しいパケットが到着すると、新しいパケットのための場所を空けるために、（バイト数で測定して）最大のキューの先頭からパケットがドロップされます。</t>
+          <t indent="0" pn="section-5.2.3-3">Linuxでは、パケット数の上限のデフォルトは10240パケットであり、これは10ギガビットイーサネットまでの速度に適しています。実際には、上限に達するずっと前にCoDelアルゴリズムによってドロップが行われるため、ハードリミットに達することは（あったとしても）めったにありません。メモリーの制約が厳しいプラットフォームでは、より低い上限を使用できます。</t>
+        </section>
+        <section anchor="quantum" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.4">
+          <name slugifiedName="name-quantum">クォンタム</name>
+          <t indent="0" pn="section-5.2.4-1">「quantum」パラメーターは、スケジューリングアルゴリズムの各ラウンドで各キューがデキューできるバイト数です。デフォルトは1514バイトに設定されており、これはイーサネットのMTUに14バイトのハードウェアヘッダー長を加えたものに相当します。</t>
+          <t indent="0" pn="section-5.2.4-2">TCPセグメンテーションオフロード（TSO）を用いるシステムでは、「パケット」はオフロードされたパケット列で構成され、現在のところ64キロバイトもの大きさになることがあります。Generic Receive Offload（GRO）を使用するシステムでは、パケットはTCPの最大セグメントサイズの17倍（つまり25キロバイト）にまでなることがあります。これらの巨大なパケットは、FQ-CoDelがトラフィックをスケジュールする能力に深刻な影響を与え、不必要に遅延を悪化させます。Linuxでは、オフロードエンジンをより賢く使用するための作業が進行中です。</t>
+        </section>
+        <section anchor="flows" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.5">
+          <name slugifiedName="name-flows">フロー</name>
+          <t indent="0" pn="section-5.2.5-1">「flows」パラメーターは、到着したパケットが分類されるキューの数を設定します。ハッシュの確率的な性質により、複数のフローが同じスロットにハッシュされることがあります。</t>
+          <t indent="0" pn="section-5.2.5-2">ハッシュテーブルのためにメモリーを割り当てる必要があるため、現在の実装では、このパラメーターは初期化時にしか設定できません。</t>
+          <t indent="0" pn="section-5.2.5-3">現在のLinuxの実装でのデフォルト値は1024です。</t>
+        </section>
+        <section anchor="explicit-congestion-notification-(ecn)" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.6">
+          <name slugifiedName="name-explicit-congestion-notification-(ecn)">明示的輻輳通知（ECN）</name>
+          <t indent="0" pn="section-5.2.6-1">ECN<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>はデフォルトで有効です。FQ-CoDelは、不正な振る舞いをするECNフローに対して特別なことは何もせず、その影響を最小限に抑えることをパケットスケジューリングシステムに任せます。そのため、ECNでマークされる、反応しないフローのパケットの数は、全体のパケット数の上限まで増えることがありますが、それ以外にシステムの性能に影響を与えることはありません。</t>
+          <t indent="0" pn="section-5.2.6-2">ECNは「noecn」パラメーターを指定することで無効にできます。</t>
+        </section>
+        <section anchor="ce-threshold" numbered="true" removeInRFC="false" toc="include" pn="section-5.2.7">
+          <name slugifiedName="name-ce-threshold">CEしきい値</name>
+          <t indent="0" pn="section-5.2.7-1">このパラメーターは、DCTCPのような処理を有効にします。これにより、デフォルトのCoDelのtargetよりも低い滞留遅延の設定値から、ECN対応トランスポート（ECT）パケット<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>へのCongestion Encountered（CE）マーキングが始まります。Data Center TCP（DCTCP）の詳細は<xref target="RFC8257" format="default" sectionFormat="of" derivedContent="RFC8257"/>にあります。</t>
+          <t indent="0" pn="section-5.2.7-2">「ce_threshold」パラメーターはデフォルトで無効です。マイクロ秒単位の数値を設定することで有効にできます。</t>
+        </section>
+      </section>
+      <section anchor="probability-of-hash-collisions" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-probability-of-hash-collisions">ハッシュ衝突の確率</name>
+        <t indent="0" pn="section-5.3-1">LinuxのFQ-CoDelの実装はデフォルトで1024個のハッシュバケットを使用するため、（たとえば）100個のフローがすべて同じバケットにハッシュされる確率は、およそ10のマイナス300乗です。したがって、フローのうち少なくとも1つは、ほぼ確実に他のキューにハッシュされます。</t>
+        <t indent="0" pn="section-5.3-2">これを発展させて、ハッシュ衝突の確率の解析的な式に基づくと、100個のフローについて、衝突がまったく起きない確率は90.78%です。100個のフローのうち、ある衝突に関与するのが2個以下である確率は99.57%であり、ある衝突に関与するのが3個以下である確率は99.99%です。これらの確率は仮想的な完全ハッシュ関数を前提としているため、実際には少し低くなる可能性があります。私たちは、実際にこの差が問題になるという事例を見つけていません。</t>
+        <t indent="0" pn="section-5.3-3">これらの確率は、セットアソシアティブハッシュを使用することで改善できます。これは、FQ-CoDelの原理をさらに改良したものとして現在開発中のCakeアルゴリズムで使用されている手法です<xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>。総キュー数が同じ4ウェイアソシアティブハッシュの場合、100個のフローで衝突が起きない確率は99.93%であり、8ウェイアソシアティブハッシュの場合は約100%です。</t>
+      </section>
+      <section anchor="memory-overhead" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-memory-overhead">メモリーのオーバーヘッド</name>
+        <t indent="0" pn="section-5.4-1">FQ-CoDelは、少ないメモリーフットプリント（64ビットシステムでキューあたり64バイト未満）で実装できます。Linuxの実装で使用されているデータ構造は次のとおりです：</t>
+        <sourcecode type="c" markers="true" pn="section-5.4-2"><![CDATA[
+struct codel_vars {
+   u32             count;             /* ドロップされたパケットの数 */
+   u32             lastcount;     /* ドロップ状態に入ったときのcount */
+   bool            dropping;                /* 現在ドロップ中か？ */
+   u16             rec_inv_sqrt;    /* 平方根の逆数の計算 */
+   codel_time_t    first_above_time;    /* 遅延がtargetを超えた時刻 */
+   codel_time_t    drop_next;                 /* 次にドロップする時刻 */
+   codel_time_t    ldelay; /* 最後にデキューしたパケットの滞留時間 */
+};
+
+struct fq_codel_flow {
+   struct sk_buff    *head;
+   struct sk_buff    *tail;
+   struct list_head  flowchain;
+   int               credits;   /* キューの現在のクレジット数 */
+   u32               dropped; /* フローでのドロップ（またはECNマーク）の数 */
+   struct codel_vars cvars;
+};
+]]></sourcecode>
+        <t indent="0" pn="section-5.4-3">すべてのキューを管理するマスターテーブルは次のようになります：</t>
+        <sourcecode type="c" markers="true" pn="section-5.4-4"><![CDATA[
+struct fq_codel_sched_data {
+   struct tcf_proto *filter_list;  /* 任意の外部分類器 */
+   struct fq_codel_flow *flows;    /* フローテーブル [flows_cnt] */
+   u32             *backlogs;      /* バックログテーブル [flows_cnt] */
+   u32             flows_cnt;      /* フローの数 */
+   u32             perturbation;   /* ハッシュの摂動 */
+   u32             quantum;        /* psched_mtu(qdisc_dev(sch)); */
+   struct codel_params cparams;
+   struct codel_stats cstats;
+   u32             drop_overlimit;
+   u32             new_flow_count;
+
+   struct list_head new_flows;     /* 新しいフローのリスト */
+   struct list_head old_flows;     /* 古いフローのリスト */
+};
+]]></sourcecode>
+      </section>
+      <section anchor="per-packet-timestamping" numbered="true" removeInRFC="false" toc="include" pn="section-5.5">
+        <name slugifiedName="name-per-packet-timestamping">パケットごとのタイムスタンプ</name>
+        <t indent="0" pn="section-5.5-1">アルゴリズムのCoDelの部分では、パケットごとのタイムスタンプをパケットとともに保存する必要があります。このアプローチはソフトウェアベースのルーターではうまく機能しますが、処理のほとんどをシリコンで行い、タイムスタンプのための領域や仕組みを持たない機器に後から組み込むことは不可能な場合があります。</t>
+        <t indent="0" pn="section-5.5-2">また、完全な分解能は必要ありませんが、CoDelのtargetの設定値よりも細かいタイムスタンプの分解能は必要です。さらに、タイムスタンプ関数は、パケットのエンキューとデキューのたびに少なくとも1回は呼び出されるため、コアOSにおけるタイムスタンプ関数は効率的である必要があります。</t>
+      </section>
+      <section anchor="limiting-queueing-in-lower-layers" numbered="true" removeInRFC="false" toc="include" pn="section-5.6">
+        <name slugifiedName="name-limiting-queueing-in-lower-layers">下位レイヤーでのキューイングの制限</name>
+        <t indent="0" pn="section-5.6-1">FQ-CoDelのようなキュー管理アルゴリズムを展開する場合、キューを制御するために、アルゴリズムが実際に適切な場所で動作するようにすることが重要です。特に、オペレーティングシステムのネットワークスタックの下位レイヤーは、デバイスドライバーやハードウェアと同様に、独自のキューを持つことがあります。したがって、キュー管理アルゴリズムはできるだけハードウェアに近い場所で動作することが望ましいです。しかし、割り込み時にそのような複雑なスケジューリングを行うことは困難であるため、より高い送信レートでは、アルゴリズムと回線の間に小さな定常キューが必要になることがよくあります。</t>
+        <t indent="0" pn="section-5.6-2">Linuxでは、これらの異なるニーズのバランスを確保する仕組みは「Byte Queue Limits」<xref target="BQL" format="default" sectionFormat="of" derivedContent="BQL"/>と呼ばれます。これは、（物理的な回線レートについて）デバイスドライバーのリングバッファーを制御します。この機能が利用できない場合は、Hierarchical Token Bucket<xref target="HTB" format="default" sectionFormat="of" derivedContent="HTB"/>やHierarchical Fair-Service Curve<xref target="HFSC" format="default" sectionFormat="of" derivedContent="HFSC"/>のようなソフトウェアのレートリミッターによってキューを制御できます。Cakeアルゴリズム<xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>は、この目的のためにソフトウェアのレートリミッターを統合しています。</t>
+        <t indent="0" pn="section-5.6-3">下位レイヤーでのキューに関するその他の問題は、<xref target="CODEL" format="default" sectionFormat="of" derivedContent="CODEL"/>で説明されています。</t>
+      </section>
+      <section anchor="other-forms-of-fair-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-5.7">
+        <name slugifiedName="name-other-forms-of-fair-queueing">その他の形式の公平キューイング</name>
+        <t indent="0" pn="section-5.7-1">FQ-CoDelのスケジューリングの部分の多くはDRRから派生したものであり、DRR++と実質的に似ています。Stochastic Fair Queueing<xref target="SFQ" format="default" sectionFormat="of" derivedContent="SFQ"/>に基づくバージョンも作成され、ns2でテストされています。Weighted Fair Queueing<xref target="WFQ" format="default" sectionFormat="of" derivedContent="WFQ"/>やQuick Fair Queueing<xref target="QFQ" format="default" sectionFormat="of" derivedContent="QFQ"/>などの他の形式の公平キューイングは十分に検討されていませんが、FQ-CoDelのラウンドロビンスケジューリングを他のものに置き換えられない先験的な理由はありません。</t>
+        <t indent="0" pn="section-5.7-2">公平キューイングアルゴリズムとそのAQMとの組み合わせについての包括的な議論は、<xref target="RFC7806" format="default" sectionFormat="of" derivedContent="RFC7806"/>を参照してください。</t>
+      </section>
+      <section anchor="differences-between-codel-and-fq-codel-behaviour" numbered="true" removeInRFC="false" toc="include" pn="section-5.8">
+        <name slugifiedName="name-differences-between-codel-and-fq-codel-behaviour">CoDelとFQ-CoDelの振る舞いの違い</name>
+        <t indent="0" pn="section-5.8-1">CoDelは、単一キューのシステムに素のAQMとして適用できます。その場合、CoDelは「理想的な」ドロップ率（つまり、高いリンク利用率を保ちながら遅延を最小にするドロップ率）に向かって収束し、その制御点の周辺で最適化を行います。</t>
+        <t indent="0" pn="section-5.8-2">FQ-CoDelのスケジューリングは、競合するフローのパケットを混ぜ合わせます。これは、バースト性のあるフローのペースを整えて、パイプをよりよく満たすように作用します。さらに、新しいフローは、CoDelがそのフローにとって理想的なドロップ率を見つけるまで、他のフローに比べてかなりの猶予を得ます。しかし、設定されたクォンタムを超える新しいフローについては、そのデータのすべてが配送されるまでにより多くの時間がかかります（そのフローからのパケットも、キューを形成している他の既存のフローの間に混ぜ合わされるためです）。したがって、FQ-CoDelは、ある新しいフローについて理想的なドロップ率に収束するまでに（時間で測定すると）より長くかかりますが、そのフローから配送される<em>パケット</em>の数はより少なくて済みます。</t>
+        <t indent="0" pn="section-5.8-3">最後に、FQ-CoDelが提供するフローの分離によって、CoDelのドロップの仕組みは、実際にキューを形成しているフローに対して動作します。その結果、CoDelだけを使用する場合よりも、最大のフローからより正確にパケットがドロップされます。さらに、フローの分離により、トラフィックやリンクの特性が変化したとき（たとえば、新しいフローが開始したときや、リンクの帯域幅が変化したとき）のネットワークの過渡的な振る舞いが根本的に改善されます。CoDel自体は反応するまでにしばらく時間がかかることがありますが、FQ-CoDelはほぼ即座に反応します。</t>
+      </section>
+    </section>
+    <section anchor="limitations-of-flow-queueing" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-limitations-of-flow-queueing">フローキューイングの制限</name>
+      <t indent="0" pn="section-6-1">FQ-CoDelは、多くのシナリオにおいて、他のキュー管理戦略と比べて大幅な性能向上をもたらすことが示されていますが、特にスケジューリングアルゴリズムがうまく適合しないシナリオもいくつかあります。このセクションでは、デフォルトの振る舞いを微調整する必要があるかもしれない場合や、フローキューイングの代替手段を検討すべき場合として知られているもののいくつかを記述します。</t>
+      <section anchor="fairness-between-things-other-than-flows" numbered="true" removeInRFC="false" toc="include" pn="section-6.1">
+        <name slugifiedName="name-fairness-between-things-other-than-flows">フロー以外のものの間での公平性</name>
+        <t indent="0" pn="section-6.1-1">ネットワークのある部分では、フローレベルの公平性を強制することが望ましくない場合や、他の形式の公平性のほうが重要な場合があります。この例としては、フロー間よりも顧客間の公平性を確保することに関心があるかもしれないISPや、接続している自律システムやネットワークの間の公平性を確保したいホスティングプロバイダーやトランジットプロバイダーなどがあります。別の問題として、特定のリンクで経験される同時フローの数が多すぎて、フローベースの公平キューイングが効果的でない場合もあります。</t>
+        <t indent="0" pn="section-6.1-2">理由が何であれ、フロー間の公平性が望ましくないシナリオでは、異なる特性にマッチするようにFQ-CoDelを再設定することが1つの方法になりえます。Linuxの実装は、「tc」サブシステムのパケットマッチングの仕組みを利用して、利用可能な任意のパケットフィールドを使ってパケットを仮想的なキューに分割できます。たとえば、アドレスやサブネットの送信元と宛先の組、アプリケーション層の特性などにマッチさせることができます。</t>
+        <t indent="0" pn="section-6.1-3">さらに、今日一般的に展開されている形では、FQ-CoDelは、Diffservのマーキングに基づく3つ以上の階層のサービス分類（優先、ベストエフォート、バックグラウンド）とともに使用されています。一部の製品は、望む結果を得るために、ディープパケットインスペクションや宛先固有のフィルターを含む、より詳細な分類を行っています。</t>
+      </section>
+      <section anchor="flow-bunching-by-opaque-encapsulation" numbered="true" removeInRFC="false" toc="include" pn="section-6.2">
+        <name slugifiedName="name-flow-bunching-by-opaque-encapsulation">不透明なカプセル化によるフローの束ね</name>
+        <t indent="0" pn="section-6.2-1">可能な場合、FQ-CoDelは、フローのハッシュのためにヘッダーフィールドとマッチングを行う前に、パケットのカプセル化を解除しようとします。しかし、一部のカプセル化技術、特に暗号化されたVPNでは、これは不可能です。複数のフローがそのようなカプセル化されたトンネル1つに束ねられている場合、それらはFQ-CoDelアルゴリズムから1つのフローとして見えます。これは、それらのフローがキューとドロップの振る舞いを共有することを意味します。そのため、カプセル化の内側のフローは、FQ-CoDelの暗黙的な優先付けの恩恵を受けませんが、キューで動作するCoDelアルゴリズムによって全体のキューの長さが短くなることの恩恵は引き続き受けます。さらに、そのようなカプセル化されたフローの束が他のフローと競合する場合、その束は1つのフローとして数えられ、カプセル化の内側にいくつのフローがあるかに基づいて帯域幅の割り当てを受けることはありません。</t>
+        <t indent="0" pn="section-6.2-2">アプリケーションによっては、これは望ましい振る舞いである場合もそうでない場合もあります。望ましくない場合は、（前のサブセクションで詳しく説明したように）FQ-CoDelのマッチングをフローベースでないものに変更することが緩和策になりえます。今後は、不透明なカプセル化が、パケットがどのフローに属するかを外側のレイヤーに伝える何らかの仕組みを持つことが、これを緩和する方法になるかもしれません。当然ながら、そのような仕組みを設計する際には、カプセル化の内側の情報を外部に公開することによって新たなプライバシーやセキュリティーの問題が生じないように注意する必要があります。追加の情報を帯域外に保ち、ネットワークに出る前に取り除くことが、これを実現する1つの方法になりえます。</t>
+      </section>
+      <section anchor="low-priority-congestion-control-algorithms" numbered="true" removeInRFC="false" toc="include" pn="section-6.3">
+        <name slugifiedName="name-low-priority-congestion-control-algorithms">低優先度の輻輳制御アルゴリズム</name>
+        <t indent="0" pn="section-6.3-1">負荷時の遅延を制限するキュー管理方式が存在する場合、Low Extra Delay Background Transport（LEDBAT）<xref target="RFC6817" format="default" sectionFormat="of" derivedContent="RFC6817"/>のような低優先度の輻輳制御アルゴリズム（または、一般に、帯域幅の公平な取り分よりも少なく使用しようと自発的に試みるアルゴリズム）は、リンクが輻輳しているときにもほとんど遅延の増加を経験しません。そのため、これらのアルゴリズムは、以前は遅延の増加によって得られていた、送信を控えるためのシグナルを得られません。この効果は、効果的なAQMであればどれでも見られ、FQ-CoDelでも同様です<xref target="GONG2014" format="default" sectionFormat="of" derivedContent="GONG2014"/>。</t>
+        <t indent="0" pn="section-6.3-2">そのため、これらの遅延ベースのアルゴリズムは損失ベースの輻輳制御に戻る傾向があり、FQ-CoDelスケジューラーによって与えられた帯域幅の公平な取り分を消費することになります。しかし、低優先度の輻輳制御の仕組みは、たとえば、AQMによってもたらされる大幅に低減された遅延のレベルを考慮に入れたり、複数のフローの振る舞いを観測する結合されたアプローチを使用したりすることで、低優先度であり続けるための手段を講じることができるかもしれません。</t>
+      </section>
+    </section>
+    <section anchor="deployment-status-and-future-work" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-deployment-status-and-future-work">展開状況と今後の作業</name>
+      <t indent="0" pn="section-7-1">この文書で説明しているFQ-CoDelアルゴリズムは、バージョン3.5（2012年7月21日リリース）以降、Linuxカーネルの一部として出荷されており、ce_thresholdはバージョン4.2で追加されました。このアルゴリズムはさまざまな状況で広くテストされており、多くのメインラインのLinuxディストリビューション（執筆時点で、少なくともOpenWRT、Arch Linux、Fedora）でデフォルトのキューイング規律として設定されています。さらに、BSDの実装も利用可能です。これらの試行から得られたすべてのデータは、FQ-CoDelが以前のデフォルトのFIFOキューに比べて大幅な改善であることを示しており、FQ-CoDelを有効にすることが推奨されています。</t>
+      <t indent="0" pn="section-7-2">もちろん、改善の余地は常にあり、この文書ではアルゴリズムの既知の制限のいくつかを挙げました。そのため、私たちは、アルゴリズムの改良と制限への対処についてのさらなる研究を奨励します。そのような取り組みの1つが、Cakeキュー管理方式<xref target="CAKE" format="default" sectionFormat="of" derivedContent="CAKE"/>という形でバッファーブロートのコミュニティーによって行われています。これに加えて、私たちは、以下の（網羅的ではない）問題の一覧がさらなる調査に値すると考えています：</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-7-3">
+        <li pn="section-7-3.1">異なるフローの概念に適合させるための、フロー分類の仕組みのバリエーション。たとえば、ISPは加入者ごとのスケジューリングを展開したいかもしれません。一方、他の場合には、RTCWEBのQoSに関する推奨事項<xref target="WEBRTC-QOS" format="default" sectionFormat="of" derivedContent="WEBRTC-QOS"/>に例示されているように、複数のフローが5タプルを共有することがあります。</li>
+        <li pn="section-7-3.2">フローキューイングと、遅延ベースの輻輳制御アルゴリズムやスカベンジャープロトコルとの相互作用。</li>
+        <li pn="section-7-3.3">アルゴリズムのDRRの部分を置き換える他のスケジューリングの仕組み（たとえば、QFQやWFQ）。</li>
+        <li pn="section-7-3.4">パラメーターの感度、特にキューの数とCoDelのパラメーター。</li>
+      </ul>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">現在のFIFOシステムには存在しない、FQ-CoDelに特有のセキュリティー上の危険性はありません。むしろ、FIFOシステムのいくつかの脆弱性（たとえば、単純なパケットフラッド）は、FQ-CoDelによって軽減されます。ただし、そうなることを確実にするためには、実装においていくつかの注意が必要です。これらは上記の説明に含まれていますが、ここで改めて述べます：</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-8-2">
+        <li pn="section-8-2.1">新しいキューのパケットが古いキューを枯渇させることを防ぐため、新しいキューのリストにあるキューが空になったときに、そのキューを古いキューのリストの<em>末尾に</em>移すことが重要です。これについては<xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>の最後で説明しています。</li>
+        <li pn="section-8-2.2">攻撃者が特定のフローを標的にしてサービス拒否攻撃を行うことを防ぐため、パケットをキューに対応付けるハッシュは予測可能であるべきではありません。これを実現するため、<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>の冒頭で説明したように、FQ-CoDelはハッシュにソルトを加えます。ソルトのサイズとハッシュ関数の強度は、当然ながら性能とセキュリティーとの間のトレードオフになります。Linuxの実装は、ソルトとして32ビットの乱数値を使用し、Jenkinsハッシュ関数を使用しています。これにより高いスループットを実現でき、私たちは、これが最も明白な攻撃を防ぐのに十分であると考えています。</li>
+        <li pn="section-8-2.3">レイヤー4ヘッダーを持たないパケットのフラグメントは、ヘッダーをそのまま持つ最初のフラグメントとは異なるビンにハッシュされることがあります。これにより、順序の入れ替わりが生じたり、フローの性能に悪影響を与えたりする可能性があります。フラグメントをパケットの先頭と対応付けるための状態を保持することや、単にすべてのパケットフラグメント（各フラグメント化されたパケットの最初のフラグメントを含む）を同じキューに入れることが、これを緩和する2つの方法です。</li>
+      </ul>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">この文書にはIANAアクションはありません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7806" target="https://www.rfc-editor.org/info/rfc7806" quoteTitle="true" derivedAnchor="RFC7806">
+          <front>
+            <title>On Queuing, Marking, and Dropping</title>
+            <author fullname="F. Baker" initials="F." surname="Baker"/>
+            <author fullname="R. Pan" initials="R." surname="Pan"/>
+            <date year="2016" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="7806"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7806"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+        <reference anchor="RFC8289" target="https://www.rfc-editor.org/info/rfc8289" quoteTitle="true" derivedAnchor="RFC8289">
+          <front>
+            <title>Controlled Delay Active Queue Management</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <author fullname="A. McGregor" initials="A." surname="McGregor" role="editor"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar" role="editor"/>
+            <date year="2018" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="8289"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8289"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="BLOAT" quoteTitle="true" derivedAnchor="BLOAT">
+          <front>
+            <title>Bufferbloat: Dark Buffers in the Internet</title>
+            <author fullname="J. Gettys" initials="J." surname="Gettys"/>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <date year="2012" month="January"/>
+          </front>
+          <refcontent>Communications of the ACM, Volume 55, Issue 1</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2063176.2063196"/>
+        </reference>
+        <reference anchor="BLOATWEB" target="https://www.bufferbloat.net" quoteTitle="true" derivedAnchor="BLOATWEB">
+          <front>
+            <title>Bufferbloat</title>
+          </front>
+        </reference>
+        <reference anchor="BQL" target="https://lwn.net/Articles/454378/" quoteTitle="true" derivedAnchor="BQL">
+          <front>
+            <title>bql: Byte Queue Limits</title>
+            <author fullname="T. Herbert" initials="T." surname="Herbert"/>
+            <date year="2011" month="August"/>
+          </front>
+        </reference>
+        <reference anchor="CAKE" target="http://www.bufferbloat.net/projects/codel/wiki/Cake" quoteTitle="true" derivedAnchor="CAKE">
+          <front>
+            <title>Cake - Common Applications Kept Enhanced</title>
+          </front>
+        </reference>
+        <reference anchor="CODEL" target="http://queue.acm.org/detail.cfm?id=2209336" quoteTitle="true" derivedAnchor="CODEL">
+          <front>
+            <title>Controlling Queue Delay</title>
+            <author fullname="K. Nichols" initials="K." surname="Nichols"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <date year="2012" month="May"/>
+          </front>
+          <refcontent>ACM Queue, Volume 10, Issue 5</refcontent>
+          <seriesInfo name="DOI" value="10.1145/2208917.2209336"/>
+        </reference>
+        <reference anchor="DRR" quoteTitle="true" derivedAnchor="DRR">
+          <front>
+            <title>Efficient Fair Queueing Using Deficit Round Robin</title>
+            <author fullname="M. Shreedhar" initials="M." surname="Shreedhar"/>
+            <author fullname="G. Varghese" initials="G." surname="Varghese"/>
+            <date year="1996" month="June"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking, Volume 4, Issue 3</refcontent>
+          <seriesInfo name="DOI" value="10.1109/90.502236"/>
+        </reference>
+        <reference anchor="DRRPP" target="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=875803" quoteTitle="true" derivedAnchor="DRRPP">
+          <front>
+            <title>Deficits for Bursty Latency-Critical Flows: DRR++</title>
+            <author fullname="M. MacGregor" initials="M." surname="MacGregor"/>
+            <author fullname="W. Shi" initials="W." surname="Shi"/>
+            <date year="2000" month="September"/>
+          </front>
+          <refcontent>Proceedings of the IEEE International Conference on Networks 2000 (ICON 2000)</refcontent>
+          <seriesInfo name="DOI" value="10.1109/ICON.2000.875803"/>
+        </reference>
+        <reference anchor="GONG2014" target="https://www.sciencedirect.com/science/article/pii/S1389128614000188" quoteTitle="true" derivedAnchor="GONG2014">
+          <front>
+            <title>Fighting the bufferbloat: On the coexistence of AQM and low priority congestion control</title>
+            <author fullname="Y. Gong" initials="Y." surname="Gong"/>
+            <author fullname="D. Rossi" initials="D." surname="Rossi"/>
+            <author fullname="C. Testa" initials="C." surname="Testa"/>
+            <author fullname="S. Valenti" initials="S." surname="Valenti"/>
+            <author fullname="D. Taht" initials="D." surname="Taht"/>
+            <date year="2014" month="June"/>
+          </front>
+          <refcontent>Elsevier Computer Networks, Volume 65</refcontent>
+          <seriesInfo name="DOI" value="10.1016/j.bjp.2014.01.009"/>
+        </reference>
+        <reference anchor="HFSC" target="http://conferences.sigcomm.org/sigcomm/1997/papers/p011.pdf" quoteTitle="true" derivedAnchor="HFSC">
+          <front>
+            <title>A Hierarchical Fair Service Curve Algorithm for Link-Sharing, Real-Time and Priority Services</title>
+            <author fullname="I. Stoica" initials="I." surname="Stoica"/>
+            <author fullname="H. Zhang" initials="H." surname="Zhang"/>
+            <author fullname="T. Eugene Ng" initials="T." surname="Eugene Ng"/>
+            <date year="1997" month="September"/>
+          </front>
+          <refcontent>Proceedings of ACM SIGCOMM</refcontent>
+          <seriesInfo name="DOI" value="10.1145/263105.263175"/>
+        </reference>
+        <reference anchor="HTB" target="https://en.wikipedia.org/w/index.php?title=Token_bucket&amp;oldid=803574657" quoteTitle="true" derivedAnchor="HTB">
+          <front>
+            <title>Token Bucket: Variations</title>
+            <author><organization showOnFrontPage="true">Wikipedia</organization></author>
+            <date year="2017" month="October"/>
+          </front>
+        </reference>
+        <reference anchor="JENKINS" target="http://www.burtleburtle.net/bob/hash/doobs.html" quoteTitle="true" derivedAnchor="JENKINS">
+          <front>
+            <title>A Hash Function for Hash Table Lookup</title>
+            <author fullname="B. Jenkins" initials="B." surname="Jenkins"/>
+          </front>
+        </reference>
+        <reference anchor="LINUXSRC" target="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/net/sched/sch_fq_codel.c" quoteTitle="true" derivedAnchor="LINUXSRC">
+          <front>
+            <title>Linux Kernel Source Tree</title>
+          </front>
+        </reference>
+        <reference anchor="NS2" target="http://nsnam.sourceforge.net/wiki/index.php?title=Main_Page&amp;oldid=8076" quoteTitle="true" derivedAnchor="NS2">
+          <front>
+            <title>ns-2</title>
+            <date year="2014" month="December"/>
+          </front>
+        </reference>
+        <reference anchor="NS3" target="https://www.nsnam.org/mediawiki/index.php?title=Main_Page&amp;oldid=9883" quoteTitle="true" derivedAnchor="NS3">
+          <front>
+            <title>ns-3</title>
+            <date year="2016" month="February"/>
+          </front>
+        </reference>
+        <reference anchor="QFQ" target="http://dl.acm.org/citation.cfm?id=2525552" quoteTitle="true" derivedAnchor="QFQ">
+          <front>
+            <title>QFQ: Efficient Packet Scheduling with Tight Guarantees</title>
+            <author fullname="F. Checconi" initials="F." surname="Checconi"/>
+            <author fullname="L. Rizzo" initials="L." surname="Rizzo"/>
+            <author fullname="P. Valente" initials="P." surname="Valente"/>
+            <date year="2013" month="June"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking (TON), Volume 21, Issue 3, pp. 802-816</refcontent>
+          <seriesInfo name="DOI" value="10.1109/TNET.2012.2215881"/>
+        </reference>
+        <reference anchor="RFC2003" target="https://www.rfc-editor.org/info/rfc2003" quoteTitle="true" derivedAnchor="RFC2003">
+          <front>
+            <title>IP Encapsulation within IP</title>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="1996" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="2003"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2003"/>
+        </reference>
+        <reference anchor="RFC2890" target="https://www.rfc-editor.org/info/rfc2890" quoteTitle="true" derivedAnchor="RFC2890">
+          <front>
+            <title>Key and Sequence Number Extensions to GRE</title>
+            <author fullname="G. Dommety" initials="G." surname="Dommety"/>
+            <date year="2000" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="2890"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2890"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC4213" target="https://www.rfc-editor.org/info/rfc4213" quoteTitle="true" derivedAnchor="RFC4213">
+          <front>
+            <title>Basic Transition Mechanisms for IPv6 Hosts and Routers</title>
+            <author fullname="E. Nordmark" initials="E." surname="Nordmark"/>
+            <author fullname="R. Gilligan" initials="R." surname="Gilligan"/>
+            <date year="2005" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="4213"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4213"/>
+        </reference>
+        <reference anchor="RFC6817" target="https://www.rfc-editor.org/info/rfc6817" quoteTitle="true" derivedAnchor="RFC6817">
+          <front>
+            <title>Low Extra Delay Background Transport (LEDBAT)</title>
+            <author fullname="S. Shalunov" initials="S." surname="Shalunov"/>
+            <author fullname="G. Hazel" initials="G." surname="Hazel"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar"/>
+            <author fullname="M. Kuehlewind" initials="M." surname="Kuehlewind"/>
+            <date year="2012" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="6817"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6817"/>
+        </reference>
+        <reference anchor="RFC8257" target="https://www.rfc-editor.org/info/rfc8257" quoteTitle="true" derivedAnchor="RFC8257">
+          <front>
+            <title>Data Center TCP (DCTCP): TCP Congestion Control for Data Centers</title>
+            <author fullname="S. Bensley" initials="S." surname="Bensley"/>
+            <author fullname="D. Thaler" initials="D." surname="Thaler"/>
+            <author fullname="P. Balasubramanian" initials="P." surname="Balasubramanian"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date year="2017" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="8257"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8257"/>
+        </reference>
+        <reference anchor="SFQ" target="http://perso.telecom-paristech.fr/~bonald/Publications_files/BMO2011.pdf" quoteTitle="true" derivedAnchor="SFQ">
+          <front>
+            <title>Stochastic Fairness Queueing</title>
+            <author fullname="P. McKenney" initials="P." surname="McKenney"/>
+            <date year="1990" month="June"/>
+          </front>
+          <refcontent>Proceedings of IEEE INFOCOM</refcontent>
+          <seriesInfo name="DOI" value="10.1109/INFCOM.1990.91316"/>
+        </reference>
+        <reference anchor="SQF" quoteTitle="true" derivedAnchor="SQF">
+          <front>
+            <title>On the Impact of TCP and Per-Flow Scheduling on Internet Performance</title>
+            <author fullname="G. Carofiglio" initials="G." surname="Carofiglio"/>
+            <author fullname="L. Muscariello" initials="L." surname="Muscariello"/>
+            <date year="2011" month="August"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking, Volume 20, Issue 2</refcontent>
+          <seriesInfo name="DOI" value="10.1109/TNET.2011.2164553"/>
+        </reference>
+        <reference anchor="WEBRTC-QOS" quoteTitle="true" derivedAnchor="WEBRTC-QOS">
+          <front>
+            <title>DSCP Packet Markings for WebRTC QoS</title>
+            <author fullname="P. Jones" initials="P." surname="Jones"/>
+            <author fullname="S. Dhesikan" initials="S." surname="Dhesikan"/>
+            <author fullname="C. Jennings" initials="C." surname="Jennings"/>
+            <author fullname="D. Druta" initials="D." surname="Druta"/>
+            <date year="2016" month="August"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tsvwg-rtcweb-qos-18"/>
+        </reference>
+        <reference anchor="WFQ" target="http://doi.acm.org/10.1145/75247.75248" quoteTitle="true" derivedAnchor="WFQ">
+          <front>
+            <title>Analysis and Simulation of a Fair Queueing Algorithm</title>
+            <author fullname="A. Demers" initials="A." surname="Demers"/>
+            <author fullname="S. Keshav" initials="S." surname="Keshav"/>
+            <author fullname="S. Shenker" initials="S." surname="Shenker"/>
+            <date year="1989" month="September"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review, Volume 19, Issue 4, pp. 1-12</refcontent>
+          <seriesInfo name="DOI" value="10.1145/75247.75248"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">Kathie Nichols氏、Van Jacobson氏、そしてbufferbloat.netの取り組みのすべてのメンバーに、アルゴリズムの開発とテストにおけるあらゆる支援について心から感謝します。また、この文書のハッシュ衝突の確率を正しく求めるのを手伝ってくれたAnil Agarwal氏に感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Toke Hoeiland-Joergensen" initials="T." surname="Hoeiland-Joergensen">
+        <organization showOnFrontPage="true">Karlstad University</organization>
+        <address>
+          <postal>
+            <postalLine>Dept. of Computer Science</postalLine>
+            <postalLine>Karlstad  65188</postalLine>
+            <postalLine>Sweden</postalLine>
+          </postal>
+          <email>toke@toke.dk</email>
+        </address>
+      </author>
+      <author fullname="Paul McKenney" initials="P." surname="McKenney">
+        <organization showOnFrontPage="true">IBM Linux Technology Center</organization>
+        <address>
+          <postal>
+            <postalLine>1385 NW Amberglen Parkway</postalLine>
+            <postalLine>Hillsboro, OR  97006</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>paulmck@linux.vnet.ibm.com</email>
+          <uri>http://www2.rdrop.com/~paulmck/</uri>
+        </address>
+      </author>
+      <author fullname="Dave Taht" initials="D." surname="Taht">
+        <organization showOnFrontPage="true">Teklibre</organization>
+        <address>
+          <postal>
+            <postalLine>2104 W First street</postalLine>
+            <postalLine>Apt 2002</postalLine>
+            <postalLine>FT Myers, FL  33901</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>dave.taht@gmail.com</email>
+          <uri>http://www.teklibre.com/</uri>
+        </address>
+      </author>
+      <author fullname="Jim Gettys" initials="J." surname="Gettys">
+        <address>
+          <postal>
+            <postalLine>21 Oak Knoll Road</postalLine>
+            <postalLine>Carlisle, MA  993</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>jg@freedesktop.org</email>
+          <uri>https://en.wikipedia.org/wiki/Jim_Gettys</uri>
+        </address>
+      </author>
+      <author fullname="Eric Dumazet" initials="E." surname="Dumazet">
+        <organization showOnFrontPage="true">Google, Inc.</organization>
+        <address>
+          <postal>
+            <postalLine>1600 Amphitheatre Pkwy</postalLine>
+            <postalLine>Mountain View, CA  94043</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>edumazet@gmail.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

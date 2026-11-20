@@ -1,0 +1,877 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tsvwg-sctp-ndata-13" indexInclude="true" number="8260" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-ndata-13" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8260" rel="alternate"/>
+  <front>
+    <title>ストリーム制御伝送プロトコルのストリームスケジューラーとユーザーメッセージのインターリーブ</title>
+    <seriesInfo name="RFC" value="8260" stream="IETF"/>
+    <date year="2017" month="November"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">ストリーム制御伝送プロトコル（Stream Control Transmission Protocol、SCTP）は、任意の大きさのユーザーメッセージをサポートするメッセージ指向のトランスポートプロトコルです。この文書は、ペイロードデータを運ぶための新しいチャンクをSCTPに追加します。これにより、送信者は、そうしなければ送信者側でヘッドオブラインブロッキングを引き起こすことになる異なるユーザーメッセージを、インターリーブできるようになります。ユーザーメッセージのインターリーブは、WebRTCデータチャネルで必要とされています。</t>
+      <t indent="0" pn="section-abstract-2">SCTPの送信者がユーザーデータの送信を許可されているときはいつでも、送信者は複数の送信側SCTPストリームから選択できます。この文書では、ストリームスケジューラーと呼ばれる、この選択を行うための複数の方法を定義します。ストリームスケジューラーは、ユーザーメッセージのインターリーブを実装するかしないかを選択できます。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、https://www.rfc-editor.org/info/rfc8260で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.1.2">
+            <li pn="section-toc.1-1.1.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1.1"><xref derivedContent="1.1" format="counter" sectionFormat="of" target="section-1.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+            </li>
+            <li pn="section-toc.1-1.1.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.2.1"><xref derivedContent="1.2" format="counter" sectionFormat="of" target="section-1.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions">表記規則</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-user-message-interleaving">ユーザーメッセージのインターリーブ</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+            <li pn="section-toc.1-1.2.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-i-data-chunk-supporting-user-message-interleaving">ユーザーメッセージのインターリーブをサポートするI-DATAチャンク</xref></t>
+            </li>
+            <li pn="section-toc.1-1.2.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-procedures">手順</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.2.1" format="counter" sectionFormat="of" target="section-2.2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-negotiation">ネゴシエーション</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2.2" format="counter" sectionFormat="of" target="section-2.2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sender-side-considerations">送信者側の考慮事項</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.3.1"><xref derivedContent="2.2.3" format="counter" sectionFormat="of" target="section-2.2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-receiver-side-considerations">受信者側の考慮事項</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.2.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-interaction-with-other-sctp-extensions">他のSCTP拡張との相互作用</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.3.2">
+              <li pn="section-toc.1-1.2.3.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.3.1.1"><xref derivedContent="2.3.1" format="counter" sectionFormat="of" target="section-2.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp-partial-reliability-extension">SCTP部分信頼性拡張</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.3.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.3.2.1"><xref derivedContent="2.3.2" format="counter" sectionFormat="of" target="section-2.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp-stream-reconfiguration-extension">SCTPストリーム再構成拡張</xref></t>
+              </li>
+              </ul>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-stream-schedulers">ストリームスケジューラー</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-first-come-first-served-scheduler-sctp_ss_fcfs">先着順スケジューラー（SCTP_SS_FCFS）</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-round-robin-scheduler-sctp_ss_rr">ラウンドロビンスケジューラー（SCTP_SS_RR）</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-round-robin-scheduler-per-packet-sctp_ss_rr_pkt">パケット単位のラウンドロビンスケジューラー（SCTP_SS_RR_PKT）</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-priority-based-scheduler-sctp_ss_prio">優先度ベースのスケジューラー（SCTP_SS_PRIO）</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fair-capacity-scheduler-sctp_ss_fc">公平容量スケジューラー（SCTP_SS_FC）</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.6.1"><xref derivedContent="3.6" format="counter" sectionFormat="of" target="section-3.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-weighted-fair-queueing-scheduler-sctp_ss_wfq">重み付け公平キューイングスケジューラー（SCTP_SS_WFQ）</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-socket-api-considerations">ソケットAPIに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-exposure-of-the-stream-sequence-number-ssn">ストリームシーケンス番号（SSN）の公開</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp_assoc_change-notification">SCTP_ASSOC_CHANGE通知</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-socket-options">ソケットオプション</xref></t>
+              <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.3.2">
+              <li pn="section-toc.1-1.4.3.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.1.1"><xref derivedContent="4.3.1" format="counter" sectionFormat="of" target="section-4.3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-enable-or-disable-the-support-of-user-message-interleaving-sctp_interleaving_supported">ユーザーメッセージのインターリーブのサポートの有効化または無効化（SCTP_INTERLEAVING_SUPPORTED）</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.3.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.2.1"><xref derivedContent="4.3.2" format="counter" sectionFormat="of" target="section-4.3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-get-or-set-the-stream-scheduler-sctp_stream_scheduler">ストリームスケジューラーの取得または設定（SCTP_STREAM_SCHEDULER）</xref></t>
+              </li>
+              <li pn="section-toc.1-1.4.3.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.3.1"><xref derivedContent="4.3.3" format="counter" sectionFormat="of" target="section-4.3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-get-or-set-the-stream-scheduler-parameter-sctp_stream_scheduler_value">ストリームスケジューラーパラメーターの取得または設定（SCTP_STREAM_SCHEDULER_VALUE）</xref></t>
+              </li>
+              </ul>
+            </li>
+            <li pn="section-toc.1-1.4.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-explicit-eor-marking">明示的なEORマーキング</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-i-data-chunk">I-DATAチャンク</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-i-forward-tsn-chunk">I-FORWARD-TSNチャンク</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+            <li pn="section-toc.1-1.7.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-1.1">
+        <name slugifiedName="name-overview">概要</name>
+        <t indent="0" pn="section-1.1-1">SCTP<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>が最初に設計されたとき、SCTPは主に小さなシグナリングメッセージの転送を想定していました。設計段階の終盤になって、いつかSIP（Session Initiation Protocol）<xref target="RFC3261" format="default" sectionFormat="of" derivedContent="RFC3261"/>のようなシグナリングメッセージもSCTPを使用する必要が生じ、単一の最大伝送単位（Maximum Transmission Unit、MTU）に収まるメッセージでは小さすぎるようになるかもしれないとの考えから、より大きなメッセージの断片化と再組み立てのサポートを追加することが決定されました。残念ながら、この設計上の決定は、当時は妥当なものでしたが、SCTP上で大きなメッセージを送信する可能性のある他のアプリケーションを考慮していませんでした。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているように、SCTP上でそのような大きなメッセージを送信すると、ある種の送信者側のヘッドオブラインブロッキング（head-of-line blocking）が発生する可能性があります（たとえば、送信者が別の（大きい可能性のある）メッセージの送信を開始したために、あるメッセージの送信が妨げられる場合）。このヘッドオブラインブロッキングは、伝送シーケンス番号（Transmission Sequence Number、TSN）を3つの異なる目的に使用していることが原因です。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-1.1-2">
+          <li pn="section-1.1-2.1" derivedCounter="1.">信頼性のある転送を提供するための、DATAチャンクの識別子として。</li>
+          <li pn="section-1.1-2.2" derivedCounter="2.">再組み立てを可能にするための、フラグメントの並びの識別子として。</li>
+          <li pn="section-1.1-2.3" derivedCounter="3.">最大2**16 - 1個の未処理（outstanding）のストリームシーケンス番号（Stream Sequence Number、SSN）を可能にするシーケンス番号として。</li>
+        </ol>
+        <t indent="0" pn="section-1.1-3">このプロトコルでは、ユーザーメッセージのすべてのフラグメントが連続したTSNを持つ必要があります。この文書は、SCTPの送信者が異なるユーザーメッセージをインターリーブできるようにします。</t>
+        <t indent="0" pn="section-1.1-4">この文書では、一般的なSCTPアソシエーションのために、ストリームごとに異なる相対的な扱いを可能にするいくつかのストリームスケジューラーも定義します。ストリームスケジューラーは、そのアソシエーションでユーザーメッセージのインターリーブがネゴシエートされたかどうかに応じて、異なる動作をする場合があります。</t>
+        <t indent="0" pn="section-1.1-5"><xref target="fig-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>は、ストリーム識別子（Stream Identifier、SID）0、1、2の3つのストリームが使用される場合に、DATAチャンクを使用するラウンドロビンのストリームスケジューラーの動作を示しています。SID 0とSID 2のキューには、それぞれ3つのチャンクを必要とする1つのユーザーメッセージが含まれています。SID 1のキューには、それぞれ1つのチャンクを必要とする3つのユーザーメッセージが含まれています。この図は、これらのユーザーメッセージがTSN 0からTSN 8を使用してどのようにチャンクにカプセル化されるかを示しています。このようなスケジューラーを使用することは遅延TSN割り当て（late TSN assignment）を意味しますが、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>に準拠し、ユーザーメッセージのインターリーブをサポートしない実装でも使用できることに注意してください。遅延TSN割り当てとは、送信者がユーザーメッセージからチャンクを生成し、ユーザーメッセージを送信する処理の中でできるだけ遅くTSNを割り当てることを意味します。</t>
+        <figure anchor="fig-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-round-robin-scheduler-without-user-message-interleaving">ユーザーメッセージのインターリーブを行わないラウンドロビンスケジューラー</name>
+          <artwork name="" type="" align="left" alt="" pn="section-1.1-6.1"><![CDATA[
++---+---+---+
+|    0/0    |-+
++---+---+---+ |
+              |  +---+---+---+---+---+---+---+---+---+
++---+---+---+ +->|1/2|1/1|2/0|2/0|2/0|1/0|0/0|0/0|0/0|
+|1/2|1/1|1/0|--->|---|---|---|---|---|---|---|---|---|
++---+---+---+ +->| 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+              |  +---+---+---+---+---+---+---+---+---+
++---+---+---+ |
+|    2/0    |-+
++---+---+---+
+                               +-------+
+  +-------+                    |SID/SSN|
+  |SID/SSN|                    |-------|
+  +-------+                    |  TSN  |
+                               +-------+
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-1.1-7">この文書では、I-DATAと呼ばれる、ペイロードデータを運ぶ新しいチャンクについて説明します。このチャンクは、現在のSCTP DATAチャンクの性質と、ストリームシーケンス番号（SSN）を除くすべてのフラグとフィールドを取り入れ、さらにチャンクヘッダーに2つの新しいフィールド、フラグメントシーケンス番号（Fragment Sequence Number、FSN）とメッセージ識別子（Message Identifier、MID）を追加します。FSNは、同じMIDと同じ順序付けの性質を持つすべてのフラグメントを再組み立てするためだけに使用されます。TSNは、選択的確認応答（Selective Acknowledgment、SACK）チャンクと組み合わせた信頼性のある転送のためだけに使用されます。</t>
+        <t indent="0" pn="section-1.1-8">さらに、MIDは、ストリームシーケンス番号を使用する代わりに、順序どおりの配送を保証するためにも使用されます（I-DATAチャンクはSSNを持ちません）。</t>
+        <t indent="0" pn="section-1.1-9"><xref target="fig-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>は、I-DATAチャンクを使用する、インターリーブを行うラウンドロビンのストリームスケジューラーの動作を示しています。</t>
+        <figure anchor="fig-2" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-round-robin-scheduler-with-user-message-interleaving">ユーザーメッセージのインターリーブを行うラウンドロビンスケジューラー</name>
+          <artwork name="" type="" align="left" alt="" pn="section-1.1-10.1"><![CDATA[
++---+---+---+
+|    0/0    |-+
++---+---+---+ |
+              |  +-----+-----+-----+-----+-----+-----+-----+-----+-----+
++---+---+---+ +->|2/0/2|1/2/0|0/0/2|2/0/1|1/1/0|0/0/1|2/0/0|1/0/0|0/0/0|
+|1/2|1/1|1/0|--->|-----|-----|-----|-----|-----|-----|-----|-----|-----|
++---+---+---+ +->|  8  |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+              |  +-----+-----+-----+-----+-----+-----+-----+-----+-----+
++---+---+---+ |
+|    2/0    |-+
++---+---+---+
+                                     +-----------+
+  +-------+                          |SID/MID/FSN|
+  |SID/MID|                          |-----------|
+  +-------+                          |    TSN    |
+                                     +-----------+
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-1.1-11">I-DATAチャンクのサポートは、<xref target="RFC5061" format="default" sectionFormat="of" derivedContent="RFC5061"/>で定義されているSupported Extensions Parameterを使用して、アソシエーションのセットアップ中にネゴシエートされます。アソシエーションでI-DATAのサポートがネゴシエートされた場合、すべてのユーザーメッセージにI-DATAチャンクが使用されます。I-DATAのサポートがネゴシエートされた場合、DATAチャンクは許可されません。I-DATAチャンクをサポートするSCTP実装は、DATAチャンクを使用するアソシエーションとI-DATAチャンクを使用するアソシエーションの共存を可能にする必要があることに注意してください。</t>
+        <t indent="0" pn="section-1.1-12">この文書では、<xref target="section-2" format="default" sectionFormat="of" derivedContent="Section 2"/>で、I-DATAチャンク、その使用手順、および他のSCTP拡張との相互作用を定義することによって、ユーザーメッセージのインターリーブを規定します。<xref target="section-3" format="default" sectionFormat="of" derivedContent="Section 3"/>では複数のストリームスケジューラーを定義し、<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>では、この文書で規定するメカニズムを使用するためのソケットAPIの拡張について説明します。</t>
+      </section>
+      <section anchor="conventions" numbered="true" removeInRFC="false" toc="include" pn="section-1.2">
+        <name slugifiedName="name-conventions">表記規則</name>
+        <t indent="0" pn="section-1.2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      </section>
+    </section>
+    <section anchor="user-message-interleaving" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-user-message-interleaving">ユーザーメッセージのインターリーブ</name>
+      <t indent="0" pn="section-2-1">この文書で説明するプロトコルメカニズムは、異なるストリームで送信されるユーザーメッセージのインターリーブを可能にします。同じストリームで送信される複数のメッセージ（順序付きまたは順序なし）のインターリーブはサポートしません。</t>
+      <t indent="0" pn="section-2-2"><xref target="DATA-CHAN" format="default" sectionFormat="of" derivedContent="DATA-CHAN"/>で規定されているように、ユーザーメッセージのインターリーブはWebRTCデータチャネルで必要とされています。</t>
+      <t indent="0" pn="section-2-3">ユーザーメッセージのインターリーブをサポートするSCTP実装は、DATAチャンクを使用するアソシエーションとI-DATAチャンクを使用するアソシエーションの共存をサポートすることが<bcp14>要求されています（REQUIRED）</bcp14>。SCTP実装が、ユーザーメッセージのインターリーブと、<xref target="RFC3758" format="default" sectionFormat="of" derivedContent="RFC3758"/>で説明されている部分信頼性（Partial Reliability）拡張または<xref target="RFC6525" format="default" sectionFormat="of" derivedContent="RFC6525"/>で説明されているストリーム再構成（Stream Reconfiguration）拡張をサポートする場合、<xref target="section-2.3" format="default" sectionFormat="of" derivedContent="Section 2.3"/>で規定されている対応する変更を実装することが<bcp14>要求されています（REQUIRED）</bcp14>。</t>
+      <section anchor="the-i-data-chunk-supporting-user-message-interleaving" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-the-i-data-chunk-supporting-user-message-interleaving">ユーザーメッセージのインターリーブをサポートするI-DATAチャンク</name>
+        <t indent="0" pn="section-2.1-1">次の<xref target="fig-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>は、ユーザーメッセージのインターリーブを可能にする新しいI-DATAチャンクを示しています。</t>
+        <figure anchor="fig-3" align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-i-data-chunk-format">I-DATAチャンクのフォーマット</name>
+          <artwork name="" type="" align="left" alt="" pn="section-2.1-2.1"><![CDATA[
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Type = 64   |  Res  |I|U|B|E|       Length = Variable       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                              TSN                              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|        Stream Identifier      |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Message Identifier                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Payload Protocol Identifier / Fragment Sequence Number     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\                                                               \
+/                           User Data                           /
+\                                                               \
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-2.1-3"><xref target="fig-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>のI-DATAチャンクと、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>と<xref target="RFC7053" format="default" sectionFormat="of" derivedContent="RFC7053"/>で定義されているDATAチャンクとの違いは、新しいメッセージ識別子（MID）と新しいフラグメントシーケンス番号（FSN）が追加され、ストリームシーケンス番号（SSN）が削除されたことだけです。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>でDATAチャンクに対してすでに定義されているペイロードプロトコル識別子（Payload Protocol Identifier、PPID）と新しいFSNは、パケットの同じ位置に格納され、その位置にどちらの値が格納されているかを判断するためにBビットを使用します。I-DATAチャンクヘッダーの長さは20バイトで、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>と<xref target="RFC7053" format="default" sectionFormat="of" derivedContent="RFC7053"/>で定義されているDATAチャンクヘッダーの長さより4バイト長くなっています。</t>
+        <t indent="0" pn="section-2.1-4">既存のフィールドは次のとおりです。</t>
+        <dl newline="true" spacing="normal" indent="3" pn="section-2.1-5">
+          <dt pn="section-2.1-5.1">Res: 4ビット</dt>
+          <dd pn="section-2.1-5.2">これらのビットは予約済みです。送信者はこれらのビットを0に設定<bcp14>しなければなりません（MUST）</bcp14>。受信者はこれらのビットを無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-2.1-5.3">I bit: 1ビット</dt>
+          <dd pn="section-2.1-5.4">(I)mmediateビットが設定されている場合、受信者は対応するSACKチャンクの送信を遅延させる<bcp14>べきではありません（SHOULD NOT）</bcp14>。<xref target="RFC7053" format="default" sectionFormat="of" derivedContent="RFC7053"/>で規定されているDATAチャンクのIビットと同じです。</dd>
+          <dt pn="section-2.1-5.5">U bit: 1ビット</dt>
+          <dd pn="section-2.1-5.6">(U)norderedビットが設定されている場合、そのユーザーメッセージが順序なしであることを示します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのUビットと同じです。</dd>
+          <dt pn="section-2.1-5.7">B bit: 1ビット</dt>
+          <dd pn="section-2.1-5.8">(B)eginning fragmentビットが設定されている場合、ユーザーメッセージの最初のフラグメントであることを示します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのBビットと同じです。</dd>
+          <dt pn="section-2.1-5.9">E bit: 1ビット</dt>
+          <dd pn="section-2.1-5.10">(E)nding fragmentビットが設定されている場合、ユーザーメッセージの最後のフラグメントであることを示します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのEビットと同じです。</dd>
+          <dt pn="section-2.1-5.11">Length: 16ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-5.12">このフィールドは、Typeフィールドの先頭からUser Dataフィールドの末尾までの、パディングを除いたDATAチャンクの長さをバイト単位で示します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのLengthと同様です。</dd>
+          <dt pn="section-2.1-5.13">TSN: 32ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-5.14">この値は、このI-DATAチャンクのTSNを表します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのTSNと同じです。</dd>
+          <dt pn="section-2.1-5.15">Stream Identifier: 16ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-5.16">ユーザーデータが属するストリームを識別します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているDATAチャンクのStream Identifierと同じです。</dd>
+        </dl>
+        <t indent="0" pn="section-2.1-6">新しいフィールドは次のとおりです。</t>
+        <dl newline="true" spacing="normal" indent="3" pn="section-2.1-7">
+          <dt pn="section-2.1-7.1">Reserved: 16ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-7.2">このフィールドは予約済みです。送信者はこのフィールドを0に設定<bcp14>しなければなりません（MUST）</bcp14>。受信者はこのフィールドを無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+          <dt pn="section-2.1-7.3">Message Identifier (MID): 32ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-7.4">MIDは、ユーザーメッセージのすべてのフラグメントで同じであり、（FSNによって番号付けされた）どのフラグメントが同じユーザーメッセージに属するかを判断するために使用されます。順序付きのユーザーメッセージの場合、MIDは、SCTPの受信者がユーザーメッセージを正しい順序で上位層に配送するためにも使用されます（<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で定義されているDATAチャンクのSSNと同様です）。送信者は、送信ストリームごとに2つのカウンター、つまり順序付きメッセージ用のカウンターと順序なしメッセージ用のカウンターを使用します。これらのカウンターはすべて互いに独立しており、初期値は0です。カウンターはユーザーメッセージごとに1ずつ増加します。SERIAL_BITS = 32として<xref target="RFC1982" format="default" sectionFormat="of" derivedContent="RFC1982"/>で定義されているシリアル番号演算が適用されることに注意してください。したがって、送信者は、各送信ストリームについて2**31 - 1個を超える順序付きメッセージを送信中（in flight）の状態にしては<bcp14>なりません（MUST NOT）</bcp14>。また、各送信ストリームについて2**31 - 1個を超える順序なしメッセージを送信中の状態にしては<bcp14>なりません（MUST NOT）</bcp14>。メッセージは、そのI-DATAチャンクのうち少なくとも1つが、取り消し（renege）できない方法で確認応答されていない（つまり、累積TSN確認応答（cumulative TSN Ack）によって確認応答されていない）場合に、送信中であるとみなされます。MIDは「ネットワークバイトオーダー」、別名ビッグエンディアンであることに注意してください。</dd>
+          <dt pn="section-2.1-7.5">Payload Protocol Identifier (PPID) / Fragment Sequence Number (FSN): 32ビット（符号なし整数）</dt>
+          <dd pn="section-2.1-7.6">Bビットが設定されている場合、このフィールドにはユーザーメッセージのPPIDが含まれます。この場合、このフィールドはSCTP実装によって変更されないため、そのバイトオーダーは必ずしもネットワークバイトオーダーではないことに注意してください。DATAチャンクのPPIDと同様に、このフィールドのバイトオーダー変換は上位層の責任です。この場合、FSNは暗黙的に0であるとみなされます。Bビットが設定されていない場合、このフィールドにはFSNが含まれます。FSNは、単一のユーザーメッセージのすべてのフラグメントに、0から始めて1ずつ増やしながら番号を付けるために使用されます。メッセージの最後のフラグメントでは、Eビットを設定<bcp14>しなければなりません（MUST）</bcp14>。FSNは完全に何度でもラップアラウンド<bcp14>してもよいです（MAY）</bcp14>。これにより、任意の大きさのユーザーメッセージが可能になることに注意してください。FSNについては、SERIAL_BITS = 32として<xref target="RFC1982" format="default" sectionFormat="of" derivedContent="RFC1982"/>で定義されているシリアル番号演算が適用されます。したがって、送信者は、単一のユーザーメッセージについて2**31 - 1個を超えるフラグメントを送信中の状態にしては<bcp14>なりません（MUST NOT）</bcp14>。フラグメントは、取り消しできない方法で確認応答されていない場合に、送信中であるとみなされます。FSNは「ネットワークバイトオーダー」、別名ビッグエンディアンであることに注意してください。</dd>
+        </dl>
+      </section>
+      <section anchor="procedures" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-procedures">手順</name>
+        <t indent="0" pn="section-2.2-1">このサブセクションでは、I-DATAチャンクのサポートをどのようにネゴシエートするか、および送信者と受信者がI-DATAチャンクをどのように使用するかについて説明します。</t>
+        <t indent="0" pn="section-2.2-2">I-DATAチャンクのIビットの扱いは、<xref target="RFC7053" format="default" sectionFormat="of" derivedContent="RFC7053"/>で説明されているDATAチャンクのIビットの扱いに対応します。</t>
+        <section anchor="negotiation" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.1">
+          <name slugifiedName="name-negotiation">ネゴシエーション</name>
+          <t indent="0" pn="section-2.2.1-1">SCTPエンドポイントは、<xref target="RFC5061" format="default" sectionFormat="of" derivedContent="RFC5061"/>で定義されているSupported Extensions ParameterにI-DATAチャンクを列挙することによって、ユーザーメッセージのインターリーブのサポートを示します。両方のエンドポイントがI-DATAのサポートを示した場合、そのアソシエーションでユーザーメッセージのインターリーブがネゴシエートされたことになります。</t>
+          <t indent="0" pn="section-2.2.1-2">アソシエーションでユーザーメッセージのインターリーブのサポートがネゴシエートされた場合、すべてのユーザーメッセージにI-DATAチャンクを使用<bcp14>しなければなりません（MUST）</bcp14>。DATAチャンクを使用しては<bcp14>なりません（MUST NOT）</bcp14>。アソシエーションでユーザーメッセージのインターリーブのサポートがネゴシエートされなかった場合、すべてのユーザーメッセージにDATAチャンクを使用<bcp14>しなければなりません（MUST）</bcp14>。I-DATAチャンクを使用しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+          <t indent="0" pn="section-2.2.1-3"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で規定されているソケットAPIを実装するエンドポイントは、ユーザーが（たとえば、ソケットAPIを介して。<xref target="section-4.3" format="default" sectionFormat="of" derivedContent="Section 4.3"/>を参照）その使用を要求しない限り、ユーザーメッセージのインターリーブのサポートを示しては<bcp14>なりません（MUST NOT）</bcp14>。この制約は、このチャンクを使用するには、アプリケーションがアソシエーション内でインターリーブされたメッセージを受信時に処理できる必要があるために設けられています。これはソケットAPIにおけるデフォルトの選択ではありません（<xref target="RFC6458" section="8.1.20" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-8.1.20" derivedContent="RFC6458"/>のSCTP_FRAGMENT_INTERLEAVEソケットオプションを参照）。そのため、ユーザーは、完全にインターリーブされたメッセージの受信をサポートしていることをSCTP実装に示さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.2.1-4"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>を実装していないスタックは、インターリーブされたメッセージのサポートを示し、それによってユーザーメッセージのインターリーブのサポートを示すために、他の方法を使用する場合があることに注意してください。重要な点は、SCTPスタックが、I-DATAのサポートを示す前に、アプリケーションがインターリーブされたメッセージを処理できることを知ってい<bcp14>なければなりません（MUST）</bcp14>ということです。</t>
+        </section>
+        <section anchor="sender-side-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.2">
+          <name slugifiedName="name-sender-side-considerations">送信者側の考慮事項</name>
+          <t indent="0" pn="section-2.2.2-1">送信者側でのI-DATAチャンクの使用方法は非常に単純です。送信者は、断片化の目的でTSNを使用する代わりに、新しいFSNフィールドを使用して、送信しているフラグメントの番号を示します。最初のフラグメントでは、Bビットを設定<bcp14>しなければなりません（MUST）</bcp14>。最後のフラグメントでは、Eビットを設定<bcp14>しなければなりません（MUST）</bcp14>。それ以外のすべてのフラグメントでは、BビットもEビットも設定しては<bcp14>なりません（MUST NOT）</bcp14>。既存のSCTP DATAチャンクのその他すべての性質もI-DATAチャンクに適用されます。つまり、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で定義されているように、輻輳制御と受信者ウィンドウの条件を守ら<bcp14>なければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.2.2-2">このチャンクを使用することは、送信されるすべてのチャンクに対して実際のTSNを遅れて割り当てることを意味することに注意してください。各I-DATAチャンクは1つのTSNを使用します。このようにして、他のストリームのメッセージを、断片化されたメッセージとインターリーブできます。これが唯一のインターリーブのサポート形態であることに注意してください。たとえば、同じストリームの複数の順序付きまたは順序なしのユーザーメッセージをインターリーブすることはできません。</t>
+          <t indent="0" pn="section-2.2.2-3">送信者は、どの時点でも、ある1つのストリームにおいて2つ以上のユーザーメッセージを処理（ユーザーデータをI-DATAチャンクに移し、それにTSNを割り当てること）しては<bcp14>なりません（MUST NOT）</bcp14>。送信者は、どの時点でも、それぞれ異なるストリーム上にある複数のユーザーメッセージを処理<bcp14>してもよいです（MAY）</bcp14>。</t>
+          <t indent="0" pn="section-2.2.2-4">送信者は、受信者が処理を進められるような方法で、I-DATAチャンクにTSNを割り当て<bcp14>なければなりません（MUST）</bcp14>。これを実現する1つの方法は、ユーザーメッセージの後のフラグメントほど大きなTSNを割り当て、TSNが順番になるようにI-DATAチャンクを送り出すことです。</t>
+        </section>
+        <section anchor="receiver-side-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-2.2.3">
+          <name slugifiedName="name-receiver-side-considerations">受信者側の考慮事項</name>
+          <t indent="0" pn="section-2.2.3-1">再組み立てが必要なユーザーメッセージのI-DATAチャンクを含むSCTPパケットを受信したとき、受信者はまず、SIDを使用してストリームを識別し、Uビットを考慮してそれが順序付きメッセージと順序なしメッセージのどちらの一部であるかを判断し、MIDで識別されるユーザーメッセージを見つけ、TSNではなくFSNを使用してメッセージを再組み立て<bcp14>しなければなりません（MUST）</bcp14>。受信者は、送信者のTSNの割り当てについて何も仮定しては<bcp14>なりません（MUST NOT）</bcp14>。断片化されていないメッセージは、EビットとBビットの両方が設定されていることによって示されることに注意してください。EビットとBビットの両方が設定されてはいない（順序付きまたは順序なしの）メッセージは、断片化されているものと識別できます。</t>
+          <t indent="0" pn="section-2.2.3-2">アソシエーションでI-DATAのサポートがネゴシエートされている場合、DATAチャンクの受信は上記の規則に違反しているため、DATAチャンクの受信者はABORTチャンクを送信してアソシエーションを中断<bcp14>しなければなりません（MUST）</bcp14>。ABORTチャンクには、「Protocol Violation」エラー原因を含めても<bcp14>よいです（MAY）</bcp14>。アソシエーションでI-DATAのサポートがネゴシエートされておらず、I-DATAチャンクを受信した場合にも同じことが当てはまります。</t>
+        </section>
+      </section>
+      <section anchor="interaction-with-other-sctp-extensions" numbered="true" removeInRFC="false" toc="include" pn="section-2.3">
+        <name slugifiedName="name-interaction-with-other-sctp-extensions">他のSCTP拡張との相互作用</name>
+        <t indent="0" pn="section-2.3-1">I-DATAチャンクの使用は、他のSCTP拡張に干渉する可能性があります。将来のSCTP拡張は、I-DATAチャンクの使用に干渉するかどうか、およびどのように干渉するかを記述<bcp14>しなければなりません（MUST）</bcp14>。この文書の発行時点ですでに定義されているSCTP拡張については、以降のサブセクションで詳細を示します。</t>
+        <section anchor="sctp-partial-reliability-extension" numbered="true" removeInRFC="false" toc="include" pn="section-2.3.1">
+          <name slugifiedName="name-sctp-partial-reliability-extension">SCTP部分信頼性拡張</name>
+          <t indent="0" pn="section-2.3.1-1"><xref target="RFC3758" format="default" sectionFormat="of" derivedContent="RFC3758"/>で定義されているSCTP拡張をユーザーメッセージのインターリーブ拡張と組み合わせて使用する場合、FORWARD-TSNチャンクの代わりに新しいI-FORWARD-TSNチャンクを使用<bcp14>しなければなりません（MUST）</bcp14>。FORWARD-TSNチャンクとI-FORWARD-TSNチャンクの違いは、16ビットのストリームシーケンス番号（SSN）が32ビットのメッセージ識別子（MID）に置き換えられ、順序なしメッセージについてもスキップされた最大のMIDを提供できることです。したがって、FORWARD-TSNチャンクを使用する場合に順序付きメッセージに適用される原則が、I-FORWARD-TSNチャンクを使用する場合には順序付きメッセージと順序なしメッセージに適用されます。</t>
+          <figure anchor="fig-4" align="left" suppress-title="false" pn="figure-4">
+            <name slugifiedName="name-i-forward-tsn-chunk-format">I-FORWARD-TSNチャンクのフォーマット</name>
+            <artwork name="" type="" align="left" alt="" pn="section-2.3.1-2.1"><![CDATA[
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Type = 194  | Flags = 0x00  |      Length = Variable        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       New Cumulative TSN                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       Stream Identifier       |          Reserved           |U|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Message Identifier                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\                                                               \
+/                                                               /
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       Stream Identifier       |          Reserved           |U|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Message Identifier                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+          </figure>
+          <t indent="0" pn="section-2.3.1-3">既存のフィールドは次のとおりです。</t>
+          <dl newline="true" spacing="normal" indent="3" pn="section-2.3.1-4">
+            <dt pn="section-2.3.1-4.1">Flags: 8ビット（符号なし整数）</dt>
+            <dd pn="section-2.3.1-4.2">これらのビットは予約済みです。送信者はこれらのビットを0に設定<bcp14>しなければなりません（MUST）</bcp14>。受信者はこれらのビットを無視<bcp14>しなければなりません（MUST）</bcp14>。<xref target="RFC3758" format="default" sectionFormat="of" derivedContent="RFC3758"/>で規定されているFORWARD TSNチャンクのFlagsと同じです。</dd>
+            <dt pn="section-2.3.1-4.3">Length: 16ビット（符号なし整数）</dt>
+            <dd pn="section-2.3.1-4.4">このフィールドはチャンクの長さを保持します。<xref target="RFC3758" format="default" sectionFormat="of" derivedContent="RFC3758"/>で規定されているFORWARD TSNチャンクのLengthと同様です。</dd>
+            <dt pn="section-2.3.1-4.5">New Cumulative TSN: 32ビット（符号なし整数）</dt>
+            <dd pn="section-2.3.1-4.6">これは、データ受信者に新しい累積TSN（New Cumulative TSN）を示します。<xref target="RFC3758" format="default" sectionFormat="of" derivedContent="RFC3758"/>で規定されているFORWARD TSNチャンクのNew Cumulative TSNと同じです。</dd>
+          </dl>
+          <t indent="0" pn="section-2.3.1-5">新しいフィールドは次のとおりです。</t>
+          <dl newline="true" spacing="normal" indent="3" pn="section-2.3.1-6">
+            <dt pn="section-2.3.1-6.1">Stream Identifier (SID): 16ビット（符号なし整数）</dt>
+            <dd pn="section-2.3.1-6.2">このフィールドは、このエントリーが参照するストリーム番号を保持します。</dd>
+            <dt pn="section-2.3.1-6.3">Reserved: 15ビット</dt>
+            <dd pn="section-2.3.1-6.4">このフィールドは予約済みです。送信者はこのフィールドを0に設定<bcp14>しなければなりません（MUST）</bcp14>。受信者はこのフィールドを無視<bcp14>しなければなりません（MUST）</bcp14>。</dd>
+            <dt pn="section-2.3.1-6.5">U bit: 1ビット</dt>
+            <dd pn="section-2.3.1-6.6">Uビットは、このエントリーのMessage Identifierが、順序なしメッセージ（Uビットが設定されている）と順序付きメッセージ（Uビットが設定されていない）のどちらを参照するかを指定します。</dd>
+            <dt pn="section-2.3.1-6.7">Message Identifier (MID): 32ビット（符号なし整数）</dt>
+            <dd pn="section-2.3.1-6.8">このフィールドは、Stream Identifierで指定されたストリームについてスキップされた、Uビットで示される順序付きまたは順序なしメッセージの最大のMessage Identifierを保持します。順序付きメッセージの場合、これはFORWARD-TSNチャンクと同様であり、16ビットのSSNを32ビットのMIDに置き換えただけです。</dd>
+          </dl>
+          <t indent="0" pn="section-2.3.1-7">I-FORWARD-TSNチャンクのサポートは、<xref target="RFC5061" format="default" sectionFormat="of" derivedContent="RFC5061"/>で定義されているSupported Extensions Parameterを介して、SCTPアソシエーションのセットアップ中にネゴシエートされます。部分信頼性拡張がネゴシエートされ、ユーザーメッセージのインターリーブと組み合わせて使用できるのは、両方のエンドポイントがユーザーメッセージのインターリーブとI-FORWARD-TSNチャンクのサポートを示した場合だけです。</t>
+          <t indent="0" pn="section-2.3.1-8">FORWARD-TSNチャンクは、DATAチャンクと組み合わせて使用<bcp14>しなければなりません（MUST）</bcp14>。I-DATAチャンクと組み合わせて使用しては<bcp14>なりません（MUST NOT）</bcp14>。I-FORWARD-TSNチャンクは、I-DATAチャンクと組み合わせて使用<bcp14>しなければなりません（MUST）</bcp14>。DATAチャンクと組み合わせて使用しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+          <t indent="0" pn="section-2.3.1-9">アソシエーションでI-FORWARD-TSNのサポートがネゴシエートされている場合、FORWARD-TSNチャンクの受信は上記の規則に違反しているため、FORWARD-TSNチャンクの受信者はABORTチャンクを送信してアソシエーションを中断<bcp14>しなければなりません（MUST）</bcp14>。ABORTチャンクには、「Protocol Violation」エラー原因を含めても<bcp14>よいです（MAY）</bcp14>。アソシエーションでI-FORWARD-TSNのサポートがネゴシエートされておらず、FORWARD-TSNチャンクを受信した場合にも同じことが当てはまります。</t>
+        </section>
+        <section anchor="sctp-stream-reconfiguration-extension" numbered="true" removeInRFC="false" toc="include" pn="section-2.3.2">
+          <name slugifiedName="name-sctp-stream-reconfiguration-extension">SCTPストリーム再構成拡張</name>
+          <t indent="0" pn="section-2.3.2-1">アソシエーションが<xref target="RFC6525" format="default" sectionFormat="of" derivedContent="RFC6525"/>で定義されているSCTP拡張を使用してSSNをリセットする場合、MIDに使用される2つのカウンター（順序付きメッセージ用と順序なしメッセージ用）を0にリセット<bcp14>しなければなりません（MUST）</bcp14>。</t>
+          <t indent="0" pn="section-2.3.2-2">ほとんどのスケジューラー、特にユーザーメッセージのインターリーブをサポートするすべてのスケジューラーは遅延TSN割り当てを必要とするため、<xref target="RFC6525" format="default" sectionFormat="of" derivedContent="RFC6525"/>の実装はこれに対処する必要があることに注意してください。</t>
+        </section>
+      </section>
+    </section>
+    <section anchor="stream-schedulers" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-stream-schedulers">ストリームスケジューラー</name>
+      <t indent="0" pn="section-3-1">このセクションでは、いくつかのストリームスケジューラーを定義します。ストリームスケジューラーは、そのアソシエーションでユーザーメッセージのインターリーブがネゴシエートされたかどうかに応じて、異なる動作をする場合があります。実装は、これらのスケジューラーの任意のサブセットを実装<bcp14>してもよいです（MAY）</bcp14>。<xref target="DATA-CHAN" format="default" sectionFormat="of" derivedContent="DATA-CHAN"/>で規定されているWebRTCデータチャネルにその実装が使用される場合、その実装は<xref target="section-3.6" format="default" sectionFormat="of" derivedContent="Section 3.6"/>で定義されている重み付け公平キューイングスケジューラー（Weighted Fair Queueing Scheduler）を実装<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-3-2">ストリームスケジューラーの選択は送信者側で行われます。使用しているストリームスケジューラーを受信者側に通知するためのメカニズムや、送信者側で使用するストリームスケジューラーの選択に受信者側が影響を与えるためのメカニズムは提供されていません。</t>
+      <section anchor="first-come-first-served-scheduler-sctp_ss_fcfs" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-first-come-first-served-scheduler-sctp_ss_fcfs">先着順スケジューラー（SCTP_SS_FCFS）</name>
+        <t indent="0" pn="section-3.1-1">ユーザーメッセージの単純な先着順（first-come, first-served）スケジューラーが使用されます。このスケジューラーは、アプリケーションから渡された順序でメッセージをそのまま通過させるだけです。順序の変更はまったく行われません。ユーザーメッセージのインターリーブを使用しても、DATAチャンクの代わりにI-DATAチャンクが使用されることを除いて、チャンクの送信には影響しません。</t>
+      </section>
+      <section anchor="round-robin-scheduler-sctp_ss_rr" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-round-robin-scheduler-sctp_ss_rr">ラウンドロビンスケジューラー（SCTP_SS_RR）</name>
+        <t indent="0" pn="section-3.2-1">ユーザーメッセージをインターリーブしない場合、このスケジューラーは、空でないストリームキューを巡回することによって、ユーザーメッセージの数に基づく公平なスケジューリングを提供します。ユーザーメッセージをインターリーブする場合、このスケジューラーは、空でないストリームキューを巡回することによって、I-DATAチャンクの数に基づく公平なスケジューリングを提供します。</t>
+      </section>
+      <section anchor="round-robin-scheduler-per-packet-sctp_ss_rr_pkt" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-round-robin-scheduler-per-packet-sctp_ss_rr_pkt">パケット単位のラウンドロビンスケジューラー（SCTP_SS_RR_PKT）</name>
+        <t indent="0" pn="section-3.3-1">これはラウンドロビンスケジューラーであり、新しいパケットを埋め始めるときにだけストリームを切り替えます。このスケジューラーは、同じストリームを参照するDATAチャンクまたはI-DATAチャンクだけを1つのパケットにバンドルします。パケットが失われた場合に影響を受けるのは単一のストリームだけであるため、このスケジューラーはヘッドオブラインブロッキングを最小限に抑えます。</t>
+      </section>
+      <section anchor="priority-based-scheduler-sctp_ss_prio" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-priority-based-scheduler-sctp_ss_prio">優先度ベースのスケジューラー（SCTP_SS_PRIO）</name>
+        <t indent="0" pn="section-3.4-1">厳密な優先度によるユーザーメッセージのスケジューリングが使用されます。優先度は、送信SCTPストリームごとに設定できます。より高い優先度を持つストリームが先にスケジュールされ、複数のストリームが同じ優先度を持つ場合、それらの間のスケジューリングは実装依存です。スケジューラーがユーザーメッセージをインターリーブする場合、優先度の低い大きなユーザーメッセージの送信が、優先度の高いユーザーメッセージの送信を遅延させることはありません。</t>
+      </section>
+      <section anchor="fair-capacity-scheduler-sctp_ss_fc" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-fair-capacity-scheduler-sctp_ss_fc">公平容量スケジューラー（SCTP_SS_FC）</name>
+        <t indent="0" pn="section-3.5-1">ストリーム間での公平な容量の配分が使用されます。このスケジューラーは、各ストリームのメッセージの長さを考慮し、すべてのストリームで等しい容量を維持するように特定の方法でメッセージをスケジュールします。詳細は実装依存です。ユーザーメッセージをインターリーブすることで、公平な容量の利用をよりよく実現できます。</t>
+      </section>
+      <section anchor="weighted-fair-queueing-scheduler-sctp_ss_wfq" numbered="true" removeInRFC="false" toc="include" pn="section-3.6">
+        <name slugifiedName="name-weighted-fair-queueing-scheduler-sctp_ss_wfq">重み付け公平キューイングスケジューラー（SCTP_SS_WFQ）</name>
+        <t indent="0" pn="section-3.6-1">ストリーム間で重み付け公平キューイング（Weighted Fair Queueing）スケジューラーが使用されます。重みは、送信SCTPストリームごとに設定できます。このスケジューラーは、各ストリームのメッセージの長さを考慮し、与えられた重みに従って容量を使用するように特定の方法でメッセージをスケジュールします。ストリームS1の重みがストリームS2の重みのn倍である場合、スケジューラーは、ストリームS2に割り当てる容量のn倍の容量をストリームS1に割り当てるべきです。詳細は実装依存です。ユーザーメッセージをインターリーブすることで、与えられた重みに従った容量の利用をよりよく実現できます。</t>
+        <t indent="0" pn="section-3.6-2"><xref target="DATA-CHAN" format="default" sectionFormat="of" derivedContent="DATA-CHAN"/>で規定されているように、このスケジューラーは、ユーザーメッセージのインターリーブと組み合わせて、WebRTCデータチャネルで使用されます。</t>
+      </section>
+    </section>
+    <section anchor="socket-api-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-socket-api-considerations">ソケットAPIに関する考慮事項</name>
+      <t indent="0" pn="section-4-1">このセクションでは、アプリケーションがこの文書で説明する拡張を使用できるようにするために、<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されているソケットAPIをどのように拡張するかについて説明します。</t>
+      <t indent="0" pn="section-4-2">このセクションは情報提供のみを目的としていることに注意してください。</t>
+      <section anchor="exposure-of-the-stream-sequence-number-ssn" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-exposure-of-the-stream-sequence-number-ssn">ストリームシーケンス番号（SSN）の公開</name>
+        <t indent="0" pn="section-4.1-1"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されているソケットAPIでは、受信したユーザーメッセージのSSNをアプリケーションに公開するいくつかの構造体を定義しています。これらの構造体には次のものがあります。</t>
+        <dl newline="true" spacing="normal" indent="3" pn="section-4.1-2">
+          <dt pn="section-4.1-2.1">struct sctp_sndrcvinfo</dt>
+          <dd pn="section-4.1-2.2"><xref target="RFC6458" section="5.3.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-5.3.2" derivedContent="RFC6458"/>で規定されており、非推奨とされています。</dd>
+          <dt pn="section-4.1-2.3">struct sctp_extrcvinfo</dt>
+          <dd pn="section-4.1-2.4"><xref target="RFC6458" section="5.3.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-5.3.3" derivedContent="RFC6458"/>で規定されており、非推奨とされています。</dd>
+          <dt pn="section-4.1-2.5">struct sctp_rcvinfo</dt>
+          <dd pn="section-4.1-2.6"><xref target="RFC6458" section="5.3.5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-5.3.5" derivedContent="RFC6458"/>で規定されています。</dd>
+        </dl>
+        <t indent="0" pn="section-4.1-3">ユーザーメッセージのインターリーブが使用される場合、これらの構造体に値を設定するときには、MIDの下位16ビットがSSNとして使用されます。</t>
+      </section>
+      <section anchor="sctp_assoc_change-notification" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-sctp_assoc_change-notification">SCTP_ASSOC_CHANGE通知</name>
+        <t indent="0" pn="section-4.2-1">両方のピアがI-DATAチャンクをサポートしているSCTPアソシエーションについて、sac_stateがSCTP_COMM_UPまたはSCTP_RESTARTであることを示すSCTP_ASSOC_CHANGE通知（<xref target="RFC6458" section="6.1.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-6.1.1" derivedContent="RFC6458"/>で規定）が配送される場合、sac_infoフィールドにはSCTP_ASSOC_SUPPORTS_INTERLEAVINGを列挙すべきです。</t>
+      </section>
+      <section anchor="socket-options" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-socket-options">ソケットオプション</name>
+        <table align="center" pn="table-1">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">オプション名</th>
+              <th align="left" colspan="1" rowspan="1">データ型</th>
+              <th align="center" colspan="1" rowspan="1">Get</th>
+              <th align="center" colspan="1" rowspan="1">Set</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">SCTP_INTERLEAVING_SUPPORTED</td>
+              <td align="left" colspan="1" rowspan="1">struct sctp_assoc_value</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">SCTP_STREAM_SCHEDULER</td>
+              <td align="left" colspan="1" rowspan="1">struct sctp_assoc_value</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">SCTP_STREAM_SCHEDULER_VALUE</td>
+              <td align="left" colspan="1" rowspan="1">struct sctp_stream_value</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+              <td align="center" colspan="1" rowspan="1">X</td>
+            </tr>
+          </tbody>
+        </table>
+        <section anchor="enable-or-disable-the-support-of-user-message-interleaving-sctp_interleaving_supported" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.1">
+          <name slugifiedName="name-enable-or-disable-the-support-of-user-message-interleaving-sctp_interleaving_supported">ユーザーメッセージのインターリーブのサポートの有効化または無効化（SCTP_INTERLEAVING_SUPPORTED）</name>
+          <t indent="0" pn="section-4.3.1-1">このソケットオプションを使用すると、将来のアソシエーションについて、ユーザーメッセージのインターリーブのサポートのネゴシエーションを有効または無効にできます。既存のアソシエーションについては、特定のアソシエーションでユーザーメッセージのインターリーブのサポートがネゴシエートされたかどうかを問い合わせることができます。</t>
+          <t indent="0" pn="section-4.3.1-2">このソケットオプションは、レベルとしてIPPROTO_SCTPを、名前としてSCTP_INTERLEAVING_SUPPORTEDを使用します。このソケットオプションは、getsockopt()とsetsockopt()で使用できます。ソケットオプションの値には、<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されている次の構造体を使用します。</t>
+          <sourcecode type="c" markers="false" pn="section-4.3.1-3"><![CDATA[
+struct sctp_assoc_value {
+  sctp_assoc_t assoc_id;
+  uint32_t assoc_value;
+};
+]]></sourcecode>
+          <dl newline="false" spacing="normal" indent="3" pn="section-4.3.1-4">
+            <dt pn="section-4.3.1-4.1">assoc_id:</dt>
+            <dd pn="section-4.3.1-4.2">このパラメーターは、1対1スタイルのソケットでは無視されます。1対多スタイルのソケットでは、このパラメーターは、ユーザーがどのアソシエーションに対して操作を実行しているかを示します。特別なsctp_assoc_tであるSCTP_FUTURE_ASSOCも使用できます。assoc_idにSCTP_{CURRENT|ALL}_ASSOCを使用するとエラーになります。</dd>
+            <dt pn="section-4.3.1-4.3">assoc_value:</dt>
+            <dd pn="section-4.3.1-4.4">0以外の値はユーザーメッセージのインターリーブの有効化を表し、0の値はユーザーメッセージのインターリーブの無効化を表します。</dd>
+          </dl>
+          <t indent="0" pn="section-4.3.1-5">SCTP_INTERLEAVING_SUPPORTEDをサポートするために、sctp_opt_info()を拡張する必要があります。</t>
+          <t indent="0" pn="section-4.3.1-6">ユーザーメッセージのインターリーブを使用するアプリケーションは、<xref target="RFC6458" section="8.1.20" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc6458#section-8.1.20" derivedContent="RFC6458"/>で規定されているSCTP_FRAGMENT_INTERLEAVEソケットオプションを使用して、フラグメントインターリーブレベルも2に設定すべきです。これにより、異なるストリームのユーザーメッセージのインターリーブが可能になります。これは、同じストリーム上のユーザーメッセージ（順序付きまたは順序なし）のインターリーブを可能にするものではないことに注意してください。このオプションを設定しないと、アプリケーションのデッドロックにつながる可能性があります。そのため、一部の実装では、これらの値の組み合わせの設定にいくつかの制限を設けている場合があります。ユーザーメッセージのインターリーブのネゴシエーションを有効にする前にインターリーブレベルを2以上に設定すれば、すべてのプラットフォームで動作するはずです。デフォルトのフラグメントインターリーブレベルは2ではないため、ユーザーメッセージのインターリーブはデフォルトで無効になっています。</t>
+        </section>
+        <section anchor="get-or-set-the-stream-scheduler-sctp_stream_scheduler" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.2">
+          <name slugifiedName="name-get-or-set-the-stream-scheduler-sctp_stream_scheduler">ストリームスケジューラーの取得または設定（SCTP_STREAM_SCHEDULER）</name>
+          <t indent="0" pn="section-4.3.2-1">ストリームスケジューラーは、setsockopt()のSCTP_STREAM_SCHEDULERオプションで選択できます。struct sctp_assoc_valueは、スケジューラーを変更するアソシエーションと、希望するアルゴリズムの値を指定するために使用されます。</t>
+          <t indent="0" pn="section-4.3.2-2">struct sctp_assoc_valueの定義は、<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>と同じです。</t>
+          <sourcecode type="c" markers="false" pn="section-4.3.2-3"><![CDATA[
+struct sctp_assoc_value {
+  sctp_assoc_t assoc_id;
+  uint32_t assoc_value;
+};
+]]></sourcecode>
+          <dl newline="false" spacing="normal" indent="3" pn="section-4.3.2-4">
+            <dt pn="section-4.3.2-4.1">assoc_id:</dt>
+            <dd pn="section-4.3.2-4.2">スケジューラーを変更するアソシエーションの識別子を保持します。特別なSCTP_{FUTURE|CURRENT|ALL}_ASSOCも使用できます。このパラメーターは、1対1スタイルのソケットでは無視されます。</dd>
+            <dt pn="section-4.3.2-4.3">assoc_value:</dt>
+            <dd pn="section-4.3.2-4.4">
+              <t indent="0" pn="section-4.3.2-4.4.1">これは、どのスケジューラーを使用するかを指定します。次の定数を使用できます。</t>
+              <dl newline="false" spacing="normal" indent="3" pn="section-4.3.2-4.4.2">
+                <dt pn="section-4.3.2-4.4.2.1">SCTP_SS_DEFAULT:</dt>
+                <dd pn="section-4.3.2-4.4.2.2">SCTP実装が使用するデフォルトのスケジューラーです。典型的な値はSCTP_SS_FCFSまたはSCTP_SS_RRです。</dd>
+                <dt pn="section-4.3.2-4.4.2.3">SCTP_SS_FCFS:</dt>
+                <dd pn="section-4.3.2-4.4.2.4"><xref target="section-3.1" format="default" sectionFormat="of" derivedContent="Section 3.1"/>で規定されているスケジューラーを使用します。</dd>
+                <dt pn="section-4.3.2-4.4.2.5">SCTP_SS_RR:</dt>
+                <dd pn="section-4.3.2-4.4.2.6"><xref target="section-3.2" format="default" sectionFormat="of" derivedContent="Section 3.2"/>で規定されているスケジューラーを使用します。</dd>
+                <dt pn="section-4.3.2-4.4.2.7">SCTP_SS_RR_PKT:</dt>
+                <dd pn="section-4.3.2-4.4.2.8"><xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>で規定されているスケジューラーを使用します。</dd>
+                <dt pn="section-4.3.2-4.4.2.9">SCTP_SS_PRIO:</dt>
+                <dd pn="section-4.3.2-4.4.2.10"><xref target="section-3.4" format="default" sectionFormat="of" derivedContent="Section 3.4"/>で規定されているスケジューラーを使用します。優先度は、sctp_stream_value構造体で割り当てることができます。割り当てられた値が大きいほど、優先度は低くなります。つまり、デフォルト値の0が最も高い優先度であり、したがって、優先度が割り当てられていない場合はデフォルトのスケジューリングが使用されます。</dd>
+                <dt pn="section-4.3.2-4.4.2.11">SCTP_SS_FB:</dt>
+                <dd pn="section-4.3.2-4.4.2.12"><xref target="section-3.5" format="default" sectionFormat="of" derivedContent="Section 3.5"/>で規定されているスケジューラーを使用します。</dd>
+                <dt pn="section-4.3.2-4.4.2.13">SCTP_SS_WFQ:</dt>
+                <dd pn="section-4.3.2-4.4.2.14"><xref target="section-3.6" format="default" sectionFormat="of" derivedContent="Section 3.6"/>で規定されているスケジューラーを使用します。重みは、sctp_stream_value構造体で割り当てることができます。</dd>
+              </dl>
+            </dd>
+          </dl>
+          <t indent="0" pn="section-4.3.2-5">SCTP_STREAM_SCHEDULERをサポートするために、sctp_opt_info()を拡張する必要があります。</t>
+        </section>
+        <section anchor="get-or-set-the-stream-scheduler-parameter-sctp_stream_scheduler_value" numbered="true" removeInRFC="false" toc="include" pn="section-4.3.3">
+          <name slugifiedName="name-get-or-set-the-stream-scheduler-parameter-sctp_stream_scheduler_value">ストリームスケジューラーパラメーターの取得または設定（SCTP_STREAM_SCHEDULER_VALUE）</name>
+          <t indent="0" pn="section-4.3.3-1">次の表に示すように、一部のスケジューラーでは、個々のストリームに追加情報を設定する必要があります。</t>
+          <table align="center" pn="table-2">
+            <thead>
+              <tr>
+                <th align="left" colspan="1" rowspan="1">名前</th>
+                <th align="center" colspan="1" rowspan="1">ストリームごとの情報</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_DEFAULT</td>
+                <td align="center" colspan="1" rowspan="1">n/a</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_FCFS</td>
+                <td align="center" colspan="1" rowspan="1">いいえ</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_RR</td>
+                <td align="center" colspan="1" rowspan="1">いいえ</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_RR_PKT</td>
+                <td align="center" colspan="1" rowspan="1">いいえ</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_PRIO</td>
+                <td align="center" colspan="1" rowspan="1">はい</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_FB</td>
+                <td align="center" colspan="1" rowspan="1">いいえ</td>
+              </tr>
+              <tr>
+                <td align="left" colspan="1" rowspan="1">SCTP_SS_WFQ</td>
+                <td align="center" colspan="1" rowspan="1">はい</td>
+              </tr>
+            </tbody>
+          </table>
+          <t indent="0" pn="section-4.3.3-3">これは、SCTP_STREAM_SCHEDULER_VALUEオプションと、対応するstruct sctp_stream_valueによって実現されます。struct sctp_stream_valueの定義は次のとおりです。</t>
+          <sourcecode type="c" markers="false" pn="section-4.3.3-4"><![CDATA[
+struct sctp_stream_value {
+  sctp_assoc_t assoc_id;
+  uint16_t stream_id;
+  uint16_t stream_value;
+};
+]]></sourcecode>
+          <dl newline="false" spacing="normal" indent="3" pn="section-4.3.3-5">
+            <dt pn="section-4.3.3-5.1">assoc_id:</dt>
+            <dd pn="section-4.3.3-5.2">スケジューラーを変更するアソシエーションの識別子を保持します。特別なSCTP_{FUTURE|CURRENT|ALL}_ASSOCも使用できます。このパラメーターは、1対1スタイルのソケットでは無視されます。</dd>
+            <dt pn="section-4.3.3-5.3">stream_id:</dt>
+            <dd pn="section-4.3.3-5.4">追加情報を提供する必要があるストリームの識別子を保持します。</dd>
+            <dt pn="section-4.3.3-5.5">stream_value:</dt>
+            <dd pn="section-4.3.3-5.6">このフィールドの意味は、指定されたスケジューラーによって異なります。スケジューラーが追加情報を必要としない場合は無視されます。</dd>
+          </dl>
+          <t indent="0" pn="section-4.3.3-6">SCTP_STREAM_SCHEDULER_VALUEをサポートするために、sctp_opt_info()を拡張する必要があります。</t>
+        </section>
+      </section>
+      <section anchor="explicit-eor-marking" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-explicit-eor-marking">明示的なEORマーキング</name>
+        <t indent="0" pn="section-4.4-1">ユーザーメッセージのインターリーブをサポートするSCTPアソシエーションで明示的なレコード終端（End of Record、EOR）マーキングを使用すると、ユーザーは、異なるストリーム上のユーザーメッセージの送信をインターリーブできます。</t>
+      </section>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">IANAによって2つの新しいチャンクタイプが割り当てられました。</t>
+      <section anchor="i-data-chunk" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-i-data-chunk">I-DATAチャンク</name>
+        <t indent="0" pn="section-5.1-1">IANAは、上位2ビットが'01'に設定されたチャンクのプールから、このチャンクのチャンクタイプを割り当てました。これは、SCTPの「Chunk Types」レジストリーに次のように記載されています。</t>
+        <table align="center" pn="table-3">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">ID値</th>
+              <th align="left" colspan="1" rowspan="1">チャンクタイプ</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">64</td>
+              <td align="left" colspan="1" rowspan="1">Payload Data supporting Interleaving (I-DATA)</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-5.1-3">このチャンクタイプのチャンクフラグの（<xref target="RFC6096" format="default" sectionFormat="of" derivedContent="RFC6096"/>で定義されている）登録テーブルは、当初は次のとおりです。</t>
+        <table align="center" pn="table-4">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">チャンクフラグ値</th>
+              <th align="left" colspan="1" rowspan="1">チャンクフラグ名</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x01</td>
+              <td align="left" colspan="1" rowspan="1">E bit</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x02</td>
+              <td align="left" colspan="1" rowspan="1">B bit</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x04</td>
+              <td align="left" colspan="1" rowspan="1">U bit</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x08</td>
+              <td align="left" colspan="1" rowspan="1">I bit</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x10</td>
+              <td align="left" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x20</td>
+              <td align="left" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x40</td>
+              <td align="left" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">0x80</td>
+              <td align="left" colspan="1" rowspan="1">未割り当て</td>
+              <td align="left" colspan="1" rowspan="1"/>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section anchor="i-forward-tsn-chunk" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-i-forward-tsn-chunk">I-FORWARD-TSNチャンク</name>
+        <t indent="0" pn="section-5.2-1">IANAは、上位2ビットが'11'に設定されたチャンクのプールから、このチャンクのチャンクタイプを割り当てました。これは、SCTPの「Chunk Types」レジストリーに次のように記載されています。</t>
+        <table align="center" pn="table-5">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">ID値</th>
+              <th align="left" colspan="1" rowspan="1">チャンクタイプ</th>
+              <th align="left" colspan="1" rowspan="1">参照</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">194</td>
+              <td align="left" colspan="1" rowspan="1">I-FORWARD-TSN</td>
+              <td align="left" colspan="1" rowspan="1">RFC 8260</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-5.2-3">このチャンクタイプのチャンクフラグの（<xref target="RFC6096" format="default" sectionFormat="of" derivedContent="RFC6096"/>で定義されている）登録テーブルは、当初は空です。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この文書は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>と<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で示されているものに加えて、セキュリティーに関する考慮事項を追加するものではありません。</t>
+      <t indent="0" pn="section-6-2">アプリケーションは、ユーザーメッセージのインターリーブに必要な、より複雑な再組み立てのサポートを行うことに同意する必要があることに注意してください。その場合、アプリケーションは、受信ストリームごとに再組み立てバッファーを用意する必要があります。アプリケーションは、これらのバッファーが過剰なリソースを消費しないように自らを保護する必要があります。ユーザーメッセージのインターリーブを使用しない場合、アソシエーションごとに再組み立てバッファーを1つだけ用意すれば十分です。しかし、その場合でも、アプリケーションは過剰なリソース使用から自らを保護する必要があります。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-7">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-7.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC1982" target="https://www.rfc-editor.org/info/rfc1982" quoteTitle="true" derivedAnchor="RFC1982">
+          <front>
+            <title>Serial Number Arithmetic</title>
+            <author fullname="R. Elz" initials="R." surname="Elz"/>
+            <author fullname="R. Bush" initials="R." surname="Bush"/>
+            <date year="1996" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="1982"/>
+          <seriesInfo name="DOI" value="10.17487/RFC1982"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3758" target="https://www.rfc-editor.org/info/rfc3758" quoteTitle="true" derivedAnchor="RFC3758">
+          <front>
+            <title>Stream Control Transmission Protocol (SCTP) Partial Reliability Extension</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="M. Ramalho" initials="M." surname="Ramalho"/>
+            <author fullname="Q. Xie" initials="Q." surname="Xie"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="P. Conrad" initials="P." surname="Conrad"/>
+            <date year="2004" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="3758"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3758"/>
+        </reference>
+        <reference anchor="RFC4960" target="https://www.rfc-editor.org/info/rfc4960" quoteTitle="true" derivedAnchor="RFC4960">
+          <front>
+            <title>Stream Control Transmission Protocol</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart" role="editor"/>
+            <date year="2007" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="4960"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4960"/>
+        </reference>
+        <reference anchor="RFC5061" target="https://www.rfc-editor.org/info/rfc5061" quoteTitle="true" derivedAnchor="RFC5061">
+          <front>
+            <title>Stream Control Transmission Protocol (SCTP) Dynamic Address Reconfiguration</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="Q. Xie" initials="Q." surname="Xie"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="S. Maruyama" initials="S." surname="Maruyama"/>
+            <author fullname="M. Kozuka" initials="M." surname="Kozuka"/>
+            <date year="2007" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5061"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5061"/>
+        </reference>
+        <reference anchor="RFC6096" target="https://www.rfc-editor.org/info/rfc6096" quoteTitle="true" derivedAnchor="RFC6096">
+          <front>
+            <title>Stream Control Transmission Protocol (SCTP) Chunk Flags Registration</title>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2011" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="6096"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6096"/>
+        </reference>
+        <reference anchor="RFC6525" target="https://www.rfc-editor.org/info/rfc6525" quoteTitle="true" derivedAnchor="RFC6525">
+          <front>
+            <title>Stream Control Transmission Protocol (SCTP) Stream Reconfiguration</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="P. Lei" initials="P." surname="Lei"/>
+            <date year="2012" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="6525"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6525"/>
+        </reference>
+        <reference anchor="RFC7053" target="https://www.rfc-editor.org/info/rfc7053" quoteTitle="true" derivedAnchor="RFC7053">
+          <front>
+            <title>SACK-IMMEDIATELY Extension for the Stream Control Transmission Protocol</title>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="I. Ruengeler" initials="I." surname="Ruengeler"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2013" month="November"/>
+          </front>
+          <seriesInfo name="RFC" value="7053"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7053"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-7.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="DATA-CHAN" quoteTitle="true" derivedAnchor="DATA-CHAN">
+          <front>
+            <title>WebRTC Data Channels</title>
+            <author fullname="R. Jesup" initials="R." surname="Jesup"/>
+            <author fullname="S. Loreto" initials="S." surname="Loreto"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <date year="2015" month="January"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-rtcweb-data-channel-13"/>
+        </reference>
+        <reference anchor="RFC3261" target="https://www.rfc-editor.org/info/rfc3261" quoteTitle="true" derivedAnchor="RFC3261">
+          <front>
+            <title>SIP: Session Initiation Protocol</title>
+            <author fullname="J. Rosenberg" initials="J." surname="Rosenberg"/>
+            <author fullname="H. Schulzrinne" initials="H." surname="Schulzrinne"/>
+            <author fullname="G. Camarillo" initials="G." surname="Camarillo"/>
+            <author fullname="A. Johnston" initials="A." surname="Johnston"/>
+            <author fullname="J. Peterson" initials="J." surname="Peterson"/>
+            <author fullname="R. Sparks" initials="R." surname="Sparks"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <author fullname="E. Schooler" initials="E." surname="Schooler"/>
+            <date year="2002" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="3261"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3261"/>
+        </reference>
+        <reference anchor="RFC6458" target="https://www.rfc-editor.org/info/rfc6458" quoteTitle="true" derivedAnchor="RFC6458">
+          <front>
+            <title>Sockets API Extensions for the Stream Control Transmission Protocol (SCTP)</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="K. Poon" initials="K." surname="Poon"/>
+            <author fullname="P. Lei" initials="P." surname="Lei"/>
+            <author fullname="V. Yasevich" initials="V." surname="Yasevich"/>
+            <date year="2011" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="6458"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6458"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、貴重なコメントをくださったBenoit Claise、Julian Cordes、Spencer Dawkins、Gorry Fairhurst、Lennart Grahl、Christer Holmberg、Mirja Kuehlewind、Marcelo Ricardo Leitner、Karen E. Egede Nielsen、Maksim Proshin、Eric Rescorla、Irene Ruengeler、Felix Weinrank、Michael Welzl、Magnus Westerlund、Lixia Zhangに感謝します。</t>
+      <t indent="0" pn="section-appendix.a-2">この研究は、欧州連合（European Union）のHorizon 2020研究・イノベーションプログラムから、助成契約No. 644334（NEAT）に基づいて資金提供を受けています。ここで表明された見解は、著者ら自身のものです。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Randall R. Stewart" initials="R." surname="Stewart">
+        <organization showOnFrontPage="true">Netflix, Inc.</organization>
+        <address>
+          <postal>
+            <postalLine>Chapin, SC  29036</postalLine>
+            <postalLine>United States of America</postalLine>
+          </postal>
+          <email>randall@lakerest.net</email>
+        </address>
+      </author>
+      <author fullname="Michael Tuexen" initials="M." surname="Tuexen">
+        <organization showOnFrontPage="true">Muenster University of Applied Sciences</organization>
+        <address>
+          <postal>
+            <postalLine>Stegerwaldstrasse 39</postalLine>
+            <postalLine>48565 Steinfurt</postalLine>
+            <postalLine>Germany</postalLine>
+          </postal>
+          <email>tuexen@fh-muenster.de</email>
+        </address>
+      </author>
+      <author fullname="Salvatore Loreto" initials="S." surname="Loreto">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <postal>
+            <postalLine>Torshamnsgatan 21</postalLine>
+            <postalLine>164 80 Stockholm</postalLine>
+            <postalLine>Sweden</postalLine>
+          </postal>
+          <email>Salvatore.Loreto@ericsson.com</email>
+        </address>
+      </author>
+      <author fullname="Robin Seggelmann" initials="R." surname="Seggelmann">
+        <organization showOnFrontPage="true">Metafinanz Informationssysteme GmbH</organization>
+        <address>
+          <postal>
+            <postalLine>Leopoldstrasse 146</postalLine>
+            <postalLine>80804 Muenchen</postalLine>
+            <postalLine>Germany</postalLine>
+          </postal>
+          <email>rfc@robin-seggelmann.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

@@ -1,0 +1,721 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tcpm-dctcp-10" indexInclude="true" number="8257" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-dctcp-10" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8257" rel="alternate"/>
+  <front>
+    <title>データセンターTCP（DCTCP）：データセンター向けのTCP輻輳制御</title>
+    <seriesInfo name="RFC" value="8257" stream="IETF"/>
+    <date year="2017" month="October"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">この情報提供RFCは、データセンタートラフィック向けのTCP輻輳制御方式であるデータセンターTCP（Data Center TCP: DCTCP）について説明します。
+DCTCPは、明示的輻輳通知（Explicit Congestion Notification: ECN）の処理を拡張し、単に何らかの輻輳が発生したことを検出するのではなく、輻輳に遭遇したバイトの割合を推定します。
+そしてDCTCPは、この推定値に基づいてTCPの輻輳ウィンドウを調整します。
+この方法により、浅いバッファーのスイッチで、高いバースト耐性、低遅延、高スループットを実現します。
+このメモでは、DCTCPと従来のTCPの共存に関する展開上の問題や、送信者と受信者の間にネゴシエーションの仕組みがないことについても論じ、考えられるいくつかの緩和策を示します。
+このメモは、いくつかの主要なオペレーティングシステムで現在実装されているDCTCPを文書化したものです。
+この仕様で説明するDCTCPは、データセンターのような管理された環境での展開に適用できますが、追加の対策なしにパブリックインターネット上で展開してはなりません。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+https://www.rfc-editor.org/info/rfc8257で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（https://trustee.ietf.org/license-info）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dctcp-algorithm">DCTCPアルゴリズム</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-marking-congestion-on-the-l3-switches-and-routers">L3スイッチとルーターでの輻輳のマーキング</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-echoing-congestion-information-on-the-receiver">受信者での輻輳情報のエコー</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-processing-echoed-congestion-indications-on-the-sender">送信者でのエコーされた輻輳通知の処理</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-congestion-window-growth">輻輳ウィンドウの拡大の扱い</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.5.1"><xref derivedContent="3.5" format="counter" sectionFormat="of" target="section-3.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-packet-loss">パケット損失の扱い</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.6.1"><xref derivedContent="3.6" format="counter" sectionFormat="of" target="section-3.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-handling-of-syn-syn-ack-and-rst-packets">SYN、SYN-ACK、RSTパケットの扱い</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-implementation-issues">実装上の問題</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-configuration-of-dctcp">DCTCPの設定</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-computation-of-dctcp.alpha">DCTCP.Alphaの計算</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-deployment-issues">展開上の問題</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-known-issues">既知の問題</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.9.2">
+            <li pn="section-toc.1-1.9.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1.1"><xref derivedContent="9.1" format="counter" sectionFormat="of" target="section-9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.9.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.2.1"><xref derivedContent="9.2" format="counter" sectionFormat="of" target="section-9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">大規模なデータセンターでは、多数のサーバーを相互接続するために、必然的に多数のネットワークスイッチが必要になります。
+したがって、データセンターは低コストのスイッチを活用することで、設備投資を大幅に削減できます。
+しかし、そのような低コストのスイッチはキュー容量が限られている傾向があり、そのため輻輳によるパケット損失の影響を受けやすくなります。</t>
+      <t indent="0" pn="section-1-2">データセンター内のネットワークトラフィックは、多くの場合、短いフローと長いフローが混在しており、短いフローは低遅延を、長いフローは高スループットを必要とします。
+また、データセンターでは、多数のサーバーが同時に1つのサーバーへトラフィックを送信するインキャストバーストも発生します。
+たとえば、このトラフィックパターンは、MapReduce<xref target="MAPREDUCE" format="default" sectionFormat="of" derivedContent="MAPREDUCE"/>のワークロードから自然に生じるものです。ワーカーノードがほぼ同時に処理を完了し、全員が同時にマスターノードへ応答するからです。</t>
+      <t indent="0" pn="section-1-3">これらの要因は、スイッチのキュー占有量に対していくつかの相反する要求を課します。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-4">
+        <li pn="section-1-4.1">キューは、短いフローに過度の遅延を課さない程度に短くなければなりません。</li>
+        <li pn="section-1-4.2">キューは、長いフローが経路容量を使い切るのに十分なデータをバッファリングできる程度に長くなければなりません。</li>
+        <li pn="section-1-4.3">キューは、過度のパケット損失なしにインキャストバーストを吸収できる程度に長くなければなりません。</li>
+      </ul>
+      <t indent="0" pn="section-1-5">標準のTCP輻輳制御<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>は、輻輳の検出をパケット損失に頼っています。
+これは上述の要求を満たしません。
+第一に、短いフローはパケット損失が発生する前に許容できない遅延を経験し始めます。
+第二に、送信者側でTCP輻輳制御が働き始める時点では、インキャストバーストの大部分がすでに破棄されています。</t>
+      <t indent="0" pn="section-1-6"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>は、輻輳を検出するためにスイッチからの明示的輻輳通知（ECN）を使用する仕組みを説明しています。
+しかし、この方法は輻輳の有無を検出するだけで、その程度は検出しません。
+軽度の輻輳がある場合、TCPの輻輳ウィンドウは過度に積極的に削減され、長いフローのスループットを不必要に低下させます。</t>
+      <t indent="0" pn="section-1-7">データセンターTCP（DCTCP）は、単に何らかの輻輳が発生したことを検出するのではなく、輻輳に遭遇したバイトの割合を推定することで、従来のECN処理を変更します。
+そしてDCTCPは、この推定値に基づいてTCPの輻輳ウィンドウを調整します。
+この方法により、浅いバッファーのスイッチで、高いバースト耐性、低遅延、高スループットを実現します。
+DCTCPは、従来のTCPによるECN処理への変更であり、パケット損失の処理には標準のTCP輻輳制御を使用することを必要とします。</t>
+      <t indent="0" pn="section-1-8">DCTCPは、両方のエンドポイントとスイッチングファブリックが単一の管理ドメインの下にある、データセンター内の環境でのみ展開すべきです。
+<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>で詳述するように、DCTCPは追加の対策なしにパブリックインターネット上で展開<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+      <t indent="0" pn="section-1-9">この情報提供RFCの目的は、データセンターにおけるTCP輻輳制御に取り組むための新しいアプローチ（広く実装・展開されていることが知られています）としてDCTCPを文書化することです。
+IETF TCPMワーキンググループは、DCTCPの標準化にはさらなる作業が必要であるという事実についてコンセンサスに達しました。
+稼働中のコードを正確に文書化することで、IETFストリームを通じた後続の実験的（Experimental）RFCまたは標準化過程（Standards Track）RFCが可能になります。</t>
+      <t indent="0" pn="section-1-10">この文書は、Microsoft Windows Server 2012<xref target="WINDOWS" format="default" sectionFormat="of" derivedContent="WINDOWS"/>で実装されているDCTCPについて説明します。
+Linux<xref target="LINUX" format="default" sectionFormat="of" derivedContent="LINUX"/>とFreeBSD<xref target="FREEBSD" format="default" sectionFormat="of" derivedContent="FREEBSD"/>のオペレーティングシステムも、この文書に従っていると考えられる方法でDCTCPのサポートを実装しています。
+DCTCPの展開経験は<xref target="MORGANSTANLEY" format="default" sectionFormat="of" derivedContent="MORGANSTANLEY"/>に記録されています。</t>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+      <t indent="0" pn="section-2-2">規範的な文言は、DCTCP実装のさまざまな側面が相互運用性のためにどの程度必要かを説明するために使用していますが、準拠した実装であっても、セクション4〜6の対策がなければ、管理された環境（つまり、パブリックインターネット上ではない環境）でしか安全に展開できません。</t>
+    </section>
+    <section anchor="dctcp-algorithm" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-dctcp-algorithm">DCTCPアルゴリズム</name>
+      <t indent="0" pn="section-3-1">DCTCPアルゴリズムには、3つの構成要素が関わっています。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-2">
+        <li pn="section-3-2.1">スイッチ（またはネットワーク内のその他の中間装置）は、輻輳を検出し、IPヘッダーのCongestion Encountered（CE）コードポイントを設定します。</li>
+        <li pn="section-3-2.2">受信者は、TCPヘッダーのECN-Echo（ECE）フラグを使用して、輻輳情報を送信者にエコーバックします。</li>
+        <li pn="section-3-2.3">送信者は、輻輳の推定値を計算し、それに応じてTCPの輻輳ウィンドウ（cwnd）を削減することで反応します。</li>
+      </ul>
+      <section anchor="marking-congestion-on-the-l3-switches-and-routers" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-marking-congestion-on-the-l3-switches-and-routers">L3スイッチとルーターでの輻輳のマーキング</name>
+        <t indent="0" pn="section-3.1-1">データセンターファブリック内のレイヤー3（L3）スイッチとルーターは、<xref target="RFC3168" section="5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3168#section-5" derivedContent="RFC3168"/>で規定されているように、IPヘッダーにCEコードポイントを設定することで、エンドノードに輻輳を示します。
+たとえば、スイッチに輻輳しきい値を設定することがあります。
+パケットがスイッチに到着したときに、そのキュー長が輻輳しきい値を超えていれば、スイッチはそのパケットにCEコードポイントを設定します。
+たとえば、<xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/>のセクション3.4では、しきい値K &gt; (RTT * C)/7（Cはパケット毎秒単位のリンクレート）によるしきい値マーキングを提案しています。
+典型的な展開では、平均キューイング遅延を短く保つために、マーキングしきい値を小さな値に設定します。
+ただし、輻輳をマーキングするための実際のアルゴリズムはスイッチの実装の詳細であり、一般に送信者と受信者にはわかりません。
+したがって、送信者と受信者は、スイッチングファブリックで特定のマーキングアルゴリズムが実装されていると仮定すべきではありません。</t>
+      </section>
+      <section anchor="echoing-congestion-information-on-the-receiver" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-echoing-congestion-information-on-the-receiver">受信者での輻輳情報のエコー</name>
+        <t indent="0" pn="section-3.2-1"><xref target="RFC3168" section="6.1.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3168#section-6.1.3" derivedContent="RFC3168"/>によると、受信者は、確認応答されるパケットのいずれかにCEコードポイントが設定されていた場合にECEフラグを設定します。
+その後、受信者は、Congestion Window Reduced（CWR）フラグが設定されたパケットを受信するまで、ECEフラグを設定し続けます。
+しかし、DCTCPアルゴリズムでは、より詳細な輻輳情報が必要です。
+特に、送信者は、送信したバイトのうち輻輳に遭遇したバイト数を判断できなければなりません。
+したがって、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で説明されている方式では不十分です。</t>
+        <t indent="0" pn="section-3.2-2">考えられる解決策の1つは、すべてのパケットにACKを返し、確認応答されるパケットにCEコードポイントが設定されていた場合に限り、そのACKにECEフラグを設定することです。
+しかし、これでは、データセンターにおける重要な性能最適化である遅延ACKを使用できなくなります。
+遅延ACKの頻度がnの場合、nパケットごとに1つのACKが生成されます。
+nの典型的な値は2ですが、性能向上のために設計されたACKスロットリングやパケット結合の技術によって影響を受けることがあります。</t>
+        <t indent="0" pn="section-3.2-3">代わりに、DCTCPは新しいブール型のTCP状態変数であるDCTCP Congestion Encountered（DCTCP.CE）を導入します。この変数はfalseに初期化され、伝送制御ブロック（Transmission Control Block: TCB）に格納されます。
+ACKを送信するときは、DCTCP.CEがtrueである場合に限り、ECEフラグを設定<bcp14>しなければなりません（MUST）</bcp14>。
+パケットを受信するときは、CEコードポイントを次のように処理<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-3.2-4">
+          <li pn="section-3.2-4.1" derivedCounter="1.">CEコードポイントが設定されていて、DCTCP.CEがfalseの場合、DCTCP.CEをtrueに設定し、即時ACKを送信します。</li>
+          <li pn="section-3.2-4.2" derivedCounter="2.">CEコードポイントが設定されておらず、DCTCP.CEがtrueの場合、DCTCP.CEをfalseに設定し、即時ACKを送信します。</li>
+          <li pn="section-3.2-4.3" derivedCounter="3.">それ以外の場合は、CEコードポイントを無視します。</li>
+        </ol>
+        <t indent="0" pn="section-3.2-5">即時ACKは新しいDCTCP.CEの状態を反映するため、古い状態のときに受信した、まだ確認応答していないパケットを確認応答してしまう可能性があります。
+これにより、<xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>に従った送信者でのレート計算が不正確になる可能性があります。
+これを避けるために、実装は2つのACKを送信することを選択<bcp14>してもよいです（MAY）</bcp14>。1つはそれまで確認応答していなかったパケットに対するもの、もう1つは最も新しく受信したパケットを確認応答するものです。</t>
+        <t indent="0" pn="section-3.2-6">受信者によるCWRビットの処理も、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>（<xref target="Err3639" format="default" sectionFormat="of" derivedContent="Err3639"/>を含む）に従います。
+つまり、CEビットとCWRビットの両方が設定されたセグメントを受信した場合、まずCWRを処理し、次にCEを処理します。</t>
+        <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-ack-generation-state-machine">ACK生成ステートマシン</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-7.1"><![CDATA[
+                          Send immediate
+                          ACK with ECE=0
+              .-----.     .--------------.     .-----.
+ Send 1 ACK  /      v     v              |     |      \
+  for every |     .------------.    .------------.     | Send 1 ACK
+  n packets |     | DCTCP.CE=0 |    | DCTCP.CE=1 |     | for every
+ with ECE=0 |     '------------'    '------------'     | n packets
+             \      |     |              ^     ^      /  with ECE=1
+              '-----'     '--------------'     '-----'
+                           Send immediate
+                           ACK with ECE=1
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="processing-echoed-congestion-indications-on-the-sender" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-processing-echoed-congestion-indications-on-the-sender">送信者でのエコーされた輻輳通知の処理</name>
+        <t indent="0" pn="section-3.3-1">送信者は、送信したバイトのうち輻輳に遭遇したバイトの割合を推定します。
+現在の推定値は新しいTCP状態変数DCTCP.Alphaに格納されます。この変数は1に初期化され、次のように更新<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-3.3-2"><![CDATA[
+   DCTCP.Alpha = DCTCP.Alpha * (1 - g) + g * M
+]]></artwork>
+        <t indent="0" pn="section-3.3-3">ここで：</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.3-4">
+          <li pn="section-3.3-4.1">gは推定ゲインであり、0から1の間の実数です。
+gの選択は実装に委ねられています。
+さらなる考慮事項については<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>を参照してください。</li>
+          <li pn="section-3.3-4.2">Mは、直前の観測ウィンドウの間に送信したバイトのうち輻輳に遭遇したバイトの割合です。観測ウィンドウは、おおよそラウンドトリップ時間（Round-Trip Time: RTT）になるように選びます。
+具体的には、観測ウィンドウは、そのウィンドウの開始時点で送信中だったすべてのバイトが確認応答された時点で終了します。</li>
+        </ul>
+        <t indent="0" pn="section-3.3-5">DCTCP.Alphaを更新するために、<xref target="RFC0793" format="default" sectionFormat="of" derivedContent="RFC0793"/>で定義されているTCP状態変数を使用し、さらに3つのTCP状態変数を導入します。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3.3-6">
+          <li pn="section-3.3-6.1">DCTCP.WindowEnd：ある観測ウィンドウが終了し、次の観測ウィンドウが始まるときのTCPシーケンス番号のしきい値。SND.UNAに初期化されます。</li>
+          <li pn="section-3.3-6.2">DCTCP.BytesAcked：現在の観測ウィンドウの間に確認応答された送信済みバイト数。0に初期化されます。</li>
+          <li pn="section-3.3-6.3">DCTCP.BytesMarked：現在の観測ウィンドウの間に送信したバイトのうち、輻輳に遭遇したバイト数。0に初期化されます。</li>
+        </ul>
+        <t indent="0" pn="section-3.3-7">送信者の輻輳推定器は、受け入れ可能なACKを次のように処理<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-3.3-8">
+          <li pn="section-3.3-8.1" derivedCounter="1.">
+            <t indent="0" pn="section-3.3-8.1.1">確認応答されたバイト数を計算します（この計算では、TCP選択的確認応答（Selective Acknowledgment: SACK）オプション<xref target="RFC2018" format="default" sectionFormat="of" derivedContent="RFC2018"/>は無視します）。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.1.2"><![CDATA[
+   BytesAcked = SEG.ACK - SND.UNA
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.2" derivedCounter="2.">
+            <t indent="0" pn="section-3.3-8.2.1">送信したバイト数を更新します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.2.2"><![CDATA[
+   DCTCP.BytesAcked += BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.3" derivedCounter="3.">
+            <t indent="0" pn="section-3.3-8.3.1">ECEフラグが設定されている場合、マークされたバイト数を更新します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.3.2"><![CDATA[
+   DCTCP.BytesMarked += BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.4" derivedCounter="4.">確認応答番号がDCTCP.WindowEnd以下の場合は、処理を停止します。
+そうでない場合は、観測ウィンドウの終わりに達しているので、次のように輻輳の推定値の更新に進みます。</li>
+          <li pn="section-3.3-8.5" derivedCounter="5.">
+            <t indent="0" pn="section-3.3-8.5.1">現在の観測ウィンドウの輻輳レベルを計算します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.5.2"><![CDATA[
+   M = DCTCP.BytesMarked / DCTCP.BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.6" derivedCounter="6.">
+            <t indent="0" pn="section-3.3-8.6.1">輻輳の推定値を更新します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.6.2"><![CDATA[
+   DCTCP.Alpha = DCTCP.Alpha * (1 - g) + g * M
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.7" derivedCounter="7.">
+            <t indent="0" pn="section-3.3-8.7.1">次の観測ウィンドウの終わりを決定します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.7.2"><![CDATA[
+   DCTCP.WindowEnd = SND.NXT
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.8" derivedCounter="8.">
+            <t indent="0" pn="section-3.3-8.8.1">バイトカウンターをリセットします。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.8.2"><![CDATA[
+   DCTCP.BytesAcked = DCTCP.BytesMarked = 0
+]]></artwork>
+          </li>
+          <li pn="section-3.3-8.9" derivedCounter="9.">
+            <t indent="0" pn="section-3.3-8.9.1"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で説明されているように常に輻輳ウィンドウを半分にするのではなく、送信者は次のようにcwndを更新<bcp14>すべきです（SHOULD）</bcp14>。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-3.3-8.9.2"><![CDATA[
+   cwnd = cwnd * (1 - DCTCP.Alpha / 2)
+]]></artwork>
+          </li>
+        </ol>
+        <t indent="0" pn="section-3.3-9"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で規定されているのと同様に、DCTCPは1つのデータウィンドウにつき2回以上輻輳通知に反応することはありません。
+CWRビットの設定も<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>に従います。
+これは、設定ミスの可能性があるため、従来のECN受信者との相互運用のために必要です。</t>
+      </section>
+      <section anchor="handling-of-congestion-window-growth" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-handling-of-congestion-window-growth">輻輳ウィンドウの拡大の扱い</name>
+        <t indent="0" pn="section-3.4-1">DCTCPの送信者は、従来のTCPと同じ方法で輻輳ウィンドウを拡大します。
+スロースタートと輻輳回避のアルゴリズムは、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>で規定されているとおりに扱います。</t>
+      </section>
+      <section anchor="handling-of-packet-loss" numbered="true" removeInRFC="false" toc="include" pn="section-3.5">
+        <name slugifiedName="name-handling-of-packet-loss">パケット損失の扱い</name>
+        <t indent="0" pn="section-3.5-1">DCTCPの送信者は、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>で規定されている高速再送と高速回復のアルゴリズムを含め、従来のTCPと同じ方法で損失エピソードに反応<bcp14>しなければなりません（MUST）</bcp14>。
+パケット損失が推測され、ECNによって明示的に通知されたのではない場合、cwndやssthreshなどのその他の状態変数は、従来のTCPが変更するのと同じ方法で変更<bcp14>しなければなりません（MUST）</bcp14>。
+ECNの場合と同様に、DCTCPの送信者は、すべての損失シグナルを通じて、1つのデータウィンドウにつき1回だけcwndを削減します。
+<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>で規定されているのと同様に、タイムアウト時には、あるデータウィンドウにおけるそれまでのcwndの削減にかかわらず、cwndを損失ウィンドウ（フルサイズのセグメント1つ）以下に設定<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="handling-of-syn-syn-ack-and-rst-packets" numbered="true" removeInRFC="false" toc="include" pn="section-3.6">
+        <name slugifiedName="name-handling-of-syn-syn-ack-and-rst-packets">SYN、SYN-ACK、RSTパケットの扱い</name>
+        <t indent="0" pn="section-3.6-1">DCTCPコネクションのSYN、SYN-ACK、RSTパケットのIPヘッダーにECN-Capable Transport（ECT）コードポイントが設定されていれば、それらのパケットは、負荷のかかったスイッチングファブリックで転送される際に、ほかのDCTCPパケットと同じ扱いを受けます。
+これらのパケットにECTがないと、スイッチングファブリックの設定によっては、破棄率が高くなる可能性があります。
+したがって、DCTCPコネクションでは、送信者はSYN、SYN-ACK、RSTパケットにECTを設定<bcp14>すべきです（SHOULD）</bcp14>。
+DCTCPの受信者は、SYN、SYN-ACK、RSTパケットに設定されたCEコードポイントを無視します。</t>
+      </section>
+    </section>
+    <section anchor="implementation-issues" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-implementation-issues">実装上の問題</name>
+      <section anchor="configuration-of-dctcp" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-configuration-of-dctcp">DCTCPの設定</name>
+        <t indent="0" pn="section-4.1-1">実装は、いつDCTCPを使用するかを知る必要があります。
+データセンターのサーバーは、DCTCPが不適切であるかサポートされていない、データセンター外のエンドポイントと通信する必要があるかもしれません。
+したがって、DCTCPを有効にするグローバルな設定だけでは、一般に十分ではありません。
+DCTCPは、その使用をネゴシエーションする仕組みを提供しません。
+したがって、DCTCPに対応していないエンドポイントとの間でDCTCPが使用されないようにするための、追加の管理・設定機能が必要です。</t>
+        <t indent="0" pn="section-4.1-2">既知の解決策は、設定かヒューリスティックのどちらかに依存しています。
+ヒューリスティックは、DCTCPの送信者が常にDCTCPの受信者と組になるように、エンドポイントが個別にDCTCPを有効にできるようにする必要があります。
+1つのアプローチは、リモートエンドポイントのIPアドレスに基づいてDCTCPを有効にすることです。
+別のアプローチは、データセンターの範囲内で送信するコネクションを検出することです。
+たとえば、RTTが小さければ2つのエンドポイントはおそらく同じデータセンターネットワーク内にあるという仮定のもとで、推定RTTがしきい値（10ミリ秒など）未満であり、かつECNのネゴシエーションに成功した場合に、DCTCPを自動的に選択する機能を実装がサポートすることが考えられます。</t>
+        <t indent="0" pn="section-4.1-3"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>は、TCPにはACK経路の輻輳を緩和する能力がないため、純粋なACKパケットへのECNマーキングを禁止しています。
+RFC 3168は、再送、ウィンドウプローブ、RSTへのECNマーキングも禁止しています。
+しかし、これらの制御パケットをECNマーキングせずにすべて破棄することには、性能上の大きな欠点があります。
+実装は、そのような制御パケットにECTを設定させる設定項目を提供することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。この設定項目は、そのような懸念が当てはまらない環境で使用できます。
+詳細については<xref target="ECN-EXPERIMENTATION" format="default" sectionFormat="of" derivedContent="ECN-EXPERIMENTATION"/>を参照してください。</t>
+        <t indent="0" pn="section-4.1-4">DCTCPは、Reno<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>のような既存の輻輳制御アルゴリズムの上に追加の動作として実装すると便利です。
+DCTCPの実装は、損失エピソードの処理の一部としてDCTCP.Alphaの値をリセットするかどうかを設定できるようにしても<bcp14>よいです（MAY）</bcp14>。</t>
+      </section>
+      <section anchor="computation-of-dctcp.alpha" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-computation-of-dctcp.alpha">DCTCP.Alphaの計算</name>
+        <t indent="0" pn="section-4.2-1"><xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>で述べたように、実装は適切な推定ゲインを選択する必要があります。
+<xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/>は、ゲインを選択するための理論的根拠を提供しています。
+しかし、特定のネットワークとワークロードに適したゲインを選択するには、実験を用いるほうが実用的かもしれません。
+一部の実装では、1/16の固定の推定ゲインを使用しています。
+（gの値を0または1にすると問題のある動作になることに注意してください。g=0ではDCTCP.Alphaが初期値に固定され、g=1では平滑化なしにDCTCP.AlphaがMに設定されます。）</t>
+        <t indent="0" pn="section-4.2-2"><xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>の式に従ったDCTCP.Alphaの計算には分数が含まれます。
+効率的なカーネル実装では、シフト演算を用いて効率的に計算するために、DCTCP.Alphaの値をスケーリング<bcp14>してもよいです（MAY）</bcp14>。
+たとえば、実装がgとして1/16を選択した場合、DCTCP.Alphaにgを掛ける乗算は4ビットの右シフトになります。
+スケーリングを行う実装は、DCTCP.Alphaが最小のシフト値（上記の例では16）を下回ったときに0に到達できるように<bcp14>すべきです（SHOULD）</bcp14>。
+反対の極端な場合として、スケーリングした更新では、DCTCP.Alphaがスケーリング係数を超えないようにする必要があります。超えると、100%を超える輻輳に相当することになるからです。
+そのため、DCTCP.Alphaは、更新後に上限を制限（クランプ）<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-3">この結果、<xref target="section-3.3" format="default" sectionFormat="of" derivedContent="Section 3.3"/>のステップ5と6を置き換える次の計算になります。ここで、SCFは選択したスケーリング係数（この例では65536）、SHFはシフト係数（この例では4）です。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-4.2-4">
+          <li pn="section-4.2-4.1" derivedCounter="1.">
+            <t indent="0" pn="section-4.2-4.1.1">現在の観測ウィンドウの輻輳レベルを計算します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-4.2-4.1.2"><![CDATA[
+   ScaledM = SCF * DCTCP.BytesMarked / DCTCP.BytesAcked
+]]></artwork>
+          </li>
+          <li pn="section-4.2-4.2" derivedCounter="2.">
+            <t indent="0" pn="section-4.2-4.2.1">輻輳の推定値を更新します。</t>
+            <artwork name="" type="" align="left" alt="" pn="section-4.2-4.2.2"><![CDATA[
+   if (DCTCP.Alpha >> SHF) == 0, then DCTCP.Alpha = 0
+
+   DCTCP.Alpha += (ScaledM >> SHF) - (DCTCP.Alpha >> SHF)
+
+   if DCTCP.Alpha > SCF, then DCTCP.Alpha = SCF
+]]></artwork>
+          </li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="deployment-issues" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-deployment-issues">展開上の問題</name>
+      <t indent="0" pn="section-5-1">DCTCPと従来のTCP輻輳制御は、同じネットワーク内ではうまく共存できません。
+典型的なDCTCPの展開では、キューイング遅延を減らすために、スイッチングファブリックのマーキングしきい値を非常に低い値に設定しており、比較的少量の輻輳でもマーキングしきい値を超えてしまいます。
+そのような輻輳の期間中、従来のTCPはパケット損失を被り、cwndを素早く大幅に削減します。
+一方、DCTCPは、マークされたパケットの割合を用いて、cwndをより緩やかに削減します。
+したがって、DCTCPのレート削減は従来のTCPよりもはるかに遅くなり、DCTCPのトラフィックは、同じ経路を通過する従来のTCPトラフィックと比べて、より大きな容量の割り当てを得ることになります。
+データセンター内のトラフィックが従来のTCPとDCTCPの混在である場合、DCTCPのトラフィックを従来のTCPトラフィックから分離することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+<xref target="MORGANSTANLEY" format="default" sectionFormat="of" derivedContent="MORGANSTANLEY"/>は、IP Differentiated Services Codepoint（DSCP）ビットを使用してネットワークを分離し、DCTCPのトラフィックにはアクティブキュー管理（Active Queue Management: AQM）<xref target="RFC7567" format="default" sectionFormat="of" derivedContent="RFC7567"/>を適用する一方、TCPトラフィックはテールドロップのキューイングで管理する展開について説明しています。</t>
+      <t indent="0" pn="section-5-2">展開においては、TCP以外のトラフィックの分離も考慮すべきです。
+今日の汎用スイッチでは、TCP以外のパケットやIP以外のパケットに対して、異なるマーキング／破棄のプロファイルを設定できます。
+TCP以外のパケットやIP以外のパケットは、本当にバッファー領域を使い果たした場合を除き、そのようなスイッチを通過できるようにすべきです。</t>
+      <t indent="0" pn="section-5-3">DCTCPはスイッチによる輻輳のマーキングに依存しているため、DCTCPの潜在能力は、ネットワークインフラストラクチャー全体がECNをサポートしているデータセンターでのみ発揮できます。
+スイッチは、マーキングに使用する輻輳しきい値の設定もサポートしているかもしれません。
+提案されているパラメーター設定は、Random Early Detection（RED）<xref target="RFC2309" format="default" sectionFormat="of" derivedContent="RFC2309"/>を実装しているスイッチで設定できます。
+<xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/>は、輻輳しきい値を選択するための理論的根拠を提供していますが、推定ゲインの場合と同様に、実験に頼るか、単に装置のデフォルト設定を使用するほうが実用的かもしれません。
+DCTCPは、パケット損失が発生した場合（たとえば、輻輳したテールドロップのリンクや、AQMによる破棄動作を行うリンクを通過する場合）、損失ベースの輻輳制御に戻ります。</t>
+      <t indent="0" pn="section-5-4">DCTCPは送信者と受信者の両方での変更を必要とするため、両方のエンドポイントがDCTCPをサポートしなければなりません。
+さらに、DCTCPはその使用をネゴシエーションする仕組みを提供しないため、両方のエンドポイントがDCTCPを使用するように、何らかの帯域外の仕組みによって設定されなければなりません。
+片側だけで展開でき、標準のECNの動作だけを必要とするDCTCPの変種が<xref target="ODCTCP" format="default" sectionFormat="of" derivedContent="ODCTCP"/>と<xref target="BSDCAN" format="default" sectionFormat="of" derivedContent="BSDCAN"/>で説明されていますが、追加の実験的な評価が必要です。</t>
+    </section>
+    <section anchor="known-issues" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-known-issues">既知の問題</name>
+      <t indent="0" pn="section-6-1">DCTCPは、リモートエンドポイントが受信したCEコードポイントの並びを送信者が再構築できることに依存しています。
+これを実現するために、DCTCPは、CEコードポイントが設定されて受信したセグメントと設定されずに受信したセグメントの両方を、単一のACKパケットで確認応答することを避けます。
+しかし、1つ以上のACKパケットが破棄された場合、後続のACKがCEセグメントと非CEセグメントの混在を累積的に確認応答する可能性があります。
+当然ながら、これにより輻輳の推定値の精度が低くなります。
+考えられるいくつかの考慮事項があります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-6-2">
+        <li pn="section-6-2.1">輻輳の推定値が不正確であっても、DCTCPは<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>よりも良い性能を発揮するかもしれません。</li>
+        <li pn="section-6-2.2">推定ゲインがパケット損失率に比べて小さければ、推定値はそれほど不正確にはならないかもしれません。</li>
+        <li pn="section-6-2.3">ACKパケットの損失が主に重い輻輳の下で発生するのであれば、ほとんどの破棄はCEパケットが途切れずに続いている間に発生し、推定値は影響を受けません。</li>
+      </ul>
+      <t indent="0" pn="section-6-3">しかし、現実の条件下でパケットの破棄がDCTCPに与える影響は分析されていません。</t>
+      <t indent="0" pn="section-6-4">DCTCPは、その使用をネゴシエーションする仕組みを提供しません。
+標準のECNエンドポイントとの間でDCTCPを使用した場合の影響は、<xref target="ODCTCP" format="default" sectionFormat="of" derivedContent="ODCTCP"/>と<xref target="BSDCAN" format="default" sectionFormat="of" derivedContent="BSDCAN"/>で分析されています。
+さらに、ほかの実装もネゴシエーションなしに<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>のスタイルの動作を変更する可能性があり、さらなる相互運用性の問題を引き起こすかもしれません。</t>
+      <t indent="0" pn="section-6-5">標準のTCPと同様に、DCTCPはRTTの長いフローに対して不利に偏っています。
+DCTCPのRTT公平性を改善する方法が<xref target="ADCTCP" format="default" sectionFormat="of" derivedContent="ADCTCP"/>で提案されていますが、追加の実験的な評価が必要です。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">DCTCPはECNを強化するものであるため、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>で論じられている一般的なセキュリティーに関する考慮事項を引き継ぎます。ただし、DCTCPの展開はデータセンター内に限られているため、追加の緩和策の選択肢があります。</t>
+      <t indent="0" pn="section-7-2">DCTCPによって導入される処理の変更は、<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>の考慮事項を悪化させることも、新たな考慮事項を導入することもありません。
+特に、どちらのアルゴリズムでも、ネットワークインフラストラクチャーやリモートエンドポイントが輻輳を偽って報告し、それによって送信者にcwndを削減させることができます。
+しかし、これは単にパケットを破棄することで達成できることより悪いものではありません。</t>
+      <t indent="0" pn="section-7-3"><xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>は、準拠したTCPがSYNパケットやSYN-ACKパケットにECTを設定してはならないことを要求しています。
+<xref target="RFC5562" format="default" sectionFormat="of" derivedContent="RFC5562"/>は、SYN-ACKパケットにECTを設定することを提案していますが、SYNパケットにECTを設定しないという制限は維持しています。
+これらのRFCはどちらも、ECTが設定された悪意のあるSYNパケットに関するセキュリティー上の懸念から、SYNパケットでのECTを禁止しています。
+しかし、これらのRFCは一般的なインターネットでの使用を意図したものであり、管理されたデータセンター環境には直接適用されません。
+これらのRFCの両方で対処されているセキュリティー上の懸念は、データセンターのような管理された環境には当てはまらないかもしれず、ECNに対応していないサーバーの存在を考慮する必要もないかもしれません。
+仮想サーバーに関連するセキュリティーに関する考慮事項に加えて、物理サーバーにおいて攻撃に似たトラフィックを傍受して破棄することで、追加のセキュリティーを課すことができます。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">この文書はIANAアクションを必要としません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-9">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-9.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC0793" target="https://www.rfc-editor.org/info/rfc793" quoteTitle="true" derivedAnchor="RFC0793">
+          <front>
+            <title>Transmission Control Protocol</title>
+            <author fullname="J. Postel" initials="J." surname="Postel"/>
+            <date year="1981" month="September"/>
+          </front>
+          <seriesInfo name="STD" value="7"/>
+          <seriesInfo name="RFC" value="793"/>
+          <seriesInfo name="DOI" value="10.17487/RFC0793"/>
+        </reference>
+        <reference anchor="RFC2018" target="https://www.rfc-editor.org/info/rfc2018" quoteTitle="true" derivedAnchor="RFC2018">
+          <front>
+            <title>TCP Selective Acknowledgment Options</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="J. Mahdavi" initials="J." surname="Mahdavi"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="A. Romanow" initials="A." surname="Romanow"/>
+            <date year="1996" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="2018"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2018"/>
+        </reference>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC5562" target="https://www.rfc-editor.org/info/rfc5562" quoteTitle="true" derivedAnchor="RFC5562">
+          <front>
+            <title>Adding Explicit Congestion Notification (ECN) Capability to TCP's SYN/ACK Packets</title>
+            <author fullname="A. Kuzmanovic" initials="A." surname="Kuzmanovic"/>
+            <author fullname="A. Mondal" initials="A." surname="Mondal"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <date year="2009" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="5562"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5562"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date year="2009" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-9.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="ADCTCP" target="https://dl.acm.org/citation.cfm?id=1993753" quoteTitle="true" derivedAnchor="ADCTCP">
+          <front>
+            <title>Analysis of DCTCP: Stability, Convergence, and Fairness</title>
+            <author fullname="M. Alizadeh" initials="M." surname="Alizadeh"/>
+            <author fullname="A. Javanmard" initials="A." surname="Javanmard"/>
+            <author fullname="B. Prabhakar" initials="B." surname="Prabhakar"/>
+            <date year="2011" month="June"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/1993744.1993753"/>
+          <refcontent>Proceedings of the ACM SIGMETRICS Joint International Conference on Measurement and Modeling of Computer Systems</refcontent>
+        </reference>
+        <reference anchor="BSDCAN" target="https://www.bsdcan.org/2015/schedule/events/559.en.html" quoteTitle="true" derivedAnchor="BSDCAN">
+          <front>
+            <title>Extensions to FreeBSD Datacenter TCP for Incremental Deployment Support</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="A. Zimmermann" initials="A." surname="Zimmermann"/>
+            <author fullname="R. van Meter" initials="R." surname="van Meter"/>
+            <author fullname="H. Tokuda" initials="H." surname="Tokuda"/>
+            <date year="2015" month="June"/>
+          </front>
+          <refcontent>BSDCan 2015</refcontent>
+        </reference>
+        <reference anchor="DCTCP10" target="http://dl.acm.org/citation.cfm?doid=1851182.1851192" quoteTitle="true" derivedAnchor="DCTCP10">
+          <front>
+            <title>Data Center TCP (DCTCP)</title>
+            <author fullname="M. Alizadeh" initials="M." surname="Alizadeh"/>
+            <author fullname="A. Greenberg" initials="A." surname="Greenberg"/>
+            <author fullname="D. Maltz" initials="D." surname="Maltz"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="P. Patel" initials="P." surname="Patel"/>
+            <author fullname="B. Prabhakar" initials="B." surname="Prabhakar"/>
+            <author fullname="S. Sengupta" initials="S." surname="Sengupta"/>
+            <author fullname="M. Sridharan" initials="M." surname="Sridharan"/>
+            <date year="2010" month="August"/>
+          </front>
+          <seriesInfo name="DOI" value="10.1145/1851182.1851192"/>
+          <refcontent>Proceedings of the ACM SIGCOMM 2010 Conference</refcontent>
+        </reference>
+        <reference anchor="ECN-EXPERIMENTATION" quoteTitle="true" derivedAnchor="ECN-EXPERIMENTATION">
+          <front>
+            <title>Explicit Congestion Notification (ECN) Experimentation</title>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2017" month="September"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tsvwg-ecn-experimentation-06"/>
+        </reference>
+        <reference anchor="Err3639" target="https://www.rfc-editor.org/errata/eid3639" quoteTitle="true" derivedAnchor="Err3639">
+          <front>
+            <title>Erratum ID 3639</title>
+            <author>
+              <organization showOnFrontPage="true">RFC Errata</organization>
+            </author>
+          </front>
+          <refcontent>RFC 3168</refcontent>
+        </reference>
+        <reference anchor="FREEBSD" target="https://github.com/freebsd/freebsd/commit/8ad879445281027858a7fa706d13e458095b595f" quoteTitle="true" derivedAnchor="FREEBSD">
+          <front>
+            <title>DCTCP (Data Center TCP) implementation</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <author fullname="H. Panchasara" initials="H." surname="Panchasara"/>
+            <date year="2015" month="January"/>
+          </front>
+        </reference>
+        <reference anchor="LINUX" target="https://git.kernel.org/cgit/linux/kernel/git/davem/net-next.git/commit/?id=e3118e8359bb7c59555aca60c725106e6d78c5ce" quoteTitle="true" derivedAnchor="LINUX">
+          <front>
+            <title>net: tcp: add DCTCP congestion control algorithm</title>
+            <author fullname="D. Borkmann" initials="D." surname="Borkmann"/>
+            <author fullname="F. Westphal" initials="F." surname="Westphal"/>
+            <author fullname="Glenn. Judd" initials="Glenn." surname="Judd"/>
+            <date year="2014" month="September"/>
+          </front>
+          <refcontent>LINUX DCTCP Patch</refcontent>
+        </reference>
+        <reference anchor="MAPREDUCE" target="https://www.usenix.org/legacy/publications/library/proceedings/osdi04/tech/dean.html" quoteTitle="true" derivedAnchor="MAPREDUCE">
+          <front>
+            <title>MapReduce: Simplified Data Processing on Large Clusters</title>
+            <author fullname="J. Dean" initials="J." surname="Dean"/>
+            <author fullname="S. Ghemawat" initials="S." surname="Ghemawat"/>
+            <date year="2004" month="October"/>
+          </front>
+          <refcontent>Proceedings of the 6th ACM/USENIX Symposium on Operating Systems Design and Implementation</refcontent>
+        </reference>
+        <reference anchor="MORGANSTANLEY" target="https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/judd" quoteTitle="true" derivedAnchor="MORGANSTANLEY">
+          <front>
+            <title>Attaining the Promise and Avoiding the Pitfalls of TCP in the Datacenter</title>
+            <author fullname="G. Judd" initials="G." surname="Judd"/>
+            <date year="2015" month="May"/>
+          </front>
+          <refcontent>Proceedings of the 12th USENIX Symposium on Networked Systems Design and Implementation</refcontent>
+        </reference>
+        <reference anchor="ODCTCP" target="http://eggert.org/students/kato-thesis.pdf" quoteTitle="true" derivedAnchor="ODCTCP">
+          <front>
+            <title>Improving Transmission Performance with One-Sided Datacenter TCP</title>
+            <author fullname="M. Kato" initials="M." surname="Kato"/>
+            <date year="2013"/>
+          </front>
+          <refcontent>M.S. Thesis, Keio University</refcontent>
+        </reference>
+        <reference anchor="RFC2309" target="https://www.rfc-editor.org/info/rfc2309" quoteTitle="true" derivedAnchor="RFC2309">
+          <front>
+            <title>Recommendations on Queue Management and Congestion Avoidance in the Internet</title>
+            <author fullname="B. Braden" initials="B." surname="Braden"/>
+            <author fullname="D. Clark" initials="D." surname="Clark"/>
+            <author fullname="J. Crowcroft" initials="J." surname="Crowcroft"/>
+            <author fullname="B. Davie" initials="B." surname="Davie"/>
+            <author fullname="S. Deering" initials="S." surname="Deering"/>
+            <author fullname="D. Estrin" initials="D." surname="Estrin"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <author fullname="G. Minshall" initials="G." surname="Minshall"/>
+            <author fullname="C. Partridge" initials="C." surname="Partridge"/>
+            <author fullname="L. Peterson" initials="L." surname="Peterson"/>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Shenker" initials="S." surname="Shenker"/>
+            <author fullname="J. Wroclawski" initials="J." surname="Wroclawski"/>
+            <author fullname="L. Zhang" initials="L." surname="Zhang"/>
+            <date year="1998" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="2309"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2309"/>
+        </reference>
+        <reference anchor="RFC7567" target="https://www.rfc-editor.org/info/rfc7567" quoteTitle="true" derivedAnchor="RFC7567">
+          <front>
+            <title>IETF Recommendations Regarding Active Queue Management</title>
+            <author fullname="F. Baker" initials="F." surname="Baker" role="editor"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst" role="editor"/>
+            <date year="2015" month="July"/>
+          </front>
+          <seriesInfo name="BCP" value="197"/>
+          <seriesInfo name="RFC" value="7567"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7567"/>
+        </reference>
+        <reference anchor="WINDOWS" target="https://technet.microsoft.com/en-us/library/hh997028(v=ws.11).aspx" quoteTitle="true" derivedAnchor="WINDOWS">
+          <front>
+            <title>Data Center Transmission Control Protocol (DCTCP)</title>
+            <author>
+              <organization showOnFrontPage="true">Microsoft</organization>
+            </author>
+            <date year="2012" month="May"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">DCTCPアルゴリズムは、もともとMohammad Alizadeh、Albert Greenberg、Dave Maltz、Jitu Padhye、Parveen Patel、Balaji Prabhakar、Sudipta Sengupta、Murari Sridharanによって<xref target="DCTCP10" format="default" sectionFormat="of" derivedContent="DCTCP10"/>で提案・分析されました。</t>
+      <t indent="0" pn="section-appendix.a-2">DCTCP.Alphaのクランプの問題を特定し、その解決策を提案してくれたAndrew Shewmakerに感謝します。</t>
+      <t indent="0" pn="section-appendix.a-3">Lars Eggertは、欧州連合のHorizon 2020研究・イノベーションプログラム2014-2018から、助成契約No. 644866（"SSICLOPS"）に基づく資金提供を受けています。
+この文書は著者の見解のみを反映したものであり、欧州委員会は、この文書に含まれる情報のいかなる利用についても責任を負いません。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Stephen Bensley" initials="S." surname="Bensley">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <postal>
+            <street>One Microsoft Way</street>
+            <city>Redmond</city>
+            <region>WA</region>
+            <code>98052</code>
+            <country>United States of America</country>
+          </postal>
+          <phone>+1 425 703 5570</phone>
+          <email>sbens@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Dave Thaler" initials="D." surname="Thaler">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <phone>+1 425 703 8835</phone>
+          <email>dthaler@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Praveen Balasubramanian" initials="P." surname="Balasubramanian">
+        <organization showOnFrontPage="true">Microsoft</organization>
+        <address>
+          <phone>+1 425 538 2782</phone>
+          <email>pravb@microsoft.com</email>
+        </address>
+      </author>
+      <author fullname="Lars Eggert" initials="L." surname="Eggert">
+        <organization showOnFrontPage="true">NetApp</organization>
+        <address>
+          <postal>
+            <street>Sonnenallee 1</street>
+            <city>Kirchheim</city>
+            <code>85551</code>
+            <country>Germany</country>
+          </postal>
+          <phone>+49 151 120 55791</phone>
+          <email>lars@netapp.com</email>
+          <uri>http://eggert.org/</uri>
+        </address>
+      </author>
+      <author fullname="Glenn Judd" initials="G." surname="Judd">
+        <organization showOnFrontPage="true">Morgan Stanley</organization>
+        <address>
+          <phone>+1 973 979 6481</phone>
+          <email>glenn.judd@morganstanley.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

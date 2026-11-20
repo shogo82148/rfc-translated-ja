@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8302: TRILL（Transparent Interconnection of Lots of Links）：ARPと近隣探索（ND）の最適化（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>PROPOSED STANDARD</dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8302.html">RFC 8302</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8302">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8302">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8302</h1>
+<h1 id="title-en">Transparent Interconnection of Lots of Links (TRILL): ARP and Neighbor Discovery (ND) Optimization</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8302</h1>
+<h1 id="title-ja">TRILL（Transparent Interconnection of Lots of Links）：ARPと近隣探索（ND）の最適化</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document describes mechanisms to optimize the Address Resolution
+Protocol (ARP) and Neighbor Discovery (ND) traffic in a Transparent
+Interconnection of Lots of Links (TRILL) campus.  TRILL switches
+maintain a cache of IP / Media Access Control (MAC) address / Data
+Label bindings that are learned from ARP/ND requests and responses
+that pass through them.  In many cases, this cache allows an edge
+Routing Bridge (RBridge) to avoid flooding an ARP/ND request by
+either responding to it directly or encapsulating it and unicasting
+it.  Such optimization reduces packet flooding over a TRILL campus.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書は、TRILL（Transparent Interconnection of Lots of Links）キャンパスにおけるアドレス解決プロトコル（Address Resolution Protocol: ARP）と近隣探索（Neighbor Discovery: ND）のトラフィックを最適化するメカニズムを記述します。
+TRILLスイッチは、自身を通過するARP/NDのリクエストとレスポンスから学習した、IP／メディアアクセス制御（MAC）アドレス／データラベルのバインディングのキャッシュを保持します。
+多くの場合、このキャッシュにより、エッジのルーティングブリッジ（RBridge）は、ARP/NDリクエストに直接応答するか、リクエストをカプセル化してユニキャストすることで、そのリクエストのフラッディングを回避できます。
+このような最適化により、TRILLキャンパス上のパケットのフラッディングが削減されます。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This is an Internet Standards Track document.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">これはインターネット標準化過程（Internet Standards Track）の文書です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Further information on
+Internet Standards is available in Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="https://www.rfc-editor.org/info/rfc8302" class="eref">https://www.rfc-editor.org/info/rfc8302</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="https://www.rfc-editor.org/info/rfc8302" class="eref">https://www.rfc-editor.org/info/rfc8302</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定
+(<span><a href="https://trustee.ietf.org/license-info" class="eref">https://trustee.ietf.org/license-info</a>)に従うものとします。
+これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、
+Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+<ul id="section-toc.1-1.1.2-en">
+<li>
+              <p id="section-toc.1-1.1.1.1-en"><a href="#section-1.1-en">1.1</a>.  <a href="#name-terminology-en">Terminology</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-arp/nd-optimization-requirement-and-solution-en">ARP/ND Optimization Requirement and Solution</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-ip/mac-address-mappings-en">IP/MAC Address Mappings</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-handling-arp/nd/send-messages-en">Handling ARP/ND/SEND Messages</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-send-considerations-en">SEND Considerations</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-en">
+              <p id="section-toc.1-1.4.2.1-en"><a href="#section-4.2-en">4.2</a>.  <a href="#name-address-verification-en">Address Verification</a></p>
+</li>
+            <li id="section-toc.1-1.4.3-en">
+              <p id="section-toc.1-1.4.3.1-en"><a href="#section-4.3-en">4.3</a>.  <a href="#name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-en">Extracting Local Mapping Information for End-Station IP/MAC Addresses</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-en">
+              <p id="section-toc.1-1.4.4.1-en"><a href="#section-4.4-en">4.4</a>.  <a href="#name-determining-how-to-reply-to-arp/nd-en">Determining How to Reply to ARP/ND</a></p>
+</li>
+            <li id="section-toc.1-1.4.5-en">
+              <p id="section-toc.1-1.4.5.1-en"><a href="#section-4.5-en">4.5</a>.  <a href="#name-determining-how-to-handle-the-arp/nd-response-en">Determining How to Handle the ARP/ND Response</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-en">Handling of Reverse Address Resolution Protocol (RARP) Messages</a></p>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-handling-of-dhcp-messages-en">Handling of DHCP Messages</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-handling-of-duplicate-ip-addresses-en">Handling of Duplicate IP Addresses</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-rbridge-arp/nd-cache-liveness-and-mac-mobility-en">RBridge ARP/ND Cache Liveness and MAC Mobility</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.9.1.1-en"><a href="#section-9.1-en">9.1</a>.  <a href="#name-data-plane-based-considerations-en">Data-Plane-Based Considerations</a></p>
+</li>
+            <li id="section-toc.1-1.9.2-en">
+              <p id="section-toc.1-1.9.2.1-en"><a href="#section-9.2-en">9.2</a>.  <a href="#name-directory-based-considerations-en">Directory-Based Considerations</a></p>
+</li>
+            <li id="section-toc.1-1.9.3-en">
+              <p id="section-toc.1-1.9.3.1-en"><a href="#section-9.3-en">9.3</a>.  <a href="#name-use-of-the-confidence-level-feature-en">Use of the Confidence Level Feature</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#section-11-en">11</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.11.1.1-en"><a href="#section-11.1-en">11.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.11.2-en">
+              <p id="section-toc.1-1.11.2.1-en"><a href="#section-11.2-en">11.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-en">
+            <p id="section-toc.1-1.a.1-en"><a href="#name-acknowledgments-en">Acknowledgments</a></p>
+</li>
+          <li id="section-toc.1-1.b-en">
+            <p id="section-toc.1-1.b.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+<ul id="section-toc.1-1.1.2-ja">
+<li>
+              <p id="section-toc.1-1.1.1.1-ja"><a href="#section-1.1-ja">1.1</a>.  <a href="#name-terminology-ja">用語</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-arp/nd-optimization-requirement-and-solution-ja">ARP/ND最適化の要件と解決策</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-ip/mac-address-mappings-ja">IP/MACアドレスのマッピング</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-handling-arp/nd/send-messages-ja">ARP/ND/SENDメッセージの処理</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-send-considerations-ja">SENDに関する考慮事項</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-ja">
+              <p id="section-toc.1-1.4.2.1-ja"><a href="#section-4.2-ja">4.2</a>.  <a href="#name-address-verification-ja">アドレスの検証</a></p>
+</li>
+            <li id="section-toc.1-1.4.3-ja">
+              <p id="section-toc.1-1.4.3.1-ja"><a href="#section-4.3-ja">4.3</a>.  <a href="#name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-ja">エンドステーションのIP/MACアドレスに関するローカルなマッピング情報の抽出</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-ja">
+              <p id="section-toc.1-1.4.4.1-ja"><a href="#section-4.4-ja">4.4</a>.  <a href="#name-determining-how-to-reply-to-arp/nd-ja">ARP/NDへの応答方法の決定</a></p>
+</li>
+            <li id="section-toc.1-1.4.5-ja">
+              <p id="section-toc.1-1.4.5.1-ja"><a href="#section-4.5-ja">4.5</a>.  <a href="#name-determining-how-to-handle-the-arp/nd-response-ja">ARP/NDレスポンスの処理方法の決定</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-ja">逆アドレス解決プロトコル（RARP）メッセージの処理</a></p>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-handling-of-dhcp-messages-ja">DHCPメッセージの処理</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-handling-of-duplicate-ip-addresses-ja">重複IPアドレスの処理</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-rbridge-arp/nd-cache-liveness-and-mac-mobility-ja">RBridgeのARP/NDキャッシュの生存性とMACの移動</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.9.1.1-ja"><a href="#section-9.1-ja">9.1</a>.  <a href="#name-data-plane-based-considerations-ja">データプレーンベースの考慮事項</a></p>
+</li>
+            <li id="section-toc.1-1.9.2-ja">
+              <p id="section-toc.1-1.9.2.1-ja"><a href="#section-9.2-ja">9.2</a>.  <a href="#name-directory-based-considerations-ja">ディレクトリーベースの考慮事項</a></p>
+</li>
+            <li id="section-toc.1-1.9.3-ja">
+              <p id="section-toc.1-1.9.3.1-ja"><a href="#section-9.3-ja">9.3</a>.  <a href="#name-use-of-the-confidence-level-feature-ja">信頼度レベル機能の使用</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#section-11-ja">11</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.11.1.1-ja"><a href="#section-11.1-ja">11.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.11.2-ja">
+              <p id="section-toc.1-1.11.2.1-ja"><a href="#section-11.2-ja">11.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-ja">
+            <p id="section-toc.1-1.a.1-ja"><a href="#name-acknowledgments-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.b-ja">
+            <p id="section-toc.1-1.b.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">ARP <span>[<a href="#RFC826-en">RFC826</a>]</span> and ND <span>[<a href="#RFC4861-en">RFC4861</a>]</span> messages are normally sent by broadcast
+and multicast, respectively.  To reduce the burden on a TRILL campus
+caused by these multi-destination messages, RBridges <span class="bcp14">MAY</span> implement an
+"optimized ARP/ND response", as specified herein, when the target's
+location is known by the ingress RBridge or can be obtained from a
+directory.  This avoids ARP/ND query and answer flooding.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">ARP <span>[<a href="#RFC826-ja">RFC826</a>]</span>メッセージとND <span>[<a href="#RFC4861-ja">RFC4861</a>]</span>メッセージは、通常、それぞれブロードキャストとマルチキャストで送信されます。
+これらの複数宛先メッセージによってTRILLキャンパスにかかる負担を軽減するために、ターゲットの位置を入口RBridgeが知っているか、ディレクトリーから取得できる場合、RBridgeはここで規定する「最適化されたARP/NDレスポンス」を実装<span class="bcp14">してもよいです（MAY）</span>。
+これにより、ARP/NDの問い合わせと回答のフラッディングが回避されます。</p></div>
+</div>
+<section><span id="section-1.1"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-terminology-en" lang="en">
+<a id="section-1.1-en" href="#section-1.1-en" class="section-number selfRef">1.1.</a> <a href="#name-terminology-en" class="section-name selfRef">Terminology</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-terminology-ja" lang="ja">
+<a id="section-1.1-ja" href="#section-1.1-ja" class="section-number selfRef">1.1.</a> <a href="#name-terminology-ja" class="section-name selfRef">用語</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-1-en">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+"<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as described in BCP
+14 <span>[<a href="#RFC2119-en">RFC2119</a>]</span> <span>[<a href="#RFC8174-en">RFC8174</a>]</span> when, and only when, they appear in all
+capitals, as shown here.</p></div>
+<div lang="ja" class="col"><p id="section-1.1-1-ja">キーワード「<span class="bcp14">しなければなりません（MUST）</span>」、「<span class="bcp14">してはなりません（MUST NOT）</span>」、
+「<span class="bcp14">要求されています（REQUIRED）</span>」、
+「<span class="bcp14">することになります（SHALL）</span>」、「<span class="bcp14">することはありません（SHALL NOT）</span>」、
+「<span class="bcp14">すべきです（SHOULD）</span>」、「<span class="bcp14">すべきではありません（SHOULD NOT）</span>」、
+「<span class="bcp14">推奨されます（RECOMMENDED）</span>」、「<span class="bcp14">推奨されません（NOT RECOMMENDED）</span>」、
+「<span class="bcp14">してもよいです（MAY）</span>」、「<span class="bcp14">選択できます（OPTIONAL）</span>」は、
+BCP 14 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span> <span>[<a href="#RFC8174-ja">RFC8174</a>]</span>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1.1-2-en">The abbreviations and terminology in <span>[<a href="#RFC6325-en">RFC6325</a>]</span> are used herein.  Some
+of these are listed below for convenience along with some additions:</p></div>
+<div lang="ja" class="col"><p id="section-1.1-2-ja">この文書では、<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>の略語と用語を使用します。
+便宜上、そのうちのいくつかを、いくつかの追加とともに以下に示します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><dl id="section-1.1-3-en">
+<dt id="section-1.1-3.1-en">APPsub-TLV</dt>
+          <dd id="section-1.1-3.2-en">Application sub-Type-Length-Value <span>[<a href="#RFC6823-en">RFC6823</a>]</span>
+</dd>
+          <dt id="section-1.1-3.3-en">ARP</dt>
+          <dd id="section-1.1-3.4-en">Address Resolution Protocol <span>[<a href="#RFC826-en">RFC826</a>]</span>
+</dd>
+          <dt id="section-1.1-3.5-en">Campus</dt>
+          <dd id="section-1.1-3.6-en">A TRILL network consisting of RBridges, links, and
+possibly bridges bounded by end stations and IP routers
+<span>[<a href="#RFC6325-en">RFC6325</a>]</span>
+</dd>
+          <dt id="section-1.1-3.7-en">DAD</dt>
+          <dd id="section-1.1-3.8-en">Duplicate Address Detection <span>[<a href="#RFC3756-en">RFC3756</a>]</span> <span>[<a href="#RFC5227-en">RFC5227</a>]</span>
+</dd>
+          <dt id="section-1.1-3.9-en">Data Label</dt>
+          <dd id="section-1.1-3.10-en">VLAN or Fine-Grained Label (FGL)</dd>
+          <dt id="section-1.1-3.11-en">DHCP</dt>
+          <dd id="section-1.1-3.12-en">Dynamic Host Configuration Protocol.  In this document,
+DHCP refers to both DHCP for IPv4 <span>[<a href="#RFC2131-en">RFC2131</a>]</span> and DHCPv6
+<span>[<a href="#RFC3315-en">RFC3315</a>]</span>
+</dd>
+          <dt id="section-1.1-3.13-en">ESADI</dt>
+          <dd id="section-1.1-3.14-en">End Station Address Distribution Information <span>[<a href="#RFC7357-en">RFC7357</a>]</span>
+</dd>
+          <dt id="section-1.1-3.15-en">FGL</dt>
+          <dd id="section-1.1-3.16-en">Fine-Grained Label <span>[<a href="#RFC7172-en">RFC7172</a>]</span>
+</dd>
+          <dt id="section-1.1-3.17-en">IA</dt>
+          <dd id="section-1.1-3.18-en">Interface Address; a TRILL APPsub-TLV <span>[<a href="#RFC7961-en">RFC7961</a>]</span>
+</dd>
+          <dt id="section-1.1-3.19-en">IP</dt>
+          <dd id="section-1.1-3.20-en">Internet Protocol, both IPv4 and IPv6</dd>
+          <dt id="section-1.1-3.21-en">MAC</dt>
+          <dd id="section-1.1-3.22-en">Media Access Control <span>[<a href="#RFC7042-en">RFC7042</a>]</span>
+</dd>
+          <dt id="section-1.1-3.23-en">ND</dt>
+          <dd id="section-1.1-3.24-en">Neighbor Discovery <span>[<a href="#RFC4861-en">RFC4861</a>]</span>
+</dd>
+          <dt id="section-1.1-3.25-en">RBridge</dt>
+          <dd id="section-1.1-3.26-en">A contraction of "Routing Bridge".  A device
+implementing the TRILL protocol.</dd>
+          <dt id="section-1.1-3.27-en">SEND</dt>
+          <dd id="section-1.1-3.28-en">Secure Neighbor Discovery <span>[<a href="#RFC3971-en">RFC3971</a>]</span>
+</dd>
+          <dt id="section-1.1-3.29-en">TRILL</dt>
+          <dd id="section-1.1-3.30-en">Transparent Interconnection of Lots of Links or Tunneled
+Routing in the Link Layer <span>[<a href="#RFC6325-en">RFC6325</a>]</span> <span>[<a href="#RFC7780-en">RFC7780</a>]</span>
+</dd>
+        </dl></div>
+<div lang="ja" class="col"><dl id="section-1.1-3-ja">
+<dt id="section-1.1-3.1-ja">APPsub-TLV</dt>
+          <dd id="section-1.1-3.2-ja">Application sub-Type-Length-Value <span>[<a href="#RFC6823-ja">RFC6823</a>]</span>
+</dd>
+          <dt id="section-1.1-3.3-ja">ARP</dt>
+          <dd id="section-1.1-3.4-ja">アドレス解決プロトコル（Address Resolution Protocol）<span>[<a href="#RFC826-ja">RFC826</a>]</span>
+</dd>
+          <dt id="section-1.1-3.5-ja">Campus</dt>
+          <dd id="section-1.1-3.6-ja">RBridge、リンク、および場合によってはブリッジで構成され、エンドステーションとIPルーターを境界とするTRILLネットワーク<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>
+</dd>
+          <dt id="section-1.1-3.7-ja">DAD</dt>
+          <dd id="section-1.1-3.8-ja">重複アドレス検出（Duplicate Address Detection）<span>[<a href="#RFC3756-ja">RFC3756</a>]</span> <span>[<a href="#RFC5227-ja">RFC5227</a>]</span>
+</dd>
+          <dt id="section-1.1-3.9-ja">Data Label</dt>
+          <dd id="section-1.1-3.10-ja">VLANまたはFine-Grained Label（FGL）</dd>
+          <dt id="section-1.1-3.11-ja">DHCP</dt>
+          <dd id="section-1.1-3.12-ja">Dynamic Host Configuration Protocol。
+この文書では、DHCPはIPv4用のDHCP <span>[<a href="#RFC2131-ja">RFC2131</a>]</span>とDHCPv6 <span>[<a href="#RFC3315-ja">RFC3315</a>]</span>の両方を指します。</dd>
+          <dt id="section-1.1-3.13-ja">ESADI</dt>
+          <dd id="section-1.1-3.14-ja">End Station Address Distribution Information <span>[<a href="#RFC7357-ja">RFC7357</a>]</span>
+</dd>
+          <dt id="section-1.1-3.15-ja">FGL</dt>
+          <dd id="section-1.1-3.16-ja">Fine-Grained Label <span>[<a href="#RFC7172-ja">RFC7172</a>]</span>
+</dd>
+          <dt id="section-1.1-3.17-ja">IA</dt>
+          <dd id="section-1.1-3.18-ja">Interface Address。TRILLのAPPsub-TLVの1つ<span>[<a href="#RFC7961-ja">RFC7961</a>]</span>
+</dd>
+          <dt id="section-1.1-3.19-ja">IP</dt>
+          <dd id="section-1.1-3.20-ja">インターネットプロトコル（Internet Protocol）。IPv4とIPv6の両方</dd>
+          <dt id="section-1.1-3.21-ja">MAC</dt>
+          <dd id="section-1.1-3.22-ja">メディアアクセス制御（Media Access Control）<span>[<a href="#RFC7042-ja">RFC7042</a>]</span>
+</dd>
+          <dt id="section-1.1-3.23-ja">ND</dt>
+          <dd id="section-1.1-3.24-ja">近隣探索（Neighbor Discovery）<span>[<a href="#RFC4861-ja">RFC4861</a>]</span>
+</dd>
+          <dt id="section-1.1-3.25-ja">RBridge</dt>
+          <dd id="section-1.1-3.26-ja">「Routing Bridge」を縮めたものです。
+TRILLプロトコルを実装するデバイスです。</dd>
+          <dt id="section-1.1-3.27-ja">SEND</dt>
+          <dd id="section-1.1-3.28-ja">セキュア近隣探索（Secure Neighbor Discovery）<span>[<a href="#RFC3971-ja">RFC3971</a>]</span>
+</dd>
+          <dt id="section-1.1-3.29-ja">TRILL</dt>
+          <dd id="section-1.1-3.30-ja">Transparent Interconnection of Lots of LinksまたはTunneled Routing in the Link Layer <span>[<a href="#RFC6325-ja">RFC6325</a>]</span> <span>[<a href="#RFC7780-ja">RFC7780</a>]</span>
+</dd>
+        </dl></div>
+</div></section></section><section><span id="section-2"></span><span id="arp/nd-optimization-requirement-and-solution-en"></span><span id="arp/nd-optimization-requirement-and-solution-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-arp/nd-optimization-requirement-and-solution-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-arp/nd-optimization-requirement-and-solution-en" class="section-name selfRef">ARP/ND Optimization Requirement and Solution</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-arp/nd-optimization-requirement-and-solution-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-arp/nd-optimization-requirement-and-solution-ja" class="section-name selfRef">ARP/ND最適化の要件と解決策</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">IP address resolution can create significant issues in data centers
+due to flooded packets, as discussed in <span>[<a href="#RFC6820-en">RFC6820</a>]</span>.  Such flooding can
+be avoided by a proxy ARP/ND function on edge RBridges as described
+in this document, particularly in <a href="#section-4-en">Section 4</a>.  This section is a
+general discussion of this problem and is not intended to be
+normative.</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja"><span>[<a href="#RFC6820-ja">RFC6820</a>]</span>で議論されているように、IPアドレス解決は、フラッディングされるパケットのせいで、データセンターで重大な問題を引き起こす可能性があります。
+このようなフラッディングは、この文書、特に<a href="#section-4-ja">セクション4</a>で記述するように、エッジRBridge上のプロキシーARP/ND機能によって回避できます。
+このセクションはこの問題の一般的な議論であり、規範的であることを意図していません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-2-en">To support such ARP/ND optimization, edge RBridges need to know an
+end station's IP/MAC address mapping through manual configuration
+(management), control-plane mechanisms such as directories <span>[<a href="#RFC8171-en">RFC8171</a>]</span>,
+or data-plane learning by snooping of messages such as ARP/ND
+(including DHCP or gratuitous ARP messages).</p></div>
+<div lang="ja" class="col"><p id="section-2-2-ja">このようなARP/ND最適化をサポートするために、エッジRBridgeは、手動設定（管理）、ディレクトリー<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>のようなコントロールプレーンのメカニズム、またはARP/NDのようなメッセージ（DHCPメッセージやGratuitous ARPメッセージを含む）のスヌーピングによるデータプレーン学習によって、エンドステーションのIP/MACアドレスのマッピングを知る必要があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-3-en">When all the end station's IP/MAC address mappings are known to edge
+RBridges, provisioned through management, or learned via the control
+plane on the edge RBridges, it should be possible to completely
+suppress flooding of ARP/ND messages in a TRILL campus.  When all end
+station MAC addresses are similarly known, it should be possible to
+suppress unknown unicast flooding by dropping any unknown unicast
+received at an edge RBridge.</p></div>
+<div lang="ja" class="col"><p id="section-2-3-ja">エンドステーションのIP/MACアドレスのマッピングがすべてエッジRBridgeに知られている場合、つまり管理によってプロビジョニングされているか、エッジRBridge上でコントロールプレーンを介して学習されている場合、TRILLキャンパスでのARP/NDメッセージのフラッディングを完全に抑制できるはずです。
+同様にすべてのエンドステーションのMACアドレスが知られている場合、エッジRBridgeで受信した未知ユニキャストをすべて破棄することで、未知ユニキャストのフラッディングを抑制できるはずです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-4-en">An ARP/ND optimization mechanism should include provisions for an
+edge RBridge to issue an ARP/ND request to an attached end station to
+confirm or update information and should allow an end station to
+detect duplication of its IP address.</p></div>
+<div lang="ja" class="col"><p id="section-2-4-ja">ARP/NDの最適化メカニズムには、エッジRBridgeが、情報を確認または更新するために、接続されたエンドステーションにARP/NDリクエストを発行するための規定を含めるべきです。
+また、エンドステーションが自身のIPアドレスの重複を検出できるようにすべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-5-en">Most of the end station hosts send either DHCP messages requesting an
+IP address or gratuitous ARP or Reverse Address Resolution Protocol
+(RARP) requests to announce themselves to the network right after
+they come online.  Thus, the local edge RBridge will immediately have
+the opportunity to snoop and learn their MAC and IP addresses and
+distribute this information to other edge RBridges through the TRILL
+control-plane End Station Address Distribution Information (ESADI)
+<span>[<a href="#RFC7357-en">RFC7357</a>]</span> protocol.  Once remote RBridges receive this information
+via the control plane, they should add IP-to-MAC mapping information
+to their ARP/ND cache along with the nickname and Data Label of the
+address information.  Therefore, most active IP hosts in the TRILL
+network can be learned by the edge RBridges through either local
+learning or control-plane-based remote learning.  As a result, ARP
+suppression can vastly reduce the network flooding caused by host ARP
+learning behavior.</p></div>
+<div lang="ja" class="col"><p id="section-2-5-ja">エンドステーションのホストのほとんどは、オンラインになった直後に、自身をネットワークに通知するために、IPアドレスを要求するDHCPメッセージか、Gratuitous ARPリクエストまたは逆アドレス解決プロトコル（Reverse Address Resolution Protocol: RARP）リクエストを送信します。
+したがって、ローカルのエッジRBridgeは、すぐにそれらのMACアドレスとIPアドレスをスヌーピングして学習し、TRILLのコントロールプレーンのプロトコルであるEnd Station Address Distribution Information（ESADI）<span>[<a href="#RFC7357-ja">RFC7357</a>]</span>を通じて、この情報を他のエッジRBridgeに配布する機会を得ます。
+リモートのRBridgeは、この情報をコントロールプレーン経由で受信したら、IPからMACへのマッピング情報を、そのアドレス情報のニックネームとデータラベルとともに、自身のARP/NDキャッシュに追加すべきです。
+したがって、TRILLネットワーク内のアクティブなIPホストのほとんどは、ローカル学習かコントロールプレーンベースのリモート学習のいずれかによって、エッジRBridgeに学習されます。
+その結果、ARP抑制によって、ホストのARP学習の振る舞いが引き起こすネットワークのフラッディングを大幅に削減できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-6-en">When complete directory information is available, the default
+data-plane learning of end-station MAC addresses is not only unnecessary
+but could be harmful if there is learning based on frames with forged
+source addresses.  Such data-plane learning can be suppressed because
+TRILL already provides an option to disable data-plane learning from
+the source MAC address of end-station frames (see <span><a href="https://www.rfc-editor.org/rfc/rfc6325#section-5.3">Section 5.3</a> of [<a href="#RFC6325-en">RFC6325</a>]</span>).</p></div>
+<div lang="ja" class="col"><p id="section-2-6-ja">完全なディレクトリー情報が利用可能な場合、エンドステーションのMACアドレスのデフォルトのデータプレーン学習は不要であるだけでなく、偽造された送信元アドレスを持つフレームに基づく学習があると有害になる可能性があります。
+TRILLには、エンドステーションのフレームの送信元MACアドレスからのデータプレーン学習を無効にするオプションがすでに用意されているので（<span>[<a href="#RFC6325-ja">RFC6325</a>]の<a href="https://www.rfc-editor.org/rfc/rfc6325#section-5.3">セクション5.3</a></span>を参照）、このようなデータプレーン学習は抑制できます。</p></div>
+</div></section><section><span id="section-3"></span><span id="ip/mac-address-mappings-en"></span><span id="ip/mac-address-mappings-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-ip/mac-address-mappings-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-ip/mac-address-mappings-en" class="section-name selfRef">IP/MAC Address Mappings</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-ip/mac-address-mappings-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-ip/mac-address-mappings-ja" class="section-name selfRef">IP/MACアドレスのマッピング</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">By default, an RBridge <span>[<a href="#RFC6325-en">RFC6325</a>]</span> <span>[<a href="#RFC7172-en">RFC7172</a>]</span> learns egress nickname
+mapping information for the MAC address and Data Label (VLAN or FGL)
+of TRILL data frames it receives and decapsulates.  No IP address
+information is learned directly from the TRILL data frame.  The IA
+APPsub-TLV <span>[<a href="#RFC7961-en">RFC7961</a>]</span> enhances the TRILL base protocol by allowing
+IP/MAC address mappings to be distributed in the control plane by any
+RBridge.  This APPsub-TLV appears inside the TRILL GENINFO TLV in
+ESADI <span>[<a href="#RFC7357-en">RFC7357</a>]</span>, but the value data structure it specifies may also
+occur in other application contexts.  Edge RBridge Directory Assist
+Mechanisms <span>[<a href="#RFC8171-en">RFC8171</a>]</span> make use of this APPsub-TLV for its push model
+and use the value data structure it specifies in its pull model.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">デフォルトでは、RBridge <span>[<a href="#RFC6325-ja">RFC6325</a>]</span> <span>[<a href="#RFC7172-ja">RFC7172</a>]</span>は、自身が受信してカプセル化解除したTRILLデータフレームのMACアドレスとデータラベル（VLANまたはFGL）について、出口ニックネームのマッピング情報を学習します。
+TRILLデータフレームからIPアドレス情報を直接学習することはありません。
+IA APPsub-TLV <span>[<a href="#RFC7961-ja">RFC7961</a>]</span>は、任意のRBridgeがコントロールプレーンでIP/MACアドレスのマッピングを配布できるようにすることで、TRILLの基本プロトコルを強化します。
+このAPPsub-TLVはESADI <span>[<a href="#RFC7357-ja">RFC7357</a>]</span>のTRILL GENINFO TLVの内部に現れますが、このAPPsub-TLVが規定する値のデータ構造は、他のアプリケーションの文脈で現れることもあります。
+エッジRBridgeのディレクトリー支援メカニズム<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>は、そのプッシュモデルではこのAPPsub-TLVを利用し、プルモデルではこのAPPsub-TLVが規定する値のデータ構造を使用します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">An RBridge can easily know the IP/MAC address mappings of the local
+end stations that it is attached to via its access ports by receiving
+ARP <span>[<a href="#RFC826-en">RFC826</a>]</span> or ND <span>[<a href="#RFC4861-en">RFC4861</a>]</span> messages.  If the edge RBridge has
+extracted the sender's IP/MAC address pair from the received data
+frame (either ARP or ND), it may save the information and then use
+the IA APPsub-TLV to link the IP and MAC addresses and distribute it
+to other RBridges through ESADI.  Then, the relevant remote RBridges
+(normally those interested in the same Data Label as the original
+ARP/ND messages) also receive and save such mapping information.
+There are other ways that RBridges save IP/MAC address mappings in
+advance, e.g., importing them from the management system and
+distributing them by directory servers <span>[<a href="#RFC8171-en">RFC8171</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">RBridgeは、ARP <span>[<a href="#RFC826-ja">RFC826</a>]</span>メッセージやND <span>[<a href="#RFC4861-ja">RFC4861</a>]</span>メッセージを受信することで、アクセスポートを介して接続しているローカルのエンドステーションのIP/MACアドレスのマッピングを容易に知ることができます。
+エッジRBridgeは、受信したデータフレーム（ARPまたはND）から送信者のIP/MACアドレスのペアを抽出した場合、その情報を保存し、IA APPsub-TLVを使用してIPアドレスとMACアドレスを結び付けて、ESADIを通じて他のRBridgeに配布してもかまいません。
+そして、関連するリモートのRBridge（通常は、元のARP/NDメッセージと同じデータラベルに関心のあるRBridge）も、そのマッピング情報を受信して保存します。
+RBridgeがIP/MACアドレスのマッピングを事前に保存する方法は他にもあります。
+たとえば、管理システムからマッピングをインポートし、ディレクトリーサーバーによって配布する方法です<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-3-en">The examples given above show that RBridges might have saved an end
+station's triplet of {IP address, MAC address, ingress nickname} for
+a given Data Label (VLAN or FGL) before that end station sends or
+receives any real data packet.  Note that such information might or
+might not be a complete list and might or might not exist on all
+RBridges; the information could possibly be from different sources.
+RBridges can then use the Flags field in an IA APPsub-TLV to identify
+if the source is a directory server or local observation by the
+sender.  A different confidence level may also be used to indicate
+the reliability of the mapping information.</p></div>
+<div lang="ja" class="col"><p id="section-3-3-ja">上記の例は、あるエンドステーションが実際のデータパケットを送受信する前に、RBridgeが、特定のデータラベル（VLANまたはFGL）について、そのエンドステーションの{IPアドレス, MACアドレス, 入口ニックネーム}の3つ組を保存している場合があることを示しています。
+このような情報は、完全なリストであるとは限らず、すべてのRBridgeに存在するとも限らないことに注意してください。
+また、情報が異なる情報源から得られている可能性もあります。
+そこでRBridgeは、IA APPsub-TLVのFlagsフィールドを使用して、情報源がディレクトリーサーバーなのか、送信者によるローカルな観測なのかを識別できます。
+マッピング情報の信頼性を示すために、異なる信頼度レベルを使用することもできます。</p></div>
+</div></section><section><span id="section-4"></span><span id="handling-arp/nd/send-messages-en"></span><span id="handling-arp/nd/send-messages-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-handling-arp/nd/send-messages-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-handling-arp/nd/send-messages-en" class="section-name selfRef">Handling ARP/ND/SEND Messages</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-handling-arp/nd/send-messages-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-handling-arp/nd/send-messages-ja" class="section-name selfRef">ARP/ND/SENDメッセージの処理</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">A native frame that is an ARP <span>[<a href="#RFC826-en">RFC826</a>]</span> message is detected by its
+Ethertype of 0x0806.  A native frame that is an ND <span>[<a href="#RFC4861-en">RFC4861</a>]</span> is
+detected by being one of five different ICMPv6 packet types.  ARP/ND
+is commonly used on a link to (1) query for the MAC address
+corresponding to an IPv4 or IPv6 address, (2) test if an IPv4/IPv6
+address is already in use, or (3) announce the new or updated info on
+any of the following: IPv4/IPv6 address, MAC address, and/or point of
+attachment.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">ARP <span>[<a href="#RFC826-ja">RFC826</a>]</span>メッセージであるネイティブフレームは、Ethertypeが0x0806であることで検出されます。
+ND <span>[<a href="#RFC4861-ja">RFC4861</a>]</span>であるネイティブフレームは、5種類のICMPv6パケットタイプのいずれかであることで検出されます。
+ARP/NDは、一般にリンク上で、(1) IPv4アドレスまたはIPv6アドレスに対応するMACアドレスを問い合わせる、(2) IPv4/IPv6アドレスがすでに使用中かどうかをテストする、(3) IPv4/IPv6アドレス、MACアドレス、接続点のいずれか（または複数）について、新しい情報や更新された情報を通知する、といった目的で使用されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">To simplify the text, we use the following terms in this section.</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">記述を簡単にするために、このセクションでは次の用語を使用します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol id="section-4-3-en">
+<li id="section-4-3.1-en">IP address -- indicated protocol address that is normally an IPv4
+address in ARP or an IPv6 address in ND.</li>
+        <li id="section-4-3.2-en">sender's IP/MAC address -- sender IP/MAC address in ARP, source
+IP address, and source link-layer address in ND.</li>
+        <li id="section-4-3.3-en">target's IP/MAC address -- target IP/MAC address in ARP, target
+address, and target link-layer address in ND.</li>
+      </ol></div>
+<div lang="ja" class="col"><ol id="section-4-3-ja">
+<li id="section-4-3.1-ja">IPアドレス -- 示されたプロトコルアドレス。通常、ARPではIPv4アドレス、NDではIPv6アドレスです。</li>
+        <li id="section-4-3.2-ja">送信者のIP/MACアドレス -- ARPでは送信者IP/MACアドレス、NDでは送信元IPアドレスと送信元リンク層アドレスです。</li>
+        <li id="section-4-3.3-ja">ターゲットのIP/MACアドレス -- ARPではターゲットIP/MACアドレス、NDではターゲットアドレスとターゲットリンク層アドレスです。</li>
+      </ol></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-4-en">When an ingress RBridge receives an ARP/ND/SEND message, it can
+perform the steps described within the subsections below.  In
+particular, <a href="#section-4.4-en">Section 4.4</a> describes the options for such an ingress
+handling an ARP/ND message and, in the cases where it forwards the
+message, <a href="#section-4.5-en">Section 4.5</a> describes how to handle any response that may be
+returned due to the forwarded message.</p></div>
+<div lang="ja" class="col"><p id="section-4-4-ja">入口RBridgeは、ARP/ND/SENDメッセージを受信すると、以下のサブセクションで記述する手順を実行できます。
+特に、<a href="#section-4.4-ja">セクション4.4</a>では、そのような入口RBridgeがARP/NDメッセージを処理する際の選択肢を記述し、メッセージを転送する場合については、転送したメッセージに対して返される可能性のあるレスポンスの処理方法を<a href="#section-4.5-ja">セクション4.5</a>で記述します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-5-en"><a href="#section-4.3-en">Section 4.3</a> describes the extraction of address information by an
+RBridge from ARP/ND messages it handles.  Under some circumstances,
+this extraction may prompt verification with an end station.
+<a href="#section-4.2-en">Section 4.2</a> describes an optional use of ARP/ND messages originated
+by RBridges to verify addresses or liveness.</p></div>
+<div lang="ja" class="col"><p id="section-4-5-ja"><a href="#section-4.3-ja">セクション4.3</a>では、RBridgeが処理するARP/NDメッセージからのアドレス情報の抽出について記述します。
+状況によっては、この抽出をきっかけに、エンドステーションとの間で検証が行われることがあります。
+<a href="#section-4.2-ja">セクション4.2</a>では、アドレスや生存性を検証するためにRBridgeがARP/NDメッセージを発信する、任意の使用法について記述します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-6-en">As described in <a href="#section-4.1-en">Section 4.1</a>, SEND messages are not optimized by the
+mechanisms specified in this document but are snooped on.</p></div>
+<div lang="ja" class="col"><p id="section-4-6-ja"><a href="#section-4.1-ja">セクション4.1</a>で記述するように、SENDメッセージはこの文書で規定するメカニズムによって最適化されることはありませんが、スヌーピングされます。</p></div>
+</div>
+<section><span id="section-4.1"></span><span id="send-considerations-en"></span><span id="send-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-send-considerations-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-send-considerations-en" class="section-name selfRef">SEND Considerations</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-send-considerations-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-send-considerations-ja" class="section-name selfRef">SENDに関する考慮事項</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">Secure Neighbor Discovery (SEND) <span>[<a href="#RFC3971-en">RFC3971</a>]</span> is a method of securing ND
+that addresses the threats discussed in <span>[<a href="#RFC3756-en">RFC3756</a>]</span>.  Typical TRILL
+campuses are inside data centers, Internet exchange points, or
+carrier facilities.  These are generally controlled and protected
+environments where these threats are of less concern.  Nevertheless,
+SEND provides an additional layer of protection.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">セキュア近隣探索（Secure Neighbor Discovery: SEND）<span>[<a href="#RFC3971-ja">RFC3971</a>]</span>は、<span>[<a href="#RFC3756-ja">RFC3756</a>]</span>で議論されている脅威に対処する、NDを保護する方法です。
+典型的なTRILLキャンパスは、データセンター、インターネットエクスチェンジポイント、または通信事業者の設備の内部にあります。
+これらは一般に管理され保護された環境であり、これらの脅威はあまり問題になりません。
+それでも、SENDは追加の保護層を提供します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-2-en">Secure SEND messages require knowledge of cryptographic keys.
+Methods of communicating such keys to RBridges for use in SEND are
+beyond the scope of this document.  Thus, using the optimizations in
+this document, RBridges do not attempt to construct SEND messages and
+are generally transparent to them.  RBridges only construct ARP,
+RARP, or insecure ND messages, as appropriate.  Nevertheless,
+RBridges implementing ARP/ND optimization <span class="bcp14">SHOULD</span> snoop on SEND
+messages to extract the addressing information that would be present
+if the SEND had been sent as an insecure ND message and is still
+present in the SEND message.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-2-ja">セキュアなSENDメッセージには、暗号鍵の知識が必要です。
+SENDで使用するためにそのような鍵をRBridgeに伝達する方法は、この文書の範囲外です。
+したがって、この文書の最適化を使用する場合、RBridgeはSENDメッセージを構築しようとはせず、一般にSENDメッセージに対して透過的です。
+RBridgeは、必要に応じて、ARP、RARP、またはセキュアでないNDのメッセージのみを構築します。
+それでも、ARP/ND最適化を実装するRBridgeは、SENDメッセージをスヌーピングして、そのSENDがセキュアでないNDメッセージとして送信されていた場合に存在し、かつSENDメッセージにも存在するアドレス情報を抽出<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div></section><section><span id="section-4.2"></span><span id="address-verification-en"></span><span id="address-verification-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-address-verification-en" lang="en">
+<a id="section-4.2-en" href="#section-4.2-en" class="section-number selfRef">4.2.</a> <a href="#name-address-verification-en" class="section-name selfRef">Address Verification</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-address-verification-ja" lang="ja">
+<a id="section-4.2-ja" href="#section-4.2-ja" class="section-number selfRef">4.2.</a> <a href="#name-address-verification-ja" class="section-name selfRef">アドレスの検証</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-1-en">RBridges may use ARP/ND to probe directly attached or remote end
+stations for address or liveness verification.  This is typically
+most appropriate in less-managed and/or higher-mobility environments.
+In strongly managed environments, such as a typical data center,
+where a central orchestration/directory system has complete
+addressing knowledge <span>[<a href="#RFC7067-en">RFC7067</a>]</span>, optimized ARP/ND responses can use
+that knowledge.  In such cases, there is little reason for
+verification except for debugging operational problems or the like.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-1-ja">RBridgeは、アドレスや生存性を検証するために、ARP/NDを使用して、直接接続されたエンドステーションやリモートのエンドステーションを探査してもかまいません。
+これは通常、管理が緩い環境や移動性の高い環境で最も適しています。
+典型的なデータセンターのように、中央のオーケストレーション／ディレクトリーシステムがアドレスに関する完全な知識を持つ<span>[<a href="#RFC7067-ja">RFC7067</a>]</span>、厳密に管理された環境では、最適化されたARP/NDレスポンスはその知識を使用できます。
+そのような場合、運用上の問題のデバッグなどを除けば、検証を行う理由はほとんどありません。</p></div>
+</div></section><section><span id="section-4.3"></span><span id="extracting-local-mapping-information-for-end-station-ip/mac-addresses-en"></span><span id="extracting-local-mapping-information-for-end-station-ip/mac-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-en" lang="en">
+<a id="section-4.3-en" href="#section-4.3-en" class="section-number selfRef">4.3.</a> <a href="#name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-en" class="section-name selfRef">Extracting Local Mapping Information for End-Station IP/MAC Addresses</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-ja" lang="ja">
+<a id="section-4.3-ja" href="#section-4.3-ja" class="section-number selfRef">4.3.</a> <a href="#name-extracting-local-mapping-information-for-end-station-ip/mac-addresses-ja" class="section-name selfRef">エンドステーションのIP/MACアドレスに関するローカルなマッピング情報の抽出</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.3-1-en">Edge RBridges extract and use information about the correspondence
+between local end-station IP and MAC addresses from the ARP/ND
+messages those end stations send, as described below.  An apparent
+zero source IP address means that the end station is probing for
+duplicate IP addresses, and messages with such a zero source IP
+address are not used for the extraction of IP/MAC address mapping
+information.</p></div>
+<div lang="ja" class="col"><p id="section-4.3-1-ja">エッジRBridgeは、以下で記述するように、ローカルのエンドステーションが送信するARP/NDメッセージから、そのエンドステーションのIPアドレスとMACアドレスの対応関係に関する情報を抽出して使用します。
+送信元IPアドレスがゼロに見える場合は、そのエンドステーションが重複IPアドレスを探査していることを意味します。
+そのような送信元IPアドレスがゼロのメッセージは、IP/MACアドレスのマッピング情報の抽出には使用しません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.3-2-en">
+<li id="section-4.3-2.1-en">If the sender's IP is not present in the ingress RBridge's ARP/ND
+cache, populate the information of the sender's IP/MAC address
+mapping in its ARP/ND cache table.  The ingress RBridge correlates
+its nickname and that IP/MAC address mapping information.  Such a
+triplet of {IP address, MAC address, ingress nickname} information
+is saved locally and can be distributed to other RBridges, as
+explained later.</li>
+          <li id="section-4.3-2.2-en">Else, if the sender's IP has been saved before but with a
+different MAC address mapped or a different ingress nickname
+associated with the same pair of IP/MAC, the RBridge <span class="bcp14">SHOULD</span> verify
+if a duplicate IP address has already been in use or an end
+station has changed its attaching RBridge.  The RBridge may use
+different strategies to do so.  For example, the RBridge might ask
+an authoritative entity like directory servers or it might
+encapsulate and unicast the ARP/ND message to the location where
+it believes the address is in use (<a href="#section-4.2-en">Section 4.2</a>).  RBridge <span class="bcp14">SHOULD</span>
+update the saved triplet of {IP address, MAC address, ingress
+nickname} based on the verification results.  An RBridge might not
+verify an IP address if the network manager's policy is to have
+the network behave, for each Data Label, as if it were a single
+link and just believe an ARP/ND it receives.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.3-2-ja">
+<li id="section-4.3-2.1-ja">送信者のIPが入口RBridgeのARP/NDキャッシュに存在しない場合、送信者のIP/MACアドレスのマッピング情報をARP/NDキャッシュテーブルに格納します。
+入口RBridgeは、自身のニックネームとそのIP/MACアドレスのマッピング情報を関連付けます。
+このような{IPアドレス, MACアドレス, 入口ニックネーム}の3つ組の情報は、ローカルに保存され、後で説明するように、他のRBridgeに配布できます。</li>
+          <li id="section-4.3-2.2-ja">そうではなく、送信者のIPが以前に保存されているものの、異なるMACアドレスにマッピングされているか、同じIP/MACのペアに異なる入口ニックネームが関連付けられている場合、RBridgeは、重複IPアドレスがすでに使用されているのか、エンドステーションが接続先のRBridgeを変更したのかを検証<span class="bcp14">すべきです（SHOULD）</span>。
+RBridgeは、そのためにさまざまな戦略を使用してもかまいません。
+たとえば、RBridgeは、ディレクトリーサーバーのような権威あるエンティティーに問い合わせることもあれば、そのアドレスが使用されていると考えられる場所にARP/NDメッセージをカプセル化してユニキャストすることもあります（<a href="#section-4.2-ja">セクション4.2</a>）。
+RBridgeは、検証結果に基づいて、保存されている{IPアドレス, MACアドレス, 入口ニックネーム}の3つ組を更新<span class="bcp14">すべきです（SHOULD）</span>。
+ネットワーク管理者のポリシーが、データラベルごとに、ネットワークを単一のリンクであるかのように振る舞わせ、受信したARP/NDをそのまま信じるというものである場合、RBridgeはIPアドレスを検証しないこともあります。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.3-3-en">The ingress RBridge <span class="bcp14">MAY</span> use the IA APPsub-TLV <span>[<a href="#RFC7961-en">RFC7961</a>]</span> with the
+Local flag set in ESADI <span>[<a href="#RFC7357-en">RFC7357</a>]</span> to distribute any new or updated
+triplet of {IP address, MAC address, ingress nickname} information
+obtained.  If a Push Directory server is used, such information can
+be distributed as specified in <span>[<a href="#RFC8171-en">RFC8171</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-4.3-3-ja">入口RBridgeは、得られた新しい、または更新された{IPアドレス, MACアドレス, 入口ニックネーム}の3つ組の情報を配布するために、ESADI <span>[<a href="#RFC7357-ja">RFC7357</a>]</span>でLocalフラグを設定したIA APPsub-TLV <span>[<a href="#RFC7961-ja">RFC7961</a>]</span>を使用<span class="bcp14">してもよいです（MAY）</span>。
+プッシュディレクトリーサーバーを使用する場合、そのような情報は<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>で規定されているように配布できます。</p></div>
+</div></section><section><span id="section-4.4"></span><span id="determining-how-to-reply-to-arp/nd-en"></span><span id="determining-how-to-reply-to-arp/nd-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-determining-how-to-reply-to-arp/nd-en" lang="en">
+<a id="section-4.4-en" href="#section-4.4-en" class="section-number selfRef">4.4.</a> <a href="#name-determining-how-to-reply-to-arp/nd-en" class="section-name selfRef">Determining How to Reply to ARP/ND</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-determining-how-to-reply-to-arp/nd-ja" lang="ja">
+<a id="section-4.4-ja" href="#section-4.4-ja" class="section-number selfRef">4.4.</a> <a href="#name-determining-how-to-reply-to-arp/nd-ja" class="section-name selfRef">ARP/NDへの応答方法の決定</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.4-1-en">The options for an edge RBridge to handle a native ARP/ND are given
+below.  For generic ARP/ND requests seeking the MAC address
+corresponding to an IP address, if the edge RBridge knows the IP
+address and corresponding MAC, behavior is as in item (a), otherwise
+behavior is as in item (b).  Behavior for gratuitous ARP and ND
+unsolicited Neighbor Advertisements (NAs) <span>[<a href="#RFC4861-en">RFC4861</a>]</span> is given in item
+(c).  And item (d) covers the handling of an Address Probe ARP query.
+Within each lettered item, it is an implementation decision as to
+which numbered strategy to use for any particular ARP/ND query
+falling under that item.</p></div>
+<div lang="ja" class="col"><p id="section-4.4-1-ja">エッジRBridgeがネイティブのARP/NDを処理する際の選択肢を以下に示します。
+IPアドレスに対応するMACアドレスを求める一般的なARP/NDリクエストについては、エッジRBridgeがそのIPアドレスと対応するMACアドレスを知っている場合は項目(a)のように振る舞い、そうでない場合は項目(b)のように振る舞います。
+Gratuitous ARPと、NDの請求されていない近隣広告（Neighbor Advertisement: NA）<span>[<a href="#RFC4861-ja">RFC4861</a>]</span>に対する振る舞いは項目(c)で示します。
+そして、項目(d)ではAddress Probe ARPクエリーの処理を扱います。
+英字の各項目の中で、その項目に該当する特定のARP/NDクエリーに対して番号付きのどの戦略を使用するかは、実装の判断に委ねられます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ol type="a" id="section-4.4-2-en">
+<li id="section-4.4-2.1-en">
+            <p id="section-4.4-2.1.1-en">If the message is a generic ARP/ND request, and the ingress
+RBridge knows the target's IP address and associated MAC address,
+the ingress RBridge <span class="bcp14">MUST</span> take one or a combination of the actions
+below.  In the case of SEND <span>[<a href="#RFC3971-en">RFC3971</a>]</span>, cryptography would prevent
+a local reply by the ingress RBridge, since the RBridge would not
+be able to sign the response with the target's private key, and
+only action a.2 or a.5 is valid.</p>
+<ol id="section-4.4-2.1.2-en">
+<li style='list-style-type: "a.1. "' id="section-4.4-2.1.2.1-en">Send an ARP/ND response directly to the querier, using the
+target's MAC address present in the ingress RBridge's ARP/ND
+cache table.  Because the edge RBridge might not have an
+IPv6 address, the source IP address for such an ND response
+<span class="bcp14">MUST</span> be that of the target end station.</li>
+              <li style='list-style-type: "a.2. "' id="section-4.4-2.1.2.2-en">Encapsulate the ARP/ND/SEND request to the target's
+Designated RBridge and have the egress RBridge for the
+target forward the query to the target.  This behavior has
+the advantage that a response to the request is
+authoritative.  If the request does not reach the target,
+then the querier does not get a response.</li>
+              <li style='list-style-type: "a.3. "' id="section-4.4-2.1.2.3-en">Block ARP/ND requests that occur for some time after a
+request to the same target has been launched, and then
+respond to the querier when the response to the recently
+launched query to that target is received.</li>
+              <li style='list-style-type: "a.4. "' id="section-4.4-2.1.2.4-en">Reply to the querier based on directory information
+<span>[<a href="#RFC8171-en">RFC8171</a>]</span> such as information obtained from a Pull
+Directory server or directory information that the ingress
+RBridge has requested to be pushed to it.</li>
+              <li style='list-style-type: "a.5. "' id="section-4.4-2.1.2.5-en">Flood the ARP/ND/SEND request as per <span>[<a href="#RFC6325-en">RFC6325</a>]</span>.</li>
+            </ol>
+</li>
+          <li id="section-4.4-2.2-en">
+            <p id="section-4.4-2.2.1-en">If the message is a generic ARP/ND/SEND request and the ingress
+RBridge does not know the target's IP address, the ingress
+RBridge <span class="bcp14">MUST</span> take one of the following actions.  In the case of
+SEND <span>[<a href="#RFC3971-en">RFC3971</a>]</span>, cryptography would prevent local reply by the
+ingress RBridge, since the RBridge would not be able to sign the
+response with the target's private key; therefore, only action
+b.1 is valid.</p>
+<ol id="section-4.4-2.2.2-en">
+<li style='list-style-type: "b.1. "' id="section-4.4-2.2.2.1-en">Flood the ARP/ND/SEND message as per <span>[<a href="#RFC6325-en">RFC6325</a>]</span>.</li>
+              <li style='list-style-type: "b.2. "' id="section-4.4-2.2.2.2-en">Use a directory server to pull the information <span>[<a href="#RFC8171-en">RFC8171</a>]</span>
+and reply to the querier.</li>
+              <li style='list-style-type: "b.3. "' id="section-4.4-2.2.2.3-en">Drop the message if there should be no response because the
+directory server gives authoritative information that the
+address being queried is nonexistent.</li>
+            </ol>
+</li>
+          <li id="section-4.4-2.3-en">
+            <p id="section-4.4-2.3.1-en">If the message is a gratuitous ARP, which can be identified by
+the same sender's and target's "protocol" address fields, or an
+unsolicited Neighbor Advertisement <span>[<a href="#RFC4861-en">RFC4861</a>]</span> in ND/SEND then:</p>
+<p id="section-4.4-2.3.2-en">The RBridge <span class="bcp14">MAY</span> use an IA APPsub-TLV <span>[<a href="#RFC7961-en">RFC7961</a>]</span> with the Local
+flag set to distribute the sender's IP/MAC address mapping
+information.  When one or more directory servers are deployed and
+complete Push Directory information is used by all the RBridges
+in the Data Label, a gratuitous ARP or unsolicited NA <span class="bcp14">SHOULD</span> be
+discarded rather than ingressed.  Otherwise, they are either
+ingressed and flooded as per <span>[<a href="#RFC6325-en">RFC6325</a>]</span> or discarded depending on
+local policy.</p>
+</li>
+          <li id="section-4.4-2.4-en">If the message is an Address Probe ARP query <span>[<a href="#RFC5227-en">RFC5227</a>]</span>, which can
+be identified by the sender's protocol (IPv4) address field being
+zero and the target's protocol address field being the IPv4
+address to be tested or a Neighbor Solicitation for Duplicate
+Address Detection (DAD) that has the unspecified source address
+<span>[<a href="#RFC4862-en">RFC4862</a>]</span>, it <span class="bcp14">SHOULD</span> be handled as the generic ARP message as in
+(a) or (b) above.</li>
+        </ol></div>
+<div lang="ja" class="col"><ol type="a" id="section-4.4-2-ja">
+<li id="section-4.4-2.1-ja">
+            <p id="section-4.4-2.1.1-ja">メッセージが一般的なARP/NDリクエストであり、入口RBridgeがターゲットのIPアドレスと関連するMACアドレスを知っている場合、入口RBridgeは以下のアクションの1つまたは組み合わせを実行<span class="bcp14">しなければなりません（MUST）</span>。
+SEND <span>[<a href="#RFC3971-ja">RFC3971</a>]</span>の場合、RBridgeはターゲットの秘密鍵でレスポンスに署名できないので、暗号技術によって入口RBridgeによるローカルな応答は妨げられ、アクションa.2またはa.5のみが有効です。</p>
+<ol id="section-4.4-2.1.2-ja">
+<li style='list-style-type: "a.1. "' id="section-4.4-2.1.2.1-ja">入口RBridgeのARP/NDキャッシュテーブルにあるターゲットのMACアドレスを使用して、ARP/NDレスポンスを問い合わせ元に直接送信します。
+エッジRBridgeはIPv6アドレスを持っていない場合があるので、そのようなNDレスポンスの送信元IPアドレスは、ターゲットのエンドステーションのもので<span class="bcp14">なければなりません（MUST）</span>。</li>
+              <li style='list-style-type: "a.2. "' id="section-4.4-2.1.2.2-ja">ARP/ND/SENDリクエストをターゲットの指定RBridge（Designated RBridge）宛てにカプセル化し、ターゲットの出口RBridgeにそのクエリーをターゲットへ転送させます。
+この振る舞いには、リクエストに対するレスポンスが権威あるものになるという利点があります。
+リクエストがターゲットに届かない場合、問い合わせ元はレスポンスを得られません。</li>
+              <li style='list-style-type: "a.3. "' id="section-4.4-2.1.2.3-ja">同じターゲットへのリクエストが送出されてからしばらくの間に発生するARP/NDリクエストをブロックし、そのターゲットに最近送出したクエリーに対するレスポンスを受信したときに、問い合わせ元に応答します。</li>
+              <li style='list-style-type: "a.4. "' id="section-4.4-2.1.2.4-ja">プルディレクトリーサーバーから得た情報や、入口RBridgeが自身にプッシュするよう要求したディレクトリー情報など、ディレクトリー情報<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>に基づいて問い合わせ元に応答します。</li>
+              <li style='list-style-type: "a.5. "' id="section-4.4-2.1.2.5-ja">
+<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>に従ってARP/ND/SENDリクエストをフラッディングします。</li>
+            </ol>
+</li>
+          <li id="section-4.4-2.2-ja">
+            <p id="section-4.4-2.2.1-ja">メッセージが一般的なARP/ND/SENDリクエストであり、入口RBridgeがターゲットのIPアドレスを知らない場合、入口RBridgeは次のアクションのいずれかを実行<span class="bcp14">しなければなりません（MUST）</span>。
+SEND <span>[<a href="#RFC3971-ja">RFC3971</a>]</span>の場合、RBridgeはターゲットの秘密鍵でレスポンスに署名できないので、暗号技術によって入口RBridgeによるローカルな応答は妨げられます。
+したがって、アクションb.1のみが有効です。</p>
+<ol id="section-4.4-2.2.2-ja">
+<li style='list-style-type: "b.1. "' id="section-4.4-2.2.2.1-ja">
+<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>に従ってARP/ND/SENDメッセージをフラッディングします。</li>
+              <li style='list-style-type: "b.2. "' id="section-4.4-2.2.2.2-ja">ディレクトリーサーバーを使用して情報をプルし<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>、問い合わせ元に応答します。</li>
+              <li style='list-style-type: "b.3. "' id="section-4.4-2.2.2.3-ja">問い合わせ対象のアドレスが存在しないという権威ある情報をディレクトリーサーバーが提供しているために、レスポンスがあるべきでない場合は、メッセージを破棄します。</li>
+            </ol>
+</li>
+          <li id="section-4.4-2.3-ja">
+            <p id="section-4.4-2.3.1-ja">メッセージが、送信者とターゲットの「プロトコル」アドレスフィールドが同じであることで識別できるGratuitous ARPであるか、ND/SENDの請求されていない近隣広告<span>[<a href="#RFC4861-ja">RFC4861</a>]</span>である場合は、次のようにします。</p>
+<p id="section-4.4-2.3.2-ja">RBridgeは、送信者のIP/MACアドレスのマッピング情報を配布するために、Localフラグを設定したIA APPsub-TLV <span>[<a href="#RFC7961-ja">RFC7961</a>]</span>を使用<span class="bcp14">してもよいです（MAY）</span>。
+1つ以上のディレクトリーサーバーが展開されていて、そのデータラベル内のすべてのRBridgeが完全なプッシュディレクトリー情報を使用している場合、Gratuitous ARPや請求されていないNAは、入口処理（ingress）せずに破棄<span class="bcp14">すべきです（SHOULD）</span>。
+そうでない場合、それらはローカルポリシーに応じて、入口処理されて<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>に従ってフラッディングされるか、破棄されます。</p>
+</li>
+          <li id="section-4.4-2.4-ja">メッセージが、送信者のプロトコル（IPv4）アドレスフィールドがゼロで、ターゲットのプロトコルアドレスフィールドがテスト対象のIPv4アドレスであることで識別できるAddress Probe ARPクエリー<span>[<a href="#RFC5227-ja">RFC5227</a>]</span>であるか、未指定の送信元アドレスを持つ重複アドレス検出（DAD）のための近隣要請（Neighbor Solicitation）<span>[<a href="#RFC4862-ja">RFC4862</a>]</span>である場合、そのメッセージは上記の(a)または(b)のように一般的なARPメッセージとして処理<span class="bcp14">すべきです（SHOULD）</span>。</li>
+        </ol></div>
+</div></section><section><span id="section-4.5"></span><span id="determining-how-to-handle-the-arp/nd-response-en"></span><span id="determining-how-to-handle-the-arp/nd-response-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-determining-how-to-handle-the-arp/nd-response-en" lang="en">
+<a id="section-4.5-en" href="#section-4.5-en" class="section-number selfRef">4.5.</a> <a href="#name-determining-how-to-handle-the-arp/nd-response-en" class="section-name selfRef">Determining How to Handle the ARP/ND Response</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-determining-how-to-handle-the-arp/nd-response-ja" lang="ja">
+<a id="section-4.5-ja" href="#section-4.5-ja" class="section-number selfRef">4.5.</a> <a href="#name-determining-how-to-handle-the-arp/nd-response-ja" class="section-name selfRef">ARP/NDレスポンスの処理方法の決定</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.5-1-en">If the ingress RBridge R1 decides to unicast the ARP/ND request to
+the target's egress RBridge R2 as discussed in <a href="#section-4.4-en">Section 4.4</a>, item a.2
+or to flood the request as per item a.5 and <span>[<a href="#RFC6325-en">RFC6325</a>]</span>, then R2
+decapsulates the query and initiates an ARP/ND query on the target's
+link.  If and when the target responds, R2 encapsulates and unicasts
+the response to R1, which decapsulates the response and sends it to
+the querier.  R2 <span class="bcp14">SHOULD</span> initiate a link state update to inform all
+the other RBridges of the target's location, Layer 3 address, and
+Layer 2 address, in addition to forwarding the reply to the querier.
+The update uses an IA APPsub-TLV <span>[<a href="#RFC7961-en">RFC7961</a>]</span> (so the Layer 3 and Layer
+2 addresses can be linked) with the Local flag set in ESADI <span>[<a href="#RFC7357-en">RFC7357</a>]</span>
+or as per <span>[<a href="#RFC8171-en">RFC8171</a>]</span> if the Push Directory server is in use.</p></div>
+<div lang="ja" class="col"><p id="section-4.5-1-ja">入口RBridge R1が、<a href="#section-4.4-ja">セクション4.4</a>の項目a.2で議論したようにARP/NDリクエストをターゲットの出口RBridge R2にユニキャストするか、項目a.5と<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>に従ってリクエストをフラッディングすることにした場合、R2はクエリーをカプセル化解除し、ターゲットのリンク上でARP/NDクエリーを開始します。
+ターゲットが応答した場合、R2はレスポンスをカプセル化してR1にユニキャストし、R1はレスポンスをカプセル化解除して問い合わせ元に送信します。
+R2は、応答を問い合わせ元に転送することに加えて、ターゲットの位置、レイヤー3アドレス、レイヤー2アドレスを他のすべてのRBridgeに通知するために、リンクステートの更新を開始<span class="bcp14">すべきです（SHOULD）</span>。
+この更新では、ESADI <span>[<a href="#RFC7357-ja">RFC7357</a>]</span>でLocalフラグを設定したIA APPsub-TLV <span>[<a href="#RFC7961-ja">RFC7961</a>]</span>を使用するか（これにより、レイヤー3アドレスとレイヤー2アドレスを結び付けることができます）、プッシュディレクトリーサーバーを使用している場合は<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>に従います。</p></div>
+</div></section></section><section><span id="section-5"></span><span id="handling-of-reverse-address-resolution-protocol-(rarp)-messages-en"></span><span id="handling-of-reverse-address-resolution-protocol-(rarp)-messages-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-en" class="section-name selfRef">Handling of Reverse Address Resolution Protocol (RARP) Messages</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-handling-of-reverse-address-resolution-protocol-(rarp)-messages-ja" class="section-name selfRef">逆アドレス解決プロトコル（RARP）メッセージの処理</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">RARP <span>[<a href="#RFC903-en">RFC903</a>]</span> uses the same packet format as ARP but different
+Ethertype (0x8035) and opcode values.  Its processing is similar to
+the generic ARP request/response as described in <a href="#section-4.4-en">Section 4.4</a>, items
+a. and b.  The difference is that it is intended to query for the
+target "protocol" (IP) address corresponding to the target "hardware"
+(MAC) address provided.  It <span class="bcp14">SHOULD</span> be handled by doing a local cache
+or directory server lookup on the target "hardware" address provided
+to find a mapping to the desired "protocol" address.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">RARP <span>[<a href="#RFC903-ja">RFC903</a>]</span>は、ARPと同じパケット形式を使用しますが、Ethertype（0x8035）とopcodeの値が異なります。
+その処理は、<a href="#section-4.4-ja">セクション4.4</a>の項目a.とb.で記述した一般的なARPリクエスト／レスポンスと同様です。
+違いは、RARPが、与えられたターゲットの「ハードウェア」（MAC）アドレスに対応するターゲットの「プロトコル」（IP）アドレスを問い合わせることを目的としている点です。
+RARPメッセージは、与えられたターゲットの「ハードウェア」アドレスについてローカルキャッシュまたはディレクトリーサーバーを検索し、目的の「プロトコル」アドレスへのマッピングを見つけることで処理<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div></section><section><span id="section-6"></span><span id="handling-of-dhcp-messages-en"></span><span id="handling-of-dhcp-messages-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-handling-of-dhcp-messages-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-handling-of-dhcp-messages-en" class="section-name selfRef">Handling of DHCP Messages</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-handling-of-dhcp-messages-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-handling-of-dhcp-messages-ja" class="section-name selfRef">DHCPメッセージの処理</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">When a newly connected end station exchanges messages with a DHCP
+<span>[<a href="#RFC3315-en">RFC3315</a>]</span><span>[<a href="#RFC2131-en">RFC2131</a>]</span> server, an edge RBridge should snoop them (mainly
+the DHCPAck message) and store IP/MAC address mapping information in
+its ARP/ND cache and should also send the information out through the
+TRILL control plane using ESADI.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">新たに接続されたエンドステーションがDHCP <span>[<a href="#RFC3315-ja">RFC3315</a>]</span><span>[<a href="#RFC2131-ja">RFC2131</a>]</span>サーバーとメッセージを交換するとき、エッジRBridgeはそれらのメッセージ（主にDHCPAckメッセージ）をスヌーピングし、IP/MACアドレスのマッピング情報をARP/NDキャッシュに格納すべきです。
+また、ESADIを使用して、TRILLのコントロールプレーンを通じてその情報を送出すべきです。</p></div>
+</div></section><section><span id="section-7"></span><span id="handling-of-duplicate-ip-addresses-en"></span><span id="handling-of-duplicate-ip-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-handling-of-duplicate-ip-addresses-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-handling-of-duplicate-ip-addresses-en" class="section-name selfRef">Handling of Duplicate IP Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-handling-of-duplicate-ip-addresses-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-handling-of-duplicate-ip-addresses-ja" class="section-name selfRef">重複IPアドレスの処理</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">Duplicate IP addresses within a Data Label can occur due to an
+attacker sending fake ARP/ND messages or due to human/configuration
+errors.  If complete, trustworthy directory information is available,
+then, by definition, the IP location information in the directory is
+correct.  Any appearance of an IP address in a different place
+(different edge RBridge or port) from other sources is not correct.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">データラベル内の重複IPアドレスは、攻撃者が偽のARP/NDメッセージを送信することによって、あるいは人為的なミスや設定ミスによって発生する可能性があります。
+完全で信頼できるディレクトリー情報が利用可能な場合、定義上、ディレクトリー内のIPの位置情報は正しいものです。
+他の情報源から、異なる場所（異なるエッジRBridgeやポート）にIPアドレスが現れても、それは正しくありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-2-en">Without complete directory information, the ARP/ND optimization
+function should support duplicate IP detection.  This is critical in
+a data center to stop an attacker from using ARP/ND spoofing to
+divert traffic from its intended destination.</p></div>
+<div lang="ja" class="col"><p id="section-7-2-ja">完全なディレクトリー情報がない場合、ARP/ND最適化機能は重複IPの検出をサポートすべきです。
+これは、攻撃者がARP/NDのなりすましを使用してトラフィックを本来の宛先からそらすのを阻止するために、データセンターでは極めて重要です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-3-en">Duplicate IP addresses can be detected when an existing active IP/MAC
+address mapping gets modified.  Also, an edge RBridge may send a
+query called a Duplicate Address Detection query (DAD-query) asking
+about the IP address in question to the former owner of that IP
+address by using the MAC address formerly associated with that IP
+address.  A DAD-query is a unicast ARP/ND message with sender IP
+0.0.0.0 in case of ARP (or a configurable IP address per RBridge
+called the DAD-Query source IP) and an IPv6 Link Local Address in
+case of ND with the source MAC set to the DAD-querier RBridge's MAC.
+If the querying RBridge does not receive an answer within a given
+time, it may be a case of mobility; in any case, the new IP entry
+will be confirmed and activated in its ARP/ND cache.</p></div>
+<div lang="ja" class="col"><p id="section-7-3-ja">重複IPアドレスは、既存のアクティブなIP/MACアドレスのマッピングが変更されたときに検出できます。
+また、エッジRBridgeは、そのIPアドレスに以前関連付けられていたMACアドレスを使用して、そのIPアドレスの以前の所有者に、当該IPアドレスについて問い合わせる重複アドレス検出クエリー（DAD-query）と呼ばれるクエリーを送信してもかまいません。
+DAD-queryはユニキャストのARP/NDメッセージで、送信者IPは、ARPの場合は0.0.0.0（またはDAD-Query送信元IPと呼ばれるRBridgeごとに設定可能なIPアドレス）、NDの場合はIPv6リンクローカルアドレスであり、送信元MACはDAD-queryを送信するRBridgeのMACに設定されます。
+問い合わせたRBridgeが一定時間内に回答を受信しない場合、それは移動のケースかもしれません。
+いずれにせよ、新しいIPエントリーは確定され、そのRBridgeのARP/NDキャッシュで有効になります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-4-en">In the case where the former owner replies, a duplicate address has
+been detected.  In this case, the querying RBridge <span class="bcp14">SHOULD</span> log the
+duplicate so that the network administrator can take appropriate
+action.</p></div>
+<div lang="ja" class="col"><p id="section-7-4-ja">以前の所有者が応答した場合は、重複アドレスが検出されたことになります。
+この場合、問い合わせたRBridgeは、ネットワーク管理者が適切な措置を取れるように、その重複をログに記録<span class="bcp14">すべきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-5-en">It is an implementation choice how to respond to a query for an
+address that is duplicated in the network when authoritative
+information is not available from a directory or configuration.
+Typically, the information most recently snooped is returned.</p></div>
+<div lang="ja" class="col"><p id="section-7-5-ja">ディレクトリーや設定から権威ある情報が得られない場合に、ネットワーク内で重複しているアドレスに対するクエリーにどのように応答するかは、実装の選択です。
+通常は、最も新しくスヌーピングした情報が返されます。</p></div>
+</div></section><section><span id="section-8"></span><span id="rbridge-arp/nd-cache-liveness-and-mac-mobility-en"></span><span id="rbridge-arp/nd-cache-liveness-and-mac-mobility-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-rbridge-arp/nd-cache-liveness-and-mac-mobility-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-rbridge-arp/nd-cache-liveness-and-mac-mobility-en" class="section-name selfRef">RBridge ARP/ND Cache Liveness and MAC Mobility</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-rbridge-arp/nd-cache-liveness-and-mac-mobility-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-rbridge-arp/nd-cache-liveness-and-mac-mobility-ja" class="section-name selfRef">RBridgeのARP/NDキャッシュの生存性とMACの移動</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">A maintenance procedure is needed for RBridge ARP/ND caching to
+ensure IP end stations connected to ingress RBridges are still
+active.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">入口RBridgeに接続されたIPエンドステーションがまだアクティブであることを確認するために、RBridgeのARP/NDキャッシュには保守手順が必要です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-2-en">Some links provide a physical-layer indication of link liveness.  A
+dynamic proxy ARP/ND entry (one learned from data-plane observation)
+<span class="bcp14">MUST</span> be removed from the table if the link over which it was learned
+fails.</p></div>
+<div lang="ja" class="col"><p id="section-8-2-ja">一部のリンクは、リンクの生存性を物理層で示します。
+動的なプロキシーARP/NDエントリー（データプレーンの観測から学習したもの）は、それを学習したリンクに障害が発生した場合、テーブルから削除<span class="bcp14">しなければなりません（MUST）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-3-en">Similarly, a dynamic proxy ARP/ND entry <span class="bcp14">SHOULD</span> be flushed out of the
+table if the IP/MAC address mapping has not been refreshed within a
+given age-time.  The entry is refreshed if an ARP or ND message is
+received for the same IP/MAC address mapping entry from any location.
+The IP/MAC address mapping information Ageing Timer is configurable
+per RBridge and defaults to 3/4 of the MAC address learning Ageing
+Timer <span>[<a href="#RFC6325-en">RFC6325</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-8-3-ja">同様に、IP/MACアドレスのマッピングが所定のエージング時間内にリフレッシュされなかった場合、動的なプロキシーARP/NDエントリーをテーブルから消去<span class="bcp14">すべきです（SHOULD）</span>。
+同じIP/MACアドレスのマッピングエントリーについて、いずれかの場所からARPメッセージまたはNDメッセージを受信した場合、そのエントリーはリフレッシュされます。
+IP/MACアドレスのマッピング情報のエージングタイマー（Ageing Timer）はRBridgeごとに設定可能で、デフォルトはMACアドレス学習のエージングタイマー<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>の3/4です。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-4-en">For example, end station "A" is connected to edge-RBridge1 (RB1) and
+has been learned as a local entry on RB1.  If end station "A" moves
+to some other location (MAC / Virtual Machine (VM) Mobility) and gets
+connected to edge-RBridge (RB2), after learning on RB2's access port,
+RB2 advertises this entry through the TRILL control plane, and it is
+learned on RB1 as a remote entry.  The old entry on RB1 <span class="bcp14">SHOULD</span> get
+replaced, and all other edge-RBridges with end-station service
+enabled for that Data Label should update the entry to show
+reachability from RB2 instead of RB1.</p></div>
+<div lang="ja" class="col"><p id="section-8-4-ja">たとえば、エンドステーション「A」がエッジRBridge1（RB1）に接続されており、RB1上でローカルエントリーとして学習されているとします。
+エンドステーション「A」が別の場所に移動し（MAC／仮想マシン（VM）の移動）、エッジRBridge（RB2）に接続された場合、RB2のアクセスポートで学習された後、RB2はTRILLのコントロールプレーンを通じてこのエントリーを広告し、そのエントリーはRB1上でリモートエントリーとして学習されます。
+RB1上の古いエントリーは置き換えられる<span class="bcp14">べきです（SHOULD）</span>。
+また、そのデータラベルでエンドステーションサービスが有効になっている他のすべてのエッジRBridgeは、RB1ではなくRB2からの到達可能性を示すようにエントリーを更新すべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-5-en">If an ARP/ND entry in the cache is not refreshed, then the RBridge
+connected to that end station <span class="bcp14">MAY</span> send periodic refresh messages
+(ARP/ND "probes") to that end station, so that the entries can be
+refreshed before they age out.  The end station would reply to the
+ARP/ND probe, and the reply resets the corresponding entry age-timer.</p></div>
+<div lang="ja" class="col"><p id="section-8-5-ja">キャッシュ内のARP/NDエントリーがリフレッシュされない場合、そのエンドステーションに接続されたRBridgeは、エントリーが期限切れになる前にリフレッシュできるように、そのエンドステーションに定期的なリフレッシュメッセージ（ARP/NDの「プローブ」）を送信<span class="bcp14">してもよいです（MAY）</span>。
+エンドステーションはARP/NDプローブに応答し、その応答によって対応するエントリーのエージングタイマーがリセットされます。</p></div>
+</div></section><section><span id="section-9"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">There are generally two modes of learning the address information
+that is the basis of ARP/ND optimization: data-plane mode and
+directory mode.  The data-plane mode is the traditional bridge
+address learning <span>[<a href="#IEEE802.1Q-en">IEEE802.1Q</a>]</span> that is also implemented in TRILL
+switches <span>[<a href="#RFC6325-en">RFC6325</a>]</span> and is discussed in <a href="#section-9.1-en">Section 9.1</a>.  The directory
+mode uses data obtained from a directory <span>[<a href="#RFC8171-en">RFC8171</a>]</span> and is discussed
+in <a href="#section-9.2-en">Section 9.2</a>.  The TRILL confidence-level feature, which can help
+arbitrate between conflicting address information, is discussed in
+<a href="#section-9.3-en">Section 9.3</a>.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">ARP/ND最適化の基礎となるアドレス情報の学習には、一般にデータプレーンモードとディレクトリーモードの2つのモードがあります。
+データプレーンモードは、TRILLスイッチ<span>[<a href="#RFC6325-ja">RFC6325</a>]</span>にも実装されている従来のブリッジのアドレス学習<span>[<a href="#IEEE802.1Q-ja">IEEE802.1Q</a>]</span>であり、<a href="#section-9.1-ja">セクション9.1</a>で議論します。
+ディレクトリーモードは、ディレクトリー<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>から得たデータを使用するもので、<a href="#section-9.2-ja">セクション9.2</a>で議論します。
+矛盾するアドレス情報の間の調停に役立つTRILLの信頼度レベル機能については、<a href="#section-9.3-ja">セクション9.3</a>で議論します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-2-en">RBridges should rate limit ARP/ND queries injected into the TRILL
+campus to limit some potential denial-of-service attacks.</p></div>
+<div lang="ja" class="col"><p id="section-9-2-ja">RBridgeは、潜在的なサービス拒否攻撃の一部を抑えるために、TRILLキャンパスに注入するARP/NDクエリーのレートを制限すべきです。</p></div>
+</div>
+<section><span id="section-9.1"></span><span id="data-plane-based-considerations-en"></span><span id="data-plane-based-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-data-plane-based-considerations-en" lang="en">
+<a id="section-9.1-en" href="#section-9.1-en" class="section-number selfRef">9.1.</a> <a href="#name-data-plane-based-considerations-en" class="section-name selfRef">Data-Plane-Based Considerations</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-data-plane-based-considerations-ja" lang="ja">
+<a id="section-9.1-ja" href="#section-9.1-ja" class="section-number selfRef">9.1.</a> <a href="#name-data-plane-based-considerations-ja" class="section-name selfRef">データプレーンベースの考慮事項</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-1-en">Generally speaking, when ARP/ND optimization is operating in the
+data-plane mode, the information learned by RBridges is the same as
+that which is learned by end stations.  Thus, the answers generated
+by RBridges to the query messages being optimized are generally those
+that would be generated by end stations in the absence of
+optimization, and the security considerations are those of the
+underlying ARP/ND protocols.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-1-ja">一般的に言えば、ARP/ND最適化がデータプレーンモードで動作している場合、RBridgeが学習する情報はエンドステーションが学習する情報と同じです。
+したがって、最適化の対象となるクエリーメッセージに対してRBridgeが生成する回答は、一般に、最適化がなければエンドステーションが生成するであろう回答と同じであり、セキュリティーに関する考慮事項は、基盤となるARP/NDプロトコルのものと同じです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-2-en">RBridges that snoop on DHCPack messages respond to ARP/ND messages in
+essentially the same way that the end stations sending those DHCPack
+messages would.  Thus, for security considerations of ARP/ND
+optimization for DHCP messages that may be snooped, see the Security
+Considerations sections of <span>[<a href="#RFC3315-en">RFC3315</a>]</span> and <span>[<a href="#RFC2131-en">RFC2131</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-2-ja">DHCPackメッセージをスヌーピングするRBridgeは、それらのDHCPackメッセージを送信するエンドステーションと本質的に同じ方法でARP/NDメッセージに応答します。
+したがって、スヌーピングされる可能性のあるDHCPメッセージに対するARP/ND最適化のセキュリティーに関する考慮事項については、<span>[<a href="#RFC3315-ja">RFC3315</a>]</span>と<span>[<a href="#RFC2131-ja">RFC2131</a>]</span>の「Security Considerations」セクションを参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-3-en">Unless SEND <span>[<a href="#RFC3971-en">RFC3971</a>]</span> is used, ARP and ND messages can be easily
+forged.  Therefore, the learning of IP/MAC addresses by RBridges from
+ARP/ND is hackable, but this is what is available for data-plane
+learning without SEND.  See "SEND Considerations", <a href="#section-4.1-en">Section 4.1</a>.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-3-ja">SEND <span>[<a href="#RFC3971-ja">RFC3971</a>]</span>を使用しない限り、ARPメッセージとNDメッセージは容易に偽造できます。
+したがって、RBridgeによるARP/NDからのIP/MACアドレスの学習は攻撃を受けやすいものですが、SENDなしのデータプレーン学習で利用できるのはこれだけです。
+<a href="#section-4.1-ja">セクション4.1</a>の「SENDに関する考慮事項」を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-4-en">Since end stations communicate with edge RBridges using Ethernet,
+some security improvements could be obtained by the use of
+<span>[<a href="#IEEE802.1AE-en">IEEE802.1AE</a>]</span> between end stations and edge RBridges.  Such link
+security is beyond the scope of this document and would impose
+requirements on edge stations, while TRILL is generally designed to
+operate with unmodified, TRILL-ignorant end stations.</p></div>
+<div lang="ja" class="col"><p id="section-9.1-4-ja">エンドステーションはイーサネットを使用してエッジRBridgeと通信するので、エンドステーションとエッジRBridgeの間で<span>[<a href="#IEEE802.1AE-ja">IEEE802.1AE</a>]</span>を使用することで、セキュリティーをある程度改善できる可能性があります。
+このようなリンクセキュリティーはこの文書の範囲外であり、エッジステーションに要件を課すことになりますが、TRILLは一般に、変更されていない、TRILLを認識しないエンドステーションで動作するように設計されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.1-5-en">ARP/ND address mapping information learned locally at an RBridge can
+be distributed to other RBridges using the TRILL ESADI protocol that
+can be secured as specified in <span>[<a href="#RFC7357-en">RFC7357</a>]</span>.  (ESADI is also used for
+Push Directories with flags in the data indicating whether data comes
+from a directory or from data-plane learning, as well as from a
+confidence level (see <a href="#section-9.3-en">Section 9.3</a>).)</p></div>
+<div lang="ja" class="col"><p id="section-9.1-5-ja">RBridgeでローカルに学習されたARP/NDのアドレスマッピング情報は、<span>[<a href="#RFC7357-ja">RFC7357</a>]</span>で規定されているように保護できるTRILLのESADIプロトコルを使用して、他のRBridgeに配布できます。
+（ESADIはプッシュディレクトリーにも使用され、データには、そのデータがディレクトリーから得られたものかデータプレーン学習から得られたものかを示すフラグと、信頼度レベル（<a href="#section-9.3-ja">セクション9.3</a>を参照）が含まれます。）</p></div>
+</div></section><section><span id="section-9.2"></span><span id="directory-based-considerations-en"></span><span id="directory-based-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-directory-based-considerations-en" lang="en">
+<a id="section-9.2-en" href="#section-9.2-en" class="section-number selfRef">9.2.</a> <a href="#name-directory-based-considerations-en" class="section-name selfRef">Directory-Based Considerations</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-directory-based-considerations-ja" lang="ja">
+<a id="section-9.2-ja" href="#section-9.2-ja" class="section-number selfRef">9.2.</a> <a href="#name-directory-based-considerations-ja" class="section-name selfRef">ディレクトリーベースの考慮事項</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.2-1-en">ARP/ND optimization can be based on directory information <span>[<a href="#RFC8171-en">RFC8171</a>]</span>.
+If the directory information is known to be trustworthy and complete,
+then trustworthy responses to ARP/ND queries can be entirely based on
+this information.  This bounds the damage that forged ARP/ND messages
+can do to the local link between end stations and edge RBridges.  (In
+TRILL, such a "link" can be a bridged LAN.)</p></div>
+<div lang="ja" class="col"><p id="section-9.2-1-ja">ARP/ND最適化は、ディレクトリー情報<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>に基づくことができます。
+ディレクトリー情報が信頼でき完全であることがわかっている場合、ARP/NDクエリーに対する信頼できるレスポンスを、完全にこの情報に基づいて返すことができます。
+これにより、偽造されたARP/NDメッセージが及ぼす被害を、エンドステーションとエッジRBridgeの間のローカルリンクに限定できます。
+（TRILLでは、このような「リンク」はブリッジされたLANである場合があります。）</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.2-2-en">Of course, there can also be incomplete and/or unreliable directory
+address mapping data.  The network administrator can configure their
+TRILL campus to use such directory data in place of
+data-plane-learned data.  Alternatively, such directory data can be used along
+with data-plane-learned data arbitrated by the confidence level as
+discussed in <a href="#section-9.3-en">Section 9.3</a>.</p></div>
+<div lang="ja" class="col"><p id="section-9.2-2-ja">もちろん、不完全なディレクトリーのアドレスマッピングデータや、信頼性の低いディレクトリーのアドレスマッピングデータが存在することもあります。
+ネットワーク管理者は、データプレーンで学習したデータの代わりにそのようなディレクトリーデータを使用するように、TRILLキャンパスを設定できます。
+あるいは、<a href="#section-9.3-ja">セクション9.3</a>で議論するように、そのようなディレクトリーデータを、信頼度レベルによって調停しながら、データプレーンで学習したデータと併用することもできます。</p></div>
+</div></section><section><span id="section-9.3"></span><span id="use-of-the-confidence-level-feature-en"></span><span id="use-of-the-confidence-level-feature-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-use-of-the-confidence-level-feature-en" lang="en">
+<a id="section-9.3-en" href="#section-9.3-en" class="section-number selfRef">9.3.</a> <a href="#name-use-of-the-confidence-level-feature-en" class="section-name selfRef">Use of the Confidence Level Feature</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-use-of-the-confidence-level-feature-ja" lang="ja">
+<a id="section-9.3-ja" href="#section-9.3-ja" class="section-number selfRef">9.3.</a> <a href="#name-use-of-the-confidence-level-feature-ja" class="section-name selfRef">信頼度レベル機能の使用</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9.3-1-en">An RBridge can use the confidence level in IA APPsub-TLV information
+received via ESADI or Pull Directory retrievals to determine the
+configured relative reliability of IP/MAC address mapping information
+from those sources and from locally learned address information.
+Push Directory information is sent via ESADI, which can be secured as
+provided in <span>[<a href="#RFC7357-en">RFC7357</a>]</span>; Pull Directory information can be secured as
+provided in <span>[<a href="#RFC8171-en">RFC8171</a>]</span>.  The implementation decides if an RBridge will
+distribute the IP and MAC address mappings received from local native
+ARP/ND messages to other RBridges in the same Data Label, and with
+what confidence level it does so.  Thus, the implementer can, to some
+extent, cause sources that they know are more reliable to dominate
+those they know to be less reliable.  How the implementer determines
+this is beyond the scope of this document.</p></div>
+<div lang="ja" class="col"><p id="section-9.3-1-ja">RBridgeは、ESADIまたはプルディレクトリーからの取得によって受信したIA APPsub-TLV情報の信頼度レベルを使用して、それらの情報源からのIP/MACアドレスのマッピング情報と、ローカルで学習したアドレス情報について、設定された相対的な信頼性を判断できます。
+プッシュディレクトリー情報はESADIを介して送信され、ESADIは<span>[<a href="#RFC7357-ja">RFC7357</a>]</span>で規定されているように保護できます。
+プルディレクトリー情報は<span>[<a href="#RFC8171-ja">RFC8171</a>]</span>で規定されているように保護できます。
+RBridgeが、ローカルのネイティブなARP/NDメッセージから受信したIPアドレスとMACアドレスのマッピングを同じデータラベル内の他のRBridgeに配布するかどうか、またどの信頼度レベルで配布するかは、実装が決定します。
+したがって、実装者は、ある程度まで、より信頼性が高いとわかっている情報源を、信頼性が低いとわかっている情報源よりも優先させることができます。
+実装者がこれをどのように判断するかは、この文書の範囲外です。</p></div>
+</div></section></section><section><span id="section-10"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-10-en" href="#section-10-en" class="section-number selfRef">10.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-10-ja" href="#section-10-ja" class="section-number selfRef">10.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-10-1-en">This document does not require any IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-10-1-ja">この文書はIANAアクションを必要としません。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-11-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-11.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC826-en">[RFC826]</dt>
+<dd class="break">
+<span class="refAuthor">Plummer, D.</span>, <span></span><span class="refTitle">"Ethernet Address Resolution Protocol: Or Converting Network Protocol Addresses to 48.bit Ethernet Address for Transmission on Ethernet Hardware"</span>, <span class="seriesInfo">STD 37</span>, <span class="seriesInfo">RFC 826</span>, <span class="seriesInfo">DOI 10.17487/RFC0826</span>, <time datetime="1982-11" class="refDate">November 1982</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc826">https://www.rfc-editor.org/info/rfc826</a>&gt;</span>
+</dd>
+<dt id="RFC903-en">[RFC903]</dt>
+<dd class="break">
+<span class="refAuthor">Finlayson, R.</span>, <span class="refAuthor">Mann, T.</span>, <span class="refAuthor">Mogul, J.</span>, and <span class="refAuthor">M. Theimer</span>, <span></span><span class="refTitle">"A Reverse Address Resolution Protocol"</span>, <span class="seriesInfo">STD 38</span>, <span class="seriesInfo">RFC 903</span>, <span class="seriesInfo">DOI 10.17487/RFC0903</span>, <time datetime="1984-06" class="refDate">June 1984</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc903">https://www.rfc-editor.org/info/rfc903</a>&gt;</span>
+</dd>
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC2131-en">[RFC2131]</dt>
+<dd class="break">
+<span class="refAuthor">Droms, R.</span>, <span></span><span class="refTitle">"Dynamic Host Configuration Protocol"</span>, <span class="seriesInfo">RFC 2131</span>, <span class="seriesInfo">DOI 10.17487/RFC2131</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2131">https://www.rfc-editor.org/info/rfc2131</a>&gt;</span>
+</dd>
+<dt id="RFC3315-en">[RFC3315]</dt>
+<dd class="break">
+<span class="refAuthor">Droms, R., Ed.</span>, <span class="refAuthor">Bound, J.</span>, <span class="refAuthor">Volz, B.</span>, <span class="refAuthor">Lemon, T.</span>, <span class="refAuthor">Perkins, C.</span>, and <span class="refAuthor">M. Carney</span>, <span></span><span class="refTitle">"Dynamic Host Configuration Protocol for IPv6 (DHCPv6)"</span>, <span class="seriesInfo">RFC 3315</span>, <span class="seriesInfo">DOI 10.17487/RFC3315</span>, <time datetime="2003-07" class="refDate">July 2003</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3315">https://www.rfc-editor.org/info/rfc3315</a>&gt;</span>
+</dd>
+<dt id="RFC4861-en">[RFC4861]</dt>
+<dd class="break">
+<span class="refAuthor">Narten, T.</span>, <span class="refAuthor">Nordmark, E.</span>, <span class="refAuthor">Simpson, W.</span>, and <span class="refAuthor">H. Soliman</span>, <span></span><span class="refTitle">"Neighbor Discovery for IP version 6 (IPv6)"</span>, <span class="seriesInfo">RFC 4861</span>, <span class="seriesInfo">DOI 10.17487/RFC4861</span>, <time datetime="2007-09" class="refDate">September 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4861">https://www.rfc-editor.org/info/rfc4861</a>&gt;</span>
+</dd>
+<dt id="RFC4862-en">[RFC4862]</dt>
+<dd class="break">
+<span class="refAuthor">Thomson, S.</span>, <span class="refAuthor">Narten, T.</span>, and <span class="refAuthor">T. Jinmei</span>, <span></span><span class="refTitle">"IPv6 Stateless Address Autoconfiguration"</span>, <span class="seriesInfo">RFC 4862</span>, <span class="seriesInfo">DOI 10.17487/RFC4862</span>, <time datetime="2007-09" class="refDate">September 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4862">https://www.rfc-editor.org/info/rfc4862</a>&gt;</span>
+</dd>
+<dt id="RFC6325-en">[RFC6325]</dt>
+<dd class="break">
+<span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Dutt, D.</span>, <span class="refAuthor">Gai, S.</span>, and <span class="refAuthor">A. Ghanwani</span>, <span></span><span class="refTitle">"Routing Bridges (RBridges): Base Protocol Specification"</span>, <span class="seriesInfo">RFC 6325</span>, <span class="seriesInfo">DOI 10.17487/RFC6325</span>, <time datetime="2011-07" class="refDate">July 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6325">https://www.rfc-editor.org/info/rfc6325</a>&gt;</span>
+</dd>
+<dt id="RFC7172-en">[RFC7172]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Zhang, M.</span>, <span class="refAuthor">Agarwal, P.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">D. Dutt</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Fine-Grained Labeling"</span>, <span class="seriesInfo">RFC 7172</span>, <span class="seriesInfo">DOI 10.17487/RFC7172</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7172">https://www.rfc-editor.org/info/rfc7172</a>&gt;</span>
+</dd>
+<dt id="RFC7357-en">[RFC7357]</dt>
+<dd class="break">
+<span class="refAuthor">Zhai, H.</span>, <span class="refAuthor">Hu, F.</span>, <span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, and <span class="refAuthor">O. Stokes</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): End Station Address Distribution Information (ESADI) Protocol"</span>, <span class="seriesInfo">RFC 7357</span>, <span class="seriesInfo">DOI 10.17487/RFC7357</span>, <time datetime="2014-09" class="refDate">September 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7357">https://www.rfc-editor.org/info/rfc7357</a>&gt;</span>
+</dd>
+<dt id="RFC7780-en">[RFC7780]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Zhang, M.</span>, <span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Banerjee, A.</span>, <span class="refAuthor">Ghanwani, A.</span>, and <span class="refAuthor">S. Gupta</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Clarifications, Corrections, and Updates"</span>, <span class="seriesInfo">RFC 7780</span>, <span class="seriesInfo">DOI 10.17487/RFC7780</span>, <time datetime="2016-02" class="refDate">February 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7780">https://www.rfc-editor.org/info/rfc7780</a>&gt;</span>
+</dd>
+<dt id="RFC7961-en">[RFC7961]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">L. Yizhou</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Interface Addresses APPsub-TLV"</span>, <span class="seriesInfo">RFC 7961</span>, <span class="seriesInfo">DOI 10.17487/RFC7961</span>, <time datetime="2016-08" class="refDate">August 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7961">https://www.rfc-editor.org/info/rfc7961</a>&gt;</span>
+</dd>
+<dt id="RFC8171-en">[RFC8171]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">Y. Li</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Edge Directory Assistance Mechanisms"</span>, <span class="seriesInfo">RFC 8171</span>, <span class="seriesInfo">DOI 10.17487/RFC8171</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8171">https://www.rfc-editor.org/info/rfc8171</a>&gt;</span>
+</dd>
+<dt id="RFC8174-en">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-11.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="IEEE802.1AE-en">[IEEE802.1AE]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and metropolitan area networks: Media Access Control (MAC) Security"</span>, <span class="seriesInfo">IEEE Std 802.1AE</span>, </dd>
+<dt id="IEEE802.1Q-en">[IEEE802.1Q]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and metropolitan area networks -- Bridges and Bridged Networks"</span>, <span class="seriesInfo">IEEE Std 802.1Q</span>, </dd>
+<dt id="RFC3756-en">[RFC3756]</dt>
+<dd class="break">
+<span class="refAuthor">Nikander, P., Ed.</span>, <span class="refAuthor">Kempf, J.</span>, and <span class="refAuthor">E. Nordmark</span>, <span></span><span class="refTitle">"IPv6 Neighbor Discovery (ND) Trust Models and Threats"</span>, <span class="seriesInfo">RFC 3756</span>, <span class="seriesInfo">DOI 10.17487/RFC3756</span>, <time datetime="2004-05" class="refDate">May 2004</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3756">https://www.rfc-editor.org/info/rfc3756</a>&gt;</span>
+</dd>
+<dt id="RFC3971-en">[RFC3971]</dt>
+<dd class="break">
+<span class="refAuthor">Arkko, J., Ed.</span>, <span class="refAuthor">Kempf, J.</span>, <span class="refAuthor">Zill, B.</span>, and <span class="refAuthor">P. Nikander</span>, <span></span><span class="refTitle">"SEcure Neighbor Discovery (SEND)"</span>, <span class="seriesInfo">RFC 3971</span>, <span class="seriesInfo">DOI 10.17487/RFC3971</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3971">https://www.rfc-editor.org/info/rfc3971</a>&gt;</span>
+</dd>
+<dt id="RFC5227-en">[RFC5227]</dt>
+<dd class="break">
+<span class="refAuthor">Cheshire, S.</span>, <span></span><span class="refTitle">"IPv4 Address Conflict Detection"</span>, <span class="seriesInfo">RFC 5227</span>, <span class="seriesInfo">DOI 10.17487/RFC5227</span>, <time datetime="2008-07" class="refDate">July 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5227">https://www.rfc-editor.org/info/rfc5227</a>&gt;</span>
+</dd>
+<dt id="RFC6820-en">[RFC6820]</dt>
+<dd class="break">
+<span class="refAuthor">Narten, T.</span>, <span class="refAuthor">Karir, M.</span>, and <span class="refAuthor">I. Foo</span>, <span></span><span class="refTitle">"Address Resolution Problems in Large Data Center Networks"</span>, <span class="seriesInfo">RFC 6820</span>, <span class="seriesInfo">DOI 10.17487/RFC6820</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6820">https://www.rfc-editor.org/info/rfc6820</a>&gt;</span>
+</dd>
+<dt id="RFC6823-en">[RFC6823]</dt>
+<dd class="break">
+<span class="refAuthor">Ginsberg, L.</span>, <span class="refAuthor">Previdi, S.</span>, and <span class="refAuthor">M. Shand</span>, <span></span><span class="refTitle">"Advertising Generic Information in IS-IS"</span>, <span class="seriesInfo">RFC 6823</span>, <span class="seriesInfo">DOI 10.17487/RFC6823</span>, <time datetime="2012-12" class="refDate">December 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6823">https://www.rfc-editor.org/info/rfc6823</a>&gt;</span>
+</dd>
+<dt id="RFC7042-en">[RFC7042]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">J. Abley</span>, <span></span><span class="refTitle">"IANA Considerations and IETF Protocol and Documentation Usage for IEEE 802 Parameters"</span>, <span class="seriesInfo">BCP 141</span>, <span class="seriesInfo">RFC 7042</span>, <span class="seriesInfo">DOI 10.17487/RFC7042</span>, <time datetime="2013-10" class="refDate">October 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7042">https://www.rfc-editor.org/info/rfc7042</a>&gt;</span>
+</dd>
+<dt id="RFC7067-en">[RFC7067]</dt>
+<dd class="break">
+<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">I. Gashinsky</span>, <span></span><span class="refTitle">"Directory Assistance Problem and High-Level Design Proposal"</span>, <span class="seriesInfo">RFC 7067</span>, <span class="seriesInfo">DOI 10.17487/RFC7067</span>, <time datetime="2013-11" class="refDate">November 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7067">https://www.rfc-editor.org/info/rfc7067</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-11-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-11.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC826-ja">[RFC826]</dt>
+<dd class="break">
+<span class="refAuthor">Plummer, D.</span>, <span></span><span class="refTitle">"Ethernet Address Resolution Protocol: Or Converting Network Protocol Addresses to 48.bit Ethernet Address for Transmission on Ethernet Hardware"</span>, <span class="seriesInfo">STD 37</span>, <span class="seriesInfo">RFC 826</span>, <span class="seriesInfo">DOI 10.17487/RFC0826</span>, <time datetime="1982-11" class="refDate">November 1982</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc826">https://www.rfc-editor.org/info/rfc826</a>&gt;</span>
+</dd>
+<dt id="RFC903-ja">[RFC903]</dt>
+<dd class="break">
+<span class="refAuthor">Finlayson, R.</span>, <span class="refAuthor">Mann, T.</span>, <span class="refAuthor">Mogul, J.</span>, and <span class="refAuthor">M. Theimer</span>, <span></span><span class="refTitle">"A Reverse Address Resolution Protocol"</span>, <span class="seriesInfo">STD 38</span>, <span class="seriesInfo">RFC 903</span>, <span class="seriesInfo">DOI 10.17487/RFC0903</span>, <time datetime="1984-06" class="refDate">June 1984</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc903">https://www.rfc-editor.org/info/rfc903</a>&gt;</span>
+</dd>
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+<dt id="RFC2131-ja">[RFC2131]</dt>
+<dd class="break">
+<span class="refAuthor">Droms, R.</span>, <span></span><span class="refTitle">"Dynamic Host Configuration Protocol"</span>, <span class="seriesInfo">RFC 2131</span>, <span class="seriesInfo">DOI 10.17487/RFC2131</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2131">https://www.rfc-editor.org/info/rfc2131</a>&gt;</span>
+</dd>
+<dt id="RFC3315-ja">[RFC3315]</dt>
+<dd class="break">
+<span class="refAuthor">Droms, R., Ed.</span>, <span class="refAuthor">Bound, J.</span>, <span class="refAuthor">Volz, B.</span>, <span class="refAuthor">Lemon, T.</span>, <span class="refAuthor">Perkins, C.</span>, and <span class="refAuthor">M. Carney</span>, <span></span><span class="refTitle">"Dynamic Host Configuration Protocol for IPv6 (DHCPv6)"</span>, <span class="seriesInfo">RFC 3315</span>, <span class="seriesInfo">DOI 10.17487/RFC3315</span>, <time datetime="2003-07" class="refDate">July 2003</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3315">https://www.rfc-editor.org/info/rfc3315</a>&gt;</span>
+</dd>
+<dt id="RFC4861-ja">[RFC4861]</dt>
+<dd class="break">
+<span class="refAuthor">Narten, T.</span>, <span class="refAuthor">Nordmark, E.</span>, <span class="refAuthor">Simpson, W.</span>, and <span class="refAuthor">H. Soliman</span>, <span></span><span class="refTitle">"Neighbor Discovery for IP version 6 (IPv6)"</span>, <span class="seriesInfo">RFC 4861</span>, <span class="seriesInfo">DOI 10.17487/RFC4861</span>, <time datetime="2007-09" class="refDate">September 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4861">https://www.rfc-editor.org/info/rfc4861</a>&gt;</span>
+</dd>
+<dt id="RFC4862-ja">[RFC4862]</dt>
+<dd class="break">
+<span class="refAuthor">Thomson, S.</span>, <span class="refAuthor">Narten, T.</span>, and <span class="refAuthor">T. Jinmei</span>, <span></span><span class="refTitle">"IPv6 Stateless Address Autoconfiguration"</span>, <span class="seriesInfo">RFC 4862</span>, <span class="seriesInfo">DOI 10.17487/RFC4862</span>, <time datetime="2007-09" class="refDate">September 2007</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4862">https://www.rfc-editor.org/info/rfc4862</a>&gt;</span>
+</dd>
+<dt id="RFC6325-ja">[RFC6325]</dt>
+<dd class="break">
+<span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Dutt, D.</span>, <span class="refAuthor">Gai, S.</span>, and <span class="refAuthor">A. Ghanwani</span>, <span></span><span class="refTitle">"Routing Bridges (RBridges): Base Protocol Specification"</span>, <span class="seriesInfo">RFC 6325</span>, <span class="seriesInfo">DOI 10.17487/RFC6325</span>, <time datetime="2011-07" class="refDate">July 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6325">https://www.rfc-editor.org/info/rfc6325</a>&gt;</span>
+</dd>
+<dt id="RFC7172-ja">[RFC7172]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Zhang, M.</span>, <span class="refAuthor">Agarwal, P.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">D. Dutt</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Fine-Grained Labeling"</span>, <span class="seriesInfo">RFC 7172</span>, <span class="seriesInfo">DOI 10.17487/RFC7172</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7172">https://www.rfc-editor.org/info/rfc7172</a>&gt;</span>
+</dd>
+<dt id="RFC7357-ja">[RFC7357]</dt>
+<dd class="break">
+<span class="refAuthor">Zhai, H.</span>, <span class="refAuthor">Hu, F.</span>, <span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, and <span class="refAuthor">O. Stokes</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): End Station Address Distribution Information (ESADI) Protocol"</span>, <span class="seriesInfo">RFC 7357</span>, <span class="seriesInfo">DOI 10.17487/RFC7357</span>, <time datetime="2014-09" class="refDate">September 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7357">https://www.rfc-editor.org/info/rfc7357</a>&gt;</span>
+</dd>
+<dt id="RFC7780-ja">[RFC7780]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Zhang, M.</span>, <span class="refAuthor">Perlman, R.</span>, <span class="refAuthor">Banerjee, A.</span>, <span class="refAuthor">Ghanwani, A.</span>, and <span class="refAuthor">S. Gupta</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Clarifications, Corrections, and Updates"</span>, <span class="seriesInfo">RFC 7780</span>, <span class="seriesInfo">DOI 10.17487/RFC7780</span>, <time datetime="2016-02" class="refDate">February 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7780">https://www.rfc-editor.org/info/rfc7780</a>&gt;</span>
+</dd>
+<dt id="RFC7961-ja">[RFC7961]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">L. Yizhou</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Interface Addresses APPsub-TLV"</span>, <span class="seriesInfo">RFC 7961</span>, <span class="seriesInfo">DOI 10.17487/RFC7961</span>, <time datetime="2016-08" class="refDate">August 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7961">https://www.rfc-editor.org/info/rfc7961</a>&gt;</span>
+</dd>
+<dt id="RFC8171-ja">[RFC8171]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">Y. Li</span>, <span></span><span class="refTitle">"Transparent Interconnection of Lots of Links (TRILL): Edge Directory Assistance Mechanisms"</span>, <span class="seriesInfo">RFC 8171</span>, <span class="seriesInfo">DOI 10.17487/RFC8171</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8171">https://www.rfc-editor.org/info/rfc8171</a>&gt;</span>
+</dd>
+<dt id="RFC8174-ja">[RFC8174]</dt>
+<dd class="break">
+<span class="refAuthor">Leiba, B.</span>, <span></span><span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-11.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="IEEE802.1AE-ja">[IEEE802.1AE]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and metropolitan area networks: Media Access Control (MAC) Security"</span>, <span class="seriesInfo">IEEE Std 802.1AE</span>, </dd>
+<dt id="IEEE802.1Q-ja">[IEEE802.1Q]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and metropolitan area networks -- Bridges and Bridged Networks"</span>, <span class="seriesInfo">IEEE Std 802.1Q</span>, </dd>
+<dt id="RFC3756-ja">[RFC3756]</dt>
+<dd class="break">
+<span class="refAuthor">Nikander, P., Ed.</span>, <span class="refAuthor">Kempf, J.</span>, and <span class="refAuthor">E. Nordmark</span>, <span></span><span class="refTitle">"IPv6 Neighbor Discovery (ND) Trust Models and Threats"</span>, <span class="seriesInfo">RFC 3756</span>, <span class="seriesInfo">DOI 10.17487/RFC3756</span>, <time datetime="2004-05" class="refDate">May 2004</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3756">https://www.rfc-editor.org/info/rfc3756</a>&gt;</span>
+</dd>
+<dt id="RFC3971-ja">[RFC3971]</dt>
+<dd class="break">
+<span class="refAuthor">Arkko, J., Ed.</span>, <span class="refAuthor">Kempf, J.</span>, <span class="refAuthor">Zill, B.</span>, and <span class="refAuthor">P. Nikander</span>, <span></span><span class="refTitle">"SEcure Neighbor Discovery (SEND)"</span>, <span class="seriesInfo">RFC 3971</span>, <span class="seriesInfo">DOI 10.17487/RFC3971</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3971">https://www.rfc-editor.org/info/rfc3971</a>&gt;</span>
+</dd>
+<dt id="RFC5227-ja">[RFC5227]</dt>
+<dd class="break">
+<span class="refAuthor">Cheshire, S.</span>, <span></span><span class="refTitle">"IPv4 Address Conflict Detection"</span>, <span class="seriesInfo">RFC 5227</span>, <span class="seriesInfo">DOI 10.17487/RFC5227</span>, <time datetime="2008-07" class="refDate">July 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5227">https://www.rfc-editor.org/info/rfc5227</a>&gt;</span>
+</dd>
+<dt id="RFC6820-ja">[RFC6820]</dt>
+<dd class="break">
+<span class="refAuthor">Narten, T.</span>, <span class="refAuthor">Karir, M.</span>, and <span class="refAuthor">I. Foo</span>, <span></span><span class="refTitle">"Address Resolution Problems in Large Data Center Networks"</span>, <span class="seriesInfo">RFC 6820</span>, <span class="seriesInfo">DOI 10.17487/RFC6820</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6820">https://www.rfc-editor.org/info/rfc6820</a>&gt;</span>
+</dd>
+<dt id="RFC6823-ja">[RFC6823]</dt>
+<dd class="break">
+<span class="refAuthor">Ginsberg, L.</span>, <span class="refAuthor">Previdi, S.</span>, and <span class="refAuthor">M. Shand</span>, <span></span><span class="refTitle">"Advertising Generic Information in IS-IS"</span>, <span class="seriesInfo">RFC 6823</span>, <span class="seriesInfo">DOI 10.17487/RFC6823</span>, <time datetime="2012-12" class="refDate">December 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6823">https://www.rfc-editor.org/info/rfc6823</a>&gt;</span>
+</dd>
+<dt id="RFC7042-ja">[RFC7042]</dt>
+<dd class="break">
+<span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">J. Abley</span>, <span></span><span class="refTitle">"IANA Considerations and IETF Protocol and Documentation Usage for IEEE 802 Parameters"</span>, <span class="seriesInfo">BCP 141</span>, <span class="seriesInfo">RFC 7042</span>, <span class="seriesInfo">DOI 10.17487/RFC7042</span>, <time datetime="2013-10" class="refDate">October 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7042">https://www.rfc-editor.org/info/rfc7042</a>&gt;</span>
+</dd>
+<dt id="RFC7067-ja">[RFC7067]</dt>
+<dd class="break">
+<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Perlman, R.</span>, and <span class="refAuthor">I. Gashinsky</span>, <span></span><span class="refTitle">"Directory Assistance Problem and High-Level Design Proposal"</span>, <span class="seriesInfo">RFC 7067</span>, <span class="seriesInfo">DOI 10.17487/RFC7067</span>, <time datetime="2013-11" class="refDate">November 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7067">https://www.rfc-editor.org/info/rfc7067</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgments-en"></span><span id="acknowledgments-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgments-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgments-en" class="section-name selfRef">Acknowledgments</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgments-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgments-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">The authors would like to thank Igor Gashinsky and Sue Hares for
+their contributions.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">著者らは、Igor GashinskyとSue Haresの貢献に感謝します。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Yizhou Li</div>
+<div class="author-org">Huawei Technologies</div>
+<div class="author-postal"><span class="street-address">101 Software Avenue,</span></div>
+<div class="author-postal">
+<span class="locality">Nanjing</span> <span class="postal-code">210012</span>
+</div>
+<div class="author-postal"><span class="country-name">China</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+862556625375">+86-25-56625375</a>
+</div>
+<div class="author-email"><a href="mailto:liyizhou@huawei.com">liyizhou@huawei.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Yizhou Li</div>
+<div class="author-org">Huawei Technologies</div>
+<div class="author-postal"><span class="street-address">101 Software Avenue,</span></div>
+<div class="author-postal">
+<span class="locality">Nanjing</span> <span class="postal-code">210012</span>
+</div>
+<div class="author-postal"><span class="country-name">China</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+862556625375">+86-25-56625375</a>
+</div>
+<div class="author-email"><a href="mailto:liyizhou@huawei.com">liyizhou@huawei.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Donald Eastlake 3rd</div>
+<div class="author-org">Huawei R&amp;D USA</div>
+<div class="author-postal"><span class="street-address">155 Beaver Street</span></div>
+<div class="author-postal">
+<span class="locality">Milford</span>, <span class="region">MA</span> <span class="postal-code">01757</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+15083332270">+1-508-333-2270</a>
+</div>
+<div class="author-email"><a href="mailto:d3e3e3@gmail.com">d3e3e3@gmail.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Donald Eastlake 3rd</div>
+<div class="author-org">Huawei R&amp;D USA</div>
+<div class="author-postal"><span class="street-address">155 Beaver Street</span></div>
+<div class="author-postal">
+<span class="locality">Milford</span>, <span class="region">MA</span> <span class="postal-code">01757</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+15083332270">+1-508-333-2270</a>
+</div>
+<div class="author-email"><a href="mailto:d3e3e3@gmail.com">d3e3e3@gmail.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Linda Dunbar</div>
+<div class="author-org">Huawei Technologies</div>
+<div class="author-postal"><span class="street-address">5430 Legacy Drive, Suite #175</span></div>
+<div class="author-postal">
+<span class="locality">Plano</span>, <span class="region">TX</span> <span class="postal-code">75024</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+14692775840">+1-469-277-5840</a>
+</div>
+<div class="author-email"><a href="mailto:ldunbar@huawei.com">ldunbar@huawei.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Linda Dunbar</div>
+<div class="author-org">Huawei Technologies</div>
+<div class="author-postal"><span class="street-address">5430 Legacy Drive, Suite #175</span></div>
+<div class="author-postal">
+<span class="locality">Plano</span>, <span class="region">TX</span> <span class="postal-code">75024</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-phone">
+<span>Phone:</span> <a href="tel:+14692775840">+1-469-277-5840</a>
+</div>
+<div class="author-email"><a href="mailto:ldunbar@huawei.com">ldunbar@huawei.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Radia Perlman</div>
+<div class="author-org">Dell EMC</div>
+<div class="author-postal"><span class="street-address">176 South Street</span></div>
+<div class="author-postal">
+<span class="locality">Hopkinton</span>, <span class="region">MA</span> <span class="postal-code">01748</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:Radia@alum.mit.edu">Radia@alum.mit.edu</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Radia Perlman</div>
+<div class="author-org">Dell EMC</div>
+<div class="author-postal"><span class="street-address">176 South Street</span></div>
+<div class="author-postal">
+<span class="locality">Hopkinton</span>, <span class="region">MA</span> <span class="postal-code">01748</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:Radia@alum.mit.edu">Radia@alum.mit.edu</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Mohammed Umair</div>
+<div class="author-org">Cisco</div>
+<div class="author-postal"><span class="street-address">Cessna Business Park, Kadubeesanahalli Village, Hobli,</span></div>
+<div class="author-postal"><span class="street-address">Sarjapur, Varthur Main Road, Marathahalli,</span></div>
+<div class="author-postal">
+<span class="locality">Bengaluru</span>, <span class="region">Karnataka</span> <span class="postal-code">560087</span>
+</div>
+<div class="author-postal"><span class="country-name">India</span></div>
+<div class="author-email"><a href="mailto:mohammed.umair2@gmail.com">mohammed.umair2@gmail.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Mohammed Umair</div>
+<div class="author-org">Cisco</div>
+<div class="author-postal"><span class="street-address">Cessna Business Park, Kadubeesanahalli Village, Hobli,</span></div>
+<div class="author-postal"><span class="street-address">Sarjapur, Varthur Main Road, Marathahalli,</span></div>
+<div class="author-postal">
+<span class="locality">Bengaluru</span>, <span class="region">Karnataka</span> <span class="postal-code">560087</span>
+</div>
+<div class="author-postal"><span class="country-name">India</span></div>
+<div class="author-email"><a href="mailto:mohammed.umair2@gmail.com">mohammed.umair2@gmail.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

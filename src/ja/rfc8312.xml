@@ -1,0 +1,849 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="info" docName="draft-ietf-tcpm-cubic-07" indexInclude="true" number="8312" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tcpm-cubic-07" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8312" rel="alternate"/>
+  <front>
+    <title>高速長距離ネットワーク向けのCUBIC</title>
+    <seriesInfo name="RFC" value="8312" stream="IETF"/>
+    <author fullname="I. Rhee" initials="I." surname="Rhee">
+      <organization showOnFrontPage="true">NCSU</organization>
+      <address/>
+    </author>
+    <author fullname="L. Xu" initials="L." surname="Xu">
+      <organization showOnFrontPage="true">UNL</organization>
+      <address/>
+    </author>
+    <author fullname="S. Ha" initials="S." surname="Ha">
+      <organization showOnFrontPage="true">Colorado</organization>
+      <address/>
+    </author>
+    <author fullname="A. Zimmermann" initials="A." surname="Zimmermann">
+      <address/>
+    </author>
+    <author fullname="L. Eggert" initials="L." surname="Eggert">
+      <organization showOnFrontPage="true">NetApp</organization>
+      <address/>
+    </author>
+    <author fullname="R. Scheffenegger" initials="R." surname="Scheffenegger">
+      <organization showOnFrontPage="true">NetApp</organization>
+      <address/>
+    </author>
+    <date year="2018" month="February"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">CUBICは、現在のTCP標準の拡張です。CUBICが現在のTCP標準と異なるのは、送信者側の輻輳制御アルゴリズムだけです。特に、CUBICは、高速かつ長距離のネットワークにおけるスケーラビリティーと安定性を向上させるために、現在のTCP標準の線形なウィンドウ増加関数の代わりに3次関数を使用します。CUBICとその前身のアルゴリズムは、Linuxでデフォルトとして採用され、長年にわたって使用されてきました。この文書は、第三者による実装を可能にし、CUBICの性能に関する実験を通じてコミュニティーのフィードバックを募るために、CUBICの仕様を提供します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。RFC 7841のセクション2を参照してください。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="https://www.rfc-editor.org/info/rfc8312" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2018 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="https://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions">表記規則</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-design-principles-of-cubic">CUBICの設計原則</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-cubic-congestion-control">CUBICの輻輳制御</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-window-increase-function">ウィンドウ増加関数</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-tcp-friendly-region">TCPフレンドリー領域</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-concave-region">凹領域</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-convex-region">凸領域</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-multiplicative-decrease">乗算的減少</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.6.1"><xref derivedContent="4.6" format="counter" sectionFormat="of" target="section-4.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fast-convergence">高速収束</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.7">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.7.1"><xref derivedContent="4.7" format="counter" sectionFormat="of" target="section-4.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-timeout">タイムアウト</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.8">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.8.1"><xref derivedContent="4.8" format="counter" sectionFormat="of" target="section-4.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-slow-start">スロースタート</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discussion">議論</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.5.2">
+            <li pn="section-toc.1-1.5.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1.1"><xref derivedContent="5.1" format="counter" sectionFormat="of" target="section-5.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fairness-to-standard-tcp">標準TCPに対する公平性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.2.1"><xref derivedContent="5.2" format="counter" sectionFormat="of" target="section-5.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-spare-capacity">余剰容量の利用</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.3.1"><xref derivedContent="5.3" format="counter" sectionFormat="of" target="section-5.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-difficult-environments">困難な環境</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.4.1"><xref derivedContent="5.4" format="counter" sectionFormat="of" target="section-5.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-investigating-a-range-of-environments">さまざまな環境の調査</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.5.1"><xref derivedContent="5.5" format="counter" sectionFormat="of" target="section-5.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-protection-against-congestion-collapse">輻輳崩壊に対する保護</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.6">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.6.1"><xref derivedContent="5.6" format="counter" sectionFormat="of" target="section-5.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-fairness-within-the-alternative-congestion-control-algorithm">代替の輻輳制御アルゴリズム内での公平性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.7">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.7.1"><xref derivedContent="5.7" format="counter" sectionFormat="of" target="section-5.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-performance-with-misbehaving-nodes-and-outside-attackers">不正な振る舞いをするノードと外部の攻撃者がいる場合の性能</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.8">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.8.1"><xref derivedContent="5.8" format="counter" sectionFormat="of" target="section-5.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-behavior-for-application-limited-flows">アプリケーション制限されたフローに対する振る舞い</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.9">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.9.1"><xref derivedContent="5.9" format="counter" sectionFormat="of" target="section-5.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-responses-to-sudden-or-transient-events">突発的または一時的なイベントへの応答</xref></t>
+            </li>
+            <li pn="section-toc.1-1.5.10">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.10.1"><xref derivedContent="5.10" format="counter" sectionFormat="of" target="section-5.10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-incremental-deployment">段階的な展開</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+            <li pn="section-toc.1-1.8.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.8.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.a">
+            <t indent="0" pn="section-toc.1-1.a.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.b">
+            <t indent="0" pn="section-toc.1-1.b.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">高速長距離ネットワークにおけるTCPの利用率の低さの問題は、<xref target="K03" format="default" sectionFormat="of" derivedContent="K03"/>と<xref target="RFC3649" format="default" sectionFormat="of" derivedContent="RFC3649"/>で詳しく記述されています。この問題は、帯域幅遅延積（bandwidth-delay product、BDP）の大きいネットワークにおいて、輻輳イベントのあとの輻輳ウィンドウの増加が遅いことから生じます。<xref target="HKLRX06" format="default" sectionFormat="of" derivedContent="HKLRX06"/>は、この問題が、輻輳ウィンドウサイズが数百パケットを超える範囲でさえ頻繁に観測されることを示しています。この問題は、TCP-RENO<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>、TCP-NewReno<xref target="RFC6582" format="default" sectionFormat="of" derivedContent="RFC6582"/><xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>、SCTP<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>、TFRC<xref target="RFC5348" format="default" sectionFormat="of" derivedContent="RFC5348"/>を含む、RenoスタイルのすべてのTCP標準とその変種に等しく当てはまります。これらはウィンドウの増加に同じ線形増加関数を使用しており、以下ではこれらを総称して「標準TCP（Standard TCP）」と呼びます。</t>
+      <t indent="0" pn="section-1-2"><xref target="HRX08" format="default" sectionFormat="of" derivedContent="HRX08"/>で最初に提案されたCUBICは、この問題を解決するための標準TCPの輻輳制御アルゴリズムの修正です。この文書は、CUBICの最新の仕様を記述します。具体的には、CUBICは、高速かつ長距離のネットワークにおけるスケーラビリティーと安定性を向上させるために、標準TCPの線形なウィンドウ増加関数の代わりに3次関数を使用します。</t>
+      <t indent="0" pn="section-1-3">CUBICの前身であるBinary Increase Congestion Control（BIC-TCP）<xref target="XHR04" format="default" sectionFormat="of" derivedContent="XHR04"/>は、2005年にLinuxのデフォルトのTCP輻輳制御アルゴリズムとして選ばれ、インターネットコミュニティー全体で数年間使用されてきました。CUBICは、BIC-TCPと同様のウィンドウ増加関数を使用し、安定性、ウィンドウのスケーラビリティー、RTT公平性といったBIC-TCPの長所を維持しつつ、帯域幅の使用においてBIC-TCPよりも積極性を抑え、標準TCPに対してより公平になるように設計されています。CUBICは、すでにLinuxのデフォルトのTCP輻輳制御アルゴリズムとしてBIC-TCPに取って代わり、Linuxによって世界中に展開されています。さまざまなインターネットのシナリオでの広範なテストを通じて、私たちは、CUBICがグローバルなインターネットでのテストと展開に対して安全であると考えています。</t>
+      <t indent="0" pn="section-1-4">以降のセクションでは、まずCUBICの設計原則を簡単に説明し、次にCUBICの厳密な仕様を示し、最後に<xref target="RFC5033" format="default" sectionFormat="of" derivedContent="RFC5033"/>で規定されたガイドラインに従ってCUBICの安全性に関する機能を議論します。</t>
+    </section>
+    <section anchor="conventions" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions">表記規則</name>
+      <t indent="0" pn="section-2-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+BCP 14 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/> <xref target="RFC8174" format="default" sectionFormat="of" derivedContent="RFC8174"/>に記載されているとおりに解釈されるものとします。
+ただし、ここに示すようにすべて大文字で表示される場合に限ります。</t>
+    </section>
+    <section anchor="design-principles-of-cubic" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-design-principles-of-cubic">CUBICの設計原則</name>
+      <t indent="0" pn="section-3-1">CUBICは、次の設計原則に従って設計されています。</t>
+      <ul bare="false" empty="true" indent="3" spacing="normal" pn="section-3-2">
+        <li pn="section-3-2.1">原則1：ネットワークの利用率と安定性を向上させるために、CUBICは凸関数だけを使用するのではなく、3次関数の凹型と凸型の両方の形状を使用して輻輳ウィンドウサイズを増加させます。</li>
+        <li pn="section-3-2.2">原則2：TCPフレンドリーであるために、CUBICは、標準TCPがうまく機能するRTTが短く帯域幅が小さいネットワークでは、標準TCPのように振る舞うように設計されています。</li>
+        <li pn="section-3-2.3">原則3：RTT公平性のために、CUBICは、RTTの異なるフロー間で線形な帯域幅の共有を達成するように設計されています。</li>
+        <li pn="section-3-2.4">原則4：CUBICは、スケーラビリティーと収束速度のバランスをとるために、ウィンドウの乗算的減少係数を適切に設定します。</li>
+      </ul>
+      <t indent="0" pn="section-3-3">原則1：ネットワークの利用率と安定性を向上させるために、CUBIC<xref target="HRX08" format="default" sectionFormat="of" derivedContent="HRX08"/>は、最後の輻輳イベントからの経過時間を変数とする3次のウィンドウ増加関数を使用します。標準TCPに代わる輻輳制御アルゴリズムのほとんどが凸関数を使用して輻輳ウィンドウを増加させるのに対し、CUBICはウィンドウの増加に3次関数の凹型と凸型の両方の形状を使用します。重複ACKまたはExplicit Congestion Notification-Echo（ECN-Echo）ACK<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>によって検出された輻輳イベントに応じてウィンドウを縮小したあと、CUBICは輻輳イベントを受け取った時点の輻輳ウィンドウサイズをW_maxとして記録し、輻輳ウィンドウの乗算的減少を行います。輻輳回避に入ると、CUBICは3次関数の凹型の形状を使用して輻輳ウィンドウの増加を開始します。3次関数は、W_maxでプラトー（平坦部）を持つように設定されるため、凹型のウィンドウ増加はウィンドウサイズがW_maxになるまで続きます。その後、3次関数は凸型の形状に変わり、凸型のウィンドウ増加が始まります。このスタイルのウィンドウ調整（凹型のあとに凸型）は、高いネットワーク利用率を維持しつつ、アルゴリズムの安定性を向上させます<xref target="CEHRX07" format="default" sectionFormat="of" derivedContent="CEHRX07"/>。これは、ネットワーク利用率が最も高いとみなされるW_maxの周辺で、ウィンドウサイズがほぼ一定のままとなり、プラトーを形成するためです。定常状態では、CUBICのウィンドウサイズのサンプルのほとんどがW_maxに近くなり、高いネットワーク利用率と安定性を促進します。凸関数のみを使用して輻輳ウィンドウサイズを増加させる輻輳制御アルゴリズムは、W_maxの周辺で増加量が最大になるため、ネットワークの飽和点の周辺で多数のパケットバーストを引き起こし、頻繁な全体的な損失同期（global loss synchronization）を引き起こす可能性が高いことに注意してください。</t>
+      <t indent="0" pn="section-3-4">原則2：CUBICは、標準TCPに対するフローごとの公平性を促進します。標準TCPは、RTTが短く帯域幅が小さい（またはBDPが小さい）ネットワークではうまく機能することに注意してください。スケーラビリティーの問題があるのは、RTTが長く帯域幅が大きい（またはBDPが大きい）ネットワークだけです。フロー単位で標準TCPに対してフレンドリーになるように設計された、標準TCPに代わる輻輳制御アルゴリズムは、BDPが大きいネットワークよりもBDPが小さいネットワークで、輻輳ウィンドウをより控えめに増加させるように動作することが求められます。CUBICの積極性は主にウィンドウ縮小前の最大ウィンドウサイズに依存し、これはBDPが大きいネットワークよりもBDPが小さいネットワークのほうが小さくなります。したがって、CUBICは、BDPが大きいネットワークよりもBDPが小さいネットワークで、輻輳ウィンドウをより控えめに増加させます。さらに、CUBICの3次関数による輻輳ウィンドウの増加が標準TCPよりも控えめになる場合、CUBICは単純に標準TCPのウィンドウサイズに従い、BDPが小さいネットワークでCUBICが少なくとも標準TCPと同じスループットを達成することを保証します。CUBICが標準TCPのように振る舞うこの領域を、私たちは「TCPフレンドリー領域（TCP-friendly region）」と呼びます。</t>
+      <t indent="0" pn="section-3-5">原則3：RTTが異なる2つのCUBICフローのスループット比は、RTT比の逆数に線形に比例します。ここで、フローのスループットは、おおよそ輻輳ウィンドウのサイズをRTTで割ったものです。具体的には、CUBICはTCPフレンドリー領域の外ではRTTに依存しないウィンドウ増加率を維持するため、RTTの異なるフローがTCPフレンドリー領域の外で動作するとき、定常状態では同程度の輻輳ウィンドウサイズを持ちます。この線形なスループット比という考え方は、パケット損失が個々のフローのレートに依存しない、統計的多重化の度合いが高い環境における標準TCPのものと同様です。しかし、統計的多重化の度合いが低い環境では、RTTの異なる標準TCPフローのスループット比は、RTT比の逆数の2乗に比例します<xref target="XHR04" format="default" sectionFormat="of" derivedContent="XHR04"/>。CUBICは、統計的多重化の度合いに依存しない線形なスループット比を常に保証します。これは標準TCPに対する改善です。RTTの異なるフローの具体的なスループット比についてはコンセンサスがありませんが、私たちは、有線のインターネットでは、等しいスループット（つまり、RTTの異なるフローに対して同じスループット）や、より高次のスループット比（たとえば、統計的多重化の度合いが低い環境における標準TCPの2乗のスループット比）よりも、線形なスループット比を使用するほうが合理的であると考えています。</t>
+      <t indent="0" pn="section-3-6">原則4：スケーラビリティーと収束速度のバランスをとるために、標準TCPが0.5を使用するのに対し、CUBICはウィンドウの乗算的減少係数を0.7に設定します。これはCUBICのスケーラビリティーを向上させますが、この決定の副作用として、特に統計的多重化の度合いが低い環境では収束が遅くなります。この設計上の選択は、HighSpeed TCP（HSTCP）<xref target="RFC3649" format="default" sectionFormat="of" derivedContent="RFC3649"/>の著者がほかの研究者（たとえば<xref target="GV02" format="default" sectionFormat="of" derivedContent="GV02"/>）とともに行った、「現在のインターネットは、統計的多重化の度合いが高く、損失同期の頻度が低い、より非同期なものになっている」という観察に従ったものです。このような環境では、厳密なMultiplicative-Increase Multiplicative-Decrease（MIMD）でさえ収束できます。同じRTTを持つCUBICフローは、統計的多重化に依存せず常に同じスループットに収束するため、アルゴリズム内の公平性を達成します。また、私たちは、十分な統計的多重化がある環境では、CUBICフローの収束速度が妥当であることも確認しています。</t>
+    </section>
+    <section anchor="cubic-congestion-control" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-cubic-congestion-control">CUBICの輻輳制御</name>
+      <t indent="0" pn="section-4-1">この文書におけるすべてのウィンドウサイズの単位は、最大セグメントサイズ（MSS）のセグメントであり、すべての時間の単位は秒です。cwndはフローの輻輳ウィンドウサイズを表し、ssthreshはスロースタートしきい値を表すものとします。</t>
+      <section anchor="window-increase-function" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-window-increase-function">ウィンドウ増加関数</name>
+        <t indent="0" pn="section-4.1-1">CUBICは、ACKの受信時にのみ輻輳ウィンドウを増加させることで、標準TCPの確認応答（ACK）クロッキングを維持します。CUBICは、TCP-NewReno<xref target="RFC6582" format="default" sectionFormat="of" derivedContent="RFC6582"/><xref target="RFC6675" format="default" sectionFormat="of" derivedContent="RFC6675"/>のような、TCPの高速リカバリーと高速再送には何の変更も加えません。重複ACKによってパケット損失が検出されるか、ECN-Echoフラグ付きのACK<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>によってネットワークの輻輳が検出される輻輳イベントのあとの輻輳回避中に、CUBICは標準TCPのウィンドウ増加関数を変更します。W_maxを、最後の輻輳イベントでウィンドウが縮小される直前のウィンドウサイズとします。</t>
+        <t indent="0" pn="section-4.1-2">CUBICは、次のウィンドウ増加関数を使用します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.1-3"><![CDATA[
+    W_cubic(t) = C*(t-K)^3 + W_max (Eq. 1)
+]]></artwork>
+        <t indent="0" pn="section-4.1-4">ここで、Cは、BDPが大きいネットワークにおけるウィンドウ増加の積極性を決定するための固定の定数です。tは、現在の輻輳回避の開始からの経過時間です。Kは、それ以上の輻輳イベントがない場合に上記の関数が現在のウィンドウサイズをW_maxまで増加させるのにかかる時間であり、次の式を使用して計算されます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.1-5"><![CDATA[
+    K = cubic_root(W_max*(1-beta_cubic)/C) (Eq. 2)
+]]></artwork>
+        <t indent="0" pn="section-4.1-6">ここで、beta_cubicはCUBICの乗算的減少係数です。つまり、輻輳イベントが検出されると、CUBICはcwndをW_cubic(0)=W_max*beta_cubicに縮小します。beta_cubicの設定方法については<xref target="section-4.5" format="default" sectionFormat="of" derivedContent="Section 4.5"/>で、Cの設定方法については<xref target="section-5" format="default" sectionFormat="of" derivedContent="Section 5"/>で議論します。</t>
+        <t indent="0" pn="section-4.1-7">輻輳回避中にACKを受信すると、CUBICは式1を使用して次のRTT期間におけるウィンドウ増加率を計算します。CUBICは、W_cubic(t+RTT)を輻輳ウィンドウの目標値の候補として設定します。ここで、RTTは標準TCPによって計算される加重平均RTTです。</t>
+        <t indent="0" pn="section-4.1-8">現在の輻輳ウィンドウサイズcwndの値に応じて、CUBICは3つの異なるモードで動作します。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-4.1-9">
+          <li pn="section-4.1-9.1" derivedCounter="1.">TCPフレンドリー領域。CUBICが少なくとも標準TCPと同じスループットを達成することを保証します。</li>
+          <li pn="section-4.1-9.2" derivedCounter="2.">凹領域。CUBICがTCPフレンドリー領域になく、cwndがW_max未満の場合です。</li>
+          <li pn="section-4.1-9.3" derivedCounter="3.">凸領域。CUBICがTCPフレンドリー領域になく、cwndがW_maxより大きい場合です。</li>
+        </ol>
+        <t indent="0" pn="section-4.1-10">以下では、各領域でCUBICが行う厳密な動作を説明します。</t>
+      </section>
+      <section anchor="tcp-friendly-region" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-tcp-friendly-region">TCPフレンドリー領域</name>
+        <t indent="0" pn="section-4.2-1">標準TCPは、特定の種類のネットワーク、たとえばRTTが短く帯域幅が小さい（またはBDPが小さい）ネットワークではうまく機能します。これらのネットワークでは、CUBICが少なくとも標準TCPと同じスループットを達成することを保証するために、TCPフレンドリー領域を使用します。</t>
+        <t indent="0" pn="section-4.2-2">TCPフレンドリー領域は、<xref target="FHP00" format="default" sectionFormat="of" derivedContent="FHP00"/>で説明されている分析に従って設計されています。この分析は、加算的増加係数alpha_aimd（RTTあたりのセグメント数）と乗算的減少係数beta_aimdを持つ、加算的増加・乗算的減少（Additive Increase and Multiplicative Decrease、AIMD）アルゴリズムの性能を調べたもので、これをAIMD(alpha_aimd, beta_aimd)と表記します。具体的には、AIMD(alpha_aimd, beta_aimd)の平均輻輳ウィンドウサイズは、式3を使用して計算できます。この分析は、alpha_aimd=3*(1-beta_aimd)/(1+beta_aimd)としたAIMD(alpha_aimd, beta_aimd)が、AIMD(1, 0.5)を使用する標準TCPと同じ平均ウィンドウサイズを達成することを示しています。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.2-3"><![CDATA[
+    AVG_W_aimd = [ alpha_aimd * (1+beta_aimd) /
+                   (2*(1-beta_aimd)*p) ]^0.5 (Eq. 3)
+]]></artwork>
+        <t indent="0" pn="section-4.2-4">上記の分析に基づき、CUBICは式4を使用して、標準TCPと同じ平均ウィンドウサイズを達成する、alpha_aimd=3*(1-beta_cubic)/(1+beta_cubic)かつbeta_aimd=beta_cubicとしたAIMD(alpha_aimd, beta_aimd)のウィンドウサイズW_estを推定します。輻輳回避中にACKを受信したとき（cwndはW_maxより大きいことも小さいこともあります）、CUBICはW_cubic(t)がW_est(t)未満であるかどうかを確認します。そうであれば、CUBICはTCPフレンドリー領域にあり、ACKを受信するたびにcwndをW_est(t)に設定<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.2-5"><![CDATA[
+    W_est(t) = W_max*beta_cubic +
+                [3*(1-beta_cubic)/(1+beta_cubic)] * (t/RTT) (Eq. 4)
+]]></artwork>
+      </section>
+      <section anchor="concave-region" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-concave-region">凹領域</name>
+        <t indent="0" pn="section-4.3-1">輻輳回避中にACKを受信したとき、CUBICがTCPフレンドリー領域になく、cwndがW_max未満であれば、CUBICは凹領域にあります。この領域では、受信したACKごとに、cwndを(W_cubic(t+RTT) - cwnd)/cwndだけ増加させ<bcp14>なければなりません（MUST）</bcp14>。ここで、W_cubic(t+RTT)は式1を使用して計算されます。</t>
+      </section>
+      <section anchor="convex-region" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-convex-region">凸領域</name>
+        <t indent="0" pn="section-4.4-1">輻輳回避中にACKを受信したとき、CUBICがTCPフレンドリー領域になく、cwndがW_max以上であれば、CUBICは凸領域にあります。凸領域は、最後の輻輳イベント以降にネットワークの状態が変動した可能性があることを示しており、いくつかのフローが離脱して利用可能な帯域幅が増えたことを示唆している可能性があります。インターネットは非常に非同期的であるため、利用可能な帯域幅に大きな変化をもたらさない程度の変動は常に起こり得ます。この領域では、CUBICはウィンドウサイズを非常にゆっくりと増加させることで、非常に慎重に振る舞います。凸型の形状により、ウィンドウは最初は非常にゆっくりと増加し、その増加率を徐々に高めていきます。CUBICは新しいW_maxを探索しているため、私たちはこの領域を「最大探索フェーズ（maximum probing phase）」とも呼びます。この領域では、受信したACKごとに、cwndを(W_cubic(t+RTT) - cwnd)/cwndだけ増加させ<bcp14>なければなりません（MUST）</bcp14>。ここで、W_cubic(t+RTT)は式1を使用して計算されます。</t>
+      </section>
+      <section anchor="multiplicative-decrease" numbered="true" removeInRFC="false" toc="include" pn="section-4.5">
+        <name slugifiedName="name-multiplicative-decrease">乗算的減少</name>
+        <t indent="0" pn="section-4.5-1">重複ACKによってパケット損失が検出されるか、ECN-Echo ACKによってネットワークの輻輳が検出されると、CUBICはW_max、cwnd、ssthreshを次のように更新します。パラメーターbeta_cubicは0.7に設定<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-4.5-2"><![CDATA[
+   W_max = cwnd;                 // 縮小前のウィンドウサイズを保存
+   ssthresh = cwnd * beta_cubic; // 新しいスロースタートしきい値
+   ssthresh = max(ssthresh, 2);  // しきい値は少なくとも2 MSS
+   cwnd = cwnd * beta_cubic;     // ウィンドウの縮小
+]]></sourcecode>
+        <t indent="0" pn="section-4.5-3">beta_cubicを0.5より大きい値に設定することの副作用は、収束が遅くなることです。私たちは、beta_cubicをより適応的に設定すれば収束を速められる可能性があるものの、CUBICの分析がはるかに難しくなると考えています。このbeta_cubicの適応的な調整は、CUBICの次のバージョンでの検討項目です。</t>
+      </section>
+      <section anchor="fast-convergence" numbered="true" removeInRFC="false" toc="include" pn="section-4.6">
+        <name slugifiedName="name-fast-convergence">高速収束</name>
+        <t indent="0" pn="section-4.6-1">CUBICの収束速度を向上させるために、CUBICにヒューリスティックを追加します。新しいフローがネットワークに参加したとき、既存のフローがネットワークの帯域幅をすべて使用していた場合、既存のフローは、新しいフローに増加の余地を与えるために、帯域幅の一部を手放す必要があります。既存のフローによるこの帯域幅の解放を速めるために、「高速収束（fast convergence）」と呼ばれる次のメカニズムを実装<bcp14>すべきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-4.6-2">高速収束では、輻輳イベントが発生したとき、輻輳ウィンドウを縮小する前に、フローは現在の輻輳イベントのためにW_maxを更新する前のW_maxの最後の値を記憶します。このW_maxの最後の値をW_last_maxと呼ぶことにします。</t>
+        <sourcecode type="pseudocode" markers="false" pn="section-4.6-3"><![CDATA[
+   if (W_max < W_last_max){ // ほかのフローに余地を与えるべきか
+       W_last_max = W_max;             // 最後のW_maxを記憶
+       W_max = W_max*(1.0+beta_cubic)/2.0; // W_maxをさらに縮小
+   } else {
+       W_last_max = W_max              // 最後のW_maxを記憶
+   }
+]]></sourcecode>
+        <t indent="0" pn="section-4.6-4">輻輳イベントにおいて、W_maxの現在の値がW_last_max未満であれば、これは、利用可能な帯域幅の変化によって、このフローが経験する飽和点が下がりつつあることを示しています。そこで、W_maxをさらに縮小することで、このフローがより多くの帯域幅を解放できるようにします。縮小されたW_maxによってフローはより早くプラトーに達するため、この動作は、このフローが輻輳ウィンドウを増加させる時間を実質的に長くします。これにより、新しいフローが輻輳ウィンドウサイズを追いつかせるための時間がより多く得られます。</t>
+        <t indent="0" pn="section-4.6-5">高速収束は、複数のCUBICフローがあるネットワーク環境向けに設計されています。CUBICフローが1つだけで、ほかのトラフィックがないネットワーク環境では、高速収束を無効に<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      </section>
+      <section anchor="timeout" numbered="true" removeInRFC="false" toc="include" pn="section-4.7">
+        <name slugifiedName="name-timeout">タイムアウト</name>
+        <t indent="0" pn="section-4.7-1">タイムアウトの場合、CUBICは標準TCPに従ってcwndを縮小します<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>。ただし、ssthreshは、標準TCP<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>とは異なり、beta_cubicを使用して設定します（<xref target="section-4.5" format="default" sectionFormat="of" derivedContent="Section 4.5"/>と同じです）。</t>
+        <t indent="0" pn="section-4.7-2">タイムアウト後の最初の輻輳回避の間、CUBICは式1を使用して輻輳ウィンドウサイズを増加させます。ここで、tは現在の輻輳回避の開始からの経過時間であり、Kは0に設定され、W_maxは現在の輻輳回避の開始時点の輻輳ウィンドウサイズに設定されます。</t>
+      </section>
+      <section anchor="slow-start" numbered="true" removeInRFC="false" toc="include" pn="section-4.8">
+        <name slugifiedName="name-slow-start">スロースタート</name>
+        <t indent="0" pn="section-4.8-1">cwndがssthresh以下のとき、CUBICはスロースタートアルゴリズムを使用<bcp14>しなければなりません（MUST）</bcp14>。スロースタートアルゴリズムのうち、CUBICは、一般的なネットワークでは標準TCPのスロースタート<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>を、高速長距離ネットワークでは限定スロースタート（limited slow start）<xref target="RFC3742" format="default" sectionFormat="of" derivedContent="RFC3742"/>またはハイブリッドスロースタート（hybrid slow start）<xref target="HR08" format="default" sectionFormat="of" derivedContent="HR08"/>を選択<bcp14>してもよいです（MAY）</bcp14>。</t>
+        <t indent="0" pn="section-4.8-2">CUBICがハイブリッドスロースタート<xref target="HR08" format="default" sectionFormat="of" derivedContent="HR08"/>を実行する場合、パケット損失を一切発生させずに最初のスロースタートを終了することがあり、そのときW_maxは未定義です。この特別な場合には、CUBICは輻輳回避に切り替え、式1を使用して輻輳ウィンドウサイズを増加させます。ここで、tは現在の輻輳回避の開始からの経過時間であり、Kは0に設定され、W_maxは現在の輻輳回避の開始時点の輻輳ウィンドウサイズに設定されます。</t>
+      </section>
+    </section>
+    <section anchor="discussion" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-discussion">議論</name>
+      <t indent="0" pn="section-5-1">このセクションでは、<xref target="RFC5033" format="default" sectionFormat="of" derivedContent="RFC5033"/>で規定されたガイドラインに従って、CUBICの安全性に関する機能をさらに議論します。</t>
+      <t indent="0" pn="section-5-2">連続する2つのパケット損失の間のパケット数が常に1/pである決定論的な損失モデルでは、CUBICは常に凹型のウィンドウ形状で動作するため、CUBICの性能分析が大幅に単純になります。CUBICの平均ウィンドウサイズは、次の関数によって求めることができます。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-5-3"><![CDATA[
+    AVG_W_cubic = [C*(3+beta_cubic)/(4*(1-beta_cubic))]^0.25 *
+                    (RTT^0.75) / (p^0.75) (Eq. 5)
+]]></artwork>
+      <t indent="0" pn="section-5-4">beta_cubicを0.7に設定すると、上記の式は次のようになります。</t>
+      <artwork name="" type="" align="left" alt="" pn="section-5-5"><![CDATA[
+    AVG_W_cubic = (C*3.7/1.2)^0.25 * (RTT^0.75) / (p^0.75) (Eq. 6)
+]]></artwork>
+      <t indent="0" pn="section-5-6">次のサブセクションでは、式6を使用してCの値を決定します。</t>
+      <section anchor="fairness-to-standard-tcp" numbered="true" removeInRFC="false" toc="include" pn="section-5.1">
+        <name slugifiedName="name-fairness-to-standard-tcp">標準TCPに対する公平性</name>
+        <t indent="0" pn="section-5.1-1">標準TCPが利用可能な帯域幅を適度に利用できる環境では、CUBICはこの状態を大きく変えることはありません。</t>
+        <t indent="0" pn="section-5.1-2">標準TCPは、次の2種類のネットワークでうまく機能します。</t>
+        <ol indent="adaptive" spacing="normal" start="1" type="1" pn="section-5.1-3">
+          <li pn="section-5.1-3.1" derivedCounter="1.">帯域幅遅延積（BDP）が小さいネットワーク</li>
+          <li pn="section-5.1-3.2" derivedCounter="2.">RTTが短いが、必ずしもBDPが小さいとは限らないネットワーク</li>
+        </ol>
+        <t indent="0" pn="section-5.1-4">CUBICは、上記の2種類のネットワークで標準TCPと非常によく似た振る舞いをするように設計されています。次の2つの表は、標準TCP、HSTCP、CUBICの平均ウィンドウサイズを示しています。標準TCPとHSTCPの平均ウィンドウサイズは<xref target="RFC3649" format="default" sectionFormat="of" derivedContent="RFC3649"/>によるものです。CUBICの平均ウィンドウサイズは、3つの異なるCの値について、式6とCUBICのTCPフレンドリー領域を使用して計算したものです。</t>
+        <table align="center" pn="table-1">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">損失率P</th>
+              <th align="left" colspan="1" rowspan="1">TCPの平均W</th>
+              <th align="left" colspan="1" rowspan="1">HSTCPの平均W</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=0.04)</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=0.4)</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=4)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-2</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-3</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">59</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-4</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+              <td align="left" colspan="1" rowspan="1">263</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+              <td align="left" colspan="1" rowspan="1">187</td>
+              <td align="left" colspan="1" rowspan="1">333</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-5</td>
+              <td align="left" colspan="1" rowspan="1">379</td>
+              <td align="left" colspan="1" rowspan="1">1795</td>
+              <td align="left" colspan="1" rowspan="1">593</td>
+              <td align="left" colspan="1" rowspan="1">1054</td>
+              <td align="left" colspan="1" rowspan="1">1874</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-6</td>
+              <td align="left" colspan="1" rowspan="1">1200</td>
+              <td align="left" colspan="1" rowspan="1">12279</td>
+              <td align="left" colspan="1" rowspan="1">3332</td>
+              <td align="left" colspan="1" rowspan="1">5926</td>
+              <td align="left" colspan="1" rowspan="1">10538</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-7</td>
+              <td align="left" colspan="1" rowspan="1">3795</td>
+              <td align="left" colspan="1" rowspan="1">83981</td>
+              <td align="left" colspan="1" rowspan="1">18740</td>
+              <td align="left" colspan="1" rowspan="1">33325</td>
+              <td align="left" colspan="1" rowspan="1">59261</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-8</td>
+              <td align="left" colspan="1" rowspan="1">12000</td>
+              <td align="left" colspan="1" rowspan="1">574356</td>
+              <td align="left" colspan="1" rowspan="1">105383</td>
+              <td align="left" colspan="1" rowspan="1">187400</td>
+              <td align="left" colspan="1" rowspan="1">333250</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-5.1-6">表1は、RTT = 0.1秒のネットワークにおける標準TCP、HSTCP、CUBICの応答関数を示しています。平均ウィンドウサイズの単位は、MSSサイズのセグメントです。</t>
+        <table align="center" pn="table-2">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">損失率P</th>
+              <th align="left" colspan="1" rowspan="1">TCPの平均W</th>
+              <th align="left" colspan="1" rowspan="1">HSTCPの平均W</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=0.04)</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=0.4)</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC (C=4)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-2</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+              <td align="left" colspan="1" rowspan="1">12</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-3</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+              <td align="left" colspan="1" rowspan="1">38</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-4</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+              <td align="left" colspan="1" rowspan="1">263</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+              <td align="left" colspan="1" rowspan="1">120</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-5</td>
+              <td align="left" colspan="1" rowspan="1">379</td>
+              <td align="left" colspan="1" rowspan="1">1795</td>
+              <td align="left" colspan="1" rowspan="1">379</td>
+              <td align="left" colspan="1" rowspan="1">379</td>
+              <td align="left" colspan="1" rowspan="1">379</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-6</td>
+              <td align="left" colspan="1" rowspan="1">1200</td>
+              <td align="left" colspan="1" rowspan="1">12279</td>
+              <td align="left" colspan="1" rowspan="1">1200</td>
+              <td align="left" colspan="1" rowspan="1">1200</td>
+              <td align="left" colspan="1" rowspan="1">1874</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-7</td>
+              <td align="left" colspan="1" rowspan="1">3795</td>
+              <td align="left" colspan="1" rowspan="1">83981</td>
+              <td align="left" colspan="1" rowspan="1">3795</td>
+              <td align="left" colspan="1" rowspan="1">5926</td>
+              <td align="left" colspan="1" rowspan="1">10538</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10^-8</td>
+              <td align="left" colspan="1" rowspan="1">12000</td>
+              <td align="left" colspan="1" rowspan="1">574356</td>
+              <td align="left" colspan="1" rowspan="1">18740</td>
+              <td align="left" colspan="1" rowspan="1">33325</td>
+              <td align="left" colspan="1" rowspan="1">59261</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-5.1-8">表2は、RTT = 0.01秒のネットワークにおける標準TCP、HSTCP、CUBICの応答関数を示しています。平均ウィンドウサイズの単位は、MSSサイズのセグメントです。</t>
+        <t indent="0" pn="section-5.1-9">両方の表から、これら3つのCの値のいずれを使用しても、CUBICは、特にTCPが十分にうまく機能するRTTが短いネットワークにおいて、HSTCPよりもTCPに対してフレンドリーであることがわかります。たとえば、RTT = 0.01秒かつp=10^-6のネットワークでは、TCPの平均ウィンドウは1200パケットです。パケットサイズが1500バイトであれば、TCPは1.44 Gbpsの平均レートを達成できます。この場合、C=0.04またはC=0.4のCUBICは標準TCPとまったく同じレートを達成しますが、HSTCPは標準TCPよりも約10倍積極的です。</t>
+        <t indent="0" pn="section-5.1-10">Cが、帯域幅をめぐってほかの輻輳制御アルゴリズムと競合する際のCUBICの積極性を決定することがわかります。Cの値が小さいほど、CUBICは標準TCPに対してよりフレンドリーになります。しかし、Cが小さいCUBICはRTTが長く帯域幅が大きいネットワークで帯域幅を効率的に使用できないため、Cを0.04のような非常に小さい値に設定することはお勧めしません。これらの観察と私たちの実験に基づくと、C=0.4がTCPフレンドリー性とウィンドウ増加の積極性の間の良いバランスをもたらすことがわかりました。したがって、Cは0.4に設定<bcp14>すべきです（SHOULD）</bcp14>。Cを0.4に設定すると、式6は次のようになります。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-5.1-11"><![CDATA[
+   AVG_W_cubic = 1.054 * (RTT^0.75) / (p^0.75) (Eq. 7)
+]]></artwork>
+        <t indent="0" pn="section-5.1-12">次のサブセクションでは、式7を使用してCUBICのスケーラビリティーを示します。</t>
+      </section>
+      <section anchor="using-spare-capacity" numbered="true" removeInRFC="false" toc="include" pn="section-5.2">
+        <name slugifiedName="name-using-spare-capacity">余剰容量の利用</name>
+        <t indent="0" pn="section-5.2-1">CUBICは、RTTが長く帯域幅が大きいネットワークにおいて、標準TCPよりも積極的なウィンドウ増加関数を使用します。</t>
+        <t indent="0" pn="section-5.2-2">次の表は、10 Gbpsのレートを達成するために、標準TCPでは2.0e-10のパケット損失率が必要であるのに対し、CUBICでは2.9e-8のパケット損失率が必要であることを示しています。</t>
+        <table align="center" pn="table-3">
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">スループット（Mbps）</th>
+              <th align="left" colspan="1" rowspan="1">平均W</th>
+              <th align="left" colspan="1" rowspan="1">TCP P</th>
+              <th align="left" colspan="1" rowspan="1">HSTCP P</th>
+              <th align="left" colspan="1" rowspan="1">CUBIC P</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">1</td>
+              <td align="left" colspan="1" rowspan="1">8.3</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-2</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-2</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-2</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10</td>
+              <td align="left" colspan="1" rowspan="1">83.3</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-4</td>
+              <td align="left" colspan="1" rowspan="1">3.9e-4</td>
+              <td align="left" colspan="1" rowspan="1">2.9e-4</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">100</td>
+              <td align="left" colspan="1" rowspan="1">833.3</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-6</td>
+              <td align="left" colspan="1" rowspan="1">2.5e-5</td>
+              <td align="left" colspan="1" rowspan="1">1.4e-5</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">1000</td>
+              <td align="left" colspan="1" rowspan="1">8333.3</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-8</td>
+              <td align="left" colspan="1" rowspan="1">1.5e-6</td>
+              <td align="left" colspan="1" rowspan="1">6.3e-7</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">10000</td>
+              <td align="left" colspan="1" rowspan="1">83333.3</td>
+              <td align="left" colspan="1" rowspan="1">2.0e-10</td>
+              <td align="left" colspan="1" rowspan="1">1.0e-7</td>
+              <td align="left" colspan="1" rowspan="1">2.9e-8</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-5.2-4">表3は、標準TCP、HSTCP、CUBICが一定のスループットを達成するのに必要なパケット損失率を示しています。ここでは、1500バイトのパケットと0.1秒のRTTを使用しています。</t>
+        <t indent="0" pn="section-5.2-5"><xref target="HKLRX06" format="default" sectionFormat="of" derivedContent="HKLRX06"/>における私たちのテスト結果は、CUBICが、同じボトルネックリンクにおいて、既存の標準TCPフローから多くの帯域幅を奪うことなく、既存の標準TCPフローが使用していない余剰の帯域幅を使用することを示しています。</t>
+      </section>
+      <section anchor="difficult-environments" numbered="true" removeInRFC="false" toc="include" pn="section-5.3">
+        <name slugifiedName="name-difficult-environments">困難な環境</name>
+        <t indent="0" pn="section-5.3-1">CUBICは、高速かつ長距離のネットワークにおけるTCPの性能の低さを解決するように設計されています。</t>
+      </section>
+      <section anchor="investigating-a-range-of-environments" numbered="true" removeInRFC="false" toc="include" pn="section-5.4">
+        <name slugifiedName="name-investigating-a-range-of-environments">さまざまな環境の調査</name>
+        <t indent="0" pn="section-5.4-1">CUBICは、幅広いネットワーク環境を対象としたNS-2シミュレーションとテストベッド実験の両方を使用して、広範に研究されてきました。詳しい情報は<xref target="HKLRX06" format="default" sectionFormat="of" derivedContent="HKLRX06"/>にあります。</t>
+        <t indent="0" pn="section-5.4-2">標準TCPと同様に、CUBICは損失ベースの輻輳制御アルゴリズムです。CUBICは、高速長距離ネットワークにおいて、（より速いウィンドウ増加関数とより大きな乗算的減少係数により）標準TCPよりも積極的になるように設計されているため、標準TCPよりも速く大きなドロップテールバッファーを満たし、定在キュー（standing queue）のリスクを高める可能性があります<xref target="KWAF17" format="default" sectionFormat="of" derivedContent="KWAF17"/>。この場合、パケットのキューイング遅延を減らすために、適切なキューのサイズ設定と管理<xref target="RFC7567" format="default" sectionFormat="of" derivedContent="RFC7567"/>を使用できます。</t>
+      </section>
+      <section anchor="protection-against-congestion-collapse" numbered="true" removeInRFC="false" toc="include" pn="section-5.5">
+        <name slugifiedName="name-protection-against-congestion-collapse">輻輳崩壊に対する保護</name>
+        <t indent="0" pn="section-5.5-1">輻輳崩壊を引き起こす可能性に関して、CUBICはTCPのウィンドウ調整アルゴリズムのみを変更するため、標準TCPと同様に振る舞います。したがって、CUBICは標準TCPのACKクロッキングとタイムアウトの振る舞いを変更しません。</t>
+      </section>
+      <section anchor="fairness-within-the-alternative-congestion-control-algorithm" numbered="true" removeInRFC="false" toc="include" pn="section-5.6">
+        <name slugifiedName="name-fairness-within-the-alternative-congestion-control-algorithm">代替の輻輳制御アルゴリズム内での公平性</name>
+        <t indent="0" pn="section-5.6-1">CUBICは、同じボトルネックリンクにおいて、同じRTTを持つ競合するCUBICフローが等しいスループットに収束することを保証します。競合するフローのRTTが異なる場合、それらのスループット比はRTT比の逆数に線形に比例します。これは、リンクにおける統計的多重化の度合いに関係なく成り立ちます。</t>
+      </section>
+      <section anchor="performance-with-misbehaving-nodes-and-outside-attackers" numbered="true" removeInRFC="false" toc="include" pn="section-5.7">
+        <name slugifiedName="name-performance-with-misbehaving-nodes-and-outside-attackers">不正な振る舞いをするノードと外部の攻撃者がいる場合の性能</name>
+        <t indent="0" pn="section-5.7-1">これは現在のCUBICでは考慮されていません。</t>
+      </section>
+      <section anchor="behavior-for-application-limited-flows" numbered="true" removeInRFC="false" toc="include" pn="section-5.8">
+        <name slugifiedName="name-behavior-for-application-limited-flows">アプリケーション制限されたフローに対する振る舞い</name>
+        <t indent="0" pn="section-5.8-1">フローが現在、輻輳ウィンドウではなくアプリケーションによって制限されている場合、CUBICは輻輳ウィンドウサイズを増加させません。アイドル期間のように、アプリケーションのレート制限によってcwndが長期間更新されていない場合、式1のtにはこれらの期間を含めては<bcp14>なりません（MUST NOT）</bcp14>。そうしないと、これらの期間から再開したあとにW_cubic(t)が非常に大きくなる可能性があります。</t>
+      </section>
+      <section anchor="responses-to-sudden-or-transient-events" numbered="true" removeInRFC="false" toc="include" pn="section-5.9">
+        <name slugifiedName="name-responses-to-sudden-or-transient-events">突発的または一時的なイベントへの応答</name>
+        <t indent="0" pn="section-5.9-1">突発的な輻輳、経路の変更、またはモビリティーイベントがあった場合、CUBICは標準TCPと同じように振る舞います。</t>
+      </section>
+      <section anchor="incremental-deployment" numbered="true" removeInRFC="false" toc="include" pn="section-5.10">
+        <name slugifiedName="name-incremental-deployment">段階的な展開</name>
+        <t indent="0" pn="section-5.10-1">CUBICはTCP送信者の変更のみを必要とし、TCP受信者には何の変更も加えません。つまり、CUBICの送信者は標準TCPの受信者と正しく動作します。さらに、CUBICはルーターの変更を一切必要とせず、ルーターからの支援も一切必要としません。</t>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この提案は、TCPの基盤となるセキュリティーに何の変更も加えません。TCPのセキュリティー上の懸念に関する詳しい情報は、<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>にあります。</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">この文書はIANAアクションを必要としません。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3168" target="https://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC3649" target="https://www.rfc-editor.org/info/rfc3649" quoteTitle="true" derivedAnchor="RFC3649">
+          <front>
+            <title>HighSpeed TCP for Large Congestion Windows</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <date year="2003" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="3649"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3649"/>
+        </reference>
+        <reference anchor="RFC3742" target="https://www.rfc-editor.org/info/rfc3742" quoteTitle="true" derivedAnchor="RFC3742">
+          <front>
+            <title>Limited Slow-Start for TCP with Large Congestion Windows</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <date year="2004" month="March"/>
+          </front>
+          <seriesInfo name="RFC" value="3742"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3742"/>
+        </reference>
+        <reference anchor="RFC4960" target="https://www.rfc-editor.org/info/rfc4960" quoteTitle="true" derivedAnchor="RFC4960">
+          <front>
+            <title>Stream Control Transmission Protocol</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart" role="editor"/>
+            <date year="2007" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="4960"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4960"/>
+        </reference>
+        <reference anchor="RFC5033" target="https://www.rfc-editor.org/info/rfc5033" quoteTitle="true" derivedAnchor="RFC5033">
+          <front>
+            <title>Specifying New Congestion Control Algorithms</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <date year="2007" month="August"/>
+          </front>
+          <seriesInfo name="BCP" value="133"/>
+          <seriesInfo name="RFC" value="5033"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5033"/>
+        </reference>
+        <reference anchor="RFC5348" target="https://www.rfc-editor.org/info/rfc5348" quoteTitle="true" derivedAnchor="RFC5348">
+          <front>
+            <title>TCP Friendly Rate Control (TFRC): Protocol Specification</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="J. Widmer" initials="J." surname="Widmer"/>
+            <date year="2008" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5348"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5348"/>
+        </reference>
+        <reference anchor="RFC5681" target="https://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date year="2009" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC6582" target="https://www.rfc-editor.org/info/rfc6582" quoteTitle="true" derivedAnchor="RFC6582">
+          <front>
+            <title>The NewReno Modification to TCP's Fast Recovery Algorithm</title>
+            <author fullname="T. Henderson" initials="T." surname="Henderson"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="A. Gurtov" initials="A." surname="Gurtov"/>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida"/>
+            <date year="2012" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="6582"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6582"/>
+        </reference>
+        <reference anchor="RFC6675" target="https://www.rfc-editor.org/info/rfc6675" quoteTitle="true" derivedAnchor="RFC6675">
+          <front>
+            <title>A Conservative Loss Recovery Algorithm Based on Selective Acknowledgment (SACK) for TCP</title>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="L. Wang" initials="L." surname="Wang"/>
+            <author fullname="I. Jarvinen" initials="I." surname="Jarvinen"/>
+            <author fullname="M. Kojo" initials="M." surname="Kojo"/>
+            <author fullname="Y. Nishida" initials="Y." surname="Nishida"/>
+            <date year="2012" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="6675"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6675"/>
+        </reference>
+        <reference anchor="RFC7567" target="https://www.rfc-editor.org/info/rfc7567" quoteTitle="true" derivedAnchor="RFC7567">
+          <front>
+            <title>IETF Recommendations Regarding Active Queue Management</title>
+            <author fullname="F. Baker" initials="F." surname="Baker" role="editor"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst" role="editor"/>
+            <date year="2015" month="July"/>
+          </front>
+          <seriesInfo name="BCP" value="197"/>
+          <seriesInfo name="RFC" value="7567"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7567"/>
+        </reference>
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174" quoteTitle="true" derivedAnchor="RFC8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="CEHRX07" quoteTitle="true" derivedAnchor="CEHRX07">
+          <front>
+            <title>Stochastic Ordering for Internet Congestion Control and its Applications</title>
+            <author fullname="H. Cai" initials="H." surname="Cai"/>
+            <author fullname="D. Eun" initials="D." surname="Eun"/>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <date year="2007" month="May"/>
+          </front>
+          <refcontent>In Proceedings of IEEE INFOCOM</refcontent>
+          <seriesInfo name="DOI" value="10.1109/INFCOM.2007.111"/>
+        </reference>
+        <reference anchor="FHP00" quoteTitle="true" derivedAnchor="FHP00">
+          <front>
+            <title>A Comparison of Equation-Based and AIMD Congestion Control</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <date year="2000" month="May"/>
+          </front>
+        </reference>
+        <reference anchor="GV02" quoteTitle="true" derivedAnchor="GV02">
+          <front>
+            <title>Extended Analysis of Binary Adjustment Algorithms</title>
+            <author fullname="S. Gorinsky" initials="S." surname="Gorinsky"/>
+            <author fullname="H. Vin" initials="H." surname="Vin"/>
+            <date year="2002" month="August"/>
+          </front>
+          <refcontent>Technical Report TR2002-29, Department of Computer Sciences, The University of Texas at Austin</refcontent>
+        </reference>
+        <reference anchor="HKLRX06" quoteTitle="true" derivedAnchor="HKLRX06">
+          <front>
+            <title>A Step toward Realistic Performance Evaluation of High-Speed TCP Variants</title>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="Y. Kim" initials="Y." surname="Kim"/>
+            <author fullname="L. Le" initials="L." surname="Le"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+          </front>
+          <refcontent>International Workshop on Protocols for Fast Long-Distance Networks</refcontent>
+        </reference>
+        <reference anchor="HR08" quoteTitle="true" derivedAnchor="HR08">
+          <front>
+            <title>Hybrid Slow Start for High-Bandwidth and Long-Distance Networks</title>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+          </front>
+          <refcontent>International Workshop on Protocols for Fast Long-Distance Networks</refcontent>
+        </reference>
+        <reference anchor="HRX08" quoteTitle="true" derivedAnchor="HRX08">
+          <front>
+            <title>CUBIC: A New TCP-Friendly High-Speed TCP Variant</title>
+            <author fullname="S. Ha" initials="S." surname="Ha"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <date year="2008" month="July"/>
+          </front>
+          <refcontent>ACM SIGOPS Operating System Review</refcontent>
+          <seriesInfo name="DOI" value="10.1145/1400097.1400105"/>
+        </reference>
+        <reference anchor="K03" quoteTitle="true" derivedAnchor="K03">
+          <front>
+            <title>Scalable TCP: Improving Performance in HighSpeed Wide Area Networks</title>
+            <author fullname="T. Kelly" initials="T." surname="Kelly"/>
+            <date year="2003" month="April"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review</refcontent>
+          <seriesInfo name="DOI" value="10.1145/956981.956989"/>
+        </reference>
+        <reference anchor="KWAF17" quoteTitle="true" derivedAnchor="KWAF17">
+          <front>
+            <title>TCP Alternative Backoff with ECN (ABE)</title>
+            <author fullname="N. Khademi" initials="N." surname="Khademi"/>
+            <author fullname="M. Welzl" initials="M." surname="Welzl"/>
+            <author fullname="G. Armitage" initials="G." surname="Armitage"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst"/>
+            <date year="2017" month="December"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tcpm-alternativebackoff-ecn-05"/>
+        </reference>
+        <reference anchor="XHR04" quoteTitle="true" derivedAnchor="XHR04">
+          <front>
+            <title>Binary Increase Congestion Control for Fast, Long Distance Networks</title>
+            <author fullname="L. Xu" initials="L." surname="Xu"/>
+            <author fullname="K. Harfoush" initials="K." surname="Harfoush"/>
+            <author fullname="I. Rhee" initials="I." surname="Rhee"/>
+            <date year="2004" month="March"/>
+          </front>
+          <refcontent>In Proceedings of IEEE INFOCOM</refcontent>
+          <seriesInfo name="DOI" value="10.1109/INFCOM.2004.1354672"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">Alexander ZimmermannとLars Eggertは、欧州連合のHorizon 2020研究・イノベーションプログラム2014-2018から、助成契約No. 644866（SSICLOPS）に基づく資金提供を受けています。この文書は著者の見解のみを反映したものであり、欧州委員会は、この文書に含まれる情報のいかなる利用についても責任を負いません。</t>
+      <t indent="0" pn="section-appendix.a-2">Lisong Xuの研究は、米国国立科学財団（National Science Foundation、NSF）のGrant No. 1526253によって部分的に支援されました。この資料で表明された意見、知見、結論、推奨事項は著者のものであり、必ずしもNSFの見解を反映するものではありません。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Injong Rhee" initials="I." surname="Rhee">
+        <organization showOnFrontPage="true">North Carolina State University</organization>
+        <address>
+          <postal>
+            <street>Department of Computer Science</street>
+            <city>Raleigh</city>
+            <region>NC</region>
+            <code>27695-7534</code>
+            <country>United States of America</country>
+          </postal>
+          <email>rhee@ncsu.edu</email>
+        </address>
+      </author>
+      <author fullname="Lisong Xu" initials="L." surname="Xu">
+        <organization showOnFrontPage="true">University of Nebraska-Lincoln</organization>
+        <address>
+          <postal>
+            <street>Department of Computer Science and Engineering</street>
+            <city>Lincoln</city>
+            <region>NE</region>
+            <code>68588-0115</code>
+            <country>United States of America</country>
+          </postal>
+          <email>xu@unl.edu</email>
+        </address>
+      </author>
+      <author fullname="Sangtae Ha" initials="S." surname="Ha">
+        <organization showOnFrontPage="true">University of Colorado at Boulder</organization>
+        <address>
+          <postal>
+            <street>Department of Computer Science</street>
+            <city>Boulder</city>
+            <region>CO</region>
+            <code>80309-0430</code>
+            <country>United States of America</country>
+          </postal>
+          <email>sangtae.ha@colorado.edu</email>
+        </address>
+      </author>
+      <author fullname="Alexander Zimmermann" initials="A." surname="Zimmermann">
+        <address>
+          <phone>+49 175 5766838</phone>
+          <email>alexander.zimmermann@rwth-aachen.de</email>
+        </address>
+      </author>
+      <author fullname="Lars Eggert" initials="L." surname="Eggert">
+        <organization showOnFrontPage="true">NetApp</organization>
+        <address>
+          <postal>
+            <street>Sonnenallee 1</street>
+            <city>Kirchheim</city>
+            <code>85551</code>
+            <country>Germany</country>
+          </postal>
+          <phone>+49 151 12055791</phone>
+          <email>lars@netapp.com</email>
+        </address>
+      </author>
+      <author fullname="Richard Scheffenegger" initials="R." surname="Scheffenegger">
+        <organization showOnFrontPage="true">NetApp</organization>
+        <address>
+          <postal>
+            <street>Am Europlatz 2</street>
+            <city>Vienna</city>
+            <code>1120</code>
+            <country>Austria</country>
+          </postal>
+          <email>rs.ietf@gmx.at</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

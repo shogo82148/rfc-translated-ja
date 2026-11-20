@@ -4,8 +4,9 @@
 Usage:
     scripts/register-rfc.py <rfc-number>
 
-src/ja/rfc<number>.xml must exist, and either src/rfcs/rfc<number>.xml or
-src/rfcs/rfc<number>.txt (converted by scripts/txt2xml.pl into src/en/rfc<number>.xml).
+src/ja/rfc<number>.xml must exist, and either src/rfcs/rfc<number>.xml or,
+for RFCs published as text only, src/en-txt/rfc<number>.xml (the output of
+scripts/txt2xml.pl fixed by hand).
 Running it twice is harmless; already registered entries are left as is.
 """
 
@@ -44,7 +45,7 @@ def read_en_title(number):
     """Read the English title in the same way as get_en_title in Makefile.PL.
 
     The title comes from the original XML. RFCs only in TXT use the title in
-    the JSON metadata, which scripts/txt2xml.pl writes into src/en/rfc<number>.xml.
+    the JSON metadata, which scripts/txt2xml.pl writes into src/en-txt/rfc<number>.xml.
     """
     xml = os.path.join(ROOT, 'src', 'rfcs', 'rfc%d.xml' % number)
     if os.path.exists(xml):
@@ -76,16 +77,12 @@ def update_makefile(number, from_txt):
     content = '\n'.join(lines)
 
     # add the build rules before the first RFC with a smaller number
-    if from_txt:
-        en_rule = (
-            'src/en/rfc{n}.xml: src/rfcs/rfc{n}.txt src/rfcs/rfc{n}.json scripts/txt2xml.pl src/patches/rfc{n}.patch\n'
-            '\tscripts/txt2xml.pl {n} > $@\n'
-        )
-    else:
-        en_rule = (
-            'src/en/rfc{n}.xml: src/rfcs/rfc{n}.xml\n'
-            '\tcp $< $@\n'
-        )
+    # the same as Makefile.PL
+    source = 'src/en-txt/rfc{n}.xml' if from_txt else 'src/rfcs/rfc{n}.xml'
+    en_rule = (
+        'src/en/rfc{n}.xml: ' + source + '\n'
+        '\tcp $< $@\n'
+    )
     rule = (
         'docs/rfc{n}.html: src/en/rfc{n}.xml src/rfcs/rfc{n}.json src/ja/rfc{n}.xml '
         'scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js\n'
@@ -98,21 +95,8 @@ def update_makefile(number, from_txt):
             pos = m.start()
             break
     if pos is None:
-        pos = content.index('\n\n.PHONY: update-english') + 1
+        pos = content.index('\n\n.PHONY: update-toc') + 1
     content = content[:pos] + rule + content[pos:]
-
-    if from_txt:
-        # add to the update-english target, keeping it sorted in descending order
-        lines = content.split('\n')
-        start = lines.index('update-english:') + 1
-        end = start
-        while end < len(lines) and lines[end].startswith('\tscripts/txt2xml.pl '):
-            end += 1
-        entries = lines[start:end]
-        entries.append('\tscripts/txt2xml.pl {n} > src/ja/rfc{n}.xml'.format(n=number))
-        entries.sort(key=lambda e: -int(re.search(r'txt2xml\.pl ([0-9]+)', e).group(1)))
-        lines[start:end] = entries
-        content = '\n'.join(lines)
 
     with open(MAKEFILE, 'w', encoding='utf-8') as f:
         f.write(content)
@@ -152,6 +136,11 @@ def main():
     number = int(sys.argv[1])
     title_ja = read_title(os.path.join(ROOT, 'src', 'ja', 'rfc%d.xml' % number))
     from_txt = not os.path.exists(os.path.join(ROOT, 'src', 'rfcs', 'rfc%d.xml' % number))
+    if from_txt and not os.path.exists(os.path.join(ROOT, 'src', 'en-txt', 'rfc%d.xml' % number)):
+        print('src/en-txt/rfc%d.xml does not exist. Generate it with '
+              'scripts/txt2xml.pl -o src/en-txt/rfc%d.xml %d and fix it by hand.' % (number, number, number),
+              file=sys.stderr)
+        return 1
     title_en = read_en_title(number)
     update_makefile(number, from_txt)
     update_index(number, title_ja, title_en)

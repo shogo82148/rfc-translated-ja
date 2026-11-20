@@ -1,0 +1,275 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-dnsext-dnssec-okbit-03" indexInclude="true" number="3225" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-dnsext-dnssec-okbit-03" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc3225" rel="alternate"/>
+  <front>
+    <title>Indicating Resolver Support of DNSSEC</title>
+    <seriesInfo name="RFC" value="3225" stream="IETF"/>
+    <author fullname="David Conrad" initials="D." surname="Conrad">
+      <organization showOnFrontPage="true">Nominum, Inc.</organization>
+      <address>
+        <postal>
+          <street>950 Charter Street</street>
+          <city>Redwood City</city>
+          <region>CA</region>
+          <code>94063</code>
+          <country>USA</country>
+        </postal>
+        <phone>+1 650 381 6003</phone>
+        <email>david.conrad@nominum.com</email>
+      </address>
+    </author>
+    <date year="2001" month="December"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">In order to deploy DNSSEC (Domain Name System Security Extensions)
+operationally, DNSSEC aware servers should only perform automatic
+inclusion of DNSSEC RRs when there is an explicit indication that the
+resolver can understand those RRs.  This document proposes the use of
+a bit in the EDNS0 header to provide that explicit indication and
+describes the necessary protocol changes to implement that
+notification.</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document specifies an Internet standards track protocol for the
+Internet community, and requests discussion and suggestions for
+improvements.  Please refer to the current edition of the &quot;Internet
+Official Protocol Standards&quot; (STD 1) for the standardization state
+and status of this protocol.  Distribution of this memo is unlimited.</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">Copyright Notice</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">DNSSEC <xref target="RFC2535" format="default" sectionFormat="of" derivedContent="RFC2535"/> has been specified to provide data integrity and
+authentication to security aware resolvers and applications through
+the use of cryptographic digital signatures.  However, as DNSSEC is
+deployed, non-DNSSEC-aware clients will likely query DNSSEC-aware
+servers.  In such situations, the DNSSEC-aware server (responding to
+a request for data in a signed zone) will respond with SIG, KEY,
+and/or NXT records.  For reasons described in the subsequent section,
+such responses can have significant negative operational impacts for
+the DNS infrastructure.</t>
+      <t indent="0" pn="section-1-2">This document discusses a method to avoid these negative impacts,
+namely DNSSEC-aware servers should only respond with SIG, KEY, and/or
+NXT RRs when there is an explicit indication from the resolver that
+it can understand those RRs.</t>
+      <t indent="0" pn="section-1-3">For the purposes of this document, &quot;DNSSEC security RRs&quot; are
+considered RRs of type SIG, KEY, or NXT.</t>
+      <t indent="0" pn="section-1-4">The key words &quot;<bcp14>MUST</bcp14>&quot;, &quot;<bcp14>MUST NOT</bcp14>&quot;, &quot;<bcp14>REQUIRED</bcp14>&quot;, &quot;<bcp14>SHALL</bcp14>&quot;, &quot;<bcp14>SHALL NOT</bcp14>&quot;,
+&quot;<bcp14>SHOULD</bcp14>&quot;, &quot;<bcp14>SHOULD NOT</bcp14>&quot;, &quot;<bcp14>RECOMMENDED</bcp14>&quot;, &quot;<bcp14>MAY</bcp14>&quot;, and &quot;<bcp14>OPTIONAL</bcp14>&quot; in this
+document are to be interpreted as described in <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>.</t>
+    </section>
+    <section anchor="rationale" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-rationale">Rationale</name>
+      <t indent="0" pn="section-2-1">Initially, as DNSSEC is deployed, the vast majority of queries will
+be from resolvers that are not DNSSEC aware and thus do not
+understand or support the DNSSEC security RRs.  When a query from
+such a resolver is received for a DNSSEC signed zone, the DNSSEC
+specification indicates the nameserver must respond with the
+appropriate DNSSEC security RRs.  As DNS UDP datagrams are limited to
+512 bytes <xref target="RFC1035" format="default" sectionFormat="of" derivedContent="RFC1035"/>, responses including DNSSEC security RRs have a
+high probability of resulting in a truncated response being returned
+and the resolver retrying the query using TCP.</t>
+      <t indent="0" pn="section-2-2">TCP DNS queries result in significant overhead due to connection
+setup and teardown.  Operationally, the impact of these TCP queries
+will likely be quite detrimental in terms of increased network
+traffic (typically five packets for a single query/response instead
+of two), increased latency resulting from the additional round trip
+times, increased incidences of queries failing due to timeouts, and
+significantly increased load on nameservers.</t>
+      <t indent="0" pn="section-2-3">In addition, in preliminary and experimental deployment of DNSSEC,
+there have been reports of non-DNSSEC aware resolvers being unable to
+handle responses which contain DNSSEC security RRs, resulting in the
+resolver failing (in the worst case) or entire responses being
+ignored (in the better case).</t>
+      <t indent="0" pn="section-2-4">Given these operational implications, explicitly notifying the
+nameserver that the client is prepared to receive (if not understand)
+DNSSEC security RRs would be prudent.</t>
+      <t indent="0" pn="section-2-5">Client-side support of DNSSEC is assumed to be binary -- either the
+client is willing to receive all DNSSEC security RRs or it is not
+willing to accept any.  As such, a single bit is sufficient to
+indicate client-side DNSSEC support.  As effective use of DNSSEC
+implies the need of EDNS0 <xref target="RFC2671" format="default" sectionFormat="of" derivedContent="RFC2671"/>, bits in the &quot;classic&quot; (non-EDNS
+enhanced DNS header) are scarce, and there may be situations in which
+non-compliant caching or forwarding servers inappropriately copy data
+from classic headers as queries are passed on to authoritative
+servers, the use of a bit from the EDNS0 header is proposed.</t>
+      <t indent="0" pn="section-2-6">An alternative approach would be to use the existence of an EDNS0
+header as an implicit indication of client-side support of DNSSEC.
+This approach was not chosen as there may be applications in which
+EDNS0 is supported but in which the use of DNSSEC is inappropriate.</t>
+    </section>
+    <section anchor="protocol-changes" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-protocol-changes">Protocol Changes</name>
+      <t indent="0" pn="section-3-1">The mechanism chosen for the explicit notification of the ability of
+the client to accept (if not understand) DNSSEC security RRs is using
+the most significant bit of the Z field on the EDNS0 OPT header in
+the query.  This bit is referred to as the &quot;DNSSEC OK&quot; (DO) bit.  In
+the context of the EDNS0 OPT meta-RR, the DO bit is the first bit of
+the third and fourth bytes of the &quot;extended RCODE and flags&quot; portion
+of the EDNS0 OPT meta-RR, structured as follows:</t>
+      <artwork name="" type="" align="left" alt="" pn="section-3-2"><![CDATA[
+             +0 (MSB)                +1 (LSB)
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+   0: |   EXTENDED-RCODE      |       VERSION         |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+   2: |DO|                    Z                       |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+]]></artwork>
+      <t indent="0" pn="section-3-3">Setting the DO bit to one in a query indicates to the server that the
+resolver is able to accept DNSSEC security RRs.  The DO bit cleared
+(set to zero) indicates the resolver is unprepared to handle DNSSEC
+security RRs and those RRs <bcp14>MUST NOT</bcp14> be returned in the response
+(unless DNSSEC security RRs are explicitly queried for).  The DO bit
+of the query <bcp14>MUST</bcp14> be copied in the response.</t>
+      <t indent="0" pn="section-3-4">More explicitly, DNSSEC-aware nameservers <bcp14>MUST NOT</bcp14> insert SIG, KEY,
+or NXT RRs to authenticate a response as specified in <xref target="RFC2535" format="default" sectionFormat="of" derivedContent="RFC2535"/>
+unless the DO bit was set on the request.  Security records that
+match an explicit SIG, KEY, NXT, or ANY query, or are part of the
+zone data for an AXFR or IXFR query, are included whether or not the
+DO bit was set.</t>
+      <t indent="0" pn="section-3-5">A recursive DNSSEC-aware server <bcp14>MUST</bcp14> set the DO bit on recursive
+requests, regardless of the status of the DO bit on the initiating
+resolver request.  If the initiating resolver request does not have
+the DO bit set, the recursive DNSSEC-aware server <bcp14>MUST</bcp14> remove DNSSEC
+security RRs before returning the data to the client, however cached
+data <bcp14>MUST NOT</bcp14> be modified.</t>
+      <t indent="0" pn="section-3-6">In the event a server returns a NOTIMP, FORMERR or SERVFAIL response
+to a query that has the DO bit set, the resolver <bcp14>SHOULD NOT</bcp14> expect
+DNSSEC security RRs and <bcp14>SHOULD</bcp14> retry the query without EDNS0 in
+accordance with section 5.3 of <xref target="RFC2671" format="default" sectionFormat="of" derivedContent="RFC2671"/>.</t>
+    </section>
+    <section anchor="security-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-unnumbered-1-1">The absence of DNSSEC data in response to a query with the DO bit set
+<bcp14>MUST NOT</bcp14> be taken to mean no security information is available for
+that zone as the response may be forged or a non-forged response of
+an altered (DO bit cleared) query.</t>
+    </section>
+    <section anchor="iana-considerations" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-iana-considerations">IANA Considerations</name>
+      <t indent="0" pn="section-unnumbered-2-1">EDNS0 <xref target="RFC2671" format="default" sectionFormat="of" derivedContent="RFC2671"/> defines 16 bits as extended flags in the OPT record,
+these bits are encoded into the TTL field of the OPT record (RFC2671
+section 4.6).</t>
+      <t indent="0" pn="section-unnumbered-2-2">This document reserves one of these bits as the OK bit.  It is
+requested that the left most bit be allocated.  Thus the USE of the
+OPT record TTL field would look like</t>
+      <artwork name="" type="" align="left" alt="" pn="section-unnumbered-2-3"><![CDATA[
+             +0 (MSB)                +1 (LSB)
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+   0: |   EXTENDED-RCODE      |       VERSION         |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+   2: |DO|                    Z                       |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+]]></artwork>
+    </section>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-acknowledgements">Acknowledgements</name>
+      <t indent="0" pn="section-unnumbered-3-1">This document is based on a rough draft by Bob Halley with input from
+Olafur Gudmundsson, Andreas Gustafsson, Brian Wellington, Randy Bush,
+Rob Austein, Steve Bellovin, and Erik Nordmark.</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-references">
+      <name slugifiedName="name-references">References</name>
+      <reference anchor="RFC1034" quoteTitle="true" derivedAnchor="RFC1034">
+        <front>
+          <title>Domain Names - Concepts and Facilities</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1034"/>
+      </reference>
+      <reference anchor="RFC1035" quoteTitle="true" derivedAnchor="RFC1035">
+        <front>
+          <title>Domain Names - Implementation and Specifications</title>
+          <author fullname="P. Mockapetris" initials="P." surname="Mockapetris"/>
+          <date year="1987" month="November"/>
+        </front>
+        <seriesInfo name="STD" value="13"/>
+        <seriesInfo name="RFC" value="1035"/>
+      </reference>
+      <reference anchor="RFC2119" quoteTitle="true" derivedAnchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC2535" quoteTitle="true" derivedAnchor="RFC2535">
+        <front>
+          <title>Domain Name System Security Extensions</title>
+          <author fullname="D. Eastlake" initials="D." surname="Eastlake"/>
+          <date year="1999" month="March"/>
+        </front>
+        <seriesInfo name="RFC" value="2535"/>
+      </reference>
+      <reference anchor="RFC2671" quoteTitle="true" derivedAnchor="RFC2671">
+        <front>
+          <title>Extension Mechanisms for DNS (EDNS0)</title>
+          <author fullname="P. Vixie" initials="P." surname="Vixie"/>
+          <date year="1999" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="2671"/>
+      </reference>
+    </references>
+    <section anchor="authors-address" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="David Conrad" initials="D." surname="Conrad">
+        <organization showOnFrontPage="true">Nominum, Inc.</organization>
+        <address>
+          <postal>
+            <street>950 Charter Street</street>
+            <city>Redwood City</city>
+            <region>CA</region>
+            <code>94063</code>
+            <country>USA</country>
+          </postal>
+          <phone>+1 650 381 6003</phone>
+          <email>david.conrad@nominum.com</email>
+        </address>
+      </author>
+    </section>
+    <section anchor="full-copyright-statement" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-full-copyright-statement">Full Copyright Statement</name>
+      <t indent="0" pn="section-appendix.b-1">Copyright (C) The Internet Society (2001).  All Rights Reserved.</t>
+      <t indent="0" pn="section-appendix.b-2">This document and translations of it may be copied and furnished to
+others, and derivative works that comment on or otherwise explain it
+or assist in its implementation may be prepared, copied, published
+and distributed, in whole or in part, without restriction of any
+kind, provided that the above copyright notice and this paragraph are
+included on all such copies and derivative works.  However, this
+document itself may not be modified in any way, such as by removing
+the copyright notice or references to the Internet Society or other
+Internet organizations, except as needed for the purpose of
+developing Internet standards in which case the procedures for
+copyrights defined in the Internet Standards process must be
+followed, or as required to translate it into languages other than
+English.</t>
+      <t indent="0" pn="section-appendix.b-3">The limited permissions granted above are perpetual and will not be
+revoked by the Internet Society or its successors or assigns.</t>
+      <t indent="0" pn="section-appendix.b-4">This document and the information contained herein is provided on an
+&quot;AS IS&quot; basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</t>
+    </section>
+    <section anchor="acknowledgement" numbered="false" removeInRFC="false" toc="exclude" pn="section-appendix.c">
+      <name slugifiedName="name-acknowledgement">Acknowledgement</name>
+      <t indent="0" pn="section-appendix.c-1">Funding for the RFC Editor function is currently provided by the
+Internet Society.</t>
+    </section>
+  </back>
+</rfc>

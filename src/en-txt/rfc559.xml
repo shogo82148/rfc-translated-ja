@@ -1,0 +1,202 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" indexInclude="true" number="559" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+<link href="https://dx.doi.org/10.17487/rfc559" rel="alternate"/>
+  <front>
+    <title>Comments on the new TELNET Protocol and its Implementation</title>
+    <seriesInfo name="RFC" value="559" stream="IETF"/>
+    <author fullname="Abhay K. Bushan" initials="A. K." surname="Bushan">
+      <organization showOnFrontPage="true">MIT Project MAC</organization>
+      <address/>
+    </author>
+    <date year="1973" month="August" day="15"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">We at MIT-DN have implemented the new TELNET protocol (both server
+and user).  This RFC describes our experience with the implementation
+(particularly the use of GO AHEAD) and in bringing the new User and
+Server TELNET's in operation (the new TELNET is not compatible with the
+old).  We have a few suggestions here which should help other
+implementors and lead to a smoother transition to the new protocol.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="our-telnet-server-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1">
+      <name slugifiedName="name-i-our-telnet-server-implementation">I. OUR TELNET SERVER IMPLEMENTATION</name>
+      <t indent="0" pn="section-unnumbered-1-1">Our new server TELNET accepts both the &quot;old&quot; and the &quot;new&quot; TELNET
+&quot;control sequences&quot;.  Currently we have the ECHO and the &quot;Suppress Go
+Ahead&quot; options implemented and do the &quot;right thing&quot; to varying degrees
+with the Interrupt Process (IP), Erase Character (EC), Abort Output
+(AO), Are You There (AYT), Break, and Synch character sequences.</t>
+      <section anchor="the-echo-option" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.1">
+        <name slugifiedName="name-a-the-echo-option">A. The ECHO Option</name>
+        <t indent="0" pn="section-unnumbered-1.1-1">The TELNET server comes up in the default local echo mode and
+accepts both the old and the new TELNET control sequences.  The server
+starts the negotiation for remote echo (server echoing) by sending the
+sequence &quot;IAC WILL ECHO&quot; but changes the echo mode only when an
+affirmative &quot;IAC DO ECHO&quot; is received.  After the cutoff date for old
+protocol we will stop &quot;honoring&quot; the old TELNET control sequences.</t>
+      </section>
+      <section anchor="the-go-ahead-and-suppress-ga-option" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.2">
+        <name slugifiedName="name-b-the-go-ahead-and-suppress-ga-option">B. The Go Ahead and Suppress GA option</name>
+        <t indent="0" pn="section-unnumbered-1.2-1">The server comes up in the send GA mode and transmits the required
+&quot;IAC GA&quot; sequence whenever the server detects that it needs to send a
+GA.  It should be noted that our scheme for sending GA's works most but
+not all of the time.</t>
+        <t indent="0" pn="section-unnumbered-1.2-2">There is really no reliable way for our server TELNET to find out
+when a process is actually waiting for network input.  On our system,
+the server TELNET does not &quot;control&quot; user's process, it only acts as a
+terminal handler at the TTY level.</t>
+        <t indent="0" pn="section-unnumbered-1.2-3">A quick investigation revealed that the above problem (of sending
+GA's reliably) is not confined to the ITS operating system alone.  In
+fact TENEX (ref. conversation with Ray Tomlinson) and DEC-10 (ref.
+conversation with Ed Taft at Harvard) systems will encounter similar
+problems.</t>
+        <t indent="0" pn="section-unnumbered-1.2-4">Our solution to the GA sending problem was to have the server wait
+2.5 seconds after sending output to see if there is more output to be
+sent.  If the server has been &quot;idle&quot; for more than 2.5 seconds in the
+&quot;output-sent&quot; state it sends a GA and goes in an I/O wait state (looking
+for input or output).  This scheme works most (but not guaranteed all)
+of the time and doesn't cause any noticeable delay.  It is possible for
+the server to send an extra GA.  Our experimentation revealed that 1-5
+seconds was a good range for this &quot;idling time constant&quot;.</t>
+        <t indent="0" pn="section-unnumbered-1.2-5">We do implement the &quot;suppress GA&quot; option and will not send GA to
+hosts who agree to negotiate out of it.  Our server tries to negotiate
+these suppress GA option.</t>
+      </section>
+      <section anchor="other-options-and-telnet-control-sequences" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-1.3">
+        <name slugifiedName="name-c-other-options-and-telnet-control-sequences">C. Other Options and TELNET Control Sequences</name>
+        <t indent="0" pn="section-unnumbered-1.3-1">Our server will refuse all other options by sending the appropriate
+DONTs and WONTs.  In addition to the ECHO and Suppress GA options we
+recognize the following TELNET &quot;control sequences&quot;.</t>
+        <ol type="1" spacing="normal" indent="adaptive" start="1" pn="section-unnumbered-1.3-2">
+          <li pn="section-unnumbered-1.3-2.1" derivedCounter="1.">Interrupt Process (IP) - The server substitutes the system wide
+interrupt character &lt;control-Z&gt; (ACII SUB) which immediately interrupts
+the process, moving control to the immediately superior process.  If the
+user is several levels down his process tree he may have to send several
+IP's to reach top level.  It should be noted that the IP does not
+interrupt the running process in the sense a &lt;control-G&gt; interrupts
+muddle but only passes control to the superior.</li>
+          <li pn="section-unnumbered-1.3-2.2" derivedCounter="2.">Erase Character (EC) - The server substitutes the system wide
+standard erase character &lt;rubout&gt; (ACII DEL).  The deletion however is
+done not by the server but by the receiving process.  It is conceivable
+that some process (such as a user TELNET) take no action on receiving
+EC.  Most processes will echo the deleted character(s).  Several EC's
+will delete the several previous characters.  (If the console is
+declared to be an IMLAC, the deleted character is removed from the
+screen).</li>
+          <li pn="section-unnumbered-1.3-2.3" derivedCounter="3.">
+            <t indent="0" pn="section-unnumbered-1.3-2.3.1">Abort Output (AO) - The server substitutes the character &lt;control-S&gt;
+(ACII DC3).  The control-S convention is followed by many but not all of
+our programs.  The action taken on receiving AO varies with the program.</t>
+            <t indent="0" pn="section-unnumbered-1.3-2.3.2">A normal occurrence is that output and the current command are aborted
+(without necessarily going to completion).  In many programs there is no
+way to stop output except by sending an IP and &quot;killing&quot; the inferior
+process.</t>
+          </li>
+          <li pn="section-unnumbered-1.3-2.4" derivedCounter="4.">Are You There (AYT) - The server will print the message
+&quot;****connections still open*****&quot; preceded and followed by CRLF's upon
+receiving an AYT.  At some later time we may report on the state of the
+user's job as well.</li>
+          <li pn="section-unnumbered-1.3-2.5" derivedCounter="5.">Erase Line (EL) - since we are a character-at-a-time system, the EL
+has little meaning on our system and we throw it (and the preceding IAC)
+away.</li>
+          <li pn="section-unnumbered-1.3-2.6" derivedCounter="6.">Break (BRK) - We substitute three NUL's upon receiving BRK.  This
+convention is consistent with what happens when the &quot;Break&quot; key is hit
+on local teletypes.  The programs generally do nothing useful when break
+is received (except echo &quot;|@|@|@&quot;) but sending BRK may cause strange
+program reactions, so beware.</li>
+          <li pn="section-unnumbered-1.3-2.7" derivedCounter="7.">Synch - Whenever the server receives the synch INS, it flushes all
+except the interesting (control sequences) characters till the receipt
+of a DM.  We also cause an implicit IP on receipt of SYNCH.</li>
+          <li pn="section-unnumbered-1.3-2.8" derivedCounter="8.">We follow the CRLF and CRNUL convention for transmitting EOL and CR
+respectively.</li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="our-user-telnet-implementation" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-2">
+      <name slugifiedName="name-ii-our-user-telnet-implementation">II. OUR USER-TELNET IMPLEMENTATION</name>
+      <t indent="0" pn="section-unnumbered-2-1">The new user-TELNET (implemented in CALICO NETWORK by using a new
+&quot;TELCOM&quot; subroutine), accepts negotiation for the ECHO and suppress GA
+options.  The program tries to negotiate out of receiving GA's and tries
+the ECHO negotiation if the settings file for the host indicate remote
+echo.  Special characters and symbols are defined for EC, EL, AO, AYT,
+BRK, SYNCH, IP, and the ESCAPE character to command level.  These
+symbols have a default character value which the user can change by
+typing the symbol followed by the new character value at NETWRK command
+level.  To send EC, EL, etc, the user only has to type the special
+character for the function.  In addition the user can send these
+characters by using the send.special command at NETWRK command level.
+In &quot;line mode&quot;, EC and EL do a &quot;local&quot; character and line erase rather
+than send the EC and EL to the remote host.  The following are the
+default values for the &quot;special&quot; characters in TELNET :</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-unnumbered-2-2">
+        <dt pn="section-unnumbered-2-2.1">ESCAPE -</dt>
+        <dd pn="section-unnumbered-2-2.2">backslash</dd>
+        <dt pn="section-unnumbered-2-2.3">EC -</dt>
+        <dd pn="section-unnumbered-2-2.4">&lt;DEL&gt;</dd>
+        <dt pn="section-unnumbered-2-2.5">EL -</dt>
+        <dd pn="section-unnumbered-2-2.6">&lt;CAN&gt; or |X</dd>
+        <dt pn="section-unnumbered-2-2.7">AO -</dt>
+        <dd pn="section-unnumbered-2-2.8">|S</dd>
+        <dt pn="section-unnumbered-2-2.9">IP -</dt>
+        <dd pn="section-unnumbered-2-2.10">|R</dd>
+        <dt pn="section-unnumbered-2-2.11">AYT -</dt>
+        <dd pn="section-unnumbered-2-2.12">|T</dd>
+        <dt pn="section-unnumbered-2-2.13">Synch -</dt>
+        <dd pn="section-unnumbered-2-2.14">|Y</dd>
+        <dt pn="section-unnumbered-2-2.15">Break -</dt>
+        <dd pn="section-unnumbered-2-2.16">no preassigned value.</dd>
+      </dl>
+      <t indent="0" pn="section-unnumbered-2-3">The user can change his echo mode by escaping to NETWRK command
+level and using the commands &quot;echo.local&quot; or &quot;echo.remote&quot;.  Note that
+the modes are changed only when the negotiation for mode change is
+successful.  In either event the user is notified of the results of the
+negotiation.</t>
+    </section>
+    <section anchor="installing-the-new-telnets" numbered="false" removeInRFC="false" toc="include" pn="section-unnumbered-3">
+      <name slugifiedName="name-iii-installing-the-new-telnets">III. INSTALLING THE NEW TELNETS</name>
+      <t indent="0" pn="section-unnumbered-3-1">On Monday July 2, we brought up the user and server TELNETs briefly
+to find that most of the hosts did not &quot;recognize&quot; IAC's and did not
+honor the new protocol.  Much to our dismay usage of both our server and
+user TELNET's was chaotic.  Consequently, we did not install the new
+user and server TELNETs, and the old TELNETs remain operational.</t>
+      <t indent="0" pn="section-unnumbered-3-2">The new and the old TELNETs are definitely not compatible.  The
+server tries to (and should try to) negotiate out of sending GA's and
+also to send echo.  This negotiation causes problems with the
+&quot;old-style&quot; user TELNETs.  Also if the negotiation for Suppress GA is
+unsuccessfully (which is the case with &quot;old&quot; user-TELNETs) the server
+will keep sending IAC GA's when appropriate.  One solution we found to
+making our &quot;new&quot; server compatible with &quot;old&quot; user TELNETs was to come
+up in a mode that does not start any option negotiation and does not
+send GA's unless requested to do so (ie default is to suppress GA&quot;s).
+As mentioned earlier the server also accepts the old &quot;TELNET control&quot;
+sequences.  This solution makes the server compatible with both the old
+and the new user TELNETs (except it violates protocol by not sending
+GA's).  We propose to install this server on our socket 1.</t>
+      <t indent="0" pn="section-unnumbered-3-3">To promote experimentation with the new TELNET protocol, we have
+installed the new server TELNET on socket 60 (octal 105).  This new
+server follows the new protocol (ie it sends GA's) and starts
+spontaneous negotiation for remote echo and suppress GA.  The
+implementors on other Hosts are encouraged to use this service to debug
+their user TELNETs (and our server).  We feel that transition to the new
+protocol will be smoother if new TELNET servers are brought up on
+experimental sockets.  We are also willing to help debug other servers
+from our User TELNET.</t>
+      <t indent="0" pn="section-unnumbered-3-4">Finally we would like to lobby for making suppress GA the default
+(as our present server on socket 1).  It appears that only a few Hosts
+require the GA's (AMES-67 and UCLA-CON).  It seems to me that the reason
+why sending GA is default in the current specification of protocol is
+that representatives from the concerned Hosts wanted the GA to be
+implemented.  It doesn't matter to them if sending GA or suppress GA is
+default, as long as they can get a remote server to send a GA.  The
+protocol can be so specified as to require every one to implement a
+&quot;send GA option&quot;.  Making &quot;suppress GA&quot; the default will have the
+advantage that it will obviate unnecessary negotiation in a great
+majority of cases.  Another advantage is that not sending GA's makes the
+new server compatible with both old and new user TELNETs.</t>
+      <t indent="0" pn="section-unnumbered-3-5">[ This RFC was put into machine readable form for entry ]
+[ into the online RFC archives by Serge Hallyn 9/97 ]</t>
+    </section>
+  </middle>
+  <back>
+  </back>
+</rfc>

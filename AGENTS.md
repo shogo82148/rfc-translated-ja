@@ -7,7 +7,8 @@
 このリポジトリは RFC 文書の日本語訳を管理し、英日対訳の HTML ページを生成します。
 
 - 主な編集対象ソース: `src/ja/rfc*.xml`
-- レンダリング時に使う英語側ソース: `src/en/rfc*.xml`
+- TXT 原本しかない RFC の英語 XML（手で直したもの）: `src/en-txt/rfc*.xml`
+- レンダリング時に使う英語側ソース: `src/en/rfc*.xml`（ビルド時に `src/rfcs/` または `src/en-txt/` からコピーされる）
 - 生成されるサイト出力: `docs/rfc*.html`
 
 ## セットアップ
@@ -24,9 +25,7 @@
 - 1 つの RFC HTML を生成: `scripts/xml2html.py <rfc-number>`
 - 日本語 XML を lint: `npm run textlint`
 - 日本語 XML 内の TOC メタデータを更新: `scripts/update-toc.pl`
-- JA と EN-raw のパッチを再生成: `scripts/update-patch.pl`
-- TXT 原本から英語 XML を生成（パッチなし）: `scripts/txt2xml.pl --no-patch -o src/en/rfc<number>.xml <rfc-number>`
-- TXT 原本の RFC 1 件のパッチを作成・検証: `scripts/make-txt-patch.pl <rfc-number>`
+- TXT 原本から英語 XML の初稿を生成: `scripts/txt2xml.pl -o src/en-txt/rfc<number>.xml <rfc-number>`（既存のファイルは上書きしない）
 - 未翻訳の RFC を一覧: `scripts/list-untranslated.py [--order size|asc|desc] [--max-bytes N] [--format all|xml|txt]`
 - 欧文と和文の間の半角スペースを削除: `scripts/remove-autospace.py [<rfc-number>]`
 - 翻訳の XML 構造チェック: `scripts/check-translation.py [--strict] <rfc-number>`
@@ -38,14 +37,15 @@
 以下は編集してよい領域です。
 
 - `src/ja/rfc*.xml`（日本語訳コンテンツ）
+- `src/en-txt/rfc*.xml`（TXT 原本の RFC の英語 XML。`txt2xml.pl` の変換の崩れを直す場合のみ）
 - `scripts/*.pl` と `scripts/*.py`（ツール類）
 - `data/xml2rfc-ja.css` と `data/xml2rfc-ja.js`（レンダリングのスタイル・挙動）
 
 以下は生成物または同期物として扱ってください（明示的な依頼がない限り手編集しないこと）。
 
 - `src/rfcs/`（同期された RFC 原本）
+- `src/en/`（ビルド時のコピー。gitignore 済み）
 - `docs/rfc*.html`（ビルド出力）
-- `src/patches/rfc*.patch`（生成された差分）
 
 ## 翻訳規約
 
@@ -114,8 +114,9 @@ RFC 2119 の BCP14 キーワード（MUST, SHOULD, MAY など）は、以下の�
 ## プロジェクト固有の注意点
 
 - `scripts/xml2html.py` では対訳出力時の HTML ID 重複を避ける必要があります。anchor/id ロジックを変更する場合は、EN/JA の ID を必ず区別してください（例: 言語サフィックスを付与）。
-- `src/en/rfc*.xml` は、XML 原本からコピーされるものと `scripts/txt2xml.pl` により TXT から生成されるものが混在します（規則は `Makefile` を参照）。すべて同一の生成経路だと仮定しないでください。
-- TXT から生成した `src/en/rfc*.xml` で直すのは `txt2xml.pl` の変換の崩れだけです。原文 TXT の誤記（URL の typo を含む）は直さず、そのまま反映してください。
+- `src/en/rfc*.xml` は、XML 原本（`src/rfcs/rfc*.xml`）からコピーされるものと、TXT 原本から `scripts/txt2xml.pl` で生成して手で直した `src/en-txt/rfc*.xml` からコピーされるものが混在します（規則は `Makefile` を参照）。英語 XML を直すときは `src/en/` ではなく `src/en-txt/` を編集してください。
+- `scripts/txt2xml.pl` は新規 RFC の初稿生成ツールです。ビルドでは使わないので、改良しても既存の `src/en-txt/` には影響しません。
+- `src/en-txt/rfc*.xml` で直すのは `txt2xml.pl` の変換の崩れだけです。原文 TXT の誤記（URL の typo を含む）は直さず、そのまま反映してください。
 - `src/ja/rfc*.xml` を変更した場合は、完了前に lint を実行してください: `npm run textlint`。
 - 日本語訳の修正時は、以下を確認してください：
   - **文体の統一**: 全文が「ですます調」で統一されているか
@@ -135,4 +136,4 @@ RFC 2119 の BCP14 キーワード（MUST, SHOULD, MAY など）は、以下の�
 
 1. 変更したファイルに応じた build/lint コマンドを実行する。
 2. 変更は最小限に保ち、XML 翻訳の広範な再フォーマットを避ける。
-3. 翻訳ファイルを変更した場合、patch ファイル再生成の要否を確認する。
+3. 翻訳ファイルの XML 構造を変更した場合、`scripts/check-translation.py <rfc-number>` で英語 XML と構造が一致しているか確認する。

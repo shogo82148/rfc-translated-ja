@@ -13,25 +13,14 @@ sub generate_makefile(@rfc_numbers) {
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";
 
-    my @txt2xml_rfcs = ();
     for my $number(@rfc_numbers) {
         say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/rfcs/rfc$number.json src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
         say $fh "\tscripts/xml2html.py $number";
-        if (-f "src/rfcs/rfc$number.xml") {
-            say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.xml";
-            say $fh "\tcp \$< \$\@";
-        } else {
-            say $fh "src/en/rfc$number.xml: src/rfcs/rfc$number.txt src/rfcs/rfc$number.json scripts/txt2xml.pl src/patches/rfc$number.patch";
-            say $fh "\tscripts/txt2xml.pl $number > \$\@";
-            push @txt2xml_rfcs, $number;
-        }
-    }
-
-    say $fh "";
-    say $fh ".PHONY: update-english";
-    say $fh "update-english:";
-    for my $number(@txt2xml_rfcs) {
-        say $fh "\tscripts/txt2xml.pl $number > src/ja/rfc$number.xml";
+        # XML 原本のある RFC はそれを、TXT 原本しかない RFC は
+        # scripts/txt2xml.pl の出力を手で直してコミットした src/en-txt/rfcN.xml を使う
+        my $source = -f "src/rfcs/rfc$number.xml" ? "src/rfcs/rfc$number.xml" : "src/en-txt/rfc$number.xml";
+        say $fh "src/en/rfc$number.xml: $source";
+        say $fh "\tcp \$< \$\@";
     }
 
     say $fh "";
@@ -86,7 +75,7 @@ sub read_xml_title($path) {
 
 # the English title is taken from the original XML.
 # RFCs only in TXT use the title in the JSON metadata,
-# which scripts/txt2xml.pl writes into src/en/rfcN.xml.
+# which scripts/txt2xml.pl writes into src/en-txt/rfcN.xml.
 sub get_en_title($number) {
     return read_xml_title("src/rfcs/rfc$number.xml") if -f "src/rfcs/rfc$number.xml";
 

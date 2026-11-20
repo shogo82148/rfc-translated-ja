@@ -1,0 +1,273 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-ietf-imap-auth-01" indexInclude="true" number="1731" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-imap-auth-01" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc1731" rel="alternate"/>
+  <front>
+    <title>IMAP4 Authentication Mechanisms</title>
+    <seriesInfo name="RFC" value="1731" stream="IETF"/>
+    <author fullname="J. Myers" initials="J." surname="Myers">
+      <organization showOnFrontPage="true">Carnegie Mellon</organization>
+      <address/>
+    </author>
+    <date year="1994" month="December"/>
+    <abstract pn="section-abstract">
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">Status of This Memo</name>
+        <t indent="0" pn="section-boilerplate.1.1">This document specifies an Internet standards track protocol for the
+Internet community, and requests discussion and suggestions for
+improvements.  Please refer to the current edition of the &quot;Internet
+Official Protocol Standards&quot; (STD 1) for the standardization state
+and status of this protocol.  Distribution of this memo is unlimited.</t>
+      </section>
+    </boilerplate>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">Introduction</name>
+      <t indent="0" pn="section-1-1">The Internet Message Access Protocol, Version 4 <xref target="IMAP4" format="default" sectionFormat="of" derivedContent="IMAP4"/> contains the
+AUTHENTICATE command, for identifying and authenticating a user to an
+IMAP4 server and for optionally negotiating a protection mechanism
+for subsequent protocol interactions.  This document describes
+several authentication mechanisms for use by the IMAP4 AUTHENTICATE
+command.</t>
+    </section>
+    <section anchor="kerberos-version-4-authentication-mechanism" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-kerberos-version-4-authentication-mechanism">Kerberos version 4 authentication mechanism</name>
+      <t indent="0" pn="section-2-1">The authentication type associated with Kerberos version 4 is
+&quot;KERBEROS_V4&quot;.</t>
+      <t indent="0" pn="section-2-2">The data encoded in the first ready response contains a random 32-bit
+number in network byte order.  The client should respond with a
+Kerberos ticket and an authenticator for the principal
+&quot;imap.hostname@realm&quot;, where &quot;hostname&quot; is the first component of the
+host name of the server with all letters in lower case and where
+&quot;realm&quot; is the Kerberos realm of the server.  The encrypted checksum
+field included within the Kerberos authenticator should contain the
+server provided 32-bit number in network byte order.</t>
+      <t indent="0" pn="section-2-3">Upon decrypting and verifying the ticket and authenticator, the
+server should verify that the contained checksum field equals the
+original server provided random 32-bit number.  Should the
+verification be successful, the server must add one to the checksum
+and construct 8 octets of data, with the first four octets containing
+the incremented checksum in network byte order, the fifth octet
+containing a bit-mask specifying the protection mechanisms supported
+by the server, and the sixth through eighth octets containing, in
+network byte order, the maximum cipher-text buffer size the server is
+able to receive.  The server must encrypt the 8 octets of data in the
+session key and issue that encrypted data in a second ready response.
+The client should consider the server authenticated if the first four
+octets the un-encrypted data is equal to one plus the checksum it
+previously sent.</t>
+      <t indent="0" pn="section-2-4">The client must construct data with the first four octets containing
+the original server-issued checksum in network byte order, the fifth
+octet containing the bit-mask specifying the selected protection
+mechanism, the sixth through eighth octets containing in network byte
+order the maximum cipher-text buffer size the client is able to
+receive, and the following octets containing a user name string.  The
+client must then append from one to eight octets so that the length
+of the data is a multiple of eight octets. The client must then PCBC
+encrypt the data with the session key and respond to the second ready
+response with the encrypted data.  The server decrypts the data and
+verifies the contained checksum.  The username field identifies the
+user for whom subsequent IMAP operations are to be performed; the
+server must verify that the principal identified in the Kerberos
+ticket is authorized to connect as that user.  After these
+verifications, the authentication process is complete.</t>
+      <t indent="0" pn="section-2-5">The protection mechanisms and their corresponding bit-masks are as
+follows:</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-2-6">
+        <dt pn="section-2-6.1">1</dt>
+        <dd pn="section-2-6.2">No protection mechanism</dd>
+        <dt pn="section-2-6.3">2</dt>
+        <dd pn="section-2-6.4">Integrity (krb_mk_safe) protection</dd>
+        <dt pn="section-2-6.5">4</dt>
+        <dd pn="section-2-6.6">Privacy (krb_mk_priv) protection</dd>
+      </dl>
+      <t indent="0" pn="section-2-7">EXAMPLE: The following are two Kerberos version 4 login scenarios
+(note that the line breaks in the sample authenticators are for
+editorial clarity and are not in real authenticators)</t>
+      <artwork name="" type="" align="left" alt="" pn="section-2-8"><![CDATA[
+   S: * OK IMAP4 Server
+   C: A001 AUTHENTICATE KERBEROS_V4
+   S: + AmFYig==
+   C: BAcAQU5EUkVXLkNNVS5FRFUAOCAsho84kLN3/IJmrMG+25a4DT
+      +nZImJjnTNHJUtxAA+o0KPKfHEcAFs9a3CL5Oebe/ydHJUwYFd
+      WwuQ1MWiy6IesKvjL5rL9WjXUb9MwT9bpObYLGOKi1Qh
+   S: + or//EoAADZI=
+   C: DiAF5A4gA+oOIALuBkAAmw==
+   S: A001 OK Kerberos V4 authentication successful
+]]></artwork>
+      <artwork name="" type="" align="left" alt="" pn="section-2-9"><![CDATA[
+   S: * OK IMAP4 Server
+   C: A001 AUTHENTICATE KERBEROS_V4
+   S: + gcfgCA==
+   C: BAcAQU5EUkVXLkNNVS5FRFUAOCAsho84kLN3/IJmrMG+25a4DT
+      +nZImJjnTNHJUtxAA+o0KPKfHEcAFs9a3CL5Oebe/ydHJUwYFd
+      WwuQ1MWiy6IesKvjL5rL9WjXUb9MwT9bpObYLGOKi1Qh
+   S: A001 NO Kerberos V4 authentication failed
+]]></artwork>
+    </section>
+    <section anchor="gssapi-authentication-mechanism" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-gssapi-authentication-mechanism">GSSAPI authentication mechanism</name>
+      <t indent="0" pn="section-3-1">The authentication type associated with all mechanisms employing the
+GSSAPI <xref target="RFC1508" format="default" sectionFormat="of" derivedContent="RFC1508"/> is &quot;GSSAPI&quot;.</t>
+      <t indent="0" pn="section-3-2">The first ready response issued by the server contains no data.  The
+client should call GSS_Init_sec_context, passing in 0 for
+input_context_handle (initially) and a targ_name equal to output_name
+from GSS_Import_Name called with input_name_type of NULL and
+input_name_string of &quot;SERVICE:imap@hostname&quot; where &quot;hostname&quot; is the
+fully qualified host name of the server with all letters in lower
+case.  The client must then respond with the resulting output_token.
+If GSS_Init_sec_context returns GSS_CONTINUE_NEEDED, then the client
+should expect the server to issue a token in a subsequent ready
+response.  The client must pass the token to another call to
+GSS_Init_sec_context.</t>
+      <t indent="0" pn="section-3-3">If GSS_Init_sec_context returns GSS_COMPLETE, then the client should
+respond with any resulting output_token.  If there is no
+output_token, the client should respond with no data.  The client
+should then expect the server to issue a token in a subsequent ready
+response.  The client should pass this token to GSS_Unseal and
+interpret the first octet of resulting cleartext as a bit-mask
+specifying the protection mechanisms supported by the server and the
+second through fourth octets as the maximum size output_message to
+send to the server.  The client should construct data, with the first
+octet containing the bit-mask specifying the selected protection
+mechanism, the second through fourth octets containing in network
+byte order the maximum size output_message the client is able to
+receive, and the remaining octets containing a user name string.  The
+client must pass the data to GSS_Seal with conf_flag set to FALSE,
+and respond with the generated output_message.  The client can then
+consider the server authenticated.</t>
+      <t indent="0" pn="section-3-4">The server must issue a ready response with no data and pass the
+resulting client supplied token to GSS_Accept_sec_context as
+input_token, setting acceptor_cred_handle to NULL (for &quot;use default
+credentials&quot;), and 0 for input_context_handle (initially).  If
+GSS_Accept_sec_context returns GSS_CONTINUE_NEEDED, the server should
+return the generated output_token to the client in a ready response
+and pass the resulting client supplied token to another call to
+GSS_Accept_sec_context.</t>
+      <t indent="0" pn="section-3-5">If GSS_Accept_sec_context returns GSS_COMPLETE, then if an
+output_token is returned, the server should return it to the client
+in a ready response and expect a reply from the client with no data.
+Whether or not an output_token was returned, the server then should
+then construct 4 octets of data, with the first octet containing a
+bit-mask specifying the protection mechanisms supported by the server
+and the second through fourth octets containing in network byte order
+the maximum size output_token the server is able to receive.  The
+server must then pass the plaintext to GSS_Seal with conf_flag set to
+FALSE and issue the generated output_message to the client in a ready
+response.  The server must then pass the resulting client supplied
+token to GSS_Unseal and interpret the first octet of resulting
+cleartext as the bit-mask for the selected protection mechanism, the
+second through fourth octets as the maximum size output_message to
+send to the client, and the remaining octets as the user name.  Upon
+verifying the src_name is authorized to authenticate as the user
+name, The server should then consider the client authenticated.</t>
+      <t indent="0" pn="section-3-6">The protection mechanisms and their corresponding bit-masks are as
+follows:</t>
+      <dl newline="false" spacing="compact" indent="3" pn="section-3-7">
+        <dt pn="section-3-7.1">1</dt>
+        <dd pn="section-3-7.2">No protection mechanism</dd>
+        <dt pn="section-3-7.3">2</dt>
+        <dd pn="section-3-7.4">
+          <t indent="0" pn="section-3-7.4.1">Integrity protection.</t>
+          <t indent="0" pn="section-3-7.4.2">Sender calls GSS_Seal with conf_flag set to FALSE</t>
+        </dd>
+        <dt pn="section-3-7.5">4</dt>
+        <dd pn="section-3-7.6">
+          <t indent="0" pn="section-3-7.6.1">Privacy protection.</t>
+          <t indent="0" pn="section-3-7.6.2">Sender calls GSS_Seal with conf_flag set to TRUE</t>
+        </dd>
+      </dl>
+    </section>
+    <section anchor="skey-authentication-mechanism" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-skey-authentication-mechanism">S/Key authentication mechanism</name>
+      <t indent="0" pn="section-4-1">The authentication type associated with S/Key <xref target="SKEY" format="default" sectionFormat="of" derivedContent="SKEY"/> is &quot;SKEY&quot;.</t>
+      <t indent="0" pn="section-4-2">The first ready response issued by the server contains no data.  The
+client responds with the user name string.</t>
+      <t indent="0" pn="section-4-3">The data encoded in the second ready response contains the decimal
+sequence number followed by a single space and the seed string for
+the indicated user.  The client responds with the one-time-password,
+as either a 64-bit value in network byte order or encoded in the &quot;six
+English words&quot; format.</t>
+      <t indent="0" pn="section-4-4">Upon successful verification of the one-time-password, the server
+should consider the client authenticated.</t>
+      <t indent="0" pn="section-4-5">S/Key authentication does not provide for any protection mechanisms.</t>
+      <t indent="0" pn="section-4-6">EXAMPLE: The following are two S/Key login scenarios.</t>
+      <artwork name="" type="" align="left" alt="" pn="section-4-7"><![CDATA[
+   S: * OK IMAP4 Server
+   C: A001 AUTHENTICATE SKEY
+   S: +
+   C: bW9yZ2Fu
+   S: + OTUgUWE1ODMwOA==
+   C: Rk9VUiBNQU5OIFNPT04gRklSIFZBUlkgTUFTSA==
+   S: A001 OK S/Key authentication successful
+]]></artwork>
+      <artwork name="" type="" align="left" alt="" pn="section-4-8"><![CDATA[
+   S: * OK IMAP4 Server
+   C: A001 AUTHENTICATE SKEY
+   S: +
+   C: c21pdGg=
+   S: + OTUgUWE1ODMwOA==
+   C: BsAY3g4gBNo=
+   S: A001 NO S/Key authentication failed
+]]></artwork>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-5">
+      <name slugifiedName="name-references">References</name>
+      <reference anchor="IMAP4" quoteTitle="true" derivedAnchor="IMAP4">
+        <front>
+          <title>Internet Message Access Protocol - Version 4</title>
+          <author fullname="M. Crispin" initials="M." surname="Crispin">
+            <organization>University of Washington</organization>
+          </author>
+          <date year="1994" month="December"/>
+        </front>
+        <seriesInfo name="RFC" value="1730"/>
+      </reference>
+      <reference anchor="RFC1508" quoteTitle="true" derivedAnchor="RFC1508">
+        <front>
+          <title>Generic Security Service Application Program Interface</title>
+          <author fullname="J. Linn" initials="J." surname="Linn">
+            <organization>Geer Zolot Associates</organization>
+          </author>
+          <date year="1993" month="September"/>
+        </front>
+        <seriesInfo name="RFC" value="1508"/>
+      </reference>
+      <reference anchor="SKEY" quoteTitle="true" derivedAnchor="SKEY">
+        <front>
+          <title>The S/Key One-Time Password System</title>
+          <author fullname="Neil M. Haller" initials="N. M." surname="Haller">
+            <organization>Bellcore</organization>
+          </author>
+          <date year="1993" month="October"/>
+        </front>
+        <refcontent>Morristown, New Jersey</refcontent>
+        <refcontent>thumper.bellcore.com:pub/nmh/docs/ISOC.symp.ps</refcontent>
+      </reference>
+    </references>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-security-considerations">Security Considerations</name>
+      <t indent="0" pn="section-6-1">Security issues are discussed throughout this memo.</t>
+    </section>
+    <section anchor="authors-address" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-authors-address">Author's Address</name>
+      <author fullname="John G. Myers" initials="J. G." surname="Myers">
+        <organization showOnFrontPage="true">Carnegie-Mellon University</organization>
+        <address>
+          <postal>
+            <street>5000 Forbes Ave.</street>
+            <city>Pittsburgh</city>
+            <region>PA</region>
+            <code>15213-3890</code>
+          </postal>
+          <email>jgm+@cmu.edu</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

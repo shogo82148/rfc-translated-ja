@@ -3151,6 +3151,7 @@ all: \
 	docs/rfc96.html \
 	docs/rfc95.html \
 	docs/rfc93.html \
+	docs/rfc90.html \
 	docs/rfc87.html \
 	docs/rfc86.html \
 	docs/rfc85.html \
@@ -15804,6 +15805,10 @@ docs/rfc93.html: src/en/rfc93.xml src/rfcs/rfc93.json src/ja/rfc93.xml scripts/x
 	scripts/xml2html.py 93
 src/en/rfc93.xml: src/rfcs/rfc93.txt src/rfcs/rfc93.json scripts/txt2xml.pl src/patches/rfc93.patch
 	scripts/txt2xml.pl 93 > $@
+docs/rfc90.html: src/en/rfc90.xml src/rfcs/rfc90.json src/ja/rfc90.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
+	scripts/xml2html.py 90
+src/en/rfc90.xml: src/rfcs/rfc90.txt src/rfcs/rfc90.json scripts/txt2xml.pl src/patches/rfc90.patch
+	scripts/txt2xml.pl 90 > $@
 docs/rfc87.html: src/en/rfc87.xml src/rfcs/rfc87.json src/ja/rfc87.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js
 	scripts/xml2html.py 87
 src/en/rfc87.xml: src/rfcs/rfc87.txt src/rfcs/rfc87.json scripts/txt2xml.pl src/patches/rfc87.patch
@@ -17778,6 +17783,7 @@ update-english:
 	scripts/txt2xml.pl 96 > src/ja/rfc96.xml
 	scripts/txt2xml.pl 95 > src/ja/rfc95.xml
 	scripts/txt2xml.pl 93 > src/ja/rfc93.xml
+	scripts/txt2xml.pl 90 > src/ja/rfc90.xml
 	scripts/txt2xml.pl 87 > src/ja/rfc87.xml
 	scripts/txt2xml.pl 86 > src/ja/rfc86.xml
 	scripts/txt2xml.pl 85 > src/ja/rfc85.xml

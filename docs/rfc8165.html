@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8165: メタデータ挿入に関する設計上の考慮事項（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 日本語訳の一覧へのリンク */
+#site-nav {
+  padding: 0 0.5em 0.5em;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* 廃止・更新のお知らせは dl の直後に置く。dl の中に置いていたときと余白を揃える */
+#external-updates:has(+ #obsoleted-by, + #updated-by) {
+  margin-bottom: 0.8em; /* dl > dd の margin-bottom と同じ */
+}
+#external-metadata > #updated-by:last-child,
+#external-metadata > #obsoleted-by:last-child {
+  margin-bottom: 11.2px; /* dl の margin-bottom（1em = 14px × 0.8） */
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<nav id="site-nav"><a href="index.html">RFC日本語訳の一覧</a></nav><div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>発行日:</dt>
+<dd><time datetime="2017-05">2017年5月</time></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8165.html">RFC 8165</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8165">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8165">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8165</h1>
+<h1 id="title-en">Design Considerations for Metadata Insertion</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8165</h1>
+<h1 id="title-ja">メタデータ挿入に関する設計上の考慮事項</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">The IAB published RFC 7624 in response to several revelations of
+pervasive attacks on Internet communications.  This document
+considers the implications of protocol designs that associate
+metadata with encrypted flows.  In particular, it asserts that
+designs that share metadata only by explicit actions at the host are
+preferable to designs in which middleboxes insert metadata.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">IABは、インターネット通信に対する広範な攻撃（pervasive attack）に関するいくつかの暴露を受けて、RFC 7624を発行しました。この文書は、暗号化されたフローにメタデータを関連付けるプロトコル設計の影響について考察します。特に、ホストでの明示的な操作によってのみメタデータを共有する設計のほうが、ミドルボックスがメタデータを挿入する設計よりも望ましいと主張します。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Not all documents
+approved by the IESG are a candidate for any level of Internet
+Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="http://www.rfc-editor.org/info/rfc8165" class="eref">http://www.rfc-editor.org/info/rfc8165</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<span><a href="http://www.rfc-editor.org/info/rfc8165" class="eref">http://www.rfc-editor.org/info/rfc8165</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-terminology-en">Terminology</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-design-pattern-en">Design Pattern</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-advice-en">Advice</a></p>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-deployment-considerations-en">Deployment Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.8.1.1-en"><a href="#section-8.1-en">8.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.8.2-en">
+              <p id="section-toc.1-1.8.2.1-en"><a href="#section-8.2-en">8.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-en">
+            <p id="section-toc.1-1.a.1-en"><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.b-en">
+            <p id="section-toc.1-1.b.1-en"><a href="#name-authors-address-en">Author's Address</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-terminology-ja">用語</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-design-pattern-ja">設計パターン</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-advice-ja">助言</a></p>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-deployment-considerations-ja">展開上の考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.8.1.1-ja"><a href="#section-8.1-ja">8.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.8.2-ja">
+              <p id="section-toc.1-1.8.2.1-ja"><a href="#section-8.2-ja">8.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.a-ja">
+            <p id="section-toc.1-1.a.1-ja"><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.b-ja">
+            <p id="section-toc.1-1.b.1-ja"><a href="#name-authors-address-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">To minimize the risks associated with pervasive surveillance, it is
+necessary for the Internet technical community to address the
+vulnerabilities exploited in the attacks documented in <span>[<a href="#RFC7258-en">RFC7258</a>]</span> and
+the threats described in <span>[<a href="#RFC7624-en">RFC7624</a>]</span>.  The goal of this document is to
+address a common design pattern that emerges from the increase in
+encryption: explicit association of metadata that would previously
+have been inferred from the plaintext protocol.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">広範な監視（pervasive surveillance）に伴うリスクを最小化するためには、インターネット技術コミュニティーが、<span>[<a href="#RFC7258-ja">RFC7258</a>]</span>に記録されている攻撃で悪用された脆弱性と、<span>[<a href="#RFC7624-ja">RFC7624</a>]</span>で説明されている脅威に対処する必要があります。この文書の目的は、暗号化の増加に伴って現れる一般的な設計パターン、すなわち、以前であれば平文のプロトコルから推測されていたはずのメタデータを明示的に関連付けるという設計パターンに対処することです。</p></div>
+</div></section><section><span id="section-2"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-terminology-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-terminology-en" class="section-name selfRef">Terminology</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-terminology-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-terminology-ja" class="section-name selfRef">用語</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">This document makes extensive use of standard security and privacy
+terminology; see <span>[<a href="#RFC4949-en">RFC4949</a>]</span> and <span>[<a href="#RFC6973-en">RFC6973</a>]</span>.  Readers should be familiar
+with the terms defined in <span>[<a href="#RFC6973-en">RFC6973</a>]</span>, including "Eavesdropper",
+"Observer", "Initiator", "Intermediary", "Recipient", "Attack" (in a
+privacy context), "Correlation", "Fingerprint", "Traffic Analysis",
+and "Identifiability" (and related terms).  Readers should also be
+familiar with terms that are specific to the attacks discussed in
+<span>[<a href="#RFC7624-en">RFC7624</a>]</span>, including "Pervasive Attack", "Passive Pervasive Attack",
+"Active Pervasive Attack", "Observation", "Inference", and
+"Collaborator".</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">この文書では、標準的なセキュリティーとプライバシーの用語を広く使用します。<span>[<a href="#RFC4949-ja">RFC4949</a>]</span>と<span>[<a href="#RFC6973-ja">RFC6973</a>]</span>を参照してください。読者は、<span>[<a href="#RFC6973-ja">RFC6973</a>]</span>で定義されている用語に精通していることが望まれます。これには、「盗聴者（Eavesdropper）」、「観測者（Observer）」、「開始者（Initiator）」、「仲介者（Intermediary）」、「受信者（Recipient）」、（プライバシーの文脈における）「攻撃（Attack）」、「相関（Correlation）」、「フィンガープリント（Fingerprint）」、「トラフィック分析（Traffic Analysis）」、「識別可能性（Identifiability）」（および関連用語）が含まれます。また読者は、<span>[<a href="#RFC7624-ja">RFC7624</a>]</span>で議論されている攻撃に固有の用語にも精通していることが望まれます。これには、「広範な攻撃（Pervasive Attack）」、「受動的な広範な攻撃（Passive Pervasive Attack）」、「能動的な広範な攻撃（Active Pervasive Attack）」、「観測（Observation）」、「推論（Inference）」、「協力者（Collaborator）」が含まれます。</p></div>
+</div></section><section><span id="section-3"></span><span id="design-pattern-en"></span><span id="design-pattern-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-design-pattern-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-design-pattern-en" class="section-name selfRef">Design Pattern</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-design-pattern-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-design-pattern-ja" class="section-name selfRef">設計パターン</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">One of the core mitigations for the loss of confidentiality in the
+presence of pervasive surveillance is data minimization, which limits
+the amount of data disclosed to those elements absolutely required to
+complete the relevant protocol exchange.  When data minimization is
+in effect, some information that was previously available may be
+removed from specific protocol exchanges.  The information may be
+removed explicitly (for example, by a browser suppressing cookies
+during private modes) or by other means.  As noted in <span>[<a href="#RFC7624-en">RFC7624</a>]</span>, some
+topologies that aggregate or alter the network path also act to
+reduce the ease with which metadata is available to eavesdroppers.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">広範な監視が存在する状況での機密性の喪失に対する中心的な緩和策の1つは、データ最小化（data minimization）です。データ最小化は、開示されるデータを、関連するプロトコル交換を完了するために絶対に必要な要素だけに限定します。データ最小化が有効な場合、以前は利用可能だった一部の情報が、特定のプロトコル交換から取り除かれることがあります。情報は、明示的に（たとえば、プライベートモード中にブラウザーがクッキーを抑制することによって）取り除かれることもあれば、ほかの手段によって取り除かれることもあります。<span>[<a href="#RFC7624-ja">RFC7624</a>]</span>で述べられているように、ネットワーク経路を集約または変更する一部のトポロジーも、盗聴者がメタデータを入手する容易さを低下させるように働きます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-2-en">In some cases, other actors within a protocol context will continue
+to have access to the information that has been thus withdrawn from
+specific protocol exchanges.  If those actors attach the information
+as metadata to those protocol exchanges, the confidentiality effect
+of data minimization is lost.</p></div>
+<div lang="ja" class="col"><p id="section-3-2-ja">場合によっては、プロトコルの文脈内のほかのアクターが、このようにして特定のプロトコル交換から取り除かれた情報に引き続きアクセスできることがあります。それらのアクターがその情報をメタデータとしてそれらのプロトコル交換に付加すると、データ最小化による機密性の効果は失われます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-3-en">Restoring information is particularly tempting at systems not
+primarily deployed to increase confidentiality.  A proxy providing
+compression, for example, may wish to restore the identity of the
+requesting party; similarly, a VPN system used to provide channel
+security may believe that the origin IP should be restored.  Actors
+considering restoring metadata may believe that they understand the
+relevant privacy considerations or believe that, because the primary
+purpose of the service was not privacy-related, none exist.  Examples
+of this design pattern include <span>[<a href="#RFC7239-en">RFC7239</a>]</span> and <span>[<a href="#RFC7871-en">RFC7871</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-3-3-ja">情報を復元することは、主に機密性を高めるために展開されているわけではないシステムにおいて、特に魅力的です。たとえば、圧縮を提供するプロキシーは、リクエスト元の当事者の識別情報を復元したいと考えるかもしれません。同様に、チャネルセキュリティーを提供するために使用されるVPNシステムは、送信元IPを復元すべきだと考えるかもしれません。メタデータの復元を検討しているアクターは、関連するプライバシーの考慮事項を理解していると考えているかもしれませんし、サービスの主な目的がプライバシーに関連するものではないため、そのような考慮事項は存在しないと考えているかもしれません。この設計パターンの例には、<span>[<a href="#RFC7239-ja">RFC7239</a>]</span>と<span>[<a href="#RFC7871-ja">RFC7871</a>]</span>があります。</p></div>
+</div></section><section><span id="section-4"></span><span id="advice-en"></span><span id="advice-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-advice-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-advice-en" class="section-name selfRef">Advice</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-advice-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-advice-ja" class="section-name selfRef">助言</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">Avoid inserting metadata to restore information that would otherwise
+be unavailable to later participants in a protocol exchange.  It
+contributes to the overall loss of confidentiality for the Internet
+and trust in the Internet as a medium.  Do not add metadata to flows
+at intermediary devices unless a positive affirmation of approval for
+restoration has been received from the actor whose data will be
+added.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja">プロトコル交換の後続の参加者にとって、そうしなければ利用できないはずの情報を復元するために、メタデータを挿入することは避けてください。それは、インターネットにおける機密性の全体的な喪失と、媒体としてのインターネットに対する信頼の全体的な喪失の一因となります。データが追加されることになるアクターから、復元の承認についての明確な肯定を受け取っていない限り、仲介デバイスでフローにメタデータを追加しないでください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">Instead, design the protocol so that the actor can add such metadata
+themselves so that it flows end to end, rather than requiring the
+action of other parties.  In addition to improving privacy, this
+approach ensures consistent availability between the communicating
+parties, no matter what path is taken.  (Note that this document does
+not attempt to describe how an actor sets policies on providing this
+metadata, as the range of systems that might be implied is very
+broad).</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">代わりに、ほかの当事者の動作を必要とするのではなく、アクター自身がそのようなメタデータを追加し、それがエンドツーエンドで流れるようにプロトコルを設計してください。このアプローチは、プライバシーを向上させることに加えて、どの経路がとられるかにかかわらず、通信する当事者間で一貫した可用性を保証します。（この文書は、アクターがこのメタデータの提供に関するポリシーをどのように設定するかを説明しようとはしていないことに注意してください。関係しうるシステムの範囲が非常に広いためです。）</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-3-en">As an example, RFC 7871 describes a method that had already been
+deployed and notes that it is unlikely that a clean-slate design
+would result in this mechanism.  If a clean-slate design were built
+to follow the advice in this document, that design would likely not
+use a core element of RFC 7871: rather than adding metadata at a
+proxy, it would provide facilities for end systems to add it to their
+initial queries.  In the case of RFC 7871, the relevant metadata is
+relatively easy for an end system to derive, as Session Traversal
+Utilities for NAT (STUN) <span>[<a href="#RFC5389-en">RFC5389</a>]</span> provides a method for learning the
+reflexive transport address from which a client subnet could be
+derived.  This would allow clients to populate this data themselves,
+thus affirming their consent and providing data at a granularity with
+which they were comfortable.  As in RFC 7871, the addition of this
+data would require confirmation that the upstream DNS resolver
+understands what to do with it, but the same negotiation mechanism,
+an Extension Mechanisms for DNS (EDNS(0)) option <span>[<a href="#RFC6891-en">RFC6891</a>]</span>, could be
+used.  Because of this negotiation, there would be a new variability
+in responses that would change the caching behavior for data supplied
+by participating servers.  This is not a major change from the
+current design, however, as the same considerations set out in
+Sections 7.3.2 and 7.5 of RFC 7871 would apply to client-supplied
+subnets as well as to proxy-supplied subnets.</p></div>
+<div lang="ja" class="col"><p id="section-4-3-ja">例として、RFC 7871は、すでに展開されていた方式を説明しており、クリーンスレート（白紙の状態から）で設計した場合にこの仕組みになる可能性は低いと述べています。この文書の助言に従うようにクリーンスレートの設計を構築したとすると、その設計はおそらくRFC 7871の中核的な要素を使用しないでしょう。つまり、プロキシーでメタデータを追加するのではなく、エンドシステムが最初のクエリーにメタデータを追加するための機能を提供するでしょう。RFC 7871の場合、関連するメタデータはエンドシステムにとって比較的容易に導出できます。NATのためのセッショントラバーサルユーティリティー（Session Traversal Utilities for NAT、STUN）<span>[<a href="#RFC5389-ja">RFC5389</a>]</span>が、クライアントサブネットの導出元となりうるリフレクシブトランスポートアドレスを知るための方法を提供しているからです。これにより、クライアントはこのデータを自分で設定できるようになり、それによって同意を表明するとともに、自分が納得できる粒度でデータを提供できます。RFC 7871と同様に、このデータを追加するには、上流のDNSリゾルバーがそれをどう扱えばよいかを理解していることの確認が必要になりますが、同じネゴシエーションの仕組み、すなわちDNSの拡張メカニズム（Extension Mechanisms for DNS、EDNS(0)）のオプション<span>[<a href="#RFC6891-ja">RFC6891</a>]</span>を使用できます。このネゴシエーションのため、レスポンスに新たなばらつきが生じ、参加するサーバーが提供するデータのキャッシュの動作が変わることになります。しかし、RFC 7871のセクション7.3.2と7.5で示されている考慮事項が、プロキシーが提供するサブネットと同様に、クライアントが提供するサブネットにもそのまま適用されるため、これは現在の設計からの大きな変更ではありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-4-en">From a protocol perspective, in other words, this approach would be a
+minor change from RFC 7871, would be as fully featured, and would
+provide better privacy properties than the on-path update mechanism
+RFC 7871 provides.  The next section examines why, despite this,
+deployment considerations have sometimes trumped cleaner designs.</p></div>
+<div lang="ja" class="col"><p id="section-4-4-ja">言い換えると、プロトコルの観点からは、このアプローチはRFC 7871からの小さな変更であり、同等に十分な機能を備え、RFC 7871が提供する経路上での更新の仕組みよりも優れたプライバシー特性を提供することになります。次のセクションでは、それにもかかわらず、展開上の考慮事項がよりクリーンな設計に勝ることがあった理由を検討します。</p></div>
+</div></section><section><span id="section-5"></span><span id="deployment-considerations-en"></span><span id="deployment-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-deployment-considerations-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-deployment-considerations-en" class="section-name selfRef">Deployment Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-deployment-considerations-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-deployment-considerations-ja" class="section-name selfRef">展開上の考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">There are a few common tensions associated with the deployment of
+systems that restore metadata.  The first is the trade-off in speed
+of deployment for different actors.  The Forwarded HTTP Extension in
+<span>[<a href="#RFC7239-en">RFC7239</a>]</span> provides an example of this.  When used with a proxy, it
+restores information related to the original requesting party, thus
+allowing a responding server to tailor responses according to the
+original party's region, network, or other characteristics associated
+with the identity.  It would, of course, be possible for the
+originating client to add this data itself, after using STUN
+<span>[<a href="#RFC5389-en">RFC5389</a>]</span> or a similar mechanism to first determine the information
+to declare.  This would require, however, full specification and
+adoption of this mechanism by the end systems.  It would not be
+available at all during this period and would thereafter be limited
+to systems that have been upgraded to include it.  The long tail of
+browser deployments indicates that many systems might go without
+upgrades for a significant period of time.  The proxy infrastructure,
+in contrast, is commonly under more active management and represents
+a much smaller number of elements; this impacts both the general
+deployment difficulty and the number of systems that the origin
+server must trust.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">メタデータを復元するシステムの展開には、よくあるいくつかの緊張関係が伴います。1つ目は、異なるアクターにとっての展開速度のトレードオフです。<span>[<a href="#RFC7239-ja">RFC7239</a>]</span>のForwarded HTTP拡張がその一例です。プロキシーとともに使用すると、この拡張は元のリクエスト元の当事者に関する情報を復元し、それにより、応答するサーバーは、元の当事者の地域、ネットワーク、またはその識別情報に関連するほかの特性に応じてレスポンスを調整できるようになります。もちろん、発信元のクライアントが、STUN<span>[<a href="#RFC5389-ja">RFC5389</a>]</span>または同様の仕組みを使用して、宣言すべき情報を最初に特定したあとで、このデータを自分で追加することも可能です。しかし、これには、この仕組みの完全な仕様化と、エンドシステムによる採用が必要になります。この仕組みは、その期間中はまったく利用できず、その後も、これを含むようにアップグレードされたシステムに限定されます。ブラウザーの展開のロングテールは、多くのシステムがかなりの期間アップグレードされないままになる可能性があることを示しています。対照的に、プロキシーのインフラストラクチャーは一般に、より積極的に管理されており、要素の数もはるかに少ないです。このことは、全般的な展開の難しさと、オリジンサーバーが信頼しなければならないシステムの数の両方に影響します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-2-en">The second common tension is between metadata minimization and the
+desire to tailor content responses.  For origin servers whose content
+is common across users, the loss of metadata may have limited impact
+on the system's functioning.  For other systems, which commonly
+tailor content by region or network, the loss of metadata may imply a
+loss of functionality.  Where the user desires this functionality,
+restoration can commonly be achieved by the use of other identifiers
+or login procedures.  Where the user does not desire this
+functionality, but it is a preference of the server or a third party,
+adjustment is more difficult.  At the extreme, content blocking by
+network origin may be a regulatory requirement.  Trusting a network
+intermediary to provide accurate data is, of course, fragile in this
+case, but it may be a part of the regulatory framework.</p></div>
+<div lang="ja" class="col"><p id="section-5-2-ja">2つ目のよくある緊張関係は、メタデータの最小化と、コンテンツのレスポンスを調整したいという要望との間にあります。コンテンツがユーザー間で共通であるオリジンサーバーの場合、メタデータの喪失がシステムの機能に与える影響は限られているかもしれません。地域やネットワークによってコンテンツを調整することが一般的なほかのシステムでは、メタデータの喪失は機能の喪失を意味するかもしれません。ユーザーがこの機能を望む場合、復元は一般に、ほかの識別子やログイン手順を使用することで実現できます。ユーザーはこの機能を望んでいないものの、サーバーや第三者がそれを好む場合には、調整はより困難です。極端な場合には、ネットワークの発信元によるコンテンツのブロックが規制上の要件となっていることがあります。もちろん、この場合、ネットワーク仲介者が正確なデータを提供すると信頼することは脆弱ですが、それが規制の枠組みの一部となっていることもあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-3-en">There are also tensions with latency of operation.  For example,
+where the end system does not initially know the information that
+would be added by on-path devices, it must engage the protocol
+mechanisms to determine it.  Determining a public IP address to
+include in a locally supplied header might require a STUN exchange,
+and the additional latency of this exchange discourages deployment of
+host-based solutions.  To minimize this latency, engaging those
+mechanisms may need to be done in parallel with or in advance of the
+core protocol exchanges with which this metadata would be supplied.</p></div>
+<div lang="ja" class="col"><p id="section-5-3-ja">動作の遅延との緊張関係もあります。たとえば、経路上のデバイスによって追加されるはずの情報をエンドシステムが最初は知らない場合、エンドシステムはそれを特定するためにプロトコルの仕組みを用いなければなりません。ローカルで提供するヘッダーに含めるパブリックIPアドレスを特定するにはSTUNの交換が必要になる場合があり、この交換による追加の遅延は、ホストベースのソリューションの展開を妨げる要因になります。この遅延を最小化するために、それらの仕組みを用いる処理は、このメタデータが提供されることになる中核的なプロトコル交換と並行して、またはそれに先立って行う必要があるかもしれません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-4-en">These tensions do not change the basic recommendation, but they
+suggest that the parties who are introducing encryption and data
+minimization for existing protocols consider carefully whether the
+work also implies introducing mechanisms for the end-to-end
+provisioning of metadata when a user has actively consented to
+provide it.</p></div>
+<div lang="ja" class="col"><p id="section-5-4-ja">これらの緊張関係によって基本的な推奨事項が変わるわけではありませんが、既存のプロトコルに暗号化とデータ最小化を導入しようとしている当事者に対して、その作業が、ユーザーが積極的に同意した場合にメタデータをエンドツーエンドで提供するための仕組みの導入も意味するかどうかを慎重に検討するよう示唆しています。</p></div>
+</div></section><section><span id="section-6"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">This document makes no request of IANA.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">この文書はIANAに何も要求しません。</p></div>
+</div></section><section><span id="section-7"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">This memorandum describes a design pattern emerging from responses to
+the attacks described in <span>[<a href="#RFC7258-en">RFC7258</a>]</span>.  Continued use of this design
+pattern, which uses mid-flow devices to restore metadata, lowers the
+impact of mitigations to that attack.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">このメモは、<span>[<a href="#RFC7258-ja">RFC7258</a>]</span>で説明されている攻撃への対応から生じつつある設計パターンについて説明します。メタデータを復元するためにフローの途中のデバイスを使用するこの設計パターンを使い続けることは、その攻撃に対する緩和策の効果を低下させます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-2-en">Note that some emergency service recipients, notably PSAPs (Public
+Safety Answering Points) may prefer data provided by a network to
+data provided by an end system, because an end system could use false
+data to attack others or consume resources.  While this has the
+consequence that the data available to the PSAP is often more coarse
+than that available to the end system, the risk of false data being
+provided involves a risk to the lives of those targeted.</p></div>
+<div lang="ja" class="col"><p id="section-7-2-ja">一部の緊急サービスの受信者、特に緊急通報受理機関（Public Safety Answering Point、PSAP）は、エンドシステムが提供するデータよりもネットワークが提供するデータを好む場合があることに注意してください。これは、エンドシステムが虚偽のデータを使用して他者を攻撃したり、リソースを消費したりする可能性があるためです。その結果、PSAPが利用できるデータはエンドシステムが利用できるデータよりも粗いことが多くなりますが、虚偽のデータが提供されるリスクには、標的とされた人々の生命に対するリスクが伴います。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-8-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-8.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC4949-en">[RFC4949]</dt>
+<dd class="break">
+<span class="refAuthor">Shirey, R.</span>, <span></span><span class="refTitle">"Internet Security Glossary, Version 2"</span>, <span class="seriesInfo">FYI 36</span>, <span class="seriesInfo">RFC 4949</span>, <span class="seriesInfo">DOI 10.17487/RFC4949</span>, <time datetime="2007-08" class="refDate">August 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc4949">http://www.rfc-editor.org/info/rfc4949</a>&gt;</span>
+</dd>
+<dt id="RFC6973-en">[RFC6973]</dt>
+<dd class="break">
+<span class="refAuthor">Cooper, A.</span>, <span class="refAuthor">Tschofenig, H.</span>, <span class="refAuthor">Aboba, B.</span>, <span class="refAuthor">Peterson, J.</span>, <span class="refAuthor">Morris, J.</span>, <span class="refAuthor">Hansen, M.</span>, and <span class="refAuthor">R. Smith</span>, <span></span><span class="refTitle">"Privacy Considerations for Internet Protocols"</span>, <span class="seriesInfo">RFC 6973</span>, <span class="seriesInfo">DOI 10.17487/RFC6973</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6973">http://www.rfc-editor.org/info/rfc6973</a>&gt;</span>
+</dd>
+<dt id="RFC7258-en">[RFC7258]</dt>
+<dd class="break">
+<span class="refAuthor">Farrell, S.</span> and <span class="refAuthor">H. Tschofenig</span>, <span></span><span class="refTitle">"Pervasive Monitoring Is an Attack"</span>, <span class="seriesInfo">BCP 188</span>, <span class="seriesInfo">RFC 7258</span>, <span class="seriesInfo">DOI 10.17487/RFC7258</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7258">http://www.rfc-editor.org/info/rfc7258</a>&gt;</span>
+</dd>
+<dt id="RFC7624-en">[RFC7624]</dt>
+<dd class="break">
+<span class="refAuthor">Barnes, R.</span>, <span class="refAuthor">Schneier, B.</span>, <span class="refAuthor">Jennings, C.</span>, <span class="refAuthor">Hardie, T.</span>, <span class="refAuthor">Trammell, B.</span>, <span class="refAuthor">Huitema, C.</span>, and <span class="refAuthor">D. Borkmann</span>, <span></span><span class="refTitle">"Confidentiality in the Face of Pervasive Surveillance: A Threat Model and Problem Statement"</span>, <span class="seriesInfo">RFC 7624</span>, <span class="seriesInfo">DOI 10.17487/RFC7624</span>, <time datetime="2015-08" class="refDate">August 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7624">http://www.rfc-editor.org/info/rfc7624</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-8.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC5389-en">[RFC5389]</dt>
+<dd class="break">
+<span class="refAuthor">Rosenberg, J.</span>, <span class="refAuthor">Mahy, R.</span>, <span class="refAuthor">Matthews, P.</span>, and <span class="refAuthor">D. Wing</span>, <span></span><span class="refTitle">"Session Traversal Utilities for NAT (STUN)"</span>, <span class="seriesInfo">RFC 5389</span>, <span class="seriesInfo">DOI 10.17487/RFC5389</span>, <time datetime="2008-10" class="refDate">October 2008</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5389">http://www.rfc-editor.org/info/rfc5389</a>&gt;</span>
+</dd>
+<dt id="RFC6891-en">[RFC6891]</dt>
+<dd class="break">
+<span class="refAuthor">Damas, J.</span>, <span class="refAuthor">Graff, M.</span>, and <span class="refAuthor">P. Vixie</span>, <span></span><span class="refTitle">"Extension Mechanisms for DNS (EDNS(0))"</span>, <span class="seriesInfo">STD 75</span>, <span class="seriesInfo">RFC 6891</span>, <span class="seriesInfo">DOI 10.17487/RFC6891</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6891">http://www.rfc-editor.org/info/rfc6891</a>&gt;</span>
+</dd>
+<dt id="RFC7239-en">[RFC7239]</dt>
+<dd class="break">
+<span class="refAuthor">Petersson, A.</span> and <span class="refAuthor">M. Nilsson</span>, <span></span><span class="refTitle">"Forwarded HTTP Extension"</span>, <span class="seriesInfo">RFC 7239</span>, <span class="seriesInfo">DOI 10.17487/RFC7239</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7239">http://www.rfc-editor.org/info/rfc7239</a>&gt;</span>
+</dd>
+<dt id="RFC7687-en">[RFC7687]</dt>
+<dd class="break">
+<span class="refAuthor">Farrell, S.</span>, <span class="refAuthor">Wenning, R.</span>, <span class="refAuthor">Bos, B.</span>, <span class="refAuthor">Blanchet, M.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span></span><span class="refTitle">"Report from the Strengthening the Internet (STRINT) Workshop"</span>, <span class="seriesInfo">RFC 7687</span>, <span class="seriesInfo">DOI 10.17487/RFC7687</span>, <time datetime="2015-12" class="refDate">December 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7687">http://www.rfc-editor.org/info/rfc7687</a>&gt;</span>
+</dd>
+<dt id="RFC7871-en">[RFC7871]</dt>
+<dd class="break">
+<span class="refAuthor">Contavalli, C.</span>, <span class="refAuthor">van der Gaast, W.</span>, <span class="refAuthor">Lawrence, D.</span>, and <span class="refAuthor">W. Kumari</span>, <span></span><span class="refTitle">"Client Subnet in DNS Queries"</span>, <span class="seriesInfo">RFC 7871</span>, <span class="seriesInfo">DOI 10.17487/RFC7871</span>, <time datetime="2016-05" class="refDate">May 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7871">http://www.rfc-editor.org/info/rfc7871</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-8-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-8.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC4949-ja">[RFC4949]</dt>
+<dd class="break">
+<span class="refAuthor">Shirey, R.</span>, <span></span><span class="refTitle">"Internet Security Glossary, Version 2"</span>, <span class="seriesInfo">FYI 36</span>, <span class="seriesInfo">RFC 4949</span>, <span class="seriesInfo">DOI 10.17487/RFC4949</span>, <time datetime="2007-08" class="refDate">August 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc4949">http://www.rfc-editor.org/info/rfc4949</a>&gt;</span>
+</dd>
+<dt id="RFC6973-ja">[RFC6973]</dt>
+<dd class="break">
+<span class="refAuthor">Cooper, A.</span>, <span class="refAuthor">Tschofenig, H.</span>, <span class="refAuthor">Aboba, B.</span>, <span class="refAuthor">Peterson, J.</span>, <span class="refAuthor">Morris, J.</span>, <span class="refAuthor">Hansen, M.</span>, and <span class="refAuthor">R. Smith</span>, <span></span><span class="refTitle">"Privacy Considerations for Internet Protocols"</span>, <span class="seriesInfo">RFC 6973</span>, <span class="seriesInfo">DOI 10.17487/RFC6973</span>, <time datetime="2013-07" class="refDate">July 2013</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6973">http://www.rfc-editor.org/info/rfc6973</a>&gt;</span>
+</dd>
+<dt id="RFC7258-ja">[RFC7258]</dt>
+<dd class="break">
+<span class="refAuthor">Farrell, S.</span> and <span class="refAuthor">H. Tschofenig</span>, <span></span><span class="refTitle">"Pervasive Monitoring Is an Attack"</span>, <span class="seriesInfo">BCP 188</span>, <span class="seriesInfo">RFC 7258</span>, <span class="seriesInfo">DOI 10.17487/RFC7258</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7258">http://www.rfc-editor.org/info/rfc7258</a>&gt;</span>
+</dd>
+<dt id="RFC7624-ja">[RFC7624]</dt>
+<dd class="break">
+<span class="refAuthor">Barnes, R.</span>, <span class="refAuthor">Schneier, B.</span>, <span class="refAuthor">Jennings, C.</span>, <span class="refAuthor">Hardie, T.</span>, <span class="refAuthor">Trammell, B.</span>, <span class="refAuthor">Huitema, C.</span>, and <span class="refAuthor">D. Borkmann</span>, <span></span><span class="refTitle">"Confidentiality in the Face of Pervasive Surveillance: A Threat Model and Problem Statement"</span>, <span class="seriesInfo">RFC 7624</span>, <span class="seriesInfo">DOI 10.17487/RFC7624</span>, <time datetime="2015-08" class="refDate">August 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7624">http://www.rfc-editor.org/info/rfc7624</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-8.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="RFC5389-ja">[RFC5389]</dt>
+<dd class="break">
+<span class="refAuthor">Rosenberg, J.</span>, <span class="refAuthor">Mahy, R.</span>, <span class="refAuthor">Matthews, P.</span>, and <span class="refAuthor">D. Wing</span>, <span></span><span class="refTitle">"Session Traversal Utilities for NAT (STUN)"</span>, <span class="seriesInfo">RFC 5389</span>, <span class="seriesInfo">DOI 10.17487/RFC5389</span>, <time datetime="2008-10" class="refDate">October 2008</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5389">http://www.rfc-editor.org/info/rfc5389</a>&gt;</span>
+</dd>
+<dt id="RFC6891-ja">[RFC6891]</dt>
+<dd class="break">
+<span class="refAuthor">Damas, J.</span>, <span class="refAuthor">Graff, M.</span>, and <span class="refAuthor">P. Vixie</span>, <span></span><span class="refTitle">"Extension Mechanisms for DNS (EDNS(0))"</span>, <span class="seriesInfo">STD 75</span>, <span class="seriesInfo">RFC 6891</span>, <span class="seriesInfo">DOI 10.17487/RFC6891</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6891">http://www.rfc-editor.org/info/rfc6891</a>&gt;</span>
+</dd>
+<dt id="RFC7239-ja">[RFC7239]</dt>
+<dd class="break">
+<span class="refAuthor">Petersson, A.</span> and <span class="refAuthor">M. Nilsson</span>, <span></span><span class="refTitle">"Forwarded HTTP Extension"</span>, <span class="seriesInfo">RFC 7239</span>, <span class="seriesInfo">DOI 10.17487/RFC7239</span>, <time datetime="2014-06" class="refDate">June 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7239">http://www.rfc-editor.org/info/rfc7239</a>&gt;</span>
+</dd>
+<dt id="RFC7687-ja">[RFC7687]</dt>
+<dd class="break">
+<span class="refAuthor">Farrell, S.</span>, <span class="refAuthor">Wenning, R.</span>, <span class="refAuthor">Bos, B.</span>, <span class="refAuthor">Blanchet, M.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span></span><span class="refTitle">"Report from the Strengthening the Internet (STRINT) Workshop"</span>, <span class="seriesInfo">RFC 7687</span>, <span class="seriesInfo">DOI 10.17487/RFC7687</span>, <time datetime="2015-12" class="refDate">December 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7687">http://www.rfc-editor.org/info/rfc7687</a>&gt;</span>
+</dd>
+<dt id="RFC7871-ja">[RFC7871]</dt>
+<dd class="break">
+<span class="refAuthor">Contavalli, C.</span>, <span class="refAuthor">van der Gaast, W.</span>, <span class="refAuthor">Lawrence, D.</span>, and <span class="refAuthor">W. Kumari</span>, <span></span><span class="refTitle">"Client Subnet in DNS Queries"</span>, <span class="seriesInfo">RFC 7871</span>, <span class="seriesInfo">DOI 10.17487/RFC7871</span>, <time datetime="2016-05" class="refDate">May 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7871">http://www.rfc-editor.org/info/rfc7871</a>&gt;</span>
+</dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">This document is derived in part from the work initially done on the
+perpass mailing list and at the STRINT workshop <span>[<a href="#RFC7687-en">RFC7687</a>]</span>.  The text
+was originally developed by the IAB's Privacy and Security Program
+before submission to the IETF.  The document also benefited from an
+extensive review by Mohamed Boucadair.</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">この文書の一部は、当初perpassメーリングリストとSTRINTワークショップ<span>[<a href="#RFC7687-ja">RFC7687</a>]</span>で行われた作業に由来します。本文はもともと、IETFに提出される前に、IABのプライバシーとセキュリティープログラム（Privacy and Security Program）によって作成されました。この文書は、Mohamed Boucadairによる広範なレビューからも恩恵を受けました。</p></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-address-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-address-en" class="section-name selfRef">Author's Address</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-address-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-address-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Ted Hardie</div>
+<div class="author-email"><a href="mailto:ted.ietf@gmail.com">ted.ietf@gmail.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Ted Hardie</div>
+<div class="author-email"><a href="mailto:ted.ietf@gmail.com">ted.ietf@gmail.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

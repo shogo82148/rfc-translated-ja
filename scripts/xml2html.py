@@ -246,6 +246,23 @@ class HtmlWriter:
             text = self.html(html_tree)
             file.write(text)
 
+    def rfc_link(self, name):
+        """RFC 番号（例: "RFC9329"）を表す要素を作る。
+
+        対訳（src/ja/rfcN.xml）があれば rfcN.html へのリンクに、なければテキストにする。
+        """
+        m = re.fullmatch(r'RFC0*(\d+)', name)
+        if m:
+            number = m.group(1)
+            root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if os.path.exists(os.path.join(root_dir, 'src', 'ja', 'rfc%s.xml' % (number,))):
+                a = build('a', href='rfc%s.html' % (number,))
+                a.text = name
+                return a
+        span = build('span')
+        span.text = name
+        return span
+
     def metadata_to_html(self):
         external_metadata = build('div', id='external-metadata')
 
@@ -322,12 +339,11 @@ class HtmlWriter:
             div = build('div', id='obsoleted-by')
             div.text = 'このRFCは廃止されました。後継は'
             for o in obsoleted_by:
-                a = build('span')
-                a.text = o
+                a = self.rfc_link(o)
                 a.tail = ', '
                 div.append(a)
             a.tail = 'です。'
-            external_updates.append(div)
+            external_metadata.append(div)
 
         # 更新されたRFCへのリンク
         updated_by = self.metadata.get('updated_by')
@@ -335,12 +351,11 @@ class HtmlWriter:
             div = build('div', id='updated-by')
             div.text = 'このRFCは更新されました。更新内容は'
             for u in updated_by:
-                a = build('span')
-                a.text = u
+                a = self.rfc_link(u)
                 a.tail = ', '
                 div.append(a)
             a.tail = 'です。'
-            external_updates.append(div)
+            external_metadata.append(div)
 
         return external_metadata
 

@@ -264,6 +264,23 @@ class HtmlWriter:
             text = self.html(html_tree)
             file.write(text)
 
+    def rfc_link(self, name):
+        """RFC 番号（例: "RFC9329"）を表す要素を作る。
+
+        対訳（src/ja/rfcN.xml）があれば rfcN.html へのリンクに、なければテキストにする。
+        """
+        m = re.fullmatch(r'RFC0*(\d+)', name)
+        if m:
+            number = m.group(1)
+            root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if os.path.exists(os.path.join(root_dir, 'src', 'ja', 'rfc%s.xml' % (number,))):
+                a = build('a', href='rfc%s.html' % (number,))
+                a.text = name
+                return a
+        span = build('span')
+        span.text = name
+        return span
+
     def metadata_to_html(self):
         external_metadata = build('div', id='external-metadata')
 
@@ -278,6 +295,29 @@ class HtmlWriter:
             external_updates.append(dt)
             dd = build('dd')
             dd.text = status
+            external_updates.append(dd)
+
+        # 発行日
+        pub_date = self.metadata.get('pub_date')
+        if pub_date:
+            dt = build('dt')
+            dt.text = '発行日:'
+            external_updates.append(dt)
+            dd = build('dd')
+            # "June 2022" や "1 April 1998" の形式
+            m = re.fullmatch(r'(?:(\d{1,2}) )?([A-Za-z]+) (\d{4})', pub_date.strip())
+            if m and normalize_month(m.group(2)).isdigit():
+                day = int(m.group(1)) if m.group(1) else None
+                month = int(normalize_month(m.group(2)))
+                year = int(m.group(3))
+                time = build('time', datetime=format_date_iso(year, month, day))
+                if day:
+                    time.text = '%d年%d月%d日' % (year, month, day)
+                else:
+                    time.text = '%d年%d月' % (year, month)
+                dd.append(time)
+            else:
+                dd.text = pub_date
             external_updates.append(dd)
 
         # 更新
@@ -340,12 +380,11 @@ class HtmlWriter:
             div = build('div', id='obsoleted-by')
             div.text = 'このRFCは廃止されました。後継は'
             for o in obsoleted_by:
-                a = build('span')
-                a.text = o
+                a = self.rfc_link(o)
                 a.tail = ', '
                 div.append(a)
             a.tail = 'です。'
-            external_updates.append(div)
+            external_metadata.append(div)
 
         # 更新されたRFCへのリンク
         updated_by = self.metadata.get('updated_by')
@@ -353,12 +392,11 @@ class HtmlWriter:
             div = build('div', id='updated-by')
             div.text = 'このRFCは更新されました。更新内容は'
             for u in updated_by:
-                a = build('span')
-                a.text = u
+                a = self.rfc_link(u)
                 a.tail = ', '
                 div.append(a)
             a.tail = 'です。'
-            external_updates.append(div)
+            external_metadata.append(div)
 
         return external_metadata
 
@@ -461,6 +499,13 @@ class HtmlWriter:
         # <body> Element
         body = build('body')
         html.append(body)
+
+        # 日本語訳の一覧へのリンク
+        nav = build('nav', id='site-nav')
+        a = build('a', href='index.html')
+        a.text = 'RFC日本語訳の一覧'
+        nav.append(a)
+        body.append(nav)
 
         # メタデータのレンダリング
         metadata = self.metadata_to_html()

@@ -279,6 +279,29 @@ class HtmlWriter:
             dd.text = status
             external_updates.append(dd)
 
+        # 発行日
+        pub_date = self.metadata.get('pub_date')
+        if pub_date:
+            dt = build('dt')
+            dt.text = '発行日:'
+            external_updates.append(dt)
+            dd = build('dd')
+            # "June 2022" や "1 April 1998" の形式
+            m = re.fullmatch(r'(?:(\d{1,2}) )?([A-Za-z]+) (\d{4})', pub_date.strip())
+            if m and normalize_month(m.group(2)).isdigit():
+                day = int(m.group(1)) if m.group(1) else None
+                month = int(normalize_month(m.group(2)))
+                year = int(m.group(3))
+                time = build('time', datetime=format_date_iso(year, month, day))
+                if day:
+                    time.text = '%d年%d月%d日' % (year, month, day)
+                else:
+                    time.text = '%d年%d月' % (year, month)
+                dd.append(time)
+            else:
+                dd.text = pub_date
+            external_updates.append(dd)
+
         # 更新
         updates = self.metadata.get('updates')
         if updates and len(updates) > 0:

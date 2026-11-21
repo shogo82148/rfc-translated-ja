@@ -333,6 +333,16 @@ class HtmlWriter:
         dd.append(a)
         external_updates.append(dd)
 
+        # 日本語訳の一覧へのリンク
+        dt = build('dt')
+        dt.text = '一覧:'
+        external_updates.append(dt)
+        dd = build('dd')
+        a = build('a', href='index.html')
+        a.text = "RFC日本語訳"
+        dd.append(a)
+        external_updates.append(dd)
+
         # 廃止されたRFCへのリンク
         obsoleted_by = self.metadata.get('obsoleted_by')
         if obsoleted_by and len(obsoleted_by) > 0:

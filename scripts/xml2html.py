@@ -79,6 +79,24 @@ def postal_lines(postal):
         lines.append(build.div(span(country, 'country-name')))
     return lines
 
+def tel_uri(number):
+    """Convert a displayed phone number to the body of a tel: URI (RFC 3966).
+
+    The national trunk prefix "(0)" after an international number is dropped,
+    and an extension such as "x2517" or "ext 8550" becomes ";ext=2517".
+    """
+    ext = None
+    m = re.search(r',?\s*(?:x|ext\.?|extension)\s*(\d+)\s*$', number, re.IGNORECASE)
+    if m:
+        ext = m.group(1)
+        number = number[:m.start()]
+    if number.lstrip().startswith('+'):
+        number = re.sub(r'\(\s*0\s*\)', '', number)
+    uri = re.sub(r'[^0-9+]', '', number)
+    if ext:
+        uri += ';ext=' + ext
+    return uri
+
 def clean_text(s):
     """Replace internal use code points and various other special code points with plain equivalents"""
     # spaces
@@ -1749,7 +1767,7 @@ class HtmlWriter:
                     span.tail = ' '
                     div.append(span)
                     scheme = 'tel' if tag == 'phone' else 'fax'
-                    a = build('a', href='%s:%s' % (scheme, re.sub(r'[^0-9+]', '', number)))
+                    a = build('a', href='%s:%s' % (scheme, tel_uri(number)))
                     a.text = number
                     div.append(a)
                     card.append(div)

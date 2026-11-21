@@ -356,16 +356,6 @@ class HtmlWriter:
         dd.append(a)
         external_updates.append(dd)
 
-        # 日本語訳の一覧へのリンク
-        dt = build('dt')
-        dt.text = '一覧:'
-        external_updates.append(dt)
-        dd = build('dd')
-        a = build('a', href='index.html')
-        a.text = "RFC日本語訳"
-        dd.append(a)
-        external_updates.append(dd)
-
         # 廃止されたRFCへのリンク
         obsoleted_by = self.metadata.get('obsoleted_by')
         if obsoleted_by and len(obsoleted_by) > 0:
@@ -491,6 +481,13 @@ class HtmlWriter:
         # <body> Element
         body = build('body')
         html.append(body)
+
+        # 日本語訳の一覧へのリンク
+        nav = build('nav', id='site-nav')
+        a = build('a', href='index.html')
+        a.text = 'RFC日本語訳の一覧'
+        nav.append(a)
+        body.append(nav)
 
         # メタデータのレンダリング
         metadata = self.metadata_to_html()

@@ -1,0 +1,680 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-avtcore-rtp-circuit-breakers-18" indexInclude="true" number="8083" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-avtcore-rtp-circuit-breakers-18" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc8083" rel="alternate"/>
+  <front>
+    <title>マルチメディアの輻輳制御：ユニキャストRTPセッションのためのサーキットブレーカー</title>
+    <seriesInfo name="RFC" value="8083" stream="IETF"/>
+    <date year="2017" month="March"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">Real-time Transport Protocol（RTP）は、電話、ビデオ会議、テレプレゼンスのアプリケーションで広く使用されています。このようなアプリケーションは、ベストエフォートのUDP/IPネットワーク上で動作することがよくあります。これらのアプリケーションに輻輳制御が実装されていない場合、ネットワークの輻輳によって制御されないパケット損失が発生し、その結果、ユーザーのマルチメディア体験が劣化する可能性があります。輻輳制御アルゴリズムは、RTPフローが過剰なリソースを使用するのを止め、ネットワークを過負荷から保護することで、安全対策として機能します。しかし、この文書の執筆時点では、独自の解決策はいくつかあるものの、対話型RTPフローの輻輳制御のための標準アルゴリズムはありません。</t>
+      <t indent="0" pn="section-abstract-2">この文書は、輻輳制御アルゴリズムを提案するものではありません。代わりに、最小限のRTPサーキットブレーカーの集合、すなわち、過度の輻輳からネットワークを保護するためにRTP送信者がメディアデータの送信を停止する必要がある条件を定義します。長く続く過度の輻輳がなければ、ベストエフォートのIPネットワーク上で動作するRTPアプリケーションは、これらのサーキットブレーカーを作動させることなく動作できると期待されます。RTPサーキットブレーカーを作動させないようにするために、RTP向けに定義される標準化過程の輻輳制御アルゴリズムはいずれも、これらのRTPサーキットブレーカーのアルゴリズムが設定する範囲（envelope）内で動作する必要があるでしょう。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="http://www.rfc-editor.org/info/rfc8083" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="http://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-background">背景</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-terminology">用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-circuit-breakers-for-systems-using-the-rtp/avp-profile">RTP/AVPプロファイルを使用するシステムのためのRTPサーキットブレーカー</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp/avp-circuit-breaker-#1:-rtcp-timeout">RTP/AVPサーキットブレーカー#1：RTCPタイムアウト</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.2.1"><xref derivedContent="4.2" format="counter" sectionFormat="of" target="section-4.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp/avp-circuit-breaker-#2:-media-timeout">RTP/AVPサーキットブレーカー#2：メディアタイムアウト</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.3.1"><xref derivedContent="4.3" format="counter" sectionFormat="of" target="section-4.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp/avp-circuit-breaker-#3:-congestion">RTP/AVPサーキットブレーカー#3：輻輳</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.4">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.4.1"><xref derivedContent="4.4" format="counter" sectionFormat="of" target="section-4.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp/avp-circuit-breaker-#4:-media-usability">RTP/AVPサーキットブレーカー#4：メディアの使用可能性</xref></t>
+            </li>
+            <li pn="section-toc.1-1.4.5">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.5.1"><xref derivedContent="4.5" format="counter" sectionFormat="of" target="section-4.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-ceasing-transmission">送信の停止</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-rtp-circuit-breakers-and-the-rtp/avpf-and-rtp/savpf-profiles">RTPサーキットブレーカーとRTP/AVPFおよびRTP/SAVPFプロファイル</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-impact-of-rtcp-extended-reports-(xr)">RTCP拡張レポート（XR）の影響</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-impact-of-explicit-congestion-notification-(ecn)">Explicit Congestion Notification（ECN）の影響</xref></t>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-impact-of-bundled-media-and-layered-coding">バンドルされたメディアと階層符号化の影響</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.A">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.A.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.B">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.B.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">Real-time Transport Protocol（RTP）<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>は、VoIP（voice-over-IP）、ビデオ会議、テレプレゼンスのシステムで広く使用されています。これらのシステムの多くはベストエフォートのUDP/IPネットワーク上で動作しており、ネットワークの輻輳が発生すると、パケット損失や遅延の増加に見舞われる可能性があります。ユーザー体験を維持しながら、RTPベースのメディアの送信を利用可能なネットワーク容量に合わせて適応させる効果的なRTPの輻輳制御アルゴリズムを設計することは、難しいですが重要な問題です。そのような輻輳制御とメディア適応のアルゴリズムは数多く提案されてきましたが、現在までのところ、正しいアプローチについても、さらには単一の標準アルゴリズムが望ましいかどうかについてさえも、コンセンサスは得られていません。</t>
+      <t indent="0" pn="section-1-2">このメモは、新しいRTPの輻輳制御アルゴリズムを提案しようとするものではありません。代わりに、少数のRTPサーキットブレーカーの集合、すなわち、深刻なネットワーク輻輳が発生していることについて一般的な合意がある状況でRTPフローを終了させるメカニズムを提案します。このメモで提案するRTPサーキットブレーカーは、持続的な過度の輻輳を回避するための最後の手段の保護メカニズムとして機能するように設計された、ネットワークトランスポートのサーキットブレーカー<xref target="RFC8084" format="default" sectionFormat="of" derivedContent="RFC8084"/>という一般的なクラスの具体的な一例です。RTPサーキットブレーカーを作動させないようにするために、RTP向けに定義される標準化過程の輻輳制御アルゴリズムはいずれも、このメモで定義するRTPサーキットブレーカーのアルゴリズムが設定する範囲内で動作する必要があるでしょう。</t>
+    </section>
+    <section anchor="background" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-background">背景</name>
+      <t indent="0" pn="section-2-1">ここでは、ユニキャストのRTPトラフィックフローの輻輳制御を考えます。これは、RTPトランスポートセッション内にカプセル化された、1つの送信者から1つの受信者への音声・映像データフローの送信を、ネットワークパス上で利用可能な容量を超えて使用しないように適応させるという問題です。このような適応は、パケット損失と過度のレート変化の両方によって引き起こされるユーザー体験の阻害を抑えるように行う必要があります。マルチキャストフローの輻輳制御は、このメモの範囲外です。マルチキャストトラフィックには異なる解決策が必要です。受信者のグループに対する利用可能容量の推定値は単一の受信者に対するものとは異なり、また、マルチキャストの輻輳制御では、ユニキャストフローには当てはまらない、受信者のグループ間の公平性の問題を考慮しなければならないためです。</t>
+      <t indent="0" pn="section-2-2">ユニキャストのRTPトラフィックの輻輳制御は、プロトコルスタックの2つの場所のどちらかで実装できます。1つのアプローチは、輻輳制御されたトランスポートプロトコル上で（たとえばTCP上で）RTPトラフィックを実行し、メディアの符号化をトランスポート層の輻輳制御アルゴリズムの指示に合わせて適応させるというものです。これはネットワークにとっては安全ですが、トランスポートプロトコルがリアルタイムのメディアフローをサポートするように設計されていない限り、メディアの品質にとっては最適ではない可能性があります。このクラスのアプリケーションは、ネットワークに対する安全性が下位のトランスポートによって保証されているため、このメモではこれ以上考慮しません。</t>
+      <t indent="0" pn="section-2-3">あるいは、RTPフローを非輻輳制御のトランスポートプロトコル（たとえばUDP）上で実行し、RTP Control Protocol（RTCP）のフィードバックに基づいてアプリケーション層でレート適応を行うこともできます。適切に設計された、ネットワークを意識したアプリケーションであれば、これによって非常に効果的なメディア品質の適応が可能になりますが、アプリケーションが送信レートを適時かつ効果的に適応させない場合には、ネットワークに持続的な輻輳を引き起こす可能性があります。このメモでは、このクラスのアプリケーションを考えます。</t>
+      <t indent="0" pn="section-2-4">輻輳制御は、メディアフローの配送を監視し、ネットワークパスが輻輳している兆候がある場合に、そのフローの送信を調整するように応答することに依存しています。ネットワークの輻輳は、次の3つの方法のいずれかで検出できます。</t>
+      <ol type="%d)" spacing="normal" indent="adaptive" start="1" pn="section-2-5">
+        <li pn="section-2-5.1" derivedCounter="1)">受信者は、ネットワーク内でのキューの蓄積によって引き起こされる片方向遅延の増加を観測することで、輻輳の始まりを推測できます。</li>
+        <li pn="section-2-5.2" derivedCounter="2)">Explicit Congestion Notification（ECN）<xref target="RFC3168" format="default" sectionFormat="of" derivedContent="RFC3168"/>がサポートされている場合、ネットワークは、ECNのCongestion Experienced（CE）マークを使用してパケットにマークを付けることで、輻輳の存在を通知できます（これは、Congestion Exposure（ConEx）<xref target="RFC7713" format="default" sectionFormat="of" derivedContent="RFC7713"/>のようなメカニズムや、輻輳をネットワークで通知するための将来のほかのプロトコル拡張によって補強される可能性があります）。あるいは、</li>
+        <li pn="section-2-5.3" derivedCounter="3)">極端な場合には、輻輳によってパケット損失が発生し、それは受信したRTPシーケンス番号の欠落を観測することで検出できます。</li>
+      </ol>
+      <t indent="0" pn="section-2-6">輻輳の始まりが観測されたら、受信者は、送信レートを下げる必要があることを示すフィードバックを送信者に送らなければなりません。送信者がどのように送信レートを下げるかは、使用しているメディアコーデックに大きく依存し、このメモの範囲外です。</t>
+      <t indent="0" pn="section-2-7">RTPのフレームワーク内で受信者がメディア送信者にフィードバックを送る方法はいくつかあります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-8">
+        <li pn="section-2-8.1">基本のRTP仕様<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>は、受信品質のフィードバック情報を伝えるためのRTCP受信者レポート（RR）パケットと、メディアの送信に関する情報を伝えるための送信者レポート（SR）パケットを定義しています。RTCP SRパケットには、受信者でメディアのタイミングを再構成するために使用できるデータと、送信したオクテットとパケットの総数が含まれています。RTCP RRパケットは、直前の報告間隔で損失したパケットの割合、損失したパケットの累積数、受信した最大のシーケンス番号、到着間隔ジッターを報告します。RTCP RRパケットには、送信者が受信者までのネットワークの往復時間（Round-Trip Time：RTT）を推定できるようにするタイミング情報も含まれています。RTCPレポートは定期的に送信され、その報告間隔は、セッションで使用される同期送信元（Synchronization Source：SSRC）の数と、設定されたセッション帯域幅の推定値によって決まります（使用されるSSRCの数は、ユニキャストセッションでは通常、参加者ごとに1つずつの2つですが、参加者が複数のメディアストリームを送信する場合にはそれより多くなることがあります）。各受信者から送られるレポートの間隔は、平均で数秒程度です。この間隔はセッション帯域幅によって変化しますが、複数の受信者からのレポートが同期しないようにランダム化されます。高帯域幅のセッションでは、この間隔は1秒未満になることがあります。RTCP RRパケットにより、受信者は進行中のネットワーク輻輳を送信者に報告できます。しかし、受信者が報告間隔の途中で輻輳の始まりを検出した場合、基本のRTP仕様にはRTCP RRパケットを早期に送信するための規定がないため、受信者は次に予定されている報告間隔まで待たなければなりません。</li>
+        <li pn="section-2-8.2">RTCP拡張レポート（Extended Reports：XR）<xref target="RFC3611" format="default" sectionFormat="of" derivedContent="RFC3611"/>を使用すると、より複雑で高度な受信品質のメトリクスを報告できますが、RTCPのタイミング規則は変わりません。輻輳制御の目的で関心を持たれる可能性のあるRTCP拡張レポートは、拡張パケット損失、破棄、バーストのメトリクス<xref target="RFC3611" format="default" sectionFormat="of" derivedContent="RFC3611"/> <xref target="RFC7002" format="default" sectionFormat="of" derivedContent="RFC7002"/> <xref target="RFC7097" format="default" sectionFormat="of" derivedContent="RFC7097"/> <xref target="RFC7003" format="default" sectionFormat="of" derivedContent="RFC7003"/> <xref target="RFC6958" format="default" sectionFormat="of" derivedContent="RFC6958"/>と、拡張遅延メトリクス<xref target="RFC6843" format="default" sectionFormat="of" derivedContent="RFC6843"/> <xref target="RFC6798" format="default" sectionFormat="of" derivedContent="RFC6798"/>です。輻輳制御の目的に役立つ可能性のあるほかのRTCP拡張レポートが、将来開発されるかもしれません。</li>
+        <li pn="section-2-8.3">輻輳イベントの発生に関する迅速なフィードバックは、RTP/AVPプロファイル<xref target="RFC3551" format="default" sectionFormat="of" derivedContent="RFC3551"/>の代わりに、RTCPベースのフィードバックのための拡張RTPプロファイル（RTP/AVPF）<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>（またはそのセキュアな変種であるRTP/SAVPF <xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>）を使用することで実現できます。このプロファイルは、RTCPの送信レートが帯域幅の割り当て内に収まる限り、RTCPレポートを早期に、場合によっては即座に送信できるようにRTCPのタイミング規則を変更します。また、特定の輻輳イベントを報告するために使用できる、否定応答（Negative Acknowledgement：NACK）を含むトランスポート層のフィードバックメッセージも定義しています。RTPのコーデック制御メッセージ<xref target="RFC5104" format="default" sectionFormat="of" derivedContent="RFC5104"/>は、レート適応の方法に影響を与えるために使用できる追加のフィードバックメッセージでRTP/AVPFプロファイルを拡張しますが、フィードバックをどれだけ迅速に送信できるかという動特性をさらに変えることはありません。RTP/AVPFプロファイルの使用は、シグナリングに依存します。</li>
+        <li pn="section-2-8.4">最後に、RTP over UDPのためのECN<xref target="RFC6679" format="default" sectionFormat="of" derivedContent="RFC6679"/>を使用して、ECN-CEマークを受けたパケットの数についてのフィードバックを提供できます。このRTCP拡張は、RTP/AVPFプロファイルを基にしており、ECNがサポートされている場合に迅速な輻輳フィードバックを可能にします。</li>
+      </ul>
+      <t indent="0" pn="section-2-9">フィードバックを提供するこれらのメカニズムに加えて、送信者は、パケットの送信時刻を記録するためのRTPヘッダー拡張を各パケットに含めることができます<xref target="RFC5450" format="default" sectionFormat="of" derivedContent="RFC5450"/>。正確な送信タイムスタンプは、キューイング遅延を推定して輻輳の始まりを早期に示すのに役立つ可能性があります。</t>
+      <t indent="0" pn="section-2-10">これらのさまざまなメカニズムを組み合わせることで、受信者は、輻輳イベントが発生したときに、適時性と正確さの程度はさまざまですが、送信者についてのフィードバックを提供できます。重要な違いは、RTP/AVPFの迅速なフィードバックを使用せずに基本的なRTCPメカニズムだけを使用するシステムと、輻輳により迅速に応答するためにRTP/AVPF拡張を使用するシステムとの間にあります。</t>
+    </section>
+    <section anchor="terminology" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-terminology">用語</name>
+      <t indent="0" pn="section-3-1">キーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、
+「<bcp14>要求されています（REQUIRED）</bcp14>」、
+「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、
+「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、
+「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、
+「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、
+RFC 2119 <xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>に記載されているとおりに解釈されるものとします。これらのキーワードのこの解釈は、すべて大文字で書かれている場合にのみ適用されます。これらのキーワードが大文字と小文字の混在や小文字で使用されている場合は、このメモにおいて特別な意味を持つものとは解釈されません。</t>
+      <t indent="0" pn="section-3-2">RTPサーキットブレーカーの定義は、次の変数を用いて規定されます。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-3-3">
+        <li pn="section-3-3.1">Tdは、<xref target="RFC3550" section="6.3.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3550#section-6.3.1" derivedContent="RFC3550"/>で定義されている、決定論的なRTCP報告間隔です。</li>
+        <li pn="section-3-3.2">Tdrは、送信者が送信しているデータの受信者が計算する決定論的なRTCP報告間隔Tdについての、送信者による推定値です。Tdrは送信者では分かりませんが、送信者で観測されたRTCPパケットの平均サイズ、受信者のSR/RRレポートブロックで報告されたメンバー数、受信者がSRパケットとRRパケットのどちらを送信しているかを用いて、<xref target="RFC3550" section="6.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3550#section-6.2" derivedContent="RFC3550"/>のアルゴリズムを実行することで推定できます。Tdrは、新しいRTCP SR/RRレポートを受信するたびに再計算されますが、メディアタイムアウトサーキットブレーカー（<xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>を参照）が再検討されるのは、Tdrが増加したときだけです。</li>
+        <li pn="section-3-3.3">Trは、ネットワークの往復時間です。これは、送信者が<xref target="RFC3550" section="6.4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3550#section-6.4.1" derivedContent="RFC3550"/>のアルゴリズムを用いて計算し、Tr = (0.8 * Tr) + (0.2 * Tr_new)という指数加重移動平均を用いて平滑化します。ここで、Tr_newは、RTCPレポートから得られた最新のRTTの推定値です。この重みは、古い推定値がk回の間隔にわたって減衰するように選ばれています。</li>
+        <li pn="section-3-3.4">kは、非報告しきい値（non-reporting threshold）です（<xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>を参照）。</li>
+        <li pn="section-3-3.5">Tfは、送信者におけるメディアのフレーミング間隔です。一定のフレームレートで送信するアプリケーションでは、Tfはフレーム間の間隔です。取り得る少数のフレームレートを切り替えるアプリケーション（たとえば、コンフォートノイズを伴う音声を送信し、コンフォートノイズのフレームが音声のフレームよりも低い頻度で送信される場合）では、Tfは、それぞれのフレームレートのフレーム間隔のうち最も長いものに設定されます。周期的にフレームを送信するものの、フレームレートを動的に変化させるアプリケーションでは、Tfは、直近10秒間に使用された最大のフレーム間隔に設定されます。10秒ごとに1フレーム未満しか送信しないアプリケーションや、周期的なフレームという概念を持たないアプリケーション（たとえば、テキスト会話<xref target="RFC4103" format="default" sectionFormat="of" derivedContent="RFC4103"/>やポインターイベント<xref target="RFC2862" format="default" sectionFormat="of" derivedContent="RFC2862"/>）では、各フレームを送信するときに、Tfを前のフレームからの時間間隔に設定します。</li>
+        <li pn="section-3-3.6">Gは、フレームグループのサイズです。すなわち、特定の送信レートの設定に基づいてまとめて符号化されるフレームの数です。送信者が使用するコーデックがフレームごとにレートを変更できる場合はG = 1です。そうでない場合、Gは、コーデックが新しいレートに調整できるようになるまでのフレーム数に設定されます。GOP（Group of Pictures）という概念を持つコーデックでは、GはおそらくGOPの長さになります。</li>
+        <li pn="section-3-3.7">T_rr_intervalは、<xref target="RFC4585" section="3.4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4585#section-3.4" derivedContent="RFC4585"/>で定義されている、RTCPレポート間の最小間隔です。これは、RTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>またはRTP/SAVPFプロファイル<xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>の実装でのみ意味を持ちます。</li>
+        <li pn="section-3-3.8">Xは、TCPコネクションがパス上で達成するであろう推定スループットで、単位はバイト毎秒です。</li>
+        <li pn="section-3-3.9">sは、送信されるRTPパケットのサイズで、単位はバイトです。送信されるRTPパケットのサイズが変化する場合は、直近の4 * Gフレームを構成するパケットにわたる平均サイズを使用<bcp14>しなければなりません（MUST）</bcp14>（これは、<xref target="RFC5348" format="default" sectionFormat="of" derivedContent="RFC5348"/>で使用されている4つの損失間隔に相当するものとすることを意図しています）。</li>
+        <li pn="section-3-3.10">pは、特定のパス上のTCPコネクションが観測するであろう損失イベント率で、0.0から1.0の間の値です。RTP輻輳サーキットブレーカーで使用する場合、これは<xref target="section-4.3" format="default" sectionFormat="of" derivedContent="Section 4.3"/>で説明するように近似されます。</li>
+        <li pn="section-3-3.11">t_RTOは、特定のパス上のTCPコネクションが使用するであろう再送タイムアウトの値で、単位は秒です。RTP輻輳サーキットブレーカーの一部として使用する場合、これはt_RTO = 4 * Trを用いて近似<bcp14>しなければなりません（MUST）</bcp14>。</li>
+        <li pn="section-3-3.12">bは、1つのTCPの確認応答によって確認応答されるパケットの数です。<xref target="RFC5348" format="default" sectionFormat="of" derivedContent="RFC5348"/>に従い、RTP輻輳サーキットブレーカーの一部としてb = 1という値を使用することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</li>
+      </ul>
+    </section>
+    <section anchor="rtp-circuit-breakers-for-systems-using-the-rtp/avp-profile" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-rtp-circuit-breakers-for-systems-using-the-rtp/avp-profile">RTP/AVPプロファイルを使用するシステムのためのRTPサーキットブレーカー</name>
+      <t indent="0" pn="section-4-1"><xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>で定義され、RTP/AVPプロファイル<xref target="RFC3551" format="default" sectionFormat="of" derivedContent="RFC3551"/>のもとで利用可能なフィードバックメカニズムは、RTPのすべてのユニキャストアプリケーションに適した基本的なサーキットブレーカーメカニズムのために想定できる最小限のものです。したがって、RTPサーキットブレーカーが有用であるためには、RTCP XRのフィードバックや迅速なRTCPレポートのためのRTP/AVPFプロファイルを必要とせずに、基本的なRTCPの機能だけを用いて、RTPフローが過度の輻輳を引き起こしていることを検出できる必要があります。</t>
+      <t indent="0" pn="section-4-2">RTCPはRTPプロトコルの基本的な部分であり、ここで説明するメカニズムはRTCPの実装に依存しています。RTPをサポートすると主張しながらもRTCPを実装していない実装は、このメモで説明するサーキットブレーカーのメカニズムを使用できません。そのような実装は、輻輳を報告してサーキットブレーカーの条件を通知するために、RTCP以外の何らかのフィードバックチャネルを使用する同等のメカニズムが定義されていない限り、輻輳の影響を受ける可能性のあるネットワークで使用<bcp14>すべきではありません（SHOULD NOT）</bcp14>。</t>
+      <t indent="0" pn="section-4-3">このメモの実装がRTCPをサポートしないエンドポイントと相互接続しようとすると、RTCPタイムアウトサーキットブレーカー（<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>）が作動します。RTCPをサポートしないエンドポイントとときどき相互接続する必要がある実装は、リモートエンドポイントがRTCPを実装していることについてシグナリングを介して何らかの確認を受け取らない場合には、RTPサーキットブレーカーを無効にする必要があります（アンサーにSession Description Protocol（SDP）の「a=rtcp:」属性が存在することが、そのような表示になるかもしれません）。輻輳を報告してサーキットブレーカーの条件を通知するために、RTCP以外の何らかのフィードバックチャネルを使用する同等のメカニズムが定義されていない限り、輻輳の影響を受ける可能性のあるネットワークでRTPサーキットブレーカーを無効に<bcp14>すべきではありません（SHOULD NOT）</bcp14><xref target="RFC8084" format="default" sectionFormat="of" derivedContent="RFC8084"/>。</t>
+      <t indent="0" pn="section-4-4">基本的なRTCP SR/RRパケットからは、3つの潜在的な輻輳シグナルが得られ、これらはRTPセッション内のSSRCごとに報告されます。</t>
+      <ol type="1" spacing="normal" indent="adaptive" start="1" pn="section-4-5">
+        <li pn="section-4-5.1" derivedCounter="1.">送信者は、RTCP SRパケットとRRパケットの内容とタイミングに基づいて、RTCP報告間隔ごとに1回、ネットワークの往復時間を推定できます。</li>
+        <li pn="section-4-5.2" derivedCounter="2.">受信者は、RTCP報告間隔にわたって計算したジッターの推定値（RTPデータパケットの到着間隔の統計的な分散）を報告します。ジッターの計算の性質上（<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>のセクション6.4.4）、ジッターが意味を持つのは、RTPタイムスタンプの値ごとに1つのデータパケットを送信するRTPフロー（すなわち、音声のフローや、各パケットが1つのビデオフレームで構成されるビデオのフロー）だけです。</li>
+        <li pn="section-4-5.3" derivedCounter="3.">受信者は、RTCP報告間隔中に損失したRTPデータパケットの割合と、RTPセッション全体で損失したRTPパケットの累積数を報告します。</li>
+      </ol>
+      <t indent="0" pn="section-4-6">これらの輻輳シグナルは、ネットワークの挙動について限られた可視性しか与えないため、可能なサーキットブレーカーを制限します。</t>
+      <t indent="0" pn="section-4-7">RTTの推定値は、輻輳制御アルゴリズムにおいて、遅延ベースの輻輳制御でのキューイング遅延の測定値の代わりとして、あるいはコネクションのタイムアウトを決定するために広く使用されています。RTP/AVPのタイミング規則に従って送信されたRTCP SRパケットとRRパケットから導かれるRTTの推定値は、頻度が低すぎて輻輳制御には役立たず、ルーティングの更新による遅延の変化と輻輳によって引き起こされるキューイング遅延とを区別するのに十分な情報も得られません。したがって、RTTの推定値だけをRTPサーキットブレーカーとして使用することはできません。</t>
+      <t indent="0" pn="section-4-8">ジッターの増加は一時的なネットワーク輻輳のシグナルになり得ますが、RTCP RRパケットで報告される高度に集約された形では、輻輳の程度や持続性を推定するには不十分な情報しか得られません。ジッターのレポートは、潜在的なネットワーク輻輳の早期警告としては有用ですが、サーキットブレーカーとして使用するには不十分な強さのシグナルしか提供しません。</t>
+      <t indent="0" pn="section-4-9">残りの輻輳シグナルは、パケット損失の割合と、損失したパケットの累積数です。一時的な問題と長期的な問題とを区別するために、慎重に、適切な時間枠にわたって検討すれば<xref target="RFC8084" format="default" sectionFormat="of" derivedContent="RFC8084"/>、これらは、パケット損失が主にキューのオーバーフローによるものであるネットワークにおいて、持続的な過度の輻輳が発生していることの効果的な指標になり得ます。ただし、一部のネットワークでは、輻輳によらないパケットの破損による損失が結果を歪める可能性があります。TCPの輻輳制御<xref target="RFC5681" format="default" sectionFormat="of" derivedContent="RFC5681"/>は、意図的にルーターのキューを満たそうとし、その結果生じるパケット損失を輻輳のフィードバックとして使用します。したがって、TCPトラフィックと競合するRTPフローは、ほかのフローとパスを共有している通常の動作において、ゼロでないパケット損失の割合と、キューイング遅延のある程度の変動を観測することが予想され、サーキットブレーカーのしきい値を決定する際にはこれを考慮する必要があります<xref target="RFC8084" format="default" sectionFormat="of" derivedContent="RFC8084"/>。TCPのこの挙動は、以下の輻輳サーキットブレーカーに反映されており、あらゆるRTPの輻輳制御プロトコルの設計に影響を与えるでしょう。</t>
+      <t indent="0" pn="section-4-10">2つのパケット損失の状況（regime）が観測され得ます。1）RTCP RRパケットがゼロでないパケット損失の割合を示しつつ、受信した拡張最大シーケンス番号（extended highest sequence number received）が増加し続ける状況と、2）RRパケットが示す損失の割合はゼロであるものの、送信者がRTPデータパケットを送信し続けているにもかかわらず、受信した拡張最大シーケンス番号が増加しない状況です。前者はTCPの輻輳回避の状態に相当し、依然としてデータを配送している輻輳したパスを示します。後者はTCPのタイムアウトに相当し、パスの障害による可能性が最も高いものです。3つ目の状態は、データが送信されているにもかかわらず、RTCPのフィードバックがまったく受信されないというもので、逆方向パスの障害に相当します。以下では、これらの損失の状況に対するサーキットブレーカーの条件を導きます。</t>
+      <section anchor="rtp/avp-circuit-breaker-#1:-rtcp-timeout" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-rtp/avp-circuit-breaker-#1:-rtcp-timeout">RTP/AVPサーキットブレーカー#1：RTCPタイムアウト</name>
+        <t indent="0" pn="section-4.1-1">RTCPタイムアウトは、RTPデータパケットが送信されているにもかかわらず、受信者からRTCPレポートが返ってこない場合に発生することがあります。これは、受信者がRTCPレポートの送信に失敗しているか、戻りパスの障害によってそれらのRTCPレポートが配送されなくなっているかのいずれかによるものです。どちらの場合も、送信者には自身が輻輳を引き起こしているかどうかを知る方法がないため、送信を続けることは安全ではありません。</t>
+        <t indent="0" pn="section-4.1-2">使用しているSSRCについて報告するRTCP SRパケットもRTCP RRパケットも、決定論的なRTCP報告間隔Td（ここで、Tdはランダム化係数を用いず、Tmin=5秒という固定の最小間隔を用いて計算されます）の少なくとも3倍の期間にわたって受信していないRTP送信者は、送信を停止<bcp14>すべきです（SHOULD）</bcp14>（<xref target="section-4.5" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照）。このタイムアウトを選んだ理由は<xref target="RFC3550" section="6.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc3550#section-6.2" derivedContent="RFC3550"/>で説明されているとおりであり（「RTCPパケットの送信に縮小された値を使用しない実装が、ほかの参加者によって時期尚早にタイムアウトされないように」）、RTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>またはRTP/SAVPFプロファイル<xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>の使用を考慮するように<xref target="RFC8108" section="6.1.4" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8108#section-6.1.4" derivedContent="RFC8108"/>で更新されています。</t>
+        <t indent="0" pn="section-4.1-3">時期尚早なタイムアウトのリスクを減らすために、実装は、Tdが5秒を超えるようにRTCP帯域幅を設定<bcp14>すべきではありません（SHOULD NOT）</bcp14>。同様に、RTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>またはRTP/SAVPFプロファイル<xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>を使用する実装は、T_rr_intervalを4秒を超える値に設定<bcp14>すべきではありません（SHOULD NOT）</bcp14>（T_rr_intervalについてのこの引き下げられた上限は、<xref target="RFC8108" section="6.1.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8108#section-6.1.3" derivedContent="RFC8108"/>に従っています）。</t>
+        <t indent="0" pn="section-4.1-4">タイムアウトとしてRTCP報告間隔の3回分を選んだのは、RFC 3550 <xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>のセクション6.3.5に従ったものです。そのセクションは、直近の2回のRTCP報告間隔内にあるRTP送信者からRTPデータパケットを受信していない場合、RTPセッションの参加者はそのRTP送信者をタイムアウトさせ、アクティブなRTP送信者のリストから削除すると規定しています。したがって、RTCP報告間隔の3回分というタイムアウトは、ネットワークの問題によって送信者が送信しているデータパケットが受信者に届かなくなった場合に、一部のRTCPパケットの損失を見込んだとしても、ほかの参加者がその送信者をタイムアウトさせているのに十分な長さです。</t>
+        <t indent="0" pn="section-4.1-5">送信者が多数のRTPメディアストリームを送信しているために、対応するRTCP SRパケットやRRパケットが大きすぎてネットワークのMTUに収まらない場合、受信者はRTCP SRパケットやRRパケットをラウンドロビン方式で生成します。この場合、送信者は、送信元と宛先のIPアドレス、ポート、プロトコルからなる同じ5タプルで自身が送信した任意のSSRCに対応するRTCP SRパケットまたはRRパケットの受信を、受信者と戻りパスが機能していることの表示として扱い、それによってRTCPタイムアウトサーキットブレーカーが作動しないように<bcp14>すべきです（SHOULD）</bcp14>。</t>
+      </section>
+      <section anchor="rtp/avp-circuit-breaker-#2:-media-timeout" numbered="true" removeInRFC="false" toc="include" pn="section-4.2">
+        <name slugifiedName="name-rtp/avp-circuit-breaker-#2:-media-timeout">RTP/AVPサーキットブレーカー#2：メディアタイムアウト</name>
+        <t indent="0" pn="section-4.2-1">RTPデータパケットが送信されているにもかかわらず、そのSSRCについて報告するRTCP SRパケットまたはRRパケットが、受信した拡張最大シーケンス番号が増加していないことを示している場合、それはそれらのRTPデータパケットが受信者に届いていないことを示しています。これは、少数のRTPパケットだけに影響する短期的な問題である可能性があり、たとえば、開くのが遅いファイアウォールや一時的な接続性の問題によって引き起こされているのかもしれません。しかし、問題が続く場合は、より継続的で重大な問題（「メディアタイムアウト」）の兆候です。</t>
+        <t indent="0" pn="section-4.2-2">メディアタイムアウトを宣言するのに必要な時間は、パラメーターTdr、Tr、Tfと、非報告しきい値kに依存します。kの値は、TdrがTrやTfと比べて大きいときに、受信した拡張最大シーケンス番号が増加していないRTCPレポートを少なくともk個受信すれば、順方向パスに障害が発生しており、RTPデータパケットが偶然に損失したのではないことが合理的に確信できるように選ばれます。kの値は5レポートであることが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-3">Tdr &lt; Tfの場合、RTPデータパケットは受信者のRTCP報告間隔あたり1パケット未満のレートで送信されているため、受信者のいくつかのRTCP報告間隔の間、受信した拡張最大シーケンス番号が増加しないことが予想されます。同様に、Tdr &lt; Trの場合、RTPデータパケットが受信者に到着するまでに受信者のRTCP報告間隔がいくつか経過する可能性があり、これによっても受信した拡張最大シーケンス番号が増加していないレポートが生じます。どちらの問題も、メディアタイムアウトの間隔をしきい値kに対して相対的にスケーリングすることを必要とします。</t>
+        <t indent="0" pn="section-4.2-4">したがって、メディアタイムアウトのRTPサーキットブレーカーは次のとおりです。送信を開始するときに、次の式を用いてMEDIA_TIMEOUTを計算します。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.2-5"><![CDATA[
+   MEDIA_TIMEOUT = ceil(k * max(Tf, Tr, Tdr) / Tdr)
+]]></artwork>
+        <t indent="0" pn="section-4.2-6">送信者が、自身が送信してきたメディアの受信を示すRTCPパケットを受信すると、送信者はメディアタイムアウトサーキットブレーカーを取り消します。まだ送信を続けている場合、送信者はMEDIA_TIMEOUTの新しい値を計算し、新しいメディアタイムアウトサーキットブレーカーを設定<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.2-7">送信者が、自身のメディアが受信されなかったことを示すRTCPパケットを受信した場合、送信者はMEDIA_TIMEOUTの新しい値を計算<bcp14>しなければなりません（MUST）</bcp14>。新しい値が以前の値よりも大きい場合、送信者はMEDIA_TIMEOUTを新しい値に置き換えて、メディアタイムアウトサーキットブレーカーを延長します。そうでない場合は、MEDIA_TIMEOUTの元の値を維持します。この処理を、メディアタイムアウトサーキットブレーカーの再検討と呼びます。</t>
+        <t indent="0" pn="section-4.2-8">送信中のメディアが受信されなかったことを示すRTCPパケットをMEDIA_TIMEOUT個連続して受信し、かつメディアタイムアウトサーキットブレーカーが取り消されていない場合、メディアタイムアウトサーキットブレーカーが作動します。メディアタイムアウトサーキットブレーカーが作動したら、送信者は送信を停止<bcp14>すべきです（SHOULD）</bcp14>（<xref target="section-4.5" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照）。</t>
+        <t indent="0" pn="section-4.2-9">RTPストリームの送信を停止するとき、送信者は対応するメディアタイムアウトサーキットブレーカーを取り消さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="rtp/avp-circuit-breaker-#3:-congestion" numbered="true" removeInRFC="false" toc="include" pn="section-4.3">
+        <name slugifiedName="name-rtp/avp-circuit-breaker-#3:-congestion">RTP/AVPサーキットブレーカー#3：輻輳</name>
+        <t indent="0" pn="section-4.3-1">RTPデータパケットが送信されており、対応するRTCP SRパケットまたはRRパケットが、ゼロでないパケット損失の割合と、増加している受信した拡張最大シーケンス番号を示している場合、それらのRTPデータパケットは受信者に到着しているものの、ある程度の輻輳が発生しています。RTP/AVPプロファイル<xref target="RFC3551" format="default" sectionFormat="of" derivedContent="RFC3551"/>は次のように述べています。</t>
+        <blockquote pn="section-4.3-2">
+          <t indent="0" pn="section-4.3-2.1">ベストエフォートのサービスが使用されている場合、RTP受信者は、パケット損失率が許容可能なパラメーターの範囲内にあることを確かめるために、パケット損失を監視すべきです（SHOULD）。同じネットワークパスを通り、同じネットワーク条件を経験するTCPフローが、妥当な時間尺度で測定して、RTPフローが達成している［スループット］を下回らない平均スループットを達成するであろう場合、そのパケット損失は許容可能とみなされます。この条件は、送信レート（または階層化マルチキャストセッションで購読するレイヤーの数）を調整する輻輳制御メカニズムを実装することによって、あるいは損失率が許容できないほど高い場合に受信者がセッションから離脱するようにすることによって満たすことができます。</t>
+          <t indent="0" pn="section-4.3-2.2">TCPとの比較は厳密には規定できませんが、時間尺度とスループットにおける「桁違い（order-of-magnitude）」の比較を意図しています。TCPのスループットが測定される時間尺度は、コネクションの往復時間です。要するに、この要件は、帯域幅を勝手に消費し、1桁の範囲内でTCPと公平に競合しないアプリケーションを（RTPを使用するものであれ、ほかのトランスポートプロトコルを使用するものであれ）ベストエフォートのインターネット上に展開することは許容できないと述べています。</t>
+        </blockquote>
+        <t indent="0" pn="section-4.3-3">上記の「桁（order of magnitude）」という語句は、おおよそ10倍以内を意味します。これを実装するためには、バルクTCPコネクションがそのパス上で達成するであろうスループットを推定する必要があります。長く続くTCP Renoコネクションについては、TCPのスループットX（単位はバイト毎秒）を次のように推定できることが示されています<xref target="Padhye" format="default" sectionFormat="of" derivedContent="Padhye"/>。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.3-4"><![CDATA[
+                               s
+   X = -------------------------------------------------------------
+       Tr*sqrt(2*b*p/3)+(t_RTO * (3*sqrt(3*b*p/8) * p * (1+32*p*p)))
+]]></artwork>
+        <t indent="0" pn="section-4.3-5">これは、<xref target="RFC5348" format="default" sectionFormat="of" derivedContent="RFC5348"/>で使用されているTCPスループットの推定と同じアプローチです。パケット損失が少ない条件では、分母の第2項は小さいため、この式は次のように妥当な精度で近似できます<xref target="Mathis" format="default" sectionFormat="of" derivedContent="Mathis"/>。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.3-6"><![CDATA[
+             s
+   X = ----------------
+       Tr*sqrt(2*b*p/3)
+]]></artwork>
+        <t indent="0" pn="section-4.3-7">精度の低下は小さく、完全な式よりも計算がはるかに簡単であるため、この簡略化したスループットの式を使用することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。測定により、簡略化したTCPスループットの式は、非対称デジタル加入者線（ADSL）やケーブルモデムのリンクを使用する家庭内ネットワーク上のホストに送信されるマルチメディアフローに対して、RTPサーキットブレーカーとして効果的であることが示されています<xref target="Singh" format="default" sectionFormat="of" derivedContent="Singh"/>。このデータは、完全なTCPスループットの式のほうがパケット損失に対してより敏感で、簡略化した式よりも早くRTPサーキットブレーカーを作動させる傾向があることを示しています。この追加の感度を望む実装は、RTPサーキットブレーカーで完全なTCPスループットの式を使用<bcp14>してもよいです（MAY）</bcp14>。LTEネットワークでの初期の測定では、その環境ではこの追加の感度が役立ち、完全なTCPスループットの式のほうが簡略化したTCPの式よりもバランスの取れたサーキットブレーカーの応答をもたらすことが示されています<xref target="Sarker" format="default" sectionFormat="of" derivedContent="Sarker"/>。ほかのネットワークでも同様の挙動が見られるかもしれません。</t>
+        <t indent="0" pn="section-4.3-8">どのTCPスループットの式を選ぶにしても、スループットを計算するためには、往復時間Trと損失イベント率pという2つのパラメーターを推定して送信者に報告する必要があります（パケットサイズsは送信者が知っています）。往復時間は、RTCP SRパケットとRRパケットから推定できます。これは正確な統計を得るには頻度が低すぎますが、標準のRTCPメカニズムでできる最善のことです。</t>
+        <t indent="0" pn="section-4.3-9">RTCP SRパケットやRRパケットのレポートブロックには、損失イベント率ではなくパケット損失の割合が含まれているため、pを報告することはできません（TCPは通常、1つのRTT内での複数のパケットの損失を1つの損失イベントとして扱いますが、RTCP RRパケットは損失したパケットの全体の割合を報告するもので、パケット損失がいつ発生したかは報告しません）。損失イベント率の代わりに損失の割合を使用すると、損失を過大に見積もる可能性があります。私たちは桁レベルの比較にしか関心がないことを考えると、この過大評価は重大ではないと考えています（<xref target="Floyd" format="default" sectionFormat="of" derivedContent="Floyd"/>のセクション3.2.1は、定常状態の条件とランダムな損失ではその差が小さいことを示していますが、バースト的な損失の場合には損失の割合を使用するほうがより保守的です）。</t>
+        <t indent="0" pn="section-4.3-10">したがって、輻輳サーキットブレーカーは次のとおりです。max(Tdr, Tr)秒ごとに少なくとも1つのRTPパケットを送信している送信者が、自身が使用しているSSRCについてのレポートブロックを含むRTCP SRパケットまたはRRパケットを受信したとき、送信者は、そのSSRCについて、レポートブロックの損失率（fraction lost）フィールドの値と、前回のレポートブロックを受信してからの時間を記録<bcp14>しなければなりません（MUST）</bcp14>。そのSSRCについてCB_INTERVAL（下記を参照）を超える数のレポートブロックを受信した場合、送信者は、直近のCB_INTERVAL回の報告間隔にわたる平均損失率（average fraction lost）を計算し、続いて、選んだTCPスループットの式と、往復時間Tr、損失イベント率p（下記で説明するように平均損失率で近似します）、パケットサイズsの測定値を用いて、そのパス上で達成されるであろうTCPスループットを推定<bcp14>しなければなりません（MUST）</bcp14>。次に、TCPスループットの推定値XをRTPストリームの実際の送信レートと比較します。RTPストリームの実際の送信レートが10 * Xを超える場合、輻輳サーキットブレーカーが作動します。</t>
+        <t indent="0" pn="section-4.3-11">平均損失率は、各報告間隔の損失率に対応する報告間隔の長さを掛けたものを（直近のCB_INTERVAL回の報告間隔にわたって）合計し、それを直近のCB_INTERVAL回の報告間隔の長さの合計で割ることで計算されます。CB_INTERVALパラメーターは次のように設定されます。</t>
+        <artwork name="" type="" align="left" alt="" pn="section-4.3-12"><![CDATA[
+   CB_INTERVAL =
+      ceil(3*min(max(10*G*Tf, 10*Tr, 3*Tdr), max(15, 3*Td))/(3*Tdr))
+]]></artwork>
+        <t indent="0" pn="section-4.3-13">CB_INTERVALに入力されるパラメーターは、輻輳制御アルゴリズムが輻輳に反応する時間を与えるように選ばれています。これらは、輻輳を妥当な水準まで減らすようにレートを調整するために、少なくとも3回のRTCPレポート、10回の往復時間、10個のフレームグループを与えます。応答性のある輻輳制御アルゴリズムは、輻輳の表示を受け取った後の次のフレームグループで応答を開始することが期待されるため、CB_INTERVALは輻輳への応答よりもはるかに長い間隔であるべきです。</t>
+        <t indent="0" pn="section-4.3-14">RTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>またはRTP/SAVPF <xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>が使用され、かつ通常のRTCPレポートの頻度を減らすためにT_rr_intervalパラメーターが使用されている場合、上記のCB_INTERVALパラメーターの式におけるTdrの値は、max(T_rr_interval, Tdr)に置き換え<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.3-15">CB_INTERVALパラメーターは、セッションへの参加時に計算され、各RTCPパケットの受信時に、メディアタイムアウトサーキットブレーカーまたは輻輳サーキットブレーカーが作動したかどうかを確認した後で再計算されます。</t>
+        <t indent="0" pn="section-4.3-16">持続的な輻輳への適時の応答を確保するために、実装は、Tdrが5秒を超えるようにRTCP帯域幅を設定<bcp14>すべきではありません（SHOULD NOT）</bcp14>。同様に、RTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>またはRTP/SAVPFプロファイル<xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>を使用する実装は、T_rr_intervalを4秒を超える値に設定<bcp14>すべきではありません（SHOULD NOT）</bcp14>（T_rr_intervalについてのこの引き下げられた上限は、<xref target="RFC8108" section="6.1.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc8108#section-6.1.3" derivedContent="RFC8108"/>に従っています）。</t>
+        <t indent="0" pn="section-4.3-17">それを下回ると輻輳サーキットブレーカーが作動しない最小の送信レートを強制する理由は、RTCP報告間隔あたりに送信されるパケットの数が少なく、そのため損失率のサンプルが測定上のアーティファクトの影響を受けやすい場合に、サーキットブレーカーが誤って作動するのを避けるためです。max(Tdr, Tr)秒ごとに少なくとも1パケットという下限は、TCPのRTTあたり1パケットという最小送信レート<xref target="RFC8085" format="default" sectionFormat="of" derivedContent="RFC8085"/>から導かれたもので、RTCP報告間隔がネットワークのRTTから切り離されているRTPで使用できるように調整されています。</t>
+        <t indent="0" pn="section-4.3-18">輻輳サーキットブレーカーが作動したら、送信者は送信を停止<bcp14>すべきです（SHOULD）</bcp14>（<xref target="section-4.5" format="default" sectionFormat="of" derivedContent="Section 4.5"/>を参照）。ただし、送信者が送信レートを（おおよそ）10分の1に下げることができる場合、送信者は、それで輻輳が解消するかどうかを確かめるために、まず送信レートをこの比率で（またはそれ以上に）下げても<bcp14>よいです（MAY）</bcp14>。このようにして送信レートを下げ、次のCB_INTERVAL回のRTCP報告間隔の後に輻輳サーキットブレーカーが再び作動した場合、送信者はそこで送信を停止<bcp14>しなければなりません（MUST）</bcp14>。このようなレートの削減の例としては、通話を完全に切断する前に、音声のみの送信に後退するビデオ会議システムが挙げられるでしょう。このような送信レートの削減によって輻輳の問題が解消した場合、送信者は、問題を再発させないように注意する限り、妥当な時間が経過した後で、データを送信するレートを徐々に上げても<bcp14>よいです（MAY）</bcp14>（「妥当な」はアプリケーション、メディアコーデック、輻輳制御アルゴリズムに依存するため、ここでは意図的に定義していません）。</t>
+        <t indent="0" pn="section-4.3-19">メディア送信者のRTCP報告間隔は、輻輳サーキットブレーカーがどれだけ迅速に作動できるかには影響しません。そのタイミングは、損失率とRTTの推定値の導出元となるSR/RRパケットを生成する受信者のRTCP報告間隔に基づきます（RTCPでは、セッションのすべての参加者が同程度の報告間隔を持つ必要があり、そうでなければ<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>の参加者のタイムアウト規則が機能しないため、この間隔は送信者の間隔と同程度である可能性が高いことに注意してください）。受信するRTCP SRパケットまたはRRパケットが（RFC 3550 <xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>のセクション6.2またはRTP/AVPFプロファイル<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>で規定されているように）縮小された最小RTCP報告間隔を使用している場合、サーキットブレーカーが作動するかどうかを判定する際には、その縮小されたRTCP報告間隔が使用されます。</t>
+        <t indent="0" pn="section-4.3-20">1つのRTCP SRパケットまたはRRパケットで報告できるよりも多くのメディアストリームがある場合や、完全なRTCP SRパケットまたはRRパケットのサイズがネットワークのMTUを超える場合、受信者は、各報告間隔で送信元の一部について報告し、最終的にすべての送信元が報告されるように、その部分集合を複数の間隔にわたってラウンドロビンで選択します<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>。このようなラウンドロビンのRTCPレポートを生成する際には、送信者が自身の引き起こしているネットワーク輻輳を確実に認識できるように、パケット損失率の高い送信元についてのレポートを優先<bcp14>すべきです（SHOULD）</bcp14>（これは<xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>に対する更新です）。</t>
+      </section>
+      <section anchor="rtp/avp-circuit-breaker-#4:-media-usability" numbered="true" removeInRFC="false" toc="include" pn="section-4.4">
+        <name slugifiedName="name-rtp/avp-circuit-breaker-#4:-media-usability">RTP/AVPサーキットブレーカー#4：メディアの使用可能性</name>
+        <t indent="0" pn="section-4.4-1">RTPを使用するアプリケーションは、一般に、ある程度のパケット損失を許容します。どれだけのパケット損失を許容できるかは、アプリケーション、メディアコーデック、適用される誤り訂正とパケット損失隠蔽の量に依存します。しかし、訂正できる損失の量には上限があり、それを超えるとメディアは使用できなくなります。同様に、多くのアプリケーションには、アプリケーションが使用できなくなる前に許容できる、メディアのキャプチャーから再生までの遅延についての何らかの上限があります。遅延の上限はアプリケーションに依存しますが、典型的な値は、音声電話や対話型の会議アプリケーションでの数百ミリ秒程度から、一部のビデオオンデマンドシステムでの数秒にまで及ぶことがあります。</t>
+        <t indent="0" pn="section-4.4-2">最後のサーキットブレーカーとして、RTP送信者は、報告されたパケット損失と遅延を監視して、メディアが意図した目的に適している可能性が高いかどうかを推定<bcp14>すべきです（SHOULD）</bcp14>。パケット損失率と遅延の一方または両方のために、メディアが使用できなくなり、かつかなりの期間使用できないままである場合、アプリケーションは送信を停止<bcp14>すべきです（SHOULD）</bcp14>。同様に、受信者は受信するメディアの品質を監視<bcp14>すべきです（SHOULD）</bcp14>。また、品質がかなりの期間使用できない状態であれば、受信者はセッションを終了<bcp14>すべきです（SHOULD）</bcp14>。使用できないメディアをもたらすパケット損失率や遅延の上限はアプリケーションに大きく依存するため、このメモでは意図的にそれを定義していません。同様に、かなりの期間とみなされる時間もアプリケーションに依存しますが、おそらく数秒から数十秒程度でしょう。</t>
+        <t indent="0" pn="section-4.4-3">受信者で使用できないほどの高いパケット損失や遅延に見舞われているメディアを送信することは、リソースの無駄であり、アプリケーションのユーザーにとって何の利益にもなりません。また、そのような送信はネットワークを輻輳させ、ほかのアプリケーションを阻害している可能性が非常に高いです。そのため、高いパケット損失や遅延によってメディアが使用できなくなるようなフローを止めるために、輻輳サーキットブレーカーがほぼ確実に作動するでしょう。しかし、輻輳サーキットブレーカーがフローを止めない異常なシナリオでは、ネットワークのほかの用途を阻害する可能性のある不要なトラフィックをアプリケーションが送信しないようにすることが望まれます。そのような場合にネットワークを保護するのが、メディア使用可能性サーキットブレーカーの役割です。</t>
+      </section>
+      <section anchor="ceasing-transmission" numbered="true" removeInRFC="false" toc="include" pn="section-4.5">
+        <name slugifiedName="name-ceasing-transmission">送信の停止</name>
+        <t indent="0" pn="section-4.5-1">送信を停止することが何を意味するかは、アプリケーションに依存します。これは、単一のRTPフローを停止することを意味する場合もあれば、バンドルされた複数のRTPフローを停止することを意味する場合もあります。その意図は、RTPサーキットブレーカーを作動させたネットワークの問題が何であれ、それが解消するまで、アプリケーションが特定の5タプル（トランスポートプロトコル、送信元と宛先のポート、送信元と宛先のIPアドレス）でのRTPデータパケットの送信を停止することです。サーキットブレーカーによって停止されたRTPフローは、輻輳が解消した、または解消したと合理的に期待できるという情報を送信者が受け取っていない限り、自動的に再開<bcp14>すべきではありません（SHOULD NOT）</bcp14>。何がこの期待のきっかけになり得るかは必然的にアプリケーションに依存しますが、たとえば、競合するフローが終了して容量の一部が解放されたという表示や、モバイルデバイス上で動作するアプリケーションであれば、デバイスが新しい場所に移動したため、フローを再開すれば異なるパスを通るであろうという表示などが考えられます。理想的には、フローの再開を試みるかどうかの判断には人間のユーザーが関与するとよいでしょう。フローが繰り返しサーキットブレーカーを作動させれば、そのユーザーは最終的にはあきらめるからです。これは、自動再ダイヤルシステムがネットワークを輻輳させる問題を避けるのに役立つでしょう。</t>
+        <t indent="0" pn="section-4.5-2">一部のシステムのRTP実装では、フローの確立リクエストが人間のユーザーによって開始されたのか、システムの何らかのスクリプト化された上位のコンポーネントによって自動的に開始されたのかを判断できない可能性があることが認識されています。そのような実装は、作動したサーキットブレーカーに対する反応が少なくともトリガー間隔<xref target="RFC8084" format="default" sectionFormat="of" derivedContent="RFC8084"/>の間は続くように、サーキットブレーカーを作動させたフローが使用していたのと同じ5タプルでフローを再開しようとする試みのレートを制限<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-4.5-3">RTPサーキットブレーカーが作動して送信を停止するのは、長期にわたって持続的な輻輳の影響を受けているメディアフローに対してだけです。そのようなフローは、サーキットブレーカーが作動するまでのしばらくの間、品質と使用可能性が低い状態にある可能性が高いです。実装は、自身のメディアフローについて返されるRTCP受信者レポートブロックを監視し、この情報を用いて、サーキットブレーカーが作動するよりも前に問題が発生していることを示す手がかりをユーザーインターフェイスで提供することが有益だと気付くかもしれません。</t>
+      </section>
+    </section>
+    <section anchor="rtp-circuit-breakers-and-the-rtp/avpf-and-rtp/savpf-profiles" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-rtp-circuit-breakers-and-the-rtp/avpf-and-rtp/savpf-profiles">RTPサーキットブレーカーとRTP/AVPFおよびRTP/SAVPFプロファイル</name>
+      <t indent="0" pn="section-5-1">RTCPベースのフィードバックのための拡張RTPプロファイル（RTP/AVPF）<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>を使用すると、受信者は、場合によっては、メディアストリーム内の特定のイベントについて送信者に知らせるために、早期のRTCPレポートを送信できます。このような早期のRTCPレポートには、輻輳の始まりについての迅速なフィードバックを送信者に提供することを含め、いくつかのユースケースがあります。RTP/SAVPFプロファイル<xref target="RFC5124" format="default" sectionFormat="of" derivedContent="RFC5124"/>は、RTP/AVPFプロファイルのセキュアな変種であり、RTPサーキットブレーカーの文脈では同じように扱われます。これらのフィードバックプロファイルは、報告のオーバーヘッドを減らすために、非複合のRTCPレポート<xref target="RFC5506" format="default" sectionFormat="of" derivedContent="RFC5506"/>とともに使用されることがよくあります。</t>
+      <t indent="0" pn="section-5-2">輻輳イベントについての迅速なフィードバックを受信することで、輻輳制御アルゴリズムの応答性が高まり、メディアの送信をネットワークの制約によりよく適応させられる可能性があります。多くのRTPの輻輳制御アルゴリズムが、この理由でRTP/AVPFプロファイルまたはRTP/SAVPFプロファイルを採用し、その結果、それぞれの要件に適した新しいトランスポート層のフィードバックレポートを定義することが予想されます。これらのレポートはまだ定義されておらず、選択される輻輳制御アルゴリズムの詳細に非常に特化したものになる可能性が高いため、汎用的なRTPサーキットブレーカーの一部として使用することはできません。</t>
+      <t indent="0" pn="section-5-3">RTP/AVPFの早期フィードバック規則のもとで送信される縮小サイズのRTCPレポートのうち、RTCP SRパケットもRRパケットも含まないものは、輻輳サーキットブレーカーでは無視<bcp14>しなければなりません（MUST）</bcp14>（それらには輻輳サーキットブレーカーのアルゴリズムが必要とする情報が含まれていません）。ただし、RTCPタイムアウトサーキットブレーカーでは、受信したパケットとして数え<bcp14>なければなりません（MUST）</bcp14>。RTP/AVPFの早期フィードバック規則のもとで送信される縮小サイズのRTCPレポートのうち、RTCP SRパケットまたはRRパケットを含むものは、輻輳サーキットブレーカーにおいて、通常のRTCPレポートとして送信されたかのように処理し、このメモの<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>で規定するサーキットブレーカーの条件に算入<bcp14>しなければなりません（MUST）</bcp14>。これにより、RTP/AVPFプロファイルを使用しない場合よりも早くRTPサーキットブレーカーが作動する可能性があります。</t>
+      <t indent="0" pn="section-5-4">RTPでECNを使用する場合（<xref target="section-7" format="default" sectionFormat="of" derivedContent="Section 7"/>を参照）、早期のRTCPフィードバックパケットにはECNフィードバックレポートが含まれることがあります。ECNフィードバックレポートがRTCP SR/RRレポートパケットとともに複合RTCPパケットで送信される場合、それらのECNフィードバックレポートに含まれるECN-CEマーク付きパケットの数は、報告される損失パケットの数に算入されます。RTCP SR/RRパケットを伴わずに縮小サイズのRTCP ECNフィードバックパケットとして送信されるECN-CEパケットのレポートは、無視<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-5-5">これらの規則は、RTPサーキットブレーカーを作動させることなく、汎用NACKメッセージのためにオーバーヘッドの低いRTP/AVPFフィードバックを使用できるようにすることを意図しています。これにより、そのようなフィードバックが、通常のRTCPレポートの合間に損失イベントを迅速に報告する必要があるRTPの輻輳制御アルゴリズムに適したものになることが期待されます。縮小サイズのRTCP SR/RRパケットに対する反応は、そのようなアルゴリズムが、必要に応じてサーキットブレーカーを作動させ得るフィードバックを送信できるようにするためのものです。</t>
+      <t indent="0" pn="section-5-6">RTP/AVPFプロファイルとRTP/SAVPFプロファイルには、通常のRTCP報告間隔を調整するために使用できるT_rr_intervalパラメーターが含まれています。<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>で説明したように、T_rr_intervalパラメーターを使用すると、RTPサーキットブレーカーの挙動が変わります。</t>
+    </section>
+    <section anchor="impact-of-rtcp-extended-reports-(xr)" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-impact-of-rtcp-extended-reports-(xr)">RTCP拡張レポート（XR）の影響</name>
+      <t indent="0" pn="section-6-1">RTCP拡張レポート（XR）ブロックは、追加の受信品質メトリクスを提供しますが、RTCPのタイミング規則は変更しません。RTCP XRブロックの中には、輻輳制御の目的に役立つ可能性のある情報を提供するものもあれば、輻輳に関係しないメトリクスを提供するものもあります。RTCP XR ECN Summary Report（<xref target="section-7" format="default" sectionFormat="of" derivedContent="Section 7"/>を参照）を除き、複合RTCPパケット内にRTCP XRブロックが存在しても、RTPサーキットブレーカーのアルゴリズムには影響しません。一貫性と実装の容易さのために、RTPサーキットブレーカーのアルゴリズムでは、RTCP SRパケット、RTCP RRパケット、またはRTCP XR ECN Summary Reportパケットに含まれる受信者レポートブロックだけを使用します。</t>
+    </section>
+    <section anchor="impact-of-explicit-congestion-notification-(ecn)" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-impact-of-explicit-congestion-notification-(ecn)">Explicit Congestion Notification（ECN）の影響</name>
+      <t indent="0" pn="section-7-1">RTPフローでECNを使用しても、RTCPタイムアウトサーキットブレーカー（<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>）やメディアタイムアウトサーキットブレーカー（<xref target="section-4.2" format="default" sectionFormat="of" derivedContent="Section 4.2"/>）には影響しません。これらはどちらも、何らかのパケットが受信されているかどうかを単に判定する接続性チェックだからです。</t>
+      <t indent="0" pn="section-7-2">この文書の執筆時点では、ECNフィードバックの受信が輻輳サーキットブレーカー（<xref target="section-4.3" format="default" sectionFormat="of" derivedContent="Section 4.3"/>）にどのような影響を与えるか、あるいはそもそも輻輳サーキットブレーカーがECNフィードバックを考慮すべきかどうかについて、コンセンサスはありません。このメモを将来置き換える文書が、実装者向けのガイダンスを提供することが期待されます。</t>
+      <t indent="0" pn="section-7-3">メディア使用可能性サーキットブレーカー（<xref target="section-4.4" format="default" sectionFormat="of" derivedContent="Section 4.4"/>）に関しては、ECN-CEマーク付きのパケットは受信者に到着し、間に合って到着すれば通常どおりデコードされて再生されます。したがって、そのようなパケットの受信はメディアの使用可能性に影響を与えるべきではなく、それらの受信を示すRTCPフィードバックの到着も、メディア使用可能性サーキットブレーカーの動作に影響を与えることはないと期待されます。</t>
+    </section>
+    <section anchor="impact-of-bundled-media-and-layered-coding" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-impact-of-bundled-media-and-layered-coding">バンドルされたメディアと階層符号化の影響</name>
+      <t indent="0" pn="section-8-1">RTPサーキットブレーカーは、RTPセッション単位で動作します。複数のRTPセッションに参加するRTP送信者は、RTPサーキットブレーカーに関して、各RTPセッションを独立に扱わ<bcp14>なければなりません（MUST）</bcp14>。</t>
+      <t indent="0" pn="section-8-2">RTP送信者は、単一のRTPセッション内で複数のメディアストリームを生成でき、各ストリームはそれぞれ異なるSSRCを使用します。これは、サイマルキャストを使用する場合や階層化されたメディア符号化を使用する場合に、バンドルされたメディアが使用されていると起こり得ます。デフォルトでは、各SSRCはRTPサーキットブレーカーによって独立に扱われます。しかし、送信者は、それらのフロー（またはその一部）をグループとして扱うことを選択<bcp14>してもよいです（MAY）</bcp14>。その場合、1つのフローに対するサーキットブレーカーの作動はフローのグループ全体に適用され、作動したRTPサーキットブレーカーに応じて、グループ全体の送信を停止させるか、グループの送信レートを10分の1に下げさせます。このようにフローをグループ化することは、複数のSSRCを使用して送信される階層化されたフローで特に有用であると期待されます。各レイヤーを独立に扱うのではなく、階層化されたフローが全体として反応できるようになり、必要であれば、まず拡張レイヤーでの送信を停止して送信レートを下げることができるからです。単一のトランスポート層のフローで送信される異なるメディアストリームが異なるDiffserv（Differentiated Services）コードポイント（DSCP）の値<xref target="RFC7657" format="default" sectionFormat="of" derivedContent="RFC7657"/> <xref target="WebRTC-QoS" format="default" sectionFormat="of" derivedContent="WebRTC-QoS"/>を使用している場合は、DSCPのマーキングによって輻輳の経験が異なる可能性があるため、注意が必要です。したがって、異なるDSCP値を持つRTPメディアストリームは、RTPサーキットブレーカーの条件を評価する際にグループとみなす<bcp14>べきではありません（SHOULD NOT）</bcp14>。</t>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-9-1"><xref target="RFC3550" format="default" sectionFormat="of" derivedContent="RFC3550"/>のセキュリティーに関する考慮事項が適用されます。</t>
+      <t indent="0" pn="section-9-2">迅速なRTCPフィードバックを提供するためにRTP/AVPFプロファイルを使用する場合は、<xref target="RFC4585" format="default" sectionFormat="of" derivedContent="RFC4585"/>のセキュリティーに関する考慮事項が適用されます。RTP over UDP/IPのためのECNフィードバックを使用する場合は、<xref target="RFC6679" format="default" sectionFormat="of" derivedContent="RFC6679"/>のセキュリティーに関する考慮事項が適用されます。</t>
+      <t indent="0" pn="section-9-3">認証されていないRTCPレポートが使用されている場合、オンパス攻撃者は、高いパケット損失率を示す偽のRTCPパケットを簡単に生成でき、それによってサーキットブレーカーを作動させてRTPセッションを妨害できます。オフパス攻撃者にとっては、ランダムに選ばれたRTPのSSRC値とRTPシーケンス番号を推測する必要があるため、これはいくらか困難になります。この攻撃は、RTCPパケットを認証すれば回避できます。認証の選択肢については<xref target="RFC7201" format="default" sectionFormat="of" derivedContent="RFC7201"/>で議論されています。</t>
+      <t indent="0" pn="section-9-4">RTPサーキットブレーカーが適時に動作するかどうかは、RTCP報告間隔の選択に依存します。受信者の報告間隔が長すぎる場合、サーキットブレーカーの応答性は低下します。極端な場合には、何分もの長さのRTCP報告間隔を設定することで、RTPサーキットブレーカーを事実上無効にできてしまいます。この問題はサーキットブレーカーに特有のものではありません。長いRTCP報告間隔は、受信品質レポート、フィードバックメッセージ、コーデック制御メッセージなどの使用も妨げます。<xref target="section-4.3" format="default" sectionFormat="of" derivedContent="Section 4.3"/>で議論したように、実装は、RTPサーキットブレーカーを使用する場合、（セッション帯域幅とRTCP帯域幅の割合に基づいて）ネゴシエートを受け入れるRTCP報告間隔に上限を課すことが期待されます。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="http://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC3550" target="http://www.rfc-editor.org/info/rfc3550" quoteTitle="true" derivedAnchor="RFC3550">
+          <front>
+            <title>RTP: A Transport Protocol for Real-Time Applications</title>
+            <author fullname="H. Schulzrinne" initials="H." surname="Schulzrinne"/>
+            <author fullname="S. Casner" initials="S." surname="Casner"/>
+            <author fullname="R. Frederick" initials="R." surname="Frederick"/>
+            <author fullname="V. Jacobson" initials="V." surname="Jacobson"/>
+            <date year="2003" month="July"/>
+          </front>
+          <seriesInfo name="STD" value="64"/>
+          <seriesInfo name="RFC" value="3550"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3550"/>
+        </reference>
+        <reference anchor="RFC3551" target="http://www.rfc-editor.org/info/rfc3551" quoteTitle="true" derivedAnchor="RFC3551">
+          <front>
+            <title>RTP Profile for Audio and Video Conferences with Minimal Control</title>
+            <author fullname="H. Schulzrinne" initials="H." surname="Schulzrinne"/>
+            <author fullname="S. Casner" initials="S." surname="Casner"/>
+            <date year="2003" month="July"/>
+          </front>
+          <seriesInfo name="STD" value="65"/>
+          <seriesInfo name="RFC" value="3551"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3551"/>
+        </reference>
+        <reference anchor="RFC3611" target="http://www.rfc-editor.org/info/rfc3611" quoteTitle="true" derivedAnchor="RFC3611">
+          <front>
+            <title>RTP Control Protocol Extended Reports (RTCP XR)</title>
+            <author fullname="T. Friedman" initials="T." surname="Friedman" role="editor"/>
+            <author fullname="R. Caceres" initials="R." surname="Caceres" role="editor"/>
+            <author fullname="A. Clark" initials="A." surname="Clark" role="editor"/>
+            <date year="2003" month="November"/>
+          </front>
+          <seriesInfo name="RFC" value="3611"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3611"/>
+        </reference>
+        <reference anchor="RFC4585" target="http://www.rfc-editor.org/info/rfc4585" quoteTitle="true" derivedAnchor="RFC4585">
+          <front>
+            <title>Extended RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/AVPF)</title>
+            <author fullname="J. Ott" initials="J." surname="Ott"/>
+            <author fullname="S. Wenger" initials="S." surname="Wenger"/>
+            <author fullname="N. Sato" initials="N." surname="Sato"/>
+            <author fullname="C. Burmeister" initials="C." surname="Burmeister"/>
+            <author fullname="J. Rey" initials="J." surname="Rey"/>
+            <date year="2006" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="4585"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4585"/>
+        </reference>
+        <reference anchor="RFC5348" target="http://www.rfc-editor.org/info/rfc5348" quoteTitle="true" derivedAnchor="RFC5348">
+          <front>
+            <title>TCP Friendly Rate Control (TFRC): Protocol Specification</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="J. Widmer" initials="J." surname="Widmer"/>
+            <date year="2008" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5348"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5348"/>
+        </reference>
+        <reference anchor="RFC6679" target="http://www.rfc-editor.org/info/rfc6679" quoteTitle="true" derivedAnchor="RFC6679">
+          <front>
+            <title>Explicit Congestion Notification (ECN) for RTP over UDP</title>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <author fullname="I. Johansson" initials="I." surname="Johansson"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <author fullname="P. O'Hanlon" initials="P." surname="O'Hanlon"/>
+            <author fullname="K. Carlberg" initials="K." surname="Carlberg"/>
+            <date year="2012" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="6679"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6679"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="Floyd" quoteTitle="true" derivedAnchor="Floyd">
+          <front>
+            <title>Equation-Based Congestion Control for Unicast Applications</title>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="M. Handley" initials="M." surname="Handley"/>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="J. Widmer" initials="J." surname="Widmer"/>
+            <date year="2000" month="August"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review, Volume 30, Issue 4, pages 43-56</refcontent>
+          <seriesInfo name="DOI" value="10.1145/347059.347397"/>
+        </reference>
+        <reference anchor="Mathis" quoteTitle="true" derivedAnchor="Mathis">
+          <front>
+            <title>The Macroscopic Behavior of the TCP Congestion Avoidance Algorithm</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="J. Semke" initials="J." surname="Semke"/>
+            <author fullname="J. Mahdavi" initials="J." surname="Mahdavi"/>
+            <author fullname="T. Ott" initials="T." surname="Ott"/>
+            <date year="1997" month="July"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review, Volume 27, Issue 3, pages 67-82</refcontent>
+          <seriesInfo name="DOI" value="10.1145/263932.264023"/>
+        </reference>
+        <reference anchor="Padhye" quoteTitle="true" derivedAnchor="Padhye">
+          <front>
+            <title>Modeling TCP Throughput: A Simple Model and its Empirical Validation</title>
+            <author fullname="J. Padhye" initials="J." surname="Padhye"/>
+            <author fullname="V. Firoiu" initials="V." surname="Firoiu"/>
+            <author fullname="D. Towsley" initials="D." surname="Towsley"/>
+            <author fullname="J. Kurose" initials="J." surname="Kurose"/>
+            <date year="1998" month="August"/>
+          </front>
+          <refcontent>ACM SIGCOMM Computer Communication Review Volume 30, Issue 4, pages 303-314</refcontent>
+          <seriesInfo name="DOI" value="10.1145/285237.285291"/>
+        </reference>
+        <reference anchor="RFC2862" target="http://www.rfc-editor.org/info/rfc2862" quoteTitle="true" derivedAnchor="RFC2862">
+          <front>
+            <title>RTP Payload Format for Real-Time Pointers</title>
+            <author fullname="M. Civanlar" initials="M." surname="Civanlar"/>
+            <author fullname="G. Cash" initials="G." surname="Cash"/>
+            <date year="2000" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="2862"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2862"/>
+        </reference>
+        <reference anchor="RFC3168" target="http://www.rfc-editor.org/info/rfc3168" quoteTitle="true" derivedAnchor="RFC3168">
+          <front>
+            <title>The Addition of Explicit Congestion Notification (ECN) to IP</title>
+            <author fullname="K. Ramakrishnan" initials="K." surname="Ramakrishnan"/>
+            <author fullname="S. Floyd" initials="S." surname="Floyd"/>
+            <author fullname="D. Black" initials="D." surname="Black"/>
+            <date year="2001" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3168"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3168"/>
+        </reference>
+        <reference anchor="RFC4103" target="http://www.rfc-editor.org/info/rfc4103" quoteTitle="true" derivedAnchor="RFC4103">
+          <front>
+            <title>RTP Payload for Text Conversation</title>
+            <author fullname="G. Hellstrom" initials="G." surname="Hellstrom"/>
+            <author fullname="P. Jones" initials="P." surname="Jones"/>
+            <date year="2005" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="4103"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4103"/>
+        </reference>
+        <reference anchor="RFC5104" target="http://www.rfc-editor.org/info/rfc5104" quoteTitle="true" derivedAnchor="RFC5104">
+          <front>
+            <title>Codec Control Messages in the RTP Audio-Visual Profile with Feedback (AVPF)</title>
+            <author fullname="S. Wenger" initials="S." surname="Wenger"/>
+            <author fullname="U. Chandra" initials="U." surname="Chandra"/>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <author fullname="B. Burman" initials="B." surname="Burman"/>
+            <date year="2008" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="5104"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5104"/>
+        </reference>
+        <reference anchor="RFC5124" target="http://www.rfc-editor.org/info/rfc5124" quoteTitle="true" derivedAnchor="RFC5124">
+          <front>
+            <title>Extended Secure RTP Profile for Real-time Transport Control Protocol (RTCP)-Based Feedback (RTP/SAVPF)</title>
+            <author fullname="J. Ott" initials="J." surname="Ott"/>
+            <author fullname="E. Carrara" initials="E." surname="Carrara"/>
+            <date year="2008" month="February"/>
+          </front>
+          <seriesInfo name="RFC" value="5124"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5124"/>
+        </reference>
+        <reference anchor="RFC5450" target="http://www.rfc-editor.org/info/rfc5450" quoteTitle="true" derivedAnchor="RFC5450">
+          <front>
+            <title>Transmission Time Offsets in RTP Streams</title>
+            <author fullname="D. Singer" initials="D." surname="Singer"/>
+            <author fullname="H. Desineni" initials="H." surname="Desineni"/>
+            <date year="2009" month="March"/>
+          </front>
+          <seriesInfo name="RFC" value="5450"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5450"/>
+        </reference>
+        <reference anchor="RFC5506" target="http://www.rfc-editor.org/info/rfc5506" quoteTitle="true" derivedAnchor="RFC5506">
+          <front>
+            <title>Support for Reduced-Size Real-Time Transport Control Protocol (RTCP): Opportunities and Consequences</title>
+            <author fullname="I. Johansson" initials="I." surname="Johansson"/>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <date year="2009" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="5506"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5506"/>
+        </reference>
+        <reference anchor="RFC5681" target="http://www.rfc-editor.org/info/rfc5681" quoteTitle="true" derivedAnchor="RFC5681">
+          <front>
+            <title>TCP Congestion Control</title>
+            <author fullname="M. Allman" initials="M." surname="Allman"/>
+            <author fullname="V. Paxson" initials="V." surname="Paxson"/>
+            <author fullname="E. Blanton" initials="E." surname="Blanton"/>
+            <date year="2009" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="5681"/>
+          <seriesInfo name="DOI" value="10.17487/RFC5681"/>
+        </reference>
+        <reference anchor="RFC6798" target="http://www.rfc-editor.org/info/rfc6798" quoteTitle="true" derivedAnchor="RFC6798">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) Block for Packet Delay Variation Metric Reporting</title>
+            <author fullname="A. Clark" initials="A." surname="Clark"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+            <date year="2012" month="November"/>
+          </front>
+          <seriesInfo name="RFC" value="6798"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6798"/>
+        </reference>
+        <reference anchor="RFC6843" target="http://www.rfc-editor.org/info/rfc6843" quoteTitle="true" derivedAnchor="RFC6843">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) Block for Delay Metric Reporting</title>
+            <author fullname="A. Clark" initials="A." surname="Clark"/>
+            <author fullname="K. Gross" initials="K." surname="Gross"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+            <date year="2013" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="6843"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6843"/>
+        </reference>
+        <reference anchor="RFC6958" target="http://www.rfc-editor.org/info/rfc6958" quoteTitle="true" derivedAnchor="RFC6958">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) Block for Burst/Gap Loss Metric Reporting</title>
+            <author fullname="A. Clark" initials="A." surname="Clark"/>
+            <author fullname="S. Zhang" initials="S." surname="Zhang"/>
+            <author fullname="J. Zhao" initials="J." surname="Zhao"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu" role="editor"/>
+            <date year="2013" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="6958"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6958"/>
+        </reference>
+        <reference anchor="RFC7002" target="http://www.rfc-editor.org/info/rfc7002" quoteTitle="true" derivedAnchor="RFC7002">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) Block for Discard Count Metric Reporting</title>
+            <author fullname="A. Clark" initials="A." surname="Clark"/>
+            <author fullname="G. Zorn" initials="G." surname="Zorn"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+            <date year="2013" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="7002"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7002"/>
+        </reference>
+        <reference anchor="RFC7003" target="http://www.rfc-editor.org/info/rfc7003" quoteTitle="true" derivedAnchor="RFC7003">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) Block for Burst/Gap Discard Metric Reporting</title>
+            <author fullname="A. Clark" initials="A." surname="Clark"/>
+            <author fullname="R. Huang" initials="R." surname="Huang"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu" role="editor"/>
+            <date year="2013" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="7003"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7003"/>
+        </reference>
+        <reference anchor="RFC7097" target="http://www.rfc-editor.org/info/rfc7097" quoteTitle="true" derivedAnchor="RFC7097">
+          <front>
+            <title>RTP Control Protocol (RTCP) Extended Report (XR) for RLE of Discarded Packets</title>
+            <author fullname="J. Ott" initials="J." surname="Ott"/>
+            <author fullname="V. Singh" initials="V." surname="Singh" role="editor"/>
+            <author fullname="I. Curcio" initials="I." surname="Curcio"/>
+            <date year="2014" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="7097"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7097"/>
+        </reference>
+        <reference anchor="RFC7201" target="http://www.rfc-editor.org/info/rfc7201" quoteTitle="true" derivedAnchor="RFC7201">
+          <front>
+            <title>Options for Securing RTP Sessions</title>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="2014" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="7201"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7201"/>
+        </reference>
+        <reference anchor="RFC7657" target="http://www.rfc-editor.org/info/rfc7657" quoteTitle="true" derivedAnchor="RFC7657">
+          <front>
+            <title>Differentiated Services (Diffserv) and Real-Time Communication</title>
+            <author fullname="D. Black" initials="D." surname="Black" role="editor"/>
+            <author fullname="P. Jones" initials="P." surname="Jones"/>
+            <date year="2015" month="November"/>
+          </front>
+          <seriesInfo name="RFC" value="7657"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7657"/>
+        </reference>
+        <reference anchor="RFC7713" target="http://www.rfc-editor.org/info/rfc7713" quoteTitle="true" derivedAnchor="RFC7713">
+          <front>
+            <title>Congestion Exposure (ConEx) Concepts, Abstract Mechanism, and Requirements</title>
+            <author fullname="M. Mathis" initials="M." surname="Mathis"/>
+            <author fullname="B. Briscoe" initials="B." surname="Briscoe"/>
+            <date year="2015" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="7713"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7713"/>
+        </reference>
+        <reference anchor="RFC8084" target="http://www.rfc-editor.org/info/rfc8084" quoteTitle="true" derivedAnchor="RFC8084">
+          <front>
+            <title>Network Transport Circuit Breakers</title>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst"/>
+            <date year="2017" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="208"/>
+          <seriesInfo name="RFC" value="8084"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8084"/>
+        </reference>
+        <reference anchor="RFC8085" target="http://www.rfc-editor.org/info/rfc8085" quoteTitle="true" derivedAnchor="RFC8085">
+          <front>
+            <title>UDP Usage Guidelines</title>
+            <author fullname="L. Eggert" initials="L." surname="Eggert"/>
+            <author fullname="G. Fairhurst" initials="G." surname="Fairhurst"/>
+            <author fullname="G. Shepherd" initials="G." surname="Shepherd"/>
+            <date year="2017" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="145"/>
+          <seriesInfo name="RFC" value="8085"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8085"/>
+        </reference>
+        <reference anchor="RFC8108" target="http://www.rfc-editor.org/info/rfc8108" quoteTitle="true" derivedAnchor="RFC8108">
+          <front>
+            <title>Sending Multiple RTP Streams in a Single RTP Session</title>
+            <author fullname="J. Lennox" initials="J." surname="Lennox"/>
+            <author fullname="M. Westerlund" initials="M." surname="Westerlund"/>
+            <author fullname="Q. Wu" initials="Q." surname="Wu"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="2017" month="March"/>
+          </front>
+          <seriesInfo name="RFC" value="8108"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8108"/>
+        </reference>
+        <reference anchor="Sarker" quoteTitle="true" derivedAnchor="Sarker">
+          <front>
+            <title>An Evaluation of RTP Circuit Breaker Performance on LTE Networks</title>
+            <author fullname="Z. Sarker" initials="Z." surname="Sarker"/>
+            <author fullname="V. Singh" initials="V." surname="Singh"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="2014" month="April"/>
+          </front>
+          <refcontent>Proceedings of the IEEE INFOCOM Workshop on Communication and Networking Techniques for Contemporary Video</refcontent>
+          <seriesInfo name="DOI" value="10.1109/INFCOMW.2014.6849240"/>
+        </reference>
+        <reference anchor="Singh" quoteTitle="true" derivedAnchor="Singh">
+          <front>
+            <title>Circuit Breakers for Multimedia Congestion Control</title>
+            <author fullname="V. Singh" initials="V." surname="Singh"/>
+            <author fullname="S. McQuistin" initials="S." surname="McQuistin"/>
+            <author fullname="M. Ellis" initials="M." surname="Ellis"/>
+            <author fullname="C. Perkins" initials="C." surname="Perkins"/>
+            <date year="2013" month="December"/>
+          </front>
+          <refcontent>Proceedings of the 2013 20th International Packet Video Workshop (PV)</refcontent>
+          <seriesInfo name="DOI" value="10.1109/PV.2013.6691439"/>
+        </reference>
+        <reference anchor="WebRTC-QoS" quoteTitle="true" derivedAnchor="WebRTC-QoS">
+          <front>
+            <title>DSCP Packet Markings for WebRTC QoS</title>
+            <author fullname="P. Jones" initials="P." surname="Jones"/>
+            <author fullname="S. Dhesikan" initials="S." surname="Dhesikan"/>
+            <author fullname="C. Jennings" initials="C." surname="Jennings"/>
+            <author fullname="D. Druta" initials="D." surname="Druta"/>
+            <date year="2016" month="August"/>
+          </front>
+          <refcontent>Work in Progress</refcontent>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-tsvwg-rtcweb-qos-18"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">著者らは、貴重なフィードバックをいただいたBernard Aboba、Harald Alvestrand、Ben Campbell、Alissa Cooper、Spencer Dawkins、Gorry Fairhurst、Stephen Farrell、Nazila Fough、Kevin Gross、Cullen Jennings、Randell Jesup、Mirja Kuehlewind、Jonathan Lennox、Matt Mathis、Stephen McQuistin、Simon Perreault、Eric Rescorla、Abheek Saha、Meral Shirazipour、Fabio Verdicchio、Magnus Westerlundに感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Colin Perkins" initials="C." surname="Perkins">
+        <organization showOnFrontPage="true">University of Glasgow</organization>
+        <address>
+          <postal>
+            <extaddr>School of Computing Science</extaddr>
+            <city>Glasgow</city>
+            <code>G12 8QQ</code>
+            <country>United Kingdom</country>
+          </postal>
+          <email>csp@csperkins.org</email>
+        </address>
+      </author>
+      <author fullname="Varun Singh" initials="V." surname="Singh">
+        <organization showOnFrontPage="true">CALLSTATS I/O Oy</organization>
+        <address>
+          <postal>
+            <street>Runeberginkatu 4c A 4</street>
+            <city>Helsinki</city>
+            <code>00100</code>
+            <country>Finland</country>
+          </postal>
+          <email>varun@callstats.io</email>
+          <uri>https://www.callstats.io/about</uri>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

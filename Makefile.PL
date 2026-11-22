@@ -13,8 +13,14 @@ sub generate_makefile(@rfc_numbers) {
     say $fh "all: \\\n", join " \\\n", map { "\tdocs/rfc$_.html" } @rfc_numbers;
     say $fh "";
 
+    # HTML は CSS を埋め込まずにリンクするので、CSS は docs/ にコピーするだけでよい
+    say $fh "all: docs/xml2rfc-ja.css";
+    say $fh "docs/xml2rfc-ja.css: data/xml2rfc-ja.css";
+    say $fh "\tcp \$< \$\@";
+    say $fh "";
+
     for my $number(@rfc_numbers) {
-        say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/rfcs/rfc$number.json src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js";
+        say $fh "docs/rfc$number.html: src/en/rfc$number.xml src/rfcs/rfc$number.json src/ja/rfc$number.xml scripts/xml2html.py data/xml2rfc-ja.js";
         say $fh "\tscripts/xml2html.py $number";
         # XML 原本のある RFC はそれを、TXT 原本しかない RFC は
         # scripts/txt2xml.pl の出力を手で直してコミットした src/en-txt/rfcN.xml を使う

@@ -488,14 +488,9 @@ class HtmlWriter:
         title.text = text
         head.append(title)
 
-        # CSS組み込み
-        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-        cssin = os.path.join(data_dir, 'xml2rfc-ja.css')
-        with open(cssin, encoding='utf-8') as f:
-            css = f.read()
-        style = build('style', type="text/css")
-        style.text = css
-        head.append(style)
+        # CSS へのリンク
+        # docs/xml2rfc-ja.css は make で data/xml2rfc-ja.css からコピーされる
+        head.append(build('link', rel='stylesheet', href='xml2rfc-ja.css'))
 
         # <body> Element
         body = build('body')

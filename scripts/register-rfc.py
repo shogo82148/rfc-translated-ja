@@ -112,8 +112,8 @@ def update_index(number, title_ja, title_en):
         return
 
     entry = (
-        '        <li><a href="rfc{n}.html">RFC {n} {ja}</a>\n'
-        '        (原文: <a href="https://www.rfc-editor.org/rfc/rfc{n}">{en}</a>)\n'
+        '        <li><a href="rfc{n}.html"><span class="num">RFC {n}</span> {ja}</a>\n'
+        '        <span class="en"><span class="label">原文:</span><a href="https://www.rfc-editor.org/rfc/rfc{n}">{en}</a></span>\n'
     ).format(n=number, ja=html.escape(title_ja, quote=False), en=html.escape(title_en, quote=False))
     pos = None
     for m in re.finditer(r'^ *<li><a href="rfc([0-9]+)\.html">', content, re.M):
@@ -121,7 +121,8 @@ def update_index(number, title_ja, title_en):
             pos = m.start()
             break
     if pos is None:
-        pos = re.search(r'^ *</ul>', content, re.M).start()
+        list_start = content.index('<ul class="rfc-list">')
+        pos = re.compile(r'^ *</ul>', re.M).search(content, list_start).start()
     content = content[:pos] + entry + content[pos:]
 
     with open(INDEX, 'w', encoding='utf-8') as f:

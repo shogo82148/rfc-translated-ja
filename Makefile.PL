@@ -94,50 +94,68 @@ sub get_ja_title($number) {
 }
 
 sub generate_index(@rfc_numbers) {
+    # 一覧ページは docs/index.html だけで完結させるため、CSS と JavaScript は埋め込む
+    my $css = slurp_utf8("data/index.css");
+    my $js = slurp_utf8("data/index.js");
     open my $fh, ">:encoding(utf8)", "docs/index.html" or die "failed to open: %!";
     print $fh <<__EOF__;
 <!DOCTYPE html>
-<html>
+<html lang="ja">
     <head>
         <title>RFC日本語訳</title>
         <meta charset="utf-8">
-        <meta name="viewport" content="initial-scale=1.0">
-<style type="text/css">\@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght\@400;700&family=Noto+Sans+Mono&display=swap);
-
-\@viewport {
-  zoom: 1;
-  width: extend-to-zoom;
-}
-
-body {
-  margin: 1.5em auto;
-  color: #222;
-  background-color: #fff;
-  font-size: 16px;
-  font-family: "BIZ UDPGothic", sans-serif;
-  line-height: 1.6;
-  scroll-behavior: smooth;
-}
-</style>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="IETFのRFCを英日対訳で読める日本語訳の一覧です。">
+<style>
+$css</style>
     </head>
     <body>
+    <header class="hero">
+    <div class="wrap">
+    <p class="eyebrow">Japanese Translations of IETF RFCs</p>
     <h1>RFC日本語訳</h1>
-    <p>日本語訳: Copyright (c) <a href="https://github.com/shogo82148">ICHINOSE Shogo(\@shogo82148)</a> Licensed by <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ja">CC BY-SA 3.0</a></p>
-    <p>CC BY-SA 3.0 が適用されるのは日本語訳の部分だけです。原文の RFC の著作権は、各文書に記載された著作権者（IETF Trust、Internet Society、または著者）に帰属します。日本語訳は <a href="https://trustee.ietf.org/documents/trust-legal-provisions/">IETF Trust Legal Provisions</a> などの原文のライセンス条件にもとづいて公開しており、各ページに残した原文の著作権表示とライセンス条件が引き続き適用されます。この日本語訳は非公式なもので、正式な文書は英語の原文です。</p>
-    <ul>
+    <p class="lead">インターネットの標準を定めるRFCを、英語の原文と日本語訳を並べた対訳で読めます。</p>
+    <ul class="stats">
+        <li><strong data-stat="total"></strong>件の翻訳</li>
+        <li><strong data-stat="latest"></strong>まで</li>
+    </ul>
+    </div>
+    </header>
+    <main class="wrap">
+    <div class="toolbar">
+    <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="番号・日本語タイトル・英語タイトルで検索" aria-label="RFCを検索" autocomplete="off" spellcheck="false">
+        <kbd>/</kbd>
+    </div>
+    <div class="ranges" aria-label="番号の範囲"></div>
+    </div>
+    <p class="result" aria-live="polite"></p>
+    <p class="empty" hidden>該当するRFCは見つかりませんでした。</p>
+    <ul class="rfc-list">
 __EOF__
 
     for my $number(@rfc_numbers) {
         my $title_ja = escape_html(get_ja_title($number));
         my $title_en = escape_html(get_en_title($number));
         print $fh <<__EOF__;
-        <li><a href="rfc$number.html">RFC $number $title_ja</a>
-        (原文: <a href="https://www.rfc-editor.org/rfc/rfc$number">$title_en</a>)
+        <li><a href="rfc$number.html"><span class="num">RFC $number</span> $title_ja</a>
+        <span class="en"><span class="label">原文:</span><a href="https://www.rfc-editor.org/rfc/rfc$number">$title_en</a></span>
 __EOF__
     }
 
     print $fh <<__EOF__;
     </ul>
+    </main>
+    <footer>
+    <div class="wrap">
+    <p>日本語訳: Copyright (c) <a href="https://github.com/shogo82148">ICHINOSE Shogo(\@shogo82148)</a> Licensed by <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ja">CC BY-SA 3.0</a> · <a href="https://github.com/shogo82148/rfc-translated-ja">GitHub</a></p>
+    <p>CC BY-SA 3.0 が適用されるのは日本語訳の部分だけです。原文の RFC の著作権は、各文書に記載された著作権者（IETF Trust、Internet Society、または著者）に帰属します。日本語訳は <a href="https://trustee.ietf.org/documents/trust-legal-provisions/">IETF Trust Legal Provisions</a> などの原文のライセンス条件にもとづいて公開しており、各ページに残した原文の著作権表示とライセンス条件が引き続き適用されます。この日本語訳は非公式なもので、正式な文書は英語の原文です。</p>
+    </div>
+    </footer>
+    <button class="to-top" type="button" aria-label="ページの先頭へ">↑</button>
+<script>
+$js</script>
     </body>
 </html>
 __EOF__

@@ -46,6 +46,7 @@
 - `src/rfcs/`（同期された RFC 原本）
 - `src/en/`（ビルド時のコピー。gitignore 済み）
 - `docs/rfc*.html`（ビルド出力）
+- `docs/xml2rfc-ja.css`（`data/xml2rfc-ja.css` のコピー。HTML はこれにリンクするので、CSS を変えても HTML の再生成は不要）
 
 ## 翻訳規約
 

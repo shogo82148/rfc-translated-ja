@@ -85,7 +85,7 @@ def update_makefile(number, from_txt):
     )
     rule = (
         'docs/rfc{n}.html: src/en/rfc{n}.xml src/rfcs/rfc{n}.json src/ja/rfc{n}.xml '
-        'scripts/xml2html.py data/xml2rfc-ja.css data/xml2rfc-ja.js\n'
+        'scripts/xml2html.py data/xml2rfc-ja.js\n'
         '\tscripts/xml2html.py {n}\n'
         + en_rule
     ).format(n=number)

@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8134: Management Incident Lightweight Exchange（MILE）の実装報告（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 日本語訳の一覧へのリンク */
+#site-nav {
+  padding: 0 0.5em 0.5em;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* 廃止・更新のお知らせは dl の直後に置く。dl の中に置いていたときと余白を揃える */
+#external-updates:has(+ #obsoleted-by, + #updated-by) {
+  margin-bottom: 0.8em; /* dl > dd の margin-bottom と同じ */
+}
+#external-metadata > #updated-by:last-child,
+#external-metadata > #obsoleted-by:last-child {
+  margin-bottom: 11.2px; /* dl の margin-bottom（1em = 14px × 0.8） */
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<nav id="site-nav"><a href="index.html">RFC日本語訳の一覧</a></nav><div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>INFORMATIONAL</dd>
+<dt>発行日:</dt>
+<dd><time datetime="2017-05">2017年5月</time></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8134.html">RFC 8134</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8134">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8134">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8134</h1>
+<h1 id="title-en">Management Incident Lightweight Exchange (MILE) Implementation Report</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8134</h1>
+<h1 id="title-ja">Management Incident Lightweight Exchange（MILE）の実装報告</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">This document is a collection of implementation reports from vendors,
+consortiums, and researchers who have implemented one or more of the
+standards published from the IETF INCident Handling (INCH) and
+Management Incident Lightweight Exchange (MILE) working groups.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">この文書は、IETFのINCident Handling（INCH）ワーキンググループとManagement Incident Lightweight Exchange（MILE）ワーキンググループから発行された標準のうち1つ以上を実装したベンダー、コンソーシアム、研究者からの実装報告を集めたものです。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for informational purposes.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、情報提供のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document is a product of the Internet Engineering Task Force
+(IETF).  It represents the consensus of the IETF community.  It has
+received public review and has been approved for publication by the
+Internet Engineering Steering Group (IESG).  Not all documents
+approved by the IESG are a candidate for any level of Internet
+Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="http://www.rfc-editor.org/info/rfc8134" class="eref">http://www.rfc-editor.org/info/rfc8134</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="http://www.rfc-editor.org/info/rfc8134" class="eref">http://www.rfc-editor.org/info/rfc8134</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-en">Consortiums and Information Sharing and Analysis Centers (ISACs)</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.2.1.1-en"><a href="#section-2.1-en">2.1</a>.  <a href="#name-anti-phishing-working-group-en">Anti-Phishing Working Group</a></p>
+</li>
+            <li id="section-toc.1-1.2.2-en">
+              <p id="section-toc.1-1.2.2.1-en"><a href="#section-2.2-en">2.2</a>.  <a href="#name-advanced-cyber-defence-centre-en">Advanced Cyber Defence Centre</a></p>
+</li>
+            <li id="section-toc.1-1.2.3-en">
+              <p id="section-toc.1-1.2.3.1-en"><a href="#section-2.3-en">2.3</a>.  <a href="#name-research-and-education-networking-information-sharing-and-analysis-center-en">Research and Education Networking Information Sharing and Analysis Center</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-open-source-implementations-en">Open Source Implementations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.3.1.1-en"><a href="#section-3.1-en">3.1</a>.  <a href="#name-emc/rsa-rid-agent-en">EMC/RSA RID Agent</a></p>
+</li>
+            <li id="section-toc.1-1.3.2-en">
+              <p id="section-toc.1-1.3.2.1-en"><a href="#section-3.2-en">3.2</a>.  <a href="#name-nict-iodef-sci-implementation-en">NICT IODEF-SCI implementation</a></p>
+</li>
+            <li id="section-toc.1-1.3.3-en">
+              <p id="section-toc.1-1.3.3.1-en"><a href="#section-3.3-en">3.3</a>.  <a href="#name-n6-en">n6</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-vendor-implementations-en">Vendor Implementations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-deep-secure-en">Deep Secure</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-en">
+              <p id="section-toc.1-1.4.2.1-en"><a href="#section-4.2-en">4.2</a>.  <a href="#name-incman-suite,-dflabs-en">IncMan Suite, DFLabs</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.4.2.1.1-en"><a href="#section-4.2.1-en">4.2.1</a>.  <a href="#name-exporting-incidents-en">Exporting Incidents</a></p>
+</li>
+              <li id="section-toc.1-1.4.2.2-en">
+                <p id="section-toc.1-1.4.2.2.1-en"><a href="#section-4.2.2-en">4.2.2</a>.  <a href="#name-importing-incidents-en">Importing Incidents</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.4.3-en">
+              <p id="section-toc.1-1.4.3.1-en"><a href="#section-4.3-en">4.3</a>.  <a href="#name-surevine-proof-of-concept-en">Surevine Proof of Concept</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-en">
+              <p id="section-toc.1-1.4.4.1-en"><a href="#section-4.4-en">4.4</a>.  <a href="#name-mantis-cyber-intelligence-management-framework-en">MANTIS Cyber-Intelligence Management Framework</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-vendors-with-planned-support-en">Vendors with Planned Support</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-threat-central,-hp-en">Threat Central, HP</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-en">
+              <p id="section-toc.1-1.5.2.1-en"><a href="#section-5.2-en">5.2</a>.  <a href="#name-daedalus,-nict-en">DAEDALUS, NICT</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-other-implementations-en">Other Implementations</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.6.1.1-en"><a href="#section-6.1-en">6.1</a>.  <a href="#name-collaborative-incident-management-system-en">Collaborative Incident Management System</a></p>
+</li>
+            <li id="section-toc.1-1.6.2-en">
+              <p id="section-toc.1-1.6.2.1-en"><a href="#section-6.2-en">6.2</a>.  <a href="#name-automated-incident-reporting---aircert-en">Automated Incident Reporting - AirCERT</a></p>
+</li>
+            <li id="section-toc.1-1.6.3-en">
+              <p id="section-toc.1-1.6.3.1-en"><a href="#section-6.3-en">6.3</a>.  <a href="#name-us-department-of-energy-cyberfed-en">US Department of Energy CyberFed</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-implementation-guide-en">Implementation Guide</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-en"><a href="#section-7.1-en">7.1</a>.  <a href="#name-code-generators-en">Code Generators</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-en">
+              <p id="section-toc.1-1.7.2.1-en"><a href="#section-7.2-en">7.2</a>.  <a href="#name-iodeflib-en">iodeflib</a></p>
+</li>
+            <li id="section-toc.1-1.7.3-en">
+              <p id="section-toc.1-1.7.3.1-en"><a href="#section-7.3-en">7.3</a>.  <a href="#name-iodefpm-en">iodefpm</a></p>
+</li>
+            <li id="section-toc.1-1.7.4-en">
+              <p id="section-toc.1-1.7.4.1-en"><a href="#section-7.4-en">7.4</a>.  <a href="#name-usability-en">Usability</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-iana-considerations-en">IANA Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+          <li id="section-toc.1-1.11-en">
+            <p id="section-toc.1-1.11.1-en"><a href="#name-acknowledgements-en">Acknowledgements</a></p>
+</li>
+          <li id="section-toc.1-1.12-en">
+            <p id="section-toc.1-1.12.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-ja">コンソーシアムと情報共有分析センター（ISAC）</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.2.1.1-ja"><a href="#section-2.1-ja">2.1</a>.  <a href="#name-anti-phishing-working-group-ja">Anti-Phishing Working Group</a></p>
+</li>
+            <li id="section-toc.1-1.2.2-ja">
+              <p id="section-toc.1-1.2.2.1-ja"><a href="#section-2.2-ja">2.2</a>.  <a href="#name-advanced-cyber-defence-centre-ja">Advanced Cyber Defence Centre</a></p>
+</li>
+            <li id="section-toc.1-1.2.3-ja">
+              <p id="section-toc.1-1.2.3.1-ja"><a href="#section-2.3-ja">2.3</a>.  <a href="#name-research-and-education-networking-information-sharing-and-analysis-center-ja">Research and Education Networking Information Sharing and Analysis Center</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-open-source-implementations-ja">オープンソースの実装</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.3.1.1-ja"><a href="#section-3.1-ja">3.1</a>.  <a href="#name-emc/rsa-rid-agent-ja">EMC/RSA RIDエージェント</a></p>
+</li>
+            <li id="section-toc.1-1.3.2-ja">
+              <p id="section-toc.1-1.3.2.1-ja"><a href="#section-3.2-ja">3.2</a>.  <a href="#name-nict-iodef-sci-implementation-ja">NICTのIODEF-SCI実装</a></p>
+</li>
+            <li id="section-toc.1-1.3.3-ja">
+              <p id="section-toc.1-1.3.3.1-ja"><a href="#section-3.3-ja">3.3</a>.  <a href="#name-n6-ja">n6</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-vendor-implementations-ja">ベンダーの実装</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-deep-secure-ja">Deep Secure</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-ja">
+              <p id="section-toc.1-1.4.2.1-ja"><a href="#section-4.2-ja">4.2</a>.  <a href="#name-incman-suite,-dflabs-ja">IncMan Suite、DFLabs</a></p>
+<ul>
+<li>
+                <p id="section-toc.1-1.4.2.1.1-ja"><a href="#section-4.2.1-ja">4.2.1</a>.  <a href="#name-exporting-incidents-ja">インシデントのエクスポート</a></p>
+</li>
+              <li id="section-toc.1-1.4.2.2-ja">
+                <p id="section-toc.1-1.4.2.2.1-ja"><a href="#section-4.2.2-ja">4.2.2</a>.  <a href="#name-importing-incidents-ja">インシデントのインポート</a></p>
+</li>
+              </ul>
+</li>
+            <li id="section-toc.1-1.4.3-ja">
+              <p id="section-toc.1-1.4.3.1-ja"><a href="#section-4.3-ja">4.3</a>.  <a href="#name-surevine-proof-of-concept-ja">Surevineの概念実証</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-ja">
+              <p id="section-toc.1-1.4.4.1-ja"><a href="#section-4.4-ja">4.4</a>.  <a href="#name-mantis-cyber-intelligence-management-framework-ja">MANTIS Cyber-Intelligence Management Framework</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-vendors-with-planned-support-ja">サポートを予定しているベンダー</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-threat-central,-hp-ja">Threat Central、HP</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-ja">
+              <p id="section-toc.1-1.5.2.1-ja"><a href="#section-5.2-ja">5.2</a>.  <a href="#name-daedalus,-nict-ja">DAEDALUS、NICT</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-other-implementations-ja">その他の実装</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.6.1.1-ja"><a href="#section-6.1-ja">6.1</a>.  <a href="#name-collaborative-incident-management-system-ja">Collaborative Incident Management System</a></p>
+</li>
+            <li id="section-toc.1-1.6.2-ja">
+              <p id="section-toc.1-1.6.2.1-ja"><a href="#section-6.2-ja">6.2</a>.  <a href="#name-automated-incident-reporting---aircert-ja">自動インシデント報告 - AirCERT</a></p>
+</li>
+            <li id="section-toc.1-1.6.3-ja">
+              <p id="section-toc.1-1.6.3.1-ja"><a href="#section-6.3-ja">6.3</a>.  <a href="#name-us-department-of-energy-cyberfed-ja">US Department of EnergyのCyberFed</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-implementation-guide-ja">実装ガイド</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.7.1.1-ja"><a href="#section-7.1-ja">7.1</a>.  <a href="#name-code-generators-ja">コードジェネレーター</a></p>
+</li>
+            <li id="section-toc.1-1.7.2-ja">
+              <p id="section-toc.1-1.7.2.1-ja"><a href="#section-7.2-ja">7.2</a>.  <a href="#name-iodeflib-ja">iodeflib</a></p>
+</li>
+            <li id="section-toc.1-1.7.3-ja">
+              <p id="section-toc.1-1.7.3.1-ja"><a href="#section-7.3-ja">7.3</a>.  <a href="#name-iodefpm-ja">iodefpm</a></p>
+</li>
+            <li id="section-toc.1-1.7.4-ja">
+              <p id="section-toc.1-1.7.4.1-ja"><a href="#section-7.4-ja">7.4</a>.  <a href="#name-usability-ja">使いやすさ</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-iana-considerations-ja">IANAに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+          <li id="section-toc.1-1.11-ja">
+            <p id="section-toc.1-1.11.1-ja"><a href="#name-acknowledgements-ja">謝辞</a></p>
+</li>
+          <li id="section-toc.1-1.12-ja">
+            <p id="section-toc.1-1.12.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">This document is a collection of information about security incident
+reporting protocols and the implementation of systems that use them
+to share such information.  It is simply a collection of information,
+and it makes no attempt to compare the various standards or
+implementations.  As such, it will be of interest to network
+operators who wish to collect and share such data.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">この文書は、セキュリティーインシデントの報告プロトコルと、そのプロトコルを使ってそのような情報を共有するシステムの実装に関する情報を集めたものです。これは単に情報を集めたものであり、さまざまな標準や実装を比較しようとするものではありません。そのため、この文書は、そのようなデータを収集して共有したいネットワーク運用者にとって関心のあるものになるでしょう。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">Operationally, operators would need to decide which incident data
+collection group they want to be part of, and that choice will
+strongly influence their choice of reporting protocol and
+applications used to gather and distribute the data.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">運用上、運用者は、どのインシデントデータ収集グループに参加したいかを決める必要があり、その選択は、データの収集と配布に使う報告プロトコルとアプリケーションの選択に強く影響します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">This document is a collection of implementation reports from vendors
+and researchers who have implemented one or more of the standards
+published from the INCH and MILE working groups.  The standards
+include:</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">この文書は、INCHワーキンググループとMILEワーキンググループから発行された標準のうち1つ以上を実装したベンダーと研究者からの実装報告を集めたものです。その標準には次のものがあります：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-1-4-en">
+<li id="section-1-4.1-en">Incident Object Description Exchange Format (IODEF) v1 <span>[<a href="#RFC5070-en">RFC5070</a>]</span>
+</li>
+        <li id="section-1-4.2-en">Incident Object Description Exchange Format (IODEF) v2 <span>[<a href="#RFC7970-en">RFC7970</a>]</span>
+</li>
+        <li id="section-1-4.3-en">Extensions to the IODEF-Document Class for Reporting Phishing
+<span>[<a href="#RFC5901-en">RFC5901</a>]</span>
+</li>
+        <li id="section-1-4.4-en">Sharing Transaction Fraud Data <span>[<a href="#RFC5941-en">RFC5941</a>]</span>
+</li>
+        <li id="section-1-4.5-en">Real-time Inter-network Defense (RID) <span>[<a href="#RFC6545-en">RFC6545</a>]</span>
+</li>
+        <li id="section-1-4.6-en">Transport of Real-time Inter-network Defense (RID) Messages over
+HTTP/TLS <span>[<a href="#RFC6546-en">RFC6546</a>]</span>
+</li>
+        <li id="section-1-4.7-en">Incident Object Description Exchange Format (IODEF) Extension for
+Structured Cybersecurity Information (SCI) <span>[<a href="#RFC7203-en">RFC7203</a>]</span>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-1-4-ja">
+<li id="section-1-4.1-ja">インシデントオブジェクト記述交換フォーマット（IODEF）v1<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>
+</li>
+        <li id="section-1-4.2-ja">インシデントオブジェクト記述交換フォーマット（IODEF）v2<span>[<a href="#RFC7970-ja">RFC7970</a>]</span>
+</li>
+        <li id="section-1-4.3-ja">フィッシングを報告するためのIODEF-Documentクラスの拡張<span>[<a href="#RFC5901-ja">RFC5901</a>]</span>
+</li>
+        <li id="section-1-4.4-ja">取引詐欺データの共有<span>[<a href="#RFC5941-ja">RFC5941</a>]</span>
+</li>
+        <li id="section-1-4.5-ja">Real-time Inter-network Defense（RID）<span>[<a href="#RFC6545-ja">RFC6545</a>]</span>
+</li>
+        <li id="section-1-4.6-ja">HTTP/TLSを介したReal-time Inter-network Defense（RID）メッセージの転送<span>[<a href="#RFC6546-ja">RFC6546</a>]</span>
+</li>
+        <li id="section-1-4.7-ja">構造化サイバーセキュリティー情報（Structured Cybersecurity Information、SCI）のためのインシデントオブジェクト記述交換フォーマット（IODEF）拡張<span>[<a href="#RFC7203-ja">RFC7203</a>]</span>
+</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-5-en">The implementation reports included in this document have been
+provided by the team or product responsible for the implementations
+of the mentioned RFCs.  A more complete list of implementations,
+including open source efforts and vendor products, can also be found
+at the following location:</p></div>
+<div lang="ja" class="col"><p id="section-1-5-ja">この文書に含まれる実装報告は、前述のRFCの実装を担当したチームや製品から提供されたものです。オープンソースの取り組みやベンダー製品を含む、より完全な実装の一覧は、次の場所でも見つけることができます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-6-en"><span>&lt;<a href="http://siis.realmv6.org/implementations/" class="eref">http://siis.realmv6.org/implementations/</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-1-6-ja"><span>&lt;<a href="http://siis.realmv6.org/implementations/" class="eref">http://siis.realmv6.org/implementations/</a></span>&gt;</p></div>
+</div></section><section><span id="section-2"></span><span id="consortiums-and-information-sharing-and-analysis-centers-(isacs)-en"></span><span id="consortiums-and-information-sharing-and-analysis-centers-(isacs)-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-en" class="section-name selfRef">Consortiums and Information Sharing and Analysis Centers (ISACs)</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-consortiums-and-information-sharing-and-analysis-centers-(isacs)-ja" class="section-name selfRef">コンソーシアムと情報共有分析センター（ISAC）</a>
+      </h2></div>
+</div>
+<section><span id="section-2.1"></span><span id="anti-phishing-working-group-en"></span><span id="anti-phishing-working-group-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-anti-phishing-working-group-en" lang="en">
+<a id="section-2.1-en" href="#section-2.1-en" class="section-number selfRef">2.1.</a> <a href="#name-anti-phishing-working-group-en" class="section-name selfRef">Anti-Phishing Working Group</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-anti-phishing-working-group-ja" lang="ja">
+<a id="section-2.1-ja" href="#section-2.1-ja" class="section-number selfRef">2.1.</a> <a href="#name-anti-phishing-working-group-ja" class="section-name selfRef">Anti-Phishing Working Group</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.1-1-en">The Anti-Phishing Working Group (APWG) is one of the biggest
+coalitions against cybercrime, especially phishing.  In order to
+collect threat information in a structured format, APWG provides a
+phishing and cybercrime reporting tool that sends threat information
+to APWG by tailoring information with the IODEF format, based on RFC
+5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span> and RFC 5901 <span>[<a href="#RFC5901-en">RFC5901</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-2.1-1-ja">Anti-Phishing Working Group（APWG）は、サイバー犯罪、特にフィッシングに対抗する最大の連合の1つです。脅威情報を構造化されたフォーマットで収集するために、APWGは、RFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>とRFC 5901<span>[<a href="#RFC5901-ja">RFC5901</a>]</span>に基づくIODEFフォーマットで情報を整形して、脅威情報をAPWGに送信するフィッシングとサイバー犯罪の報告ツールを提供しています。</p></div>
+</div></section><section><span id="section-2.2"></span><span id="advanced-cyber-defence-centre-en"></span><span id="advanced-cyber-defence-centre-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-advanced-cyber-defence-centre-en" lang="en">
+<a id="section-2.2-en" href="#section-2.2-en" class="section-number selfRef">2.2.</a> <a href="#name-advanced-cyber-defence-centre-en" class="section-name selfRef">Advanced Cyber Defence Centre</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-advanced-cyber-defence-centre-ja" lang="ja">
+<a id="section-2.2-ja" href="#section-2.2-ja" class="section-number selfRef">2.2.</a> <a href="#name-advanced-cyber-defence-centre-ja" class="section-name selfRef">Advanced Cyber Defence Centre</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.2-1-en">The Advanced Cyber Defence Centre (ACDC) is a Europe-wide activity to
+fight against botnets.  ACDC provides solutions to mitigate on-going
+attacks and consolidates information provided by various stakeholders
+into a pool of knowledge.  Within ACDC, IODEF is one of the supported
+schemas for exchanging the information.</p></div>
+<div lang="ja" class="col"><p id="section-2.2-1-ja">Advanced Cyber Defence Centre（ACDC）は、ボットネットに対抗するためのヨーロッパ全体の活動です。ACDCは、進行中の攻撃を緩和するソリューションを提供し、さまざまな利害関係者から提供された情報を知識のプールに集約します。ACDCの中では、IODEFは情報を交換するためにサポートされているスキーマの1つです。</p></div>
+</div></section><section><span id="section-2.3"></span><span id="research-and-education-networking-information-sharing-and-analysis-center-en"></span><span id="research-and-education-networking-information-sharing-and-analysis-center-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-research-and-education-networking-information-sharing-and-analysis-center-en" lang="en">
+<a id="section-2.3-en" href="#section-2.3-en" class="section-number selfRef">2.3.</a> <a href="#name-research-and-education-networking-information-sharing-and-analysis-center-en" class="section-name selfRef">Research and Education Networking Information Sharing and Analysis Center</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-research-and-education-networking-information-sharing-and-analysis-center-ja" lang="ja">
+<a id="section-2.3-ja" href="#section-2.3-ja" class="section-number selfRef">2.3.</a> <a href="#name-research-and-education-networking-information-sharing-and-analysis-center-ja" class="section-name selfRef">Research and Education Networking Information Sharing and Analysis Center</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.3-1-en">The Research and Education Networking Information Sharing and
+Analysis Center (REN-ISAC) is a private community of researchers and
+higher-education members that share threat information and employs
+IODEF formatted-messages to exchange information.</p></div>
+<div lang="ja" class="col"><p id="section-2.3-1-ja">Research and Education Networking Information Sharing and Analysis Center（REN-ISAC）は、研究者と高等教育機関のメンバーからなる非公開のコミュニティーであり、脅威情報を共有し、情報の交換にIODEF形式のメッセージを使用しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.3-2-en">REN-ISAC also recommends using an IODEF attachment provided with a
+notification email for processing rather than relying on parsing of
+the body text of email.  The tools provided by REN-ISAC are designed
+to handle such email.</p></div>
+<div lang="ja" class="col"><p id="section-2.3-2-ja">REN-ISACはまた、電子メールの本文テキストの解析に頼るのではなく、通知メールに付属するIODEF添付ファイルを処理に使うことを推奨しています。REN-ISACが提供するツールは、そのような電子メールを扱うように設計されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2.3-3-en"><span>&lt;<a href="http://www.ren-isac.net/notifications/using_iodef.html" class="eref">http://www.ren-isac.net/notifications/using_iodef.html</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-2.3-3-ja"><span>&lt;<a href="http://www.ren-isac.net/notifications/using_iodef.html" class="eref">http://www.ren-isac.net/notifications/using_iodef.html</a></span>&gt;</p></div>
+</div></section></section><section><span id="section-3"></span><span id="open-source-implementations-en"></span><span id="open-source-implementations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-open-source-implementations-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-open-source-implementations-en" class="section-name selfRef">Open Source Implementations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-open-source-implementations-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-open-source-implementations-ja" class="section-name selfRef">オープンソースの実装</a>
+      </h2></div>
+</div>
+<section><span id="section-3.1"></span><span id="emc/rsa-rid-agent-en"></span><span id="emc/rsa-rid-agent-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-emc/rsa-rid-agent-en" lang="en">
+<a id="section-3.1-en" href="#section-3.1-en" class="section-number selfRef">3.1.</a> <a href="#name-emc/rsa-rid-agent-en" class="section-name selfRef">EMC/RSA RID Agent</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-emc/rsa-rid-agent-ja" lang="ja">
+<a id="section-3.1-ja" href="#section-3.1-ja" class="section-number selfRef">3.1.</a> <a href="#name-emc/rsa-rid-agent-ja" class="section-name selfRef">EMC/RSA RIDエージェント</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-1-en">The EMC/RSA RID agent is an open source implementation of the IETF
+standards for the exchange of incident and indicator data.  The code
+has been released under an MIT license, and development will continue
+with the open source community at the GitHub site for RSA
+Intelligence Sharing:</p></div>
+<div lang="ja" class="col"><p id="section-3.1-1-ja">EMC/RSA RIDエージェントは、インシデントとインジケーターのデータを交換するためのIETF標準のオープンソース実装です。このコードはMITライセンスの下で公開されており、開発はRSA Intelligence SharingのGitHubサイトでオープンソースコミュニティーとともに継続されます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-2-en"><span>&lt;<a href="https://github.com/RSAIntelShare/RID-Server.git" class="eref">https://github.com/RSAIntelShare/RID-Server.git</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-3.1-2-ja"><span>&lt;<a href="https://github.com/RSAIntelShare/RID-Server.git" class="eref">https://github.com/RSAIntelShare/RID-Server.git</a></span>&gt;</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.1-3-en">The code implements the Real-time Inter-network Defense (RID)
+described in RFC 6545 <span>[<a href="#RFC6545-en">RFC6545</a>]</span> and the Transport of RID over HTTP/TLS
+protocol described in <span>[<a href="#RFC6546-en">RFC6546</a>]</span>.  The code supports the evolving
+Incident Object Description Exchange Format (IODEF) data model
+<span>[<a href="#RFC7970-en">RFC7970</a>]</span> from the work in the IETF Managed Incident Lightweight
+Exchange (MILE) working group.</p></div>
+<div lang="ja" class="col"><p id="section-3.1-3-ja">このコードは、RFC 6545<span>[<a href="#RFC6545-ja">RFC6545</a>]</span>で説明されているReal-time Inter-network Defense（RID）と、<span>[<a href="#RFC6546-ja">RFC6546</a>]</span>で説明されているTransport of RID over HTTP/TLSプロトコルを実装しています。このコードは、IETFのManaged Incident Lightweight Exchange（MILE）ワーキンググループの作業から生まれた、発展を続けるインシデントオブジェクト記述交換フォーマット（IODEF）データモデル<span>[<a href="#RFC7970-ja">RFC7970</a>]</span>をサポートしています。</p></div>
+</div></section><section><span id="section-3.2"></span><span id="nict-iodef-sci-implementation-en"></span><span id="nict-iodef-sci-implementation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-nict-iodef-sci-implementation-en" lang="en">
+<a id="section-3.2-en" href="#section-3.2-en" class="section-number selfRef">3.2.</a> <a href="#name-nict-iodef-sci-implementation-en" class="section-name selfRef">NICT IODEF-SCI implementation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-nict-iodef-sci-implementation-ja" lang="ja">
+<a id="section-3.2-ja" href="#section-3.2-ja" class="section-number selfRef">3.2.</a> <a href="#name-nict-iodef-sci-implementation-ja" class="section-name selfRef">NICTのIODEF-SCI実装</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-1-en">Japan's National Institute of Information and Communications
+Technology (NICT) Network Security Research Institute implemented
+open source tools for exchanging, accumulating, and locating
+IODEF-SCI <span>[<a href="#RFC7203-en">RFC7203</a>]</span> documents.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-1-ja">日本のNational Institute of Information and Communications Technology（NICT）のNetwork Security Research Instituteは、IODEF-SCI<span>[<a href="#RFC7203-ja">RFC7203</a>]</span>文書を交換、蓄積、検索するためのオープンソースツールを実装しました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-2-en">Three tools are available from GitHub.  These tools assist the
+exchange of IODEF-SCI documents between parties.  IODEF-SCI <span>[<a href="#RFC7203-en">RFC7203</a>]</span>
+extends IODEF so that an IODEF document can embed Structured
+Cybersecurity Information (SCI).  For instance, it can embed Malware
+Metadata Exchange Format (MMDEF), Common Event Expression (CEE),
+Malware Attribute Enumeration and Characterization (MAEC) in XML, and
+Common Vulnerabilities and Exposures (CVE) identifiers.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-2-ja">GitHubから3つのツールが入手できます。これらのツールは、当事者間でのIODEF-SCI文書の交換を支援します。IODEF-SCI<span>[<a href="#RFC7203-ja">RFC7203</a>]</span>は、IODEF文書が構造化サイバーセキュリティー情報（SCI）を埋め込めるようにIODEFを拡張するものです。たとえば、XMLで記述されたMalware Metadata Exchange Format（MMDEF）、Common Event Expression（CEE）、Malware Attribute Enumeration and Characterization（MAEC）と、Common Vulnerabilities and Exposures（CVE）識別子を埋め込むことができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-3-en">The three tools are generator, exchanger, and parser.  The generator
+generates IODEF-SCI documents or appends XML to an existing IODEF
+document.  The exchanger sends the IODEF document to a specified
+correspondent node.  The parser receives, parses, and stores the
+IODEF-SCI document.  The parser also creates an interface that
+enables users to locate IODEF-SCI documents that have previously been
+received.  The code has been released under an MIT license and
+development will continue on GitHub.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-3-ja">3つのツールは、生成器（generator）、交換器（exchanger）、解析器（parser）です。生成器は、IODEF-SCI文書を生成するか、既存のIODEF文書にXMLを追加します。交換器は、指定された通信相手のノードにIODEF文書を送信します。解析器は、IODEF-SCI文書を受信、解析、保存します。解析器はまた、以前に受信したIODEF-SCI文書をユーザーが検索できるようにするインターフェイスも作成します。このコードはMITライセンスの下で公開されており、開発はGitHubで継続されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-4-en">Note that users can enjoy using this software at their own risk.</p></div>
+<div lang="ja" class="col"><p id="section-3.2-4-ja">ユーザーは、自己責任でこのソフトウェアを利用できることに注意してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-5-en">Available Online:</p></div>
+<div lang="ja" class="col"><p id="section-3.2-5-ja">オンラインで入手できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.2-6-en"><span>&lt;<a href="https://github.com/TakeshiTakahashi/IODEF-SCI" class="eref">https://github.com/TakeshiTakahashi/IODEF-SCI</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-3.2-6-ja"><span>&lt;<a href="https://github.com/TakeshiTakahashi/IODEF-SCI" class="eref">https://github.com/TakeshiTakahashi/IODEF-SCI</a></span>&gt;</p></div>
+</div></section><section><span id="section-3.3"></span><span id="n6-en"></span><span id="n6-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-n6-en" lang="en">
+<a id="section-3.3-en" href="#section-3.3-en" class="section-number selfRef">3.3.</a> <a href="#name-n6-en" class="section-name selfRef">n6</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-n6-ja" lang="ja">
+<a id="section-3.3-ja" href="#section-3.3-ja" class="section-number selfRef">3.3.</a> <a href="#name-n6-ja" class="section-name selfRef">n6</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-1-en">n6 is a platform for processing security-related information; it was
+developed by the Poland Research and Academic Computer Network (NASK)
+Computer Emergency Response Team (CERT) Polska.  The n6 API provides
+a common and unified way of representing data across the different
+sources that participate in knowledge management.</p></div>
+<div lang="ja" class="col"><p id="section-3.3-1-ja">n6は、セキュリティー関連の情報を処理するためのプラットフォームです。これは、Poland Research and Academic Computer Network（NASK）のComputer Emergency Response Team（CERT）Polskaによって開発されました。n6 APIは、知識管理に参加するさまざまな情報源にわたってデータを表現するための、共通で統一された方法を提供します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-2-en">n6 exposes a REST-ful (Representational State Transfer) API over
+HTTPS with mandatory authentication via Transport Layer Security
+(TLS) client certificates to ensure confidential and trustworthy
+communications.  Moreover, it uses an event-based data model for
+representation of all types of security information.</p></div>
+<div lang="ja" class="col"><p id="section-3.3-2-ja">n6は、機密性があり信頼できる通信を確保するために、トランスポート層セキュリティー（TLS）クライアント証明書による必須の認証を伴うHTTPS上で、REST-ful（Representational State Transfer）APIを公開しています。さらに、n6は、あらゆる種類のセキュリティー情報を表現するために、イベントベースのデータモデルを使用します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-3-en">Each event is represented as a JSON object with a set of mandatory
+and optional attributes. n6 also supports alternative output data
+formats for keeping compatibility with existing systems - IODEF and
+CSV - although these formats lack some of the attributes that may be
+present in the native JSON format.</p></div>
+<div lang="ja" class="col"><p id="section-3.3-3-ja">各イベントは、必須の属性と省略可能な属性の集合を持つJSONオブジェクトとして表現されます。n6は、既存のシステムとの互換性を保つために、代替の出力データフォーマットとしてIODEFとCSVもサポートしていますが、これらのフォーマットには、ネイティブのJSONフォーマットに存在しうる属性の一部が欠けています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-4-en">Available Online:</p></div>
+<div lang="ja" class="col"><p id="section-3.3-4-ja">オンラインで入手できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3.3-5-en"><span>&lt;<a href="https://github.com/CERT-Polska/n6sdk" class="eref">https://github.com/CERT-Polska/n6sdk</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-3.3-5-ja"><span>&lt;<a href="https://github.com/CERT-Polska/n6sdk" class="eref">https://github.com/CERT-Polska/n6sdk</a></span>&gt;</p></div>
+</div></section></section><section><span id="section-4"></span><span id="vendor-implementations-en"></span><span id="vendor-implementations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-vendor-implementations-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-vendor-implementations-en" class="section-name selfRef">Vendor Implementations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-vendor-implementations-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-vendor-implementations-ja" class="section-name selfRef">ベンダーの実装</a>
+      </h2></div>
+</div>
+<section><span id="section-4.1"></span><span id="deep-secure-en"></span><span id="deep-secure-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-deep-secure-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-deep-secure-en" class="section-name selfRef">Deep Secure</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-deep-secure-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-deep-secure-ja" class="section-name selfRef">Deep Secure</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">Deep-Secure Guards are built to protect a trusted domain from:</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">Deep-Secure Guardsは、信頼されたドメインを次のことから保護するように作られています：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.1-2-en">
+<li id="section-4.1-2.1-en">releasing sensitive data that does not meet the organizational
+security policy, and</li>
+          <li id="section-4.1-2.2-en">applications receiving badly constructed or malicious data that
+could exploit a vulnerability (known or unknown).</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.1-2-ja">
+<li id="section-4.1-2.1-ja">組織のセキュリティーポリシーを満たさない機密データを外部に出すこと、および</li>
+          <li id="section-4.1-2.2-ja">（既知または未知の）脆弱性を悪用しうる、不正な構造のデータや悪意のあるデータをアプリケーションが受信すること。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-3-en">Deep-Secure Guards support HTTPS and the Extensible Messaging and
+Presence Protocol (XMPP -- optimized server-to-server protocol),
+transports.  The Deep-Secure Guards support transfer of XML-based
+business content by creating a schema to translate the known good
+content to and from the intermediate format.  This means that the
+Deep-Secure Guards can be used to protect:</p></div>
+<div lang="ja" class="col"><p id="section-4.1-3-ja">Deep-Secure Guardsは、HTTPSと、拡張可能なメッセージングおよびプレゼンスプロトコル（Extensible Messaging and Presence Protocol、XMPP。最適化されたサーバー間プロトコル）のトランスポートをサポートしています。Deep-Secure Guardsは、既知の正常なコンテンツを中間フォーマットとの間で相互に変換するスキーマを作成することで、XMLベースのビジネスコンテンツの転送をサポートします。これは、Deep-Secure Guardsを使って次のものを保護できることを意味します：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.1-4-en">
+<li id="section-4.1-4.1-en">IODEF/RID using the HTTPS transport binding <span>[<a href="#RFC6546-en">RFC6546</a>]</span>
+</li>
+          <li id="section-4.1-4.2-en">IODEF/RID using an XMPP binding</li>
+          <li id="section-4.1-4.3-en">Resource-Oriented Lightweight Indicator Exchange (ROLIE) using
+HTTPS transport binding <span>[<a href="#XEP-0268-en">XEP-0268</a>]</span>
+</li>
+          <li id="section-4.1-4.4-en">Structured Threat Information Expression (STIX) / Trusted
+Automated Exchange of Indicator Information (TAXII) using the
+HTTPS transport binding</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.1-4-ja">
+<li id="section-4.1-4.1-ja">HTTPSトランスポートバインディングを使用するIODEF/RID<span>[<a href="#RFC6546-ja">RFC6546</a>]</span>
+</li>
+          <li id="section-4.1-4.2-ja">XMPPバインディングを使用するIODEF/RID</li>
+          <li id="section-4.1-4.3-ja">HTTPSトランスポートバインディングを使用するResource-Oriented Lightweight Indicator Exchange（ROLIE）<span>[<a href="#XEP-0268-ja">XEP-0268</a>]</span>
+</li>
+          <li id="section-4.1-4.4-ja">HTTPSトランスポートバインディングを使用するStructured Threat Information Expression（STIX）／Trusted Automated Exchange of Indicator Information（TAXII）</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-5-en">Deep-Secure Guards also support the SMTP transport and perform deep
+content inspection of content including XML attachments.  The Mail
+Guard supports S/MIME, and Deep Secure is working on support for the
+upcoming PLASMA standard, which enables an information-centric policy
+enforcement of data use.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-5-ja">Deep-Secure Guardsは、SMTPトランスポートもサポートしており、XML添付ファイルを含むコンテンツの詳細なコンテンツ検査を実行します。Mail GuardはS/MIMEをサポートしており、Deep Secureは、データ利用に関する情報中心のポリシー施行を可能にする、近く登場するPLASMA標準のサポートに取り組んでいます。</p></div>
+</div></section><section><span id="section-4.2"></span><span id="incman-suite,-dflabs-en"></span><span id="incman-suite,-dflabs-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-incman-suite,-dflabs-en" lang="en">
+<a id="section-4.2-en" href="#section-4.2-en" class="section-number selfRef">4.2.</a> <a href="#name-incman-suite,-dflabs-en" class="section-name selfRef">IncMan Suite, DFLabs</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-incman-suite,-dflabs-ja" lang="ja">
+<a id="section-4.2-ja" href="#section-4.2-ja" class="section-number selfRef">4.2.</a> <a href="#name-incman-suite,-dflabs-ja" class="section-name selfRef">IncMan Suite、DFLabs</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-1-en">The Incident Object Description Exchange Format, documented in RFC
+5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span>, defines a data representation that provides a
+framework for sharing information commonly exchanged by Computer
+Security Incident Response Teams (CSIRTs) about computer security
+incidents.  IncMan Suite implements the IODEF standard for exchanging
+details about incidents, either for exporting or importing
+activities.  This has been introduced to enhance the capabilities of
+the various CSIRTs to facilitate collaboration and sharing of useful
+experiences (sharing awareness on specific cases).</p></div>
+<div lang="ja" class="col"><p id="section-4.2-1-ja">RFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>で文書化されているインシデントオブジェクト記述交換フォーマットは、コンピューターセキュリティーインシデント対応チーム（Computer Security Incident Response Team、CSIRT）が一般的に交換する、コンピューターセキュリティーインシデントに関する情報を共有するための枠組みを提供するデータ表現を定義しています。IncMan Suiteは、エクスポートとインポートのいずれの活動のためにも、インシデントに関する詳細を交換するIODEF標準を実装しています。これは、さまざまなCSIRTの能力を高め、協力と有用な経験の共有（特定の事例に関する認識の共有）を促進するために導入されました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-2-en">The IODEF implementation is specified as an XML schema; therefore all
+data are stored in an XML file.  In this file, all the data of an
+incident are organized in a hierarchical structure to describe the
+various objects and their relationships.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-2-ja">IODEFの実装はXMLスキーマとして規定されているため、すべてのデータはXMLファイルに保存されます。このファイルでは、さまざまなオブジェクトとそれらの関係を記述するために、インシデントのすべてのデータが階層構造で整理されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-3-en">The IncMan Suite relies on IODEF as a transport format, which is
+composed by various classes for describing the entities that are part
+of the incident description.  For instance, the various relevant
+timestamps (detection time, start time, end time, and report time),
+the techniques used by the intruders to perpetrate the incident, the
+impact of the incident, technical and non-technical (time and
+monetary), and obviously all systems involved in the incident.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-3-ja">IncMan Suiteは、トランスポートフォーマットとしてIODEFを利用しています。IODEFは、インシデントの記述の一部となるエンティティーを記述するためのさまざまなクラスで構成されています。たとえば、関連するさまざまなタイムスタンプ（検知時刻、開始時刻、終了時刻、報告時刻）、侵入者がインシデントを引き起こすために使用した手法、技術的および非技術的（時間的および金銭的）なインシデントの影響、そしてもちろん、インシデントに関係するすべてのシステムです。</p></div>
+</div>
+<section><span id="section-4.2.1"></span><span id="exporting-incidents-en"></span><span id="exporting-incidents-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-exporting-incidents-en" lang="en">
+<a id="section-4.2.1-en" href="#section-4.2.1-en" class="section-number selfRef">4.2.1.</a> <a href="#name-exporting-incidents-en" class="section-name selfRef">Exporting Incidents</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-exporting-incidents-ja" lang="ja">
+<a id="section-4.2.1-ja" href="#section-4.2.1-ja" class="section-number selfRef">4.2.1.</a> <a href="#name-exporting-incidents-ja" class="section-name selfRef">インシデントのエクスポート</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.1-1-en">Each incident defined in the IncMan Suite can be exported via a user
+interface feature, and it will create an XML document.  Due to the
+nature of the data processed, the IODEF extraction might be
+considered privacy sensitive by the parties exchanging the
+information or by those described by it.  For this reason, specific
+care needs to be taken in ensuring the distribution to an appropriate
+audience or third party, either during the document exchange or the
+subsequent processing.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.1-1-ja">IncMan Suiteで定義された各インシデントは、ユーザーインターフェイスの機能を介してエクスポートでき、それによってXML文書が作成されます。処理されるデータの性質上、IODEFの抽出結果は、情報を交換する当事者やその情報に記述されている人々によって、プライバシー上の配慮を要するものとみなされるかもしれません。このため、文書の交換中とその後の処理中のいずれにおいても、適切な受け手や第三者に確実に配布されるように特別な注意を払う必要があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.1-2-en">The XML document generated will include a description and details of
+the incident along with all the systems involved and the related
+information.  At this stage, it can be distributed for import into a
+remote system.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.1-2-ja">生成されたXML文書には、関係するすべてのシステムと関連情報とともに、インシデントの説明と詳細が含まれます。この段階で、その文書をリモートシステムにインポートするために配布できます。</p></div>
+</div></section><section><span id="section-4.2.2"></span><span id="importing-incidents-en"></span><span id="importing-incidents-ja"></span><div class="row">
+<div lang="en" class="col"><h4 id="name-importing-incidents-en" lang="en">
+<a id="section-4.2.2-en" href="#section-4.2.2-en" class="section-number selfRef">4.2.2.</a> <a href="#name-importing-incidents-en" class="section-name selfRef">Importing Incidents</a>
+          </h4></div>
+<div lang="ja" class="col"><h4 id="name-importing-incidents-ja" lang="ja">
+<a id="section-4.2.2-ja" href="#section-4.2.2-ja" class="section-number selfRef">4.2.2.</a> <a href="#name-importing-incidents-ja" class="section-name selfRef">インシデントのインポート</a>
+          </h4></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.2-1-en">The IncMan Suite provides the functionality to import incidents
+stored in files and transported via IODEF-compliant XML documents.
+The importing process is comprised of two steps: first, the file is
+inspected to validate if it is well formed; second, all data are
+uploaded inside the system.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.2-1-ja">IncMan Suiteは、ファイルに保存され、IODEFに準拠したXML文書で運ばれるインシデントをインポートする機能を提供します。インポートの処理は2つのステップで構成されます。まず、ファイルを検査して整形式であるかどうかを検証し、次に、すべてのデータをシステム内にアップロードします。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.2-2-en">If the incident already exists in the system with the same incident
+ID, the new one being imported will be created under a new ID.  This
+approach prevents accidentally overwriting existing information or
+merging inconsistent data.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.2-2-ja">同じインシデントIDを持つインシデントがすでにシステムに存在する場合、インポートされる新しいインシデントは新しいIDで作成されます。このアプローチにより、既存の情報を誤って上書きしたり、一貫性のないデータをマージしたりすることを防ぎます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.2-3-en">The IncMan Suite also includes a feature to upload incidents from
+emails.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.2-3-ja">IncMan Suiteには、電子メールからインシデントをアップロードする機能もあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2.2-4-en">The incident, described in XML format, can be stored directly into
+the body of the email message or transported as an attachment of the
+email.  At regular intervals that are customizable by the user, the
+IncMan Suite monitors for incoming emails, which are filtered by a
+configurable white-list and black-list mechanism on the sender's
+email account.  Then, a parser processes the received email and a new
+incident is created automatically after having validated the email
+body or the attachment to ensure the format is well formed.</p></div>
+<div lang="ja" class="col"><p id="section-4.2.2-4-ja">XMLフォーマットで記述されたインシデントは、電子メールメッセージの本文に直接格納することも、電子メールの添付ファイルとして運ぶこともできます。IncMan Suiteは、ユーザーが設定できる一定の間隔で受信メールを監視します。受信メールは、送信者の電子メールアカウントに対する設定可能なホワイトリストとブラックリストの仕組みによってフィルタリングされます。その後、パーサーが受信した電子メールを処理し、電子メールの本文または添付ファイルを検証してフォーマットが整形式であることを確認したあとで、新しいインシデントが自動的に作成されます。</p></div>
+</div></section></section><section><span id="section-4.3"></span><span id="surevine-proof-of-concept-en"></span><span id="surevine-proof-of-concept-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-surevine-proof-of-concept-en" lang="en">
+<a id="section-4.3-en" href="#section-4.3-en" class="section-number selfRef">4.3.</a> <a href="#name-surevine-proof-of-concept-en" class="section-name selfRef">Surevine Proof of Concept</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-surevine-proof-of-concept-ja" lang="ja">
+<a id="section-4.3-ja" href="#section-4.3-ja" class="section-number selfRef">4.3.</a> <a href="#name-surevine-proof-of-concept-ja" class="section-name selfRef">Surevineの概念実証</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.3-1-en">XMPP is enhanced and extended through the XMPP Extension Protocols
+(XEPs).  XEP-0268 <span>[<a href="#XEP-0268-en">XEP-0268</a>]</span> describes incident management (using
+IODEF) of the XMPP network itself, effectively supporting
+self-healing the XMPP network.  In order to more generically cover the
+incident management of a network over the same network, XEP-0268
+requires some updates.  We are working on these changes together with
+a new XEP that supports "social networking" over XMPP, which enhances
+the publish-and-subscribe XEP <span>[<a href="#XEP-0060-en">XEP-0060</a>]</span>.  This now allows nodes to
+publish and subscribe to any type of content and therefore receive
+the content.  XEP-0060 will be used to describe IODEF content.  We
+now have an alpha version of the server-side software and client-side
+software required to demonstrate the "social networking" capability
+and are currently enhancing this to support cyber incident management
+in real time.</p></div>
+<div lang="ja" class="col"><p id="section-4.3-1-ja">XMPPは、XMPP拡張プロトコル（XMPP Extension Protocols、XEP）を通じて強化・拡張されています。XEP-0268<span>[<a href="#XEP-0268-ja">XEP-0268</a>]</span>は、XMPPネットワーク自体の（IODEFを使用した）インシデント管理について説明しており、事実上、XMPPネットワークの自己修復をサポートしています。ネットワークのインシデント管理を同じネットワーク上でより汎用的に扱うためには、XEP-0268にいくつかの更新が必要です。私たちは、これらの変更に、XMPP上の「ソーシャルネットワーキング」をサポートする新しいXEPとあわせて取り組んでいます。この新しいXEPは、パブリッシュ・サブスクライブのXEP<span>[<a href="#XEP-0060-ja">XEP-0060</a>]</span>を拡張するものです。これにより、ノードはあらゆる種類のコンテンツを公開・購読でき、したがってそのコンテンツを受信できるようになりました。XEP-0060は、IODEFコンテンツを記述するために使われる予定です。私たちは現在、「ソーシャルネットワーキング」の能力を実証するために必要なサーバー側ソフトウェアとクライアント側ソフトウェアのアルファ版を持っており、リアルタイムのサイバーインシデント管理をサポートするようにこれを強化しているところです。</p></div>
+</div></section><section><span id="section-4.4"></span><span id="mantis-cyber-intelligence-management-framework-en"></span><span id="mantis-cyber-intelligence-management-framework-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-mantis-cyber-intelligence-management-framework-en" lang="en">
+<a id="section-4.4-en" href="#section-4.4-en" class="section-number selfRef">4.4.</a> <a href="#name-mantis-cyber-intelligence-management-framework-en" class="section-name selfRef">MANTIS Cyber-Intelligence Management Framework</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-mantis-cyber-intelligence-management-framework-ja" lang="ja">
+<a id="section-4.4-ja" href="#section-4.4-ja" class="section-number selfRef">4.4.</a> <a href="#name-mantis-cyber-intelligence-management-framework-ja" class="section-name selfRef">MANTIS Cyber-Intelligence Management Framework</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.4-1-en">Model-based Analysis of Threat Intelligence Sources (MANTIS) provides
+an example implementation of a framework for managing cyber threat
+intelligence expressed in standards such as STIX, Cyber Observable
+Expression (CybOX), IODEF, etc.  The aims of providing such an
+example implementation are as follows:</p></div>
+<div lang="ja" class="col"><p id="section-4.4-1-ja">Model-based Analysis of Threat Intelligence Sources（MANTIS）は、STIX、Cyber Observable Expression（CybOX）、IODEFなどの標準で表現されたサイバー脅威インテリジェンスを管理するためのフレームワークの実装例を提供しています。そのような実装例を提供する目的は次のとおりです：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.4-2-en">
+<li id="section-4.4-2.1-en">To facilitate discussions about emerging standards such as STIX,
+CybOX, et al., with respect to questions regarding tooling: how
+would a certain aspect be implemented, and how do changes affect
+an implementation?  Such discussions become much easier and have a
+better basis if they can be lead in the context of example tooling
+that is known to the community.</li>
+          <li id="section-4.4-2.2-en">To lower the barrier of entry for organizations and teams
+(especially CSIRT/CERT teams) in using emerging standards for
+cyber-threat-intelligence management and exchange.</li>
+          <li id="section-4.4-2.3-en">To provide a platform on the basis of which research and
+community-driven development in the area of
+cyber-threat-intelligence management can occur.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.4-2-ja">
+<li id="section-4.4-2.1-ja">ツールに関する疑問、つまり、ある側面がどのように実装されるのか、そして変更が実装にどのように影響するのかという疑問について、STIXやCybOXなどの新しい標準に関する議論を促進すること。そのような議論は、コミュニティーに知られているツールの例の文脈で行うことができれば、はるかに容易になり、よりよい基盤を持つことができます。</li>
+          <li id="section-4.4-2.2-ja">組織やチーム（特にCSIRT/CERTチーム）がサイバー脅威インテリジェンスの管理と交換のために新しい標準を使う際の参入障壁を下げること。</li>
+          <li id="section-4.4-2.3-ja">サイバー脅威インテリジェンス管理の分野での研究とコミュニティー主導の開発の基盤となるプラットフォームを提供すること。</li>
+        </ul></div>
+</div></section></section><section><span id="section-5"></span><span id="vendors-with-planned-support-en"></span><span id="vendors-with-planned-support-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-vendors-with-planned-support-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-vendors-with-planned-support-en" class="section-name selfRef">Vendors with Planned Support</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-vendors-with-planned-support-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-vendors-with-planned-support-ja" class="section-name selfRef">サポートを予定しているベンダー</a>
+      </h2></div>
+</div>
+<section><span id="section-5.1"></span><span id="threat-central,-hp-en"></span><span id="threat-central,-hp-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-threat-central,-hp-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-threat-central,-hp-en" class="section-name selfRef">Threat Central, HP</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-threat-central,-hp-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-threat-central,-hp-ja" class="section-name selfRef">Threat Central、HP</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-1-en">HP has developed HP Threat Central, a security intelligence platform
+that enables automated, real-time collaboration between organizations
+to combat today's increasingly sophisticated cyber attacks.  One way
+automated sharing of threat indicators is achieved is through close
+integration with the HP ArcSight Security Information and Event
+Management (SIEM) for automated upload and consumption of information
+from the Threat Central Server.  In addition, HP Threat Central
+supports open standards for sharing threat information so that
+participants who do not use HP Security Products can participate in
+the sharing ecosystem.  It is planned that future versions will also
+support IODEF for the automated upload and download of threat
+information.</p></div>
+<div lang="ja" class="col"><p id="section-5.1-1-ja">HPは、ますます高度化する今日のサイバー攻撃に対抗するために、組織間での自動化されたリアルタイムの協力を可能にするセキュリティーインテリジェンスプラットフォームであるHP Threat Centralを開発しました。脅威インジケーターの自動共有を実現する方法の1つは、Threat Central Serverからの情報の自動アップロードと消費のために、HP ArcSight Security Information and Event Management（SIEM）と緊密に統合することです。さらに、HP Threat Centralは、HP Security Productsを使用していない参加者も共有のエコシステムに参加できるように、脅威情報を共有するためのオープンな標準をサポートしています。将来のバージョンでは、脅威情報の自動アップロードと自動ダウンロードのためにIODEFもサポートする予定です。</p></div>
+</div></section><section><span id="section-5.2"></span><span id="daedalus,-nict-en"></span><span id="daedalus,-nict-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-daedalus,-nict-en" lang="en">
+<a id="section-5.2-en" href="#section-5.2-en" class="section-number selfRef">5.2.</a> <a href="#name-daedalus,-nict-en" class="section-name selfRef">DAEDALUS, NICT</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-daedalus,-nict-ja" lang="ja">
+<a id="section-5.2-ja" href="#section-5.2-ja" class="section-number selfRef">5.2.</a> <a href="#name-daedalus,-nict-ja" class="section-name selfRef">DAEDALUS、NICT</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-1-en">DAEDALUS is a real-time alert system based on a large-scale darknet
+monitoring facility that has been deployed as a part of the Network
+Incident analysis Center for Tactical Emergency Response (nicter)
+system of NICT, which is based in Japan.  DAEDALUS consists of an
+analysis center (i.e., nicter) and several cooperative organizations.
+Each organization installs a darknet sensor and establishes a secure
+channel between it and the analysis center, and it continuously
+forwards darknet traffic toward the center.  In addition, each
+organization registers the IP address range of its livenet at the
+center in advance.  When these distributed darknet sensors observe
+malware activities from the IP address of a cooperating organization,
+then the analysis center sends an alert to the organization.  The
+future version of DAEDALUS will support IODEF for sending alert
+messages to the users.</p></div>
+<div lang="ja" class="col"><p id="section-5.2-1-ja">DAEDALUSは、日本に拠点を置くNICTのNetwork Incident analysis Center for Tactical Emergency Response（nicter）システムの一部として展開されている、大規模なダークネット監視設備に基づくリアルタイム警告システムです。DAEDALUSは、分析センター（つまりnicter）といくつかの協力組織で構成されます。各組織は、ダークネットセンサーを設置して、そのセンサーと分析センターとの間に安全なチャネルを確立し、ダークネットのトラフィックを継続的にセンターに転送します。さらに、各組織は、自組織のライブネットのIPアドレス範囲を事前にセンターに登録します。分散したこれらのダークネットセンサーが協力組織のIPアドレスからのマルウェア活動を観測すると、分析センターはその組織に警告を送信します。DAEDALUSの将来のバージョンでは、ユーザーへの警告メッセージの送信にIODEFをサポートする予定です。</p></div>
+</div></section></section><section><span id="section-6"></span><span id="other-implementations-en"></span><span id="other-implementations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-other-implementations-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-other-implementations-en" class="section-name selfRef">Other Implementations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-other-implementations-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-other-implementations-ja" class="section-name selfRef">その他の実装</a>
+      </h2></div>
+</div>
+<section><span id="section-6.1"></span><span id="collaborative-incident-management-system-en"></span><span id="collaborative-incident-management-system-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-collaborative-incident-management-system-en" lang="en">
+<a id="section-6.1-en" href="#section-6.1-en" class="section-number selfRef">6.1.</a> <a href="#name-collaborative-incident-management-system-en" class="section-name selfRef">Collaborative Incident Management System</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-collaborative-incident-management-system-ja" lang="ja">
+<a id="section-6.1-ja" href="#section-6.1-ja" class="section-number selfRef">6.1.</a> <a href="#name-collaborative-incident-management-system-ja" class="section-name selfRef">Collaborative Incident Management System</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-1-en">A Collaborative Incident Management System (CIMS) is a
+proof-of-concept system for collaborative incident handling and for the
+sharing of information about cyber defense situational awareness
+between the participants; it was developed for the Cyber Coalition
+2013 (CC13) exercise organized by the North Atlantic Treaty
+Organization (NATO).  CIMS was implemented based on Request Tracker
+(RT), an open source software widely used for handling incident
+responses by many CERTs and CSIRTs.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-1-ja">Collaborative Incident Management System（CIMS）は、協調的なインシデント対応と、参加者間でのサイバー防御の状況認識に関する情報の共有のための概念実証システムです。CIMSは、North Atlantic Treaty Organization（NATO）が実施したCyber Coalition 2013（CC13）演習のために開発されました。CIMSは、多くのCERTやCSIRTがインシデント対応の処理に広く使っているオープンソースソフトウェアであるRequest Tracker（RT）に基づいて実装されました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.1-2-en">One of the functionalities implemented in CIMS was the ability to
+import and export IODEF messages in the body of emails.  The intent
+was to verify the suitability of IODEF to achieve the objective of
+collaborative incident handling.  The customized version of RT could
+be configured to send an email message containing an IODEF message
+whenever an incident ticket was created, modified, or deleted.  These
+IODEF messages would then be imported into other incident handling
+systems in order to allow participating CSIRTs to use their usual
+means for incident handling while still interacting with those using
+the proof-of-concept CIMS.  Having an IODEF message generated for
+every change made to the incident information in RT (and for the
+system to allow incoming IODEF email messages to be associated to an
+existing incident) would in some way allow all participating CSIRTs
+to actually work on a "common incident ticket", at least at the
+conceptual level.  Of particular importance was the ability for users
+to exchange information between each other concerning actions taken
+in the handling of a particular incident, thus creating a sort of
+common action log as well as requesting/tasking others to provide
+information or perform a specified action and correlating received
+responses to the original request or task.  As well, a specific
+"profile" was developed to identify a subset of the IODEF classes
+that would be used during the exercise in an attempt to channel all
+users into a common usage pattern of the otherwise flexible IODEF
+standard.</p></div>
+<div lang="ja" class="col"><p id="section-6.1-2-ja">CIMSに実装された機能の1つは、電子メールの本文に含まれるIODEFメッセージをインポートおよびエクスポートする能力でした。その意図は、協調的なインシデント対応という目的を達成するうえでのIODEFの適性を検証することでした。カスタマイズされたバージョンのRTは、インシデントチケットが作成、変更、または削除されるたびに、IODEFメッセージを含む電子メールメッセージを送信するように設定できました。これらのIODEFメッセージは、その後、ほかのインシデント対応システムにインポートされます。これにより、参加しているCSIRTは、概念実証のCIMSを使っている組織とやり取りしながらも、インシデント対応に通常の手段を使うことができます。RTのインシデント情報に加えられたすべての変更についてIODEFメッセージを生成すること（および、受信したIODEF電子メールメッセージを既存のインシデントに関連付けられるようにすること）により、参加しているすべてのCSIRTが、少なくとも概念的なレベルでは、ある意味で実際に「共通のインシデントチケット」に取り組めるようになります。特に重要だったのは、特定のインシデントの対応においてとられた行動について、ユーザーが互いに情報を交換し、それによって一種の共通の行動ログを作成できる能力と、ほかの参加者に情報の提供や特定の行動の実行を依頼または指示し、受信したレスポンスを元のリクエストやタスクと関連付ける能力でした。また、本来は柔軟なIODEF標準をすべてのユーザーが共通の使い方で使うように誘導することを目指して、演習中に使われるIODEFクラスのサブセットを特定するための特定の「プロファイル」が開発されました。</p></div>
+</div></section><section><span id="section-6.2"></span><span id="automated-incident-reporting---aircert-en"></span><span id="automated-incident-reporting---aircert-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-automated-incident-reporting---aircert-en" lang="en">
+<a id="section-6.2-en" href="#section-6.2-en" class="section-number selfRef">6.2.</a> <a href="#name-automated-incident-reporting---aircert-en" class="section-name selfRef">Automated Incident Reporting - AirCERT</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-automated-incident-reporting---aircert-ja" lang="ja">
+<a id="section-6.2-ja" href="#section-6.2-ja" class="section-number selfRef">6.2.</a> <a href="#name-automated-incident-reporting---aircert-ja" class="section-name selfRef">自動インシデント報告 - AirCERT</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-1-en">AirCERT was implemented by the CERT / Coordination Center (CC) of
+Carnegie Mellon's Software Engineering Institute CERT division.
+AirCERT was designed to be an Internet-scalable distributed system
+for sharing security event data.  The AirCERT system was designed to
+be an automated collector of flow and Intrusion Detection System
+(IDS) alerts.  AirCERT would collect that information into a
+relational database and be able to share reporting using IODEF and
+the Intrusion Detection Message Exchange Format <span>[<a href="#RFC4765-en">RFC4765</a>]</span>.  AirCERT
+additionally used SNML <span>[<a href="#SNML-en">SNML</a>]</span> to exchange information about the
+network.  AirCERT was implemented in a combination of C and Perl
+modules and included periodic graphing capabilities leveraging the
+Round-Robin Database Tool (RRDTool).</p></div>
+<div lang="ja" class="col"><p id="section-6.2-1-ja">AirCERTは、Carnegie Mellon's Software Engineering InstituteのCERT divisionのCERT / Coordination Center（CC）によって実装されました。AirCERTは、セキュリティーイベントデータを共有するための、インターネット規模に拡張可能な分散システムとして設計されました。AirCERTシステムは、フローと侵入検知システム（Intrusion Detection System、IDS）のアラートを自動的に収集するものとして設計されました。AirCERTは、その情報をリレーショナルデータベースに収集し、IODEFと侵入検知メッセージ交換フォーマット（Intrusion Detection Message Exchange Format）<span>[<a href="#RFC4765-ja">RFC4765</a>]</span>を使って報告を共有できました。AirCERTはさらに、ネットワークに関する情報を交換するためにSNML<span>[<a href="#SNML-ja">SNML</a>]</span>を使用しました。AirCERTは、CとPerlのモジュールの組み合わせで実装され、Round-Robin Database Tool（RRDTool）を活用した定期的なグラフ作成機能を備えていました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.2-2-en">AirCERT was intended for large-scale distributed deployment and,
+eventually, the ability to sanitize data to be shared across
+administrative domains.  The architecture was designed to allow
+collection of data on a per-site basis and to allow each site to
+create data sharing based on its own particular trust relationships.</p></div>
+<div lang="ja" class="col"><p id="section-6.2-2-ja">AirCERTは、大規模な分散展開と、最終的には管理ドメインをまたいで共有されるデータをサニタイズする能力を目指していました。そのアーキテクチャーは、サイトごとにデータを収集できるようにし、各サイトが独自の信頼関係に基づいてデータ共有を作成できるように設計されました。</p></div>
+</div></section><section><span id="section-6.3"></span><span id="us-department-of-energy-cyberfed-en"></span><span id="us-department-of-energy-cyberfed-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-us-department-of-energy-cyberfed-en" lang="en">
+<a id="section-6.3-en" href="#section-6.3-en" class="section-number selfRef">6.3.</a> <a href="#name-us-department-of-energy-cyberfed-en" class="section-name selfRef">US Department of Energy CyberFed</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-us-department-of-energy-cyberfed-ja" lang="ja">
+<a id="section-6.3-ja" href="#section-6.3-ja" class="section-number selfRef">6.3.</a> <a href="#name-us-department-of-energy-cyberfed-ja" class="section-name selfRef">US Department of EnergyのCyberFed</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.3-1-en">The CyberFed system was implemented and deployed by Argonne National
+Laboratory to automate the detection and response of attack activity
+against Department of Energy (DoE) computer networks.  CyberFed
+automates the collection of network alerting activity from various
+perimeter network defenses and logs those events into its database.
+CyberFed then automatically converts that information into blocking
+information transmitted to all participants.  The original
+implementation used IODEF messages wrapped in an XML extension to
+manage a large array of indicators.  The CyberFed system was not
+designed to describe a particular incident as much as to describe a
+set of current network-blocking indicators that can be generated and
+deployed machine to machine.</p></div>
+<div lang="ja" class="col"><p id="section-6.3-1-ja">CyberFedシステムは、Department of Energy（DoE）のコンピューターネットワークに対する攻撃活動の検知と対応を自動化するために、Argonne National Laboratoryによって実装・展開されました。CyberFedは、さまざまな境界ネットワーク防御からのネットワークアラート活動の収集を自動化し、それらのイベントを自身のデータベースに記録します。CyberFedはその後、その情報を自動的にブロック情報に変換して、すべての参加者に送信します。元の実装では、大量のインジケーターを管理するために、XML拡張で包んだIODEFメッセージを使用していました。CyberFedシステムは、特定のインシデントを記述するためというよりも、生成して機械から機械へと展開できる、現在のネットワークブロック用インジケーターの集合を記述するために設計されました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.3-2-en">CyberFed is primarily implemented in Perl.  Included as part of the
+CyberFed system are scripts that interact with a large number of
+firewalls, IDS / Intrusion Prevention System (IPS) devices, DNS
+systems, and proxies that operate to implement both the automated
+collection of events as well as the automated deployment of black
+listing.</p></div>
+<div lang="ja" class="col"><p id="section-6.3-2-ja">CyberFedは主にPerlで実装されています。CyberFedシステムの一部として、多数のファイアウォール、IDS／侵入防止システム（Intrusion Prevention System、IPS）デバイス、DNSシステム、プロキシーとやり取りするスクリプトが含まれています。これらのスクリプトは、イベントの自動収集とブラックリストの自動展開の両方を実現するように動作します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6.3-3-en">Currently, CyberFed supports multiple exchange formats including
+IODEF and STIX.  Open Indicators of Compromise (OpenIOC) is also a
+potential exchange format that the US DoE is considering.</p></div>
+<div lang="ja" class="col"><p id="section-6.3-3-ja">現在、CyberFedは、IODEFやSTIXを含む複数の交換フォーマットをサポートしています。Open Indicators of Compromise（OpenIOC）も、US DoEが検討している交換フォーマットの候補です。</p></div>
+</div></section></section><section><span id="section-7"></span><span id="implementation-guide-en"></span><span id="implementation-guide-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-guide-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-implementation-guide-en" class="section-name selfRef">Implementation Guide</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-guide-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-implementation-guide-ja" class="section-name selfRef">実装ガイド</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">The section aims at sharing tips for development of IODEF-capable
+systems.</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">このセクションは、IODEFに対応したシステムを開発するためのヒントを共有することを目的としています。</p></div>
+</div>
+<section><span id="section-7.1"></span><span id="code-generators-en"></span><span id="code-generators-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-code-generators-en" lang="en">
+<a id="section-7.1-en" href="#section-7.1-en" class="section-number selfRef">7.1.</a> <a href="#name-code-generators-en" class="section-name selfRef">Code Generators</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-code-generators-ja" lang="ja">
+<a id="section-7.1-ja" href="#section-7.1-ja" class="section-number selfRef">7.1.</a> <a href="#name-code-generators-ja" class="section-name selfRef">コードジェネレーター</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-1-en">For implementing IODEF-capable systems, it is feasible to employ code
+generators for the XML Schema Definition (XSD).  The generators are
+used to save development costs since they automatically create useful
+libraries for accessing XML attributes, composing messages, and/or
+validating XML objects.  The IODEF XSD was defined in Section 8 of
+RFC 5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span> and is available from the "ns" registry
+<span>&lt;<a href="https://www.iana.org/assignments/xml-registry" class="eref">https://www.iana.org/assignments/xml-registry</a></span>&gt;.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-1-ja">IODEFに対応したシステムを実装するために、XMLスキーマ定義（XML Schema Definition、XSD）用のコードジェネレーターを採用することができます。コードジェネレーターは、XML属性へのアクセス、メッセージの作成、XMLオブジェクトの検証のいずれかまたはすべてに役立つライブラリーを自動的に作成するので、開発コストの削減に使われます。IODEF XSDはRFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>のセクション8で定義されており、"ns"レジストリー<span>&lt;<a href="https://www.iana.org/assignments/xml-registry" class="eref">https://www.iana.org/assignments/xml-registry</a></span>&gt;から入手できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-2-en">However, some issues remain.  Due to the complexity of the IODEF XSD,
+some code generators could not generate code from the XSD file.  The
+tested code generators are as follows.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-2-ja">しかし、いくつかの問題が残っています。IODEF XSDの複雑さのために、一部のコードジェネレーターはXSDファイルからコードを生成できませんでした。テストしたコードジェネレーターは次のとおりです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7.1-3-en">
+<li id="section-7.1-3.1-en">XML::Pastor <span>[<a href="#XSD:Perl-en">XSD:Perl</a>]</span> (Perl)</li>
+          <li id="section-7.1-3.2-en">RXSD <span>[<a href="#XSD:Ruby-en">XSD:Ruby</a>]</span> (Ruby)</li>
+          <li id="section-7.1-3.3-en">PyXB <span>[<a href="#XSD:Python-en">XSD:Python</a>]</span> (Python)</li>
+          <li id="section-7.1-3.4-en">JAXB <span>[<a href="#XSD:Java-en">XSD:Java</a>]</span> (Java)</li>
+          <li id="section-7.1-3.5-en">CodeSynthesis XSD <span>[<a href="#XSD:Cxx-en">XSD:Cxx</a>]</span> (C++)</li>
+          <li id="section-7.1-3.6-en">Xsd.exe <span>[<a href="#XSD:CS-en">XSD:CS</a>]</span> (C#)</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-7.1-3-ja">
+<li id="section-7.1-3.1-ja">XML::Pastor <span>[<a href="#XSD:Perl-ja">XSD:Perl</a>]</span> (Perl)</li>
+          <li id="section-7.1-3.2-ja">RXSD <span>[<a href="#XSD:Ruby-ja">XSD:Ruby</a>]</span> (Ruby)</li>
+          <li id="section-7.1-3.3-ja">PyXB <span>[<a href="#XSD:Python-ja">XSD:Python</a>]</span> (Python)</li>
+          <li id="section-7.1-3.4-ja">JAXB <span>[<a href="#XSD:Java-ja">XSD:Java</a>]</span> (Java)</li>
+          <li id="section-7.1-3.5-ja">CodeSynthesis XSD <span>[<a href="#XSD:Cxx-ja">XSD:Cxx</a>]</span> (C++)</li>
+          <li id="section-7.1-3.6-ja">Xsd.exe <span>[<a href="#XSD:CS-ja">XSD:CS</a>]</span> (C#)</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-4-en">For instance, we have tried to use XML::Pastor, but it could not
+properly understand its schema due to the complexity of IODEF XSD.
+The same applies to Ruby XSD (RXSD) and Java Architecture for XML
+Binding (JAXB).  Only Python XML Schema Bindings (PyXB),
+CodeSynthesis XSD, and Xsd.exe were able to understand the complex
+schema.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-4-ja">たとえば、私たちはXML::Pastorを使おうとしましたが、IODEF XSDの複雑さのために、そのスキーマを正しく理解できませんでした。Ruby XSD（RXSD）とJava Architecture for XML Binding（JAXB）についても同様です。この複雑なスキーマを理解できたのは、Python XML Schema Bindings（PyXB）、CodeSynthesis XSD、Xsd.exeだけでした。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-5-en">Unfortunately, there is no recommended workaround.  A possible
+workaround is a double conversion of the XSD file.  This entails the
+XSD being serialized into XML; afterwards, the resulting XML is
+converted back into an XSD.  The resultant XSD was successfully
+processed by all the tools listed above.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-5-ja">残念ながら、推奨される回避策はありません。考えられる回避策の1つは、XSDファイルを二重に変換することです。これは、XSDをXMLにシリアル化し、その後、得られたXMLをXSDに変換し直すというものです。こうして得られたXSDは、上に挙げたすべてのツールで正常に処理されました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-6-en">It should be noted that IODEF uses '-' (hyphen) symbols in its
+classes or attributes, which are listed as follows:</p></div>
+<div lang="ja" class="col"><p id="section-7.1-6-ja">IODEFは、そのクラスや属性に'-'（ハイフン）記号を使用していることに注意してください。それらは次のとおりです：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7.1-7-en">
+<li id="section-7.1-7.1-en">IODEF-Document Class: It is the top-level class in the IODEF data
+model described in Section 3.1 of RFC 5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span>.</li>
+          <li id="section-7.1-7.2-en">The vlan-name and vlan-num Attributes: According to Section 3.16.2
+of RFC 5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span>, they are the name and number of Virtual LAN
+and are the attributes for Address class.</li>
+          <li id="section-7.1-7.3-en">Extending the Enumerated Values of Attribute: According to
+Section 5.1 of RFC 5070 <span>[<a href="#RFC5070-en">RFC5070</a>]</span>, this is an extension technique
+to add new enumerated values to an attribute, and it has a prefix
+of "ext-", e.g., ext-value, ext-category, ext-type, and so on.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-7.1-7-ja">
+<li id="section-7.1-7.1-ja">IODEF-Documentクラス：RFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>のセクション3.1で説明されている、IODEFデータモデルの最上位のクラスです。</li>
+          <li id="section-7.1-7.2-ja">vlan-name属性とvlan-num属性：RFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>のセクション3.16.2によると、これらは仮想LANの名前と番号であり、Addressクラスの属性です。</li>
+          <li id="section-7.1-7.3-ja">属性の列挙値の拡張：RFC 5070<span>[<a href="#RFC5070-ja">RFC5070</a>]</span>のセクション5.1によると、これは属性に新しい列挙値を追加するための拡張手法であり、"ext-"という接頭辞を持ちます（たとえば、ext-value、ext-category、ext-typeなど）。</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.1-8-en">According to the language specification, many programming languages
+prohibit having '-' symbols in the name of class.  The code
+generators must replace or remove the '-' when building the
+libraries.  They should have the name space restore the '-' when
+outputting the XML along with IODEF XSD.</p></div>
+<div lang="ja" class="col"><p id="section-7.1-8-ja">言語仕様により、多くのプログラミング言語では、クラスの名前に'-'記号を含めることが禁止されています。コードジェネレーターは、ライブラリーを構築する際に'-'を置き換えるか削除する必要があります。また、IODEF XSDに沿ってXMLを出力する際には、名前空間によって'-'を復元させるのが望ましいです。</p></div>
+</div></section><section><span id="section-7.2"></span><span id="iodeflib-en"></span><span id="iodeflib-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-iodeflib-en" lang="en">
+<a id="section-7.2-en" href="#section-7.2-en" class="section-number selfRef">7.2.</a> <a href="#name-iodeflib-en" class="section-name selfRef">iodeflib</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-iodeflib-ja" lang="ja">
+<a id="section-7.2-ja" href="#section-7.2-ja" class="section-number selfRef">7.2.</a> <a href="#name-iodeflib-ja" class="section-name selfRef">iodeflib</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.2-1-en">iodeflib is an open source implementation written in Python.  This
+provides simple but powerful APIs to create, parse, and edit IODEF
+documents.  It was designed in order to keep its interface as simple
+as possible, whereas generated libraries tend to inherit the
+complexity of IODEF XSD.  In addition, the iodeflib interface
+includes functions to hide some unnecessarily nested structures of
+the IODEF schema and add more convenient shortcuts.</p></div>
+<div lang="ja" class="col"><p id="section-7.2-1-ja">iodeflibは、Pythonで書かれたオープンソースの実装です。これは、IODEF文書を作成、解析、編集するための、シンプルでありながら強力なAPIを提供します。生成されたライブラリーはIODEF XSDの複雑さを受け継ぎがちですが、iodeflibはそのインターフェイスをできるだけシンプルに保つように設計されました。さらに、iodeflibのインターフェイスには、IODEFスキーマの不必要に入れ子になった構造の一部を隠し、より便利なショートカットを追加する関数が含まれています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.2-2-en">This tool is available through the following link:</p></div>
+<div lang="ja" class="col"><p id="section-7.2-2-ja">このツールは次のリンクから入手できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.2-3-en"><span>&lt;<a href="http://www.decalage.info/python/iodeflib" class="eref">http://www.decalage.info/python/iodeflib</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-7.2-3-ja"><span>&lt;<a href="http://www.decalage.info/python/iodeflib" class="eref">http://www.decalage.info/python/iodeflib</a></span>&gt;</p></div>
+</div></section><section><span id="section-7.3"></span><span id="iodefpm-en"></span><span id="iodefpm-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-iodefpm-en" lang="en">
+<a id="section-7.3-en" href="#section-7.3-en" class="section-number selfRef">7.3.</a> <a href="#name-iodefpm-en" class="section-name selfRef">iodefpm</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-iodefpm-ja" lang="ja">
+<a id="section-7.3-ja" href="#section-7.3-ja" class="section-number selfRef">7.3.</a> <a href="#name-iodefpm-ja" class="section-name selfRef">iodefpm</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-1-en">IODEF.pm is an open source implementation written in Perl.  This also
+provides a simple interface for creating and parsing IODEF documents
+in order to facilitate the translation of the key-value-based format
+to the IODEF representation.  The module contains a generic XML DTD
+parser and includes a simplified node-based representation of the
+IODEF DTD.  Hence, it can easily be upgraded or extended to support
+new XML nodes or other DTDs.</p></div>
+<div lang="ja" class="col"><p id="section-7.3-1-ja">IODEF.pmは、Perlで書かれたオープンソースの実装です。これも、キーと値に基づくフォーマットからIODEF表現への変換を容易にするために、IODEF文書を作成および解析するためのシンプルなインターフェイスを提供します。このモジュールは、汎用的なXML DTDパーサーを含み、IODEF DTDを簡略化したノードベースの表現を備えています。そのため、新しいXMLノードやほかのDTDをサポートするように、容易にアップグレードしたり拡張したりできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-2-en">This tool is available through the following link:</p></div>
+<div lang="ja" class="col"><p id="section-7.3-2-ja">このツールは次のリンクから入手できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.3-3-en"><span>&lt;<a href="http://search.cpan.org/~saxjazman/" class="eref">http://search.cpan.org/~saxjazman/</a></span>&gt;</p></div>
+<div lang="ja" class="col"><p id="section-7.3-3-ja"><span>&lt;<a href="http://search.cpan.org/~saxjazman/" class="eref">http://search.cpan.org/~saxjazman/</a></span>&gt;</p></div>
+</div></section><section><span id="section-7.4"></span><span id="usability-en"></span><span id="usability-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-usability-en" lang="en">
+<a id="section-7.4-en" href="#section-7.4-en" class="section-number selfRef">7.4.</a> <a href="#name-usability-en" class="section-name selfRef">Usability</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-usability-ja" lang="ja">
+<a id="section-7.4-ja" href="#section-7.4-ja" class="section-number selfRef">7.4.</a> <a href="#name-usability-ja" class="section-name selfRef">使いやすさ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7.4-1-en">Some tips to avoid problems are noted here:</p></div>
+<div lang="ja" class="col"><p id="section-7.4-1-ja">問題を避けるためのいくつかのヒントをここに記します：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7.4-2-en">
+<li id="section-7.4-2.1-en">IODEF has a category attribute for the NodeRole class.  Though
+various categories are described, they are not sufficient.  For
+example, in the case of webmail servers, should the user choose
+"www" or "mail"?  One suggestion is to select "mail" as the
+category attribute and add "www" for another attribute.</li>
+          <li id="section-7.4-2.2-en">The numbering of incident IDs needs to be considered.  Otherwise,
+information, such as the number of incidents within a certain
+period, could be observed by document receivers.  This is easily
+mitigated by randomizing the assignment of incident IDs.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-7.4-2-ja">
+<li id="section-7.4-2.1-ja">IODEFには、NodeRoleクラスのcategory属性があります。さまざまなカテゴリーが記述されていますが、それらは十分ではありません。たとえば、Webメールサーバーの場合、ユーザーは"www"と"mail"のどちらを選ぶべきでしょうか？1つの提案は、category属性として"mail"を選択し、別の属性に"www"を追加することです。</li>
+          <li id="section-7.4-2.2-ja">インシデントIDの採番方法を考慮する必要があります。そうしないと、一定期間内のインシデントの数などの情報が、文書の受信者に読み取られる可能性があります。これは、インシデントIDの割り当てをランダム化することで容易に緩和できます。</li>
+        </ul></div>
+</div></section></section><section><span id="section-8"></span><span id="iana-considerations-en"></span><span id="iana-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-iana-considerations-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-iana-considerations-en" class="section-name selfRef">IANA Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-iana-considerations-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-iana-considerations-ja" class="section-name selfRef">IANAに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">This memo does not require any IANA actions.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">このメモは、IANAのアクションを必要としません。</p></div>
+</div></section><section><span id="section-9"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">This document provides a summary of implementation reports from
+researchers and vendors who have implemented RFCs and drafts from the
+MILE and INCH working groups.  There are no security considerations
+added because of the nature of the document.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">この文書は、MILEワーキンググループとINCHワーキンググループのRFCとドラフトを実装した研究者とベンダーからの実装報告の概要を提供します。この文書の性質上、追加されるセキュリティー上の考慮事項はありません。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-informative-references-en" lang="en">
+<span id="section-10-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+      </h2>
+<dl class="references">
+<dt id="RFC4765-en">[RFC4765]</dt>
+<dd class="break">
+<span class="refAuthor">Debar, H.</span>, <span class="refAuthor">Curry, D.</span>, and <span class="refAuthor">B. Feinstein</span>, <span></span><span class="refTitle">"The Intrusion Detection Message Exchange Format (IDMEF)"</span>, <span class="seriesInfo">RFC 4765</span>, <span class="seriesInfo">DOI 10.17487/RFC4765</span>, <time datetime="2007-03" class="refDate">March 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc4765">http://www.rfc-editor.org/info/rfc4765</a>&gt;</span>
+</dd>
+<dt id="RFC5070-en">[RFC5070]</dt>
+<dd class="break">
+<span class="refAuthor">Danyliw, R.</span>, <span class="refAuthor">Meijer, J.</span>, and <span class="refAuthor">Y. Demchenko</span>, <span></span><span class="refTitle">"The Incident Object Description Exchange Format"</span>, <span class="seriesInfo">RFC 5070</span>, <span class="seriesInfo">DOI 10.17487/RFC5070</span>, <time datetime="2007-12" class="refDate">December 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5070">http://www.rfc-editor.org/info/rfc5070</a>&gt;</span>
+</dd>
+<dt id="RFC5901-en">[RFC5901]</dt>
+<dd class="break">
+<span class="refAuthor">Cain, P.</span> and <span class="refAuthor">D. Jevans</span>, <span></span><span class="refTitle">"Extensions to the IODEF-Document Class for Reporting Phishing"</span>, <span class="seriesInfo">RFC 5901</span>, <span class="seriesInfo">DOI 10.17487/RFC5901</span>, <time datetime="2010-07" class="refDate">July 2010</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5901">http://www.rfc-editor.org/info/rfc5901</a>&gt;</span>
+</dd>
+<dt id="RFC5941-en">[RFC5941]</dt>
+<dd class="break">
+<span class="refAuthor">M'Raihi, D.</span>, <span class="refAuthor">Boeyen, S.</span>, <span class="refAuthor">Grandcolas, M.</span>, and <span class="refAuthor">S. Bajaj</span>, <span></span><span class="refTitle">"Sharing Transaction Fraud Data"</span>, <span class="seriesInfo">RFC 5941</span>, <span class="seriesInfo">DOI 10.17487/RFC5941</span>, <time datetime="2010-08" class="refDate">August 2010</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5941">http://www.rfc-editor.org/info/rfc5941</a>&gt;</span>
+</dd>
+<dt id="RFC6545-en">[RFC6545]</dt>
+<dd class="break">
+<span class="refAuthor">Moriarty, K.</span>, <span></span><span class="refTitle">"Real-time Inter-network Defense (RID)"</span>, <span class="seriesInfo">RFC 6545</span>, <span class="seriesInfo">DOI 10.17487/RFC6545</span>, <time datetime="2012-04" class="refDate">April 2012</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6545">http://www.rfc-editor.org/info/rfc6545</a>&gt;</span>
+</dd>
+<dt id="RFC6546-en">[RFC6546]</dt>
+<dd class="break">
+<span class="refAuthor">Trammell, B.</span>, <span></span><span class="refTitle">"Transport of Real-time Inter-network Defense (RID) Messages over HTTP/TLS"</span>, <span class="seriesInfo">RFC 6546</span>, <span class="seriesInfo">DOI 10.17487/RFC6546</span>, <time datetime="2012-04" class="refDate">April 2012</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6546">http://www.rfc-editor.org/info/rfc6546</a>&gt;</span>
+</dd>
+<dt id="RFC7203-en">[RFC7203]</dt>
+<dd class="break">
+<span class="refAuthor">Takahashi, T.</span>, <span class="refAuthor">Landfield, K.</span>, and <span class="refAuthor">Y. Kadobayashi</span>, <span></span><span class="refTitle">"An Incident Object Description Exchange Format (IODEF) Extension for Structured Cybersecurity Information"</span>, <span class="seriesInfo">RFC 7203</span>, <span class="seriesInfo">DOI 10.17487/RFC7203</span>, <time datetime="2014-04" class="refDate">April 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7203">http://www.rfc-editor.org/info/rfc7203</a>&gt;</span>
+</dd>
+<dt id="RFC7970-en">[RFC7970]</dt>
+<dd class="break">
+<span class="refAuthor">Danyliw, R.</span>, <span></span><span class="refTitle">"The Incident Object Description Exchange Format Version 2"</span>, <span class="seriesInfo">RFC 7970</span>, <span class="seriesInfo">DOI 10.17487/RFC7970</span>, <time datetime="2016-11" class="refDate">November 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7970">http://www.rfc-editor.org/info/rfc7970</a>&gt;</span>
+</dd>
+<dt id="SNML-en">[SNML]</dt>
+<dd class="break">
+<span class="refAuthor">Trammell, B.</span>, <span class="refAuthor">Danyliw, R.</span>, <span class="refAuthor">Levy, S.</span>, and <span class="refAuthor">A. Kompanek</span>, <span></span><span class="refTitle">"AirCERT: The Definitive Guide"</span>, <time datetime="2005" class="refDate">2005</time>, <span>&lt;<a href="http://aircert.sourceforge.net/docs/aircert_manual-06_2005.pdf">http://aircert.sourceforge.net/docs/aircert_manual-06_2005.pdf</a>&gt;</span>
+</dd>
+<dt id="XEP-0060-en">[XEP-0060]</dt>
+<dd class="break">
+<span class="refAuthor">Millard, P.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">R. Meijer</span>, <span></span><span class="refTitle">"XEP-0060: Publish-Subscribe"</span>, <time datetime="2016-12" class="refDate">December 2016</time>, <span>&lt;<a href="http://www.xmpp.org/extensions/xep-0060.html">http://www.xmpp.org/extensions/xep-0060.html</a>&gt;</span>
+</dd>
+<dt id="XEP-0268-en">[XEP-0268]</dt>
+<dd class="break">
+<span class="refAuthor">Hefczy, A.</span>, <span class="refAuthor">Jensen, F.</span>, <span class="refAuthor">Remond, M.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">M. Wild</span>, <span></span><span class="refTitle">"XEP-0268: Incident Handling"</span>, <time datetime="2012-05" class="refDate">May 2012</time>, <span>&lt;<a href="http://xmpp.org/extensions/xep-0268.html">http://xmpp.org/extensions/xep-0268.html</a>&gt;</span>
+</dd>
+<dt id="XSD:CS-en">[XSD:CS]</dt>
+<dd class="break">
+<span class="refAuthor">Microsoft</span>, <span></span><span class="refTitle">"XML Schema Definition Tool (Xsd.exe)"</span>, <span>&lt;<a href="http://www.microsoft.com/">http://www.microsoft.com/</a>&gt;</span>
+</dd>
+<dt id="XSD:Cxx-en">[XSD:Cxx]</dt>
+<dd class="break">
+<span class="refAuthor">CodeSynthesis</span>, <span></span><span class="refTitle">"XSD: XML Data Binding for C++"</span>, <span>&lt;<a href="http://www.codesynthesis.com/">http://www.codesynthesis.com/</a>&gt;</span>
+</dd>
+<dt id="XSD:Java-en">[XSD:Java]</dt>
+<dd class="break">
+<span class="refAuthor">Project Kenai</span>, <span></span><span class="refTitle">"Project JAXB"</span>, <span>&lt;<a href="https://jaxb.java.net/">https://jaxb.java.net/</a>&gt;</span>
+</dd>
+<dt id="XSD:Perl-en">[XSD:Perl]</dt>
+<dd class="break">
+<span class="refAuthor">Ulsoy, A.</span>, <span></span><span class="refTitle">"XML-Pastor-1.0.4"</span>, <span>&lt;<a href="http://search.cpan.org/~aulusoy/XML-Pastor-1.0.4/">http://search.cpan.org/~aulusoy/XML-Pastor-1.0.4/</a>&gt;</span>
+</dd>
+<dt id="XSD:Python-en">[XSD:Python]</dt>
+<dd class="break">
+<span class="refAuthor">Bigot, P.</span>, <span></span><span class="refTitle">"PyXB 1.2.5: Python XML Schema Bindings"</span>, <span>&lt;<a href="https://pypi.python.org/pypi/PyXB">https://pypi.python.org/pypi/PyXB</a>&gt;</span>
+</dd>
+<dt id="XSD:Ruby-en">[XSD:Ruby]</dt>
+<dd class="break">
+<span class="refAuthor">Morsi, M.</span>, <span></span><span class="refTitle">"XSD / Ruby Translator"</span>, <span>&lt;<a href="https://github.com/movitto/RXSD">https://github.com/movitto/RXSD</a>&gt;</span>
+</dd>
+</dl></section></div>
+<div lang="ja" class="col"><section><h2 id="name-informative-references-ja" lang="ja">
+<span id="section-10-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<dl class="references">
+<dt id="RFC4765-ja">[RFC4765]</dt>
+<dd class="break">
+<span class="refAuthor">Debar, H.</span>, <span class="refAuthor">Curry, D.</span>, and <span class="refAuthor">B. Feinstein</span>, <span></span><span class="refTitle">"The Intrusion Detection Message Exchange Format (IDMEF)"</span>, <span class="seriesInfo">RFC 4765</span>, <span class="seriesInfo">DOI 10.17487/RFC4765</span>, <time datetime="2007-03" class="refDate">March 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc4765">http://www.rfc-editor.org/info/rfc4765</a>&gt;</span>
+</dd>
+<dt id="RFC5070-ja">[RFC5070]</dt>
+<dd class="break">
+<span class="refAuthor">Danyliw, R.</span>, <span class="refAuthor">Meijer, J.</span>, and <span class="refAuthor">Y. Demchenko</span>, <span></span><span class="refTitle">"The Incident Object Description Exchange Format"</span>, <span class="seriesInfo">RFC 5070</span>, <span class="seriesInfo">DOI 10.17487/RFC5070</span>, <time datetime="2007-12" class="refDate">December 2007</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5070">http://www.rfc-editor.org/info/rfc5070</a>&gt;</span>
+</dd>
+<dt id="RFC5901-ja">[RFC5901]</dt>
+<dd class="break">
+<span class="refAuthor">Cain, P.</span> and <span class="refAuthor">D. Jevans</span>, <span></span><span class="refTitle">"Extensions to the IODEF-Document Class for Reporting Phishing"</span>, <span class="seriesInfo">RFC 5901</span>, <span class="seriesInfo">DOI 10.17487/RFC5901</span>, <time datetime="2010-07" class="refDate">July 2010</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5901">http://www.rfc-editor.org/info/rfc5901</a>&gt;</span>
+</dd>
+<dt id="RFC5941-ja">[RFC5941]</dt>
+<dd class="break">
+<span class="refAuthor">M'Raihi, D.</span>, <span class="refAuthor">Boeyen, S.</span>, <span class="refAuthor">Grandcolas, M.</span>, and <span class="refAuthor">S. Bajaj</span>, <span></span><span class="refTitle">"Sharing Transaction Fraud Data"</span>, <span class="seriesInfo">RFC 5941</span>, <span class="seriesInfo">DOI 10.17487/RFC5941</span>, <time datetime="2010-08" class="refDate">August 2010</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc5941">http://www.rfc-editor.org/info/rfc5941</a>&gt;</span>
+</dd>
+<dt id="RFC6545-ja">[RFC6545]</dt>
+<dd class="break">
+<span class="refAuthor">Moriarty, K.</span>, <span></span><span class="refTitle">"Real-time Inter-network Defense (RID)"</span>, <span class="seriesInfo">RFC 6545</span>, <span class="seriesInfo">DOI 10.17487/RFC6545</span>, <time datetime="2012-04" class="refDate">April 2012</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6545">http://www.rfc-editor.org/info/rfc6545</a>&gt;</span>
+</dd>
+<dt id="RFC6546-ja">[RFC6546]</dt>
+<dd class="break">
+<span class="refAuthor">Trammell, B.</span>, <span></span><span class="refTitle">"Transport of Real-time Inter-network Defense (RID) Messages over HTTP/TLS"</span>, <span class="seriesInfo">RFC 6546</span>, <span class="seriesInfo">DOI 10.17487/RFC6546</span>, <time datetime="2012-04" class="refDate">April 2012</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc6546">http://www.rfc-editor.org/info/rfc6546</a>&gt;</span>
+</dd>
+<dt id="RFC7203-ja">[RFC7203]</dt>
+<dd class="break">
+<span class="refAuthor">Takahashi, T.</span>, <span class="refAuthor">Landfield, K.</span>, and <span class="refAuthor">Y. Kadobayashi</span>, <span></span><span class="refTitle">"An Incident Object Description Exchange Format (IODEF) Extension for Structured Cybersecurity Information"</span>, <span class="seriesInfo">RFC 7203</span>, <span class="seriesInfo">DOI 10.17487/RFC7203</span>, <time datetime="2014-04" class="refDate">April 2014</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7203">http://www.rfc-editor.org/info/rfc7203</a>&gt;</span>
+</dd>
+<dt id="RFC7970-ja">[RFC7970]</dt>
+<dd class="break">
+<span class="refAuthor">Danyliw, R.</span>, <span></span><span class="refTitle">"The Incident Object Description Exchange Format Version 2"</span>, <span class="seriesInfo">RFC 7970</span>, <span class="seriesInfo">DOI 10.17487/RFC7970</span>, <time datetime="2016-11" class="refDate">November 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7970">http://www.rfc-editor.org/info/rfc7970</a>&gt;</span>
+</dd>
+<dt id="SNML-ja">[SNML]</dt>
+<dd class="break">
+<span class="refAuthor">Trammell, B.</span>, <span class="refAuthor">Danyliw, R.</span>, <span class="refAuthor">Levy, S.</span>, and <span class="refAuthor">A. Kompanek</span>, <span></span><span class="refTitle">"AirCERT: The Definitive Guide"</span>, <time datetime="2005" class="refDate">2005</time>, <span>&lt;<a href="http://aircert.sourceforge.net/docs/aircert_manual-06_2005.pdf">http://aircert.sourceforge.net/docs/aircert_manual-06_2005.pdf</a>&gt;</span>
+</dd>
+<dt id="XEP-0060-ja">[XEP-0060]</dt>
+<dd class="break">
+<span class="refAuthor">Millard, P.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">R. Meijer</span>, <span></span><span class="refTitle">"XEP-0060: Publish-Subscribe"</span>, <time datetime="2016-12" class="refDate">December 2016</time>, <span>&lt;<a href="http://www.xmpp.org/extensions/xep-0060.html">http://www.xmpp.org/extensions/xep-0060.html</a>&gt;</span>
+</dd>
+<dt id="XEP-0268-ja">[XEP-0268]</dt>
+<dd class="break">
+<span class="refAuthor">Hefczy, A.</span>, <span class="refAuthor">Jensen, F.</span>, <span class="refAuthor">Remond, M.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">M. Wild</span>, <span></span><span class="refTitle">"XEP-0268: Incident Handling"</span>, <time datetime="2012-05" class="refDate">May 2012</time>, <span>&lt;<a href="http://xmpp.org/extensions/xep-0268.html">http://xmpp.org/extensions/xep-0268.html</a>&gt;</span>
+</dd>
+<dt id="XSD:CS-ja">[XSD:CS]</dt>
+<dd class="break">
+<span class="refAuthor">Microsoft</span>, <span></span><span class="refTitle">"XML Schema Definition Tool (Xsd.exe)"</span>, <span>&lt;<a href="http://www.microsoft.com/">http://www.microsoft.com/</a>&gt;</span>
+</dd>
+<dt id="XSD:Cxx-ja">[XSD:Cxx]</dt>
+<dd class="break">
+<span class="refAuthor">CodeSynthesis</span>, <span></span><span class="refTitle">"XSD: XML Data Binding for C++"</span>, <span>&lt;<a href="http://www.codesynthesis.com/">http://www.codesynthesis.com/</a>&gt;</span>
+</dd>
+<dt id="XSD:Java-ja">[XSD:Java]</dt>
+<dd class="break">
+<span class="refAuthor">Project Kenai</span>, <span></span><span class="refTitle">"Project JAXB"</span>, <span>&lt;<a href="https://jaxb.java.net/">https://jaxb.java.net/</a>&gt;</span>
+</dd>
+<dt id="XSD:Perl-ja">[XSD:Perl]</dt>
+<dd class="break">
+<span class="refAuthor">Ulsoy, A.</span>, <span></span><span class="refTitle">"XML-Pastor-1.0.4"</span>, <span>&lt;<a href="http://search.cpan.org/~aulusoy/XML-Pastor-1.0.4/">http://search.cpan.org/~aulusoy/XML-Pastor-1.0.4/</a>&gt;</span>
+</dd>
+<dt id="XSD:Python-ja">[XSD:Python]</dt>
+<dd class="break">
+<span class="refAuthor">Bigot, P.</span>, <span></span><span class="refTitle">"PyXB 1.2.5: Python XML Schema Bindings"</span>, <span>&lt;<a href="https://pypi.python.org/pypi/PyXB">https://pypi.python.org/pypi/PyXB</a>&gt;</span>
+</dd>
+<dt id="XSD:Ruby-ja">[XSD:Ruby]</dt>
+<dd class="break">
+<span class="refAuthor">Morsi, M.</span>, <span></span><span class="refTitle">"XSD / Ruby Translator"</span>, <span>&lt;<a href="https://github.com/movitto/RXSD">https://github.com/movitto/RXSD</a>&gt;</span>
+</dd>
+</dl></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="acknowledgements-en"></span><span id="acknowledgements-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-acknowledgements-en" lang="en">
+<span id="section-appendix.a-en"></span><a href="#name-acknowledgements-en" class="section-name selfRef">Acknowledgements</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-acknowledgements-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a href="#name-acknowledgements-ja" class="section-name selfRef">謝辞</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">The MILE implementation report has been compiled through the
+submissions of implementers of INCH and MILE working group standards.
+A special note of thanks to the following contributors:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">このMILE実装報告は、INCHワーキンググループとMILEワーキンググループの標準の実装者からの提出物を通じてまとめられました。次の貢献者に特に感謝します：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.a-2-en">
+<li id="section-appendix.a-2.1-en">John Atherton, Surevine</li>
+        <li id="section-appendix.a-2.2-en">Humphrey Browning, Deep-Secure</li>
+        <li id="section-appendix.a-2.3-en">Dario Forte, DFLabs</li>
+        <li id="section-appendix.a-2.4-en">Tomas Sander, HP</li>
+        <li id="section-appendix.a-2.5-en">Ulrich Seldeslachts, ACDC</li>
+        <li id="section-appendix.a-2.6-en">Takeshi Takahashi, National Institute of Information and
+Communications Technology Network Security Research Institute</li>
+        <li id="section-appendix.a-2.7-en">Kathleen Moriarty, EMC</li>
+        <li id="section-appendix.a-2.8-en">Bernd Grobauer, Siemens</li>
+        <li id="section-appendix.a-2.9-en">Dandurand Luc, NATO</li>
+        <li id="section-appendix.a-2.10-en">Pawel Pawlinski, NASK</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.a-2-ja">
+<li id="section-appendix.a-2.1-ja">John Atherton, Surevine</li>
+        <li id="section-appendix.a-2.2-ja">Humphrey Browning, Deep-Secure</li>
+        <li id="section-appendix.a-2.3-ja">Dario Forte, DFLabs</li>
+        <li id="section-appendix.a-2.4-ja">Tomas Sander, HP</li>
+        <li id="section-appendix.a-2.5-ja">Ulrich Seldeslachts, ACDC</li>
+        <li id="section-appendix.a-2.6-ja">Takeshi Takahashi, National Institute of Information and
+Communications Technology Network Security Research Institute</li>
+        <li id="section-appendix.a-2.7-ja">Kathleen Moriarty, EMC</li>
+        <li id="section-appendix.a-2.8-ja">Bernd Grobauer, Siemens</li>
+        <li id="section-appendix.a-2.9-ja">Dandurand Luc, NATO</li>
+        <li id="section-appendix.a-2.10-ja">Pawel Pawlinski, NASK</li>
+      </ul></div>
+</div></section><section><span id="appendix-B"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.b-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Chris Inacio</div>
+<div class="author-org">Carnegie Mellon University</div>
+<div class="author-postal"><span class="extended-address">4500 5th Ave., SEI 4108</span></div>
+<div class="author-postal"><span class="extended-address">Pittsburgh, PA  15213</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:inacio@andrew.cmu.edu">inacio@andrew.cmu.edu</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Chris Inacio</div>
+<div class="author-org">Carnegie Mellon University</div>
+<div class="author-postal"><span class="extended-address">4500 5th Ave., SEI 4108</span></div>
+<div class="author-postal"><span class="extended-address">Pittsburgh, PA  15213</span></div>
+<div class="author-postal"><span class="extended-address">United States of America</span></div>
+<div class="author-email"><a href="mailto:inacio@andrew.cmu.edu">inacio@andrew.cmu.edu</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Daisuke Miyamoto</div>
+<div class="author-org">The University of Tokyo</div>
+<div class="author-postal"><span class="extended-address">2-11-16 Yayoi, Bunkyo</span></div>
+<div class="author-postal"><span class="extended-address">Tokyo  113-8658</span></div>
+<div class="author-postal"><span class="extended-address">Japan</span></div>
+<div class="author-email"><a href="mailto:daisu-mi@nc.u-tokyo.ac.jp">daisu-mi@nc.u-tokyo.ac.jp</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Daisuke Miyamoto</div>
+<div class="author-org">The University of Tokyo</div>
+<div class="author-postal"><span class="extended-address">2-11-16 Yayoi, Bunkyo</span></div>
+<div class="author-postal"><span class="extended-address">Tokyo  113-8658</span></div>
+<div class="author-postal"><span class="extended-address">Japan</span></div>
+<div class="author-email"><a href="mailto:daisu-mi@nc.u-tokyo.ac.jp">daisu-mi@nc.u-tokyo.ac.jp</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

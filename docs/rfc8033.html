@@ -1,0 +1,2966 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0">
+<title>RFC 8033: Proportional Integral Controller Enhanced（PIE）：バッファーブロート問題に対処する軽量な制御方式（日本語訳）</title>
+<style type="text/css">@import url(https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+Mono&display=swap);
+
+@viewport {
+  zoom: 1;
+  width: extend-to-zoom;
+}
+
+body {
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: "BIZ UDPGothic", sans-serif;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  /* 欧文と和文の間に自動で空きを入れる */
+  text-autospace: normal;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.col {
+  flex: 0 0 50%;
+  max-width: 50%;
+  width: 50%;
+  min-width: 0;
+  padding: 0px 5% 0px 5%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+/* 図が隣の列にはみ出さないよう、列幅に合わせて縮小する */
+.col figure {
+  margin: 1em 0;
+}
+.col svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 日本語訳の一覧へのリンク */
+#site-nav {
+  padding: 0 0.5em 0.5em;
+}
+
+/* metadata */
+#external-metadata {
+  padding: 0.5em;
+  font-size: 0.8em;
+  line-height: 1em;
+  background-color: rgb(238, 238, 238);
+}
+
+#external-updates dt {
+  width: 8em;
+}
+
+#updated-by,
+#obsoleted-by {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* 廃止・更新のお知らせは dl の直後に置く。dl の中に置いていたときと余白を揃える */
+#external-updates:has(+ #obsoleted-by, + #updated-by) {
+  margin-bottom: 0.8em; /* dl > dd の margin-bottom と同じ */
+}
+#external-metadata > #updated-by:last-child,
+#external-metadata > #obsoleted-by:last-child {
+  margin-bottom: 11.2px; /* dl の margin-bottom（1em = 14px × 0.8） */
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+
+/* tables */
+.table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+.table-wrapper > table {
+  margin: 0;
+}
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n + 1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+.bcp14 {
+  font-weight: bold;
+}
+
+blockquote {
+  background-color: rgb(249, 249, 249);
+  color: rgb(17, 17, 17);
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 3px;
+  margin: 1em 0px;
+  padding: 1.2em 2em;
+}
+
+aside {
+  margin: 1em 0px 1em 2em;
+  padding-left: 1em;
+  border-left: 3px solid rgb(221, 221, 221);
+}
+
+dt {
+  break-before: auto;
+}
+
+dl > dd {
+  margin-bottom: 0.8em;
+  min-height: 1.3em;
+}
+
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+tt,
+code,
+pre,
+code {
+  background-color: #f9f9f9;
+  font-family: "Roboto Mono", Courier, "Courier New", monospace;
+}
+
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1em;
+  /* 等幅の図やコードの桁がずれないよう、自動の空きは入れない */
+  text-autospace: no-autospace;
+}
+
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  padding-top: 42px;
+}
+h5,
+h6 {
+  font-size: 14px;
+}
+
+/* authors */
+address {
+  font-style: normal;
+  margin: 1em 0;
+}
+address .author-name {
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<nav id="site-nav"><a href="index.html">RFC日本語訳の一覧</a></nav><div id="external-metadata"><dl id="external-updates">
+<dt>ステータス:</dt>
+<dd>EXPERIMENTAL</dd>
+<dt>発行日:</dt>
+<dd><time datetime="2017-03">2017年3月</time></dd>
+<dt>原文:</dt>
+<dd><a href="https://www.rfc-editor.org/rfc/rfc8033.html">RFC 8033</a></dd>
+<dt>その他の情報:</dt>
+<dd>
+<a href="https://datatracker.ietf.org/doc/rfc8033">Datatracker</a>|<a href="https://www.rfc-editor.org/info/rfc8033">Info page</a>
+</dd>
+</dl></div>
+<div class="row">
+<div lang="en" class="col">
+<span></span><h1 id="rfcnum-en">RFC 8033</h1>
+<h1 id="title-en">Proportional Integral Controller Enhanced (PIE): A Lightweight Control Scheme to Address the Bufferbloat Problem</h1>
+</div>
+<div lang="ja" class="col">
+<span></span><h1 id="rfcnum-ja">RFC 8033</h1>
+<h1 id="title-ja">Proportional Integral Controller Enhanced（PIE）：バッファーブロート問題に対処する軽量な制御方式</h1>
+</div>
+</div>
+<div class="row">
+<div lang="en" class="col"><h2>Abstract</h2></div>
+<div lang="ja" class="col"><h2>概要</h2></div>
+</div>
+<section><div class="row">
+<div lang="en" class="col"><p id="section-abstract-1-en">Bufferbloat is a phenomenon in which excess buffers in the network
+cause high latency and latency variation.  As more and more
+interactive applications (e.g., voice over IP, real-time video
+streaming, and financial transactions) run in the Internet, high
+latency and latency variation degrade application performance.  There
+is a pressing need to design intelligent queue management schemes
+that can control latency and latency variation, and hence provide
+desirable quality of service to users.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-1-ja">バッファーブロート（bufferbloat）とは、ネットワーク内の過剰なバッファーが大きな遅延と遅延変動を引き起こす現象です。
+ますます多くの対話型アプリケーション（たとえば、VoIP、リアルタイムのビデオストリーミング、金融取引）がインターネット上で動作するようになるにつれて、大きな遅延と遅延変動はアプリケーションの性能を低下させます。
+遅延と遅延変動を制御し、それによってユーザーに望ましいサービス品質を提供できる、インテリジェントなキュー管理方式を設計することが急務となっています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-abstract-2-en">This document presents a lightweight active queue management design
+called "PIE" (Proportional Integral controller Enhanced) that can
+effectively control the average queuing latency to a target value.
+Simulation results, theoretical analysis, and Linux testbed results
+have shown that PIE can ensure low latency and achieve high link
+utilization under various congestion situations.  The design does not
+require per-packet timestamps, so it incurs very little overhead and
+is simple enough to implement in both hardware and software.</p></div>
+<div lang="ja" class="col"><p id="section-abstract-2-ja">この文書は、平均キューイング遅延を目標値に効果的に制御できる「PIE」（Proportional Integral controller Enhanced）と呼ばれる軽量なアクティブキュー管理の設計を示します。
+シミュレーションの結果、理論解析、およびLinuxのテストベッドでの結果から、PIEはさまざまな輻輳状況のもとで低い遅延を保証し、高いリンク利用率を達成できることが示されています。
+この設計はパケットごとのタイムスタンプを必要としないため、オーバーヘッドはごくわずかであり、ハードウェアとソフトウェアのどちらでも実装できるほど単純です。</p></div>
+</div></section><section><span id="section-boilerplate.1"></span><span id="status-of-memo-en"></span><span id="status-of-memo-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-status-of-this-memo-en" lang="en">
+<span id="section-boilerplate.1-en"></span><a href="#name-status-of-this-memo-en" class="section-name selfRef">Status of This Memo</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-status-of-this-memo-ja" lang="ja">
+<span id="section-boilerplate.1-ja"></span><a href="#name-status-of-this-memo-ja" class="section-name selfRef">このメモのステータス</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.1-en">This document is not an Internet Standards Track specification; it is
+published for examination, experimental implementation, and
+evaluation.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.1-ja">この文書はインターネット標準化過程（Internet Standards Track）の仕様ではなく、検討、実験的な実装、評価のために公開されています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.2-en">This document defines an Experimental Protocol for the Internet
+community.  This document is a product of the Internet Engineering
+Task Force (IETF).  It represents the consensus of the IETF
+community.  It has received public review and has been approved for
+publication by the Internet Engineering Steering Group (IESG).  Not
+all documents approved by the IESG are a candidate for any level of
+Internet Standard; see Section 2 of RFC 7841.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.2-ja">この文書は、インターネットコミュニティーのための実験的なプロトコルを定義します。
+この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+IESGによって承認された文書のすべてが、いずれかのレベルのインターネット標準の候補となるわけではありません。
+RFC 7841のセクション2を参照してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.1.3-en">Information about the current status of this document, any errata,
+and how to provide feedback on it may be obtained at
+<span><a href="http://www.rfc-editor.org/info/rfc8033" class="eref">http://www.rfc-editor.org/info/rfc8033</a>.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.1.3-ja">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<span><a href="http://www.rfc-editor.org/info/rfc8033" class="eref">http://www.rfc-editor.org/info/rfc8033</a>で入手できます。</span></p></div>
+</div></section><section><span id="section-boilerplate.2"></span><span id="copyright-en"></span><span id="copyright-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-copyright-notice-en" lang="en">
+<span id="section-boilerplate.2-en"></span><a href="#name-copyright-notice-en" class="section-name selfRef">Copyright Notice</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-copyright-notice-ja" lang="ja">
+<span id="section-boilerplate.2-ja"></span><a href="#name-copyright-notice-ja" class="section-name selfRef">著作権表示</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-1-en">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-1-ja">Copyright (c) 2017 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-boilerplate.2-2-en">This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents
+(<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>) in effect on the date of
+publication of this document.  Please review these documents
+carefully, as they describe your rights and restrictions with respect
+to this document.  Code Components extracted from this document must
+include Simplified BSD License text as described in Section 4.e of
+the Trust Legal Provisions and are provided without warranty as
+described in the Simplified BSD License.</span></p></div>
+<div lang="ja" class="col"><p id="section-boilerplate.2-2-ja">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<span><a href="http://trustee.ietf.org/license-info" class="eref">http://trustee.ietf.org/license-info</a>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</span></p></div>
+</div></section><section><span id="section-toc.1"></span><span id="toc-en"></span><span id="toc-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-table-of-contents-en" lang="en">
+<span id="section-toc.1-en"></span><a href="#name-table-of-contents-en" class="section-name selfRef">Table of Contents</a>
+        </h2></div>
+<div lang="ja" class="col"><h2 id="name-table-of-contents-ja" lang="ja">
+<span id="section-toc.1-ja"></span><a href="#name-table-of-contents-ja" class="section-name selfRef">目次</a>
+        </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-toc.1-1-en">
+<li id="section-toc.1-1.1-en">
+            <p id="section-toc.1-1.1.1-en"><a href="#section-1-en">1</a>.  <a href="#name-introduction-en">Introduction</a></p>
+</li>
+          <li id="section-toc.1-1.2-en">
+            <p id="section-toc.1-1.2.1-en"><a href="#section-2-en">2</a>.  <a href="#name-terminology-en">Terminology</a></p>
+</li>
+          <li id="section-toc.1-1.3-en">
+            <p id="section-toc.1-1.3.1-en"><a href="#section-3-en">3</a>.  <a href="#name-design-goals-en">Design Goals</a></p>
+</li>
+          <li id="section-toc.1-1.4-en">
+            <p id="section-toc.1-1.4.1-en"><a href="#section-4-en">4</a>.  <a href="#name-the-basic-pie-scheme-en">The Basic PIE Scheme</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-en"><a href="#section-4.1-en">4.1</a>.  <a href="#name-random-dropping-en">Random Dropping</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-en">
+              <p id="section-toc.1-1.4.2.1-en"><a href="#section-4.2-en">4.2</a>.  <a href="#name-drop-probability-calculation-en">Drop Probability Calculation</a></p>
+</li>
+            <li id="section-toc.1-1.4.3-en">
+              <p id="section-toc.1-1.4.3.1-en"><a href="#section-4.3-en">4.3</a>.  <a href="#name-latency-calculation-en">Latency Calculation</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-en">
+              <p id="section-toc.1-1.4.4.1-en"><a href="#section-4.4-en">4.4</a>.  <a href="#name-burst-tolerance-en">Burst Tolerance</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-en">
+            <p id="section-toc.1-1.5.1-en"><a href="#section-5-en">5</a>.  <a href="#name-optional-design-elements-of-pie-en">Optional Design Elements of PIE</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-en"><a href="#section-5.1-en">5.1</a>.  <a href="#name-ecn-support-en">ECN Support</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-en">
+              <p id="section-toc.1-1.5.2.1-en"><a href="#section-5.2-en">5.2</a>.  <a href="#name-dequeue-rate-estimation-en">Dequeue Rate Estimation</a></p>
+</li>
+            <li id="section-toc.1-1.5.3-en">
+              <p id="section-toc.1-1.5.3.1-en"><a href="#section-5.3-en">5.3</a>.  <a href="#name-setting-pie-active-and-inactive-en">Setting PIE Active and Inactive</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-en">
+              <p id="section-toc.1-1.5.4.1-en"><a href="#section-5.4-en">5.4</a>.  <a href="#name-derandomization-en">Derandomization</a></p>
+</li>
+            <li id="section-toc.1-1.5.5-en">
+              <p id="section-toc.1-1.5.5.1-en"><a href="#section-5.5-en">5.5</a>.  <a href="#name-cap-drop-adjustment-en">Cap Drop Adjustment</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-en">
+            <p id="section-toc.1-1.6.1-en"><a href="#section-6-en">6</a>.  <a href="#name-implementation-cost-en">Implementation Cost</a></p>
+</li>
+          <li id="section-toc.1-1.7-en">
+            <p id="section-toc.1-1.7.1-en"><a href="#section-7-en">7</a>.  <a href="#name-scope-of-experimentation-en">Scope of Experimentation</a></p>
+</li>
+          <li id="section-toc.1-1.8-en">
+            <p id="section-toc.1-1.8.1-en"><a href="#section-8-en">8</a>.  <a href="#name-incremental-deployment-en">Incremental Deployment</a></p>
+</li>
+          <li id="section-toc.1-1.9-en">
+            <p id="section-toc.1-1.9.1-en"><a href="#section-9-en">9</a>.  <a href="#name-security-considerations-en">Security Considerations</a></p>
+</li>
+          <li id="section-toc.1-1.10-en">
+            <p id="section-toc.1-1.10.1-en"><a href="#section-10-en">10</a>.  <a href="#name-references-en">References</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.10.1.1-en"><a href="#section-10.1-en">10.1</a>.  <a href="#name-normative-references-en">Normative References</a></p>
+</li>
+            <li id="section-toc.1-1.10.2-en">
+              <p id="section-toc.1-1.10.2.1-en"><a href="#section-10.2-en">10.2</a>.  <a href="#name-informative-references-en">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.A-en">
+            <p id="section-toc.1-1.A.1-en"><a href="#section-appendix.a-en">Appendix A</a>.  <a href="#name-the-basic-pie-pseudocode-en">The Basic PIE Pseudocode</a></p>
+</li>
+          <li id="section-toc.1-1.B-en">
+            <p id="section-toc.1-1.B.1-en"><a href="#section-appendix.b-en">Appendix B</a>.  <a href="#name-pseudocode-for-pie-with-optional-enhancement-en">Pseudocode for PIE with Optional Enhancement</a></p>
+</li>
+          <li id="section-toc.1-1.c-en">
+            <p id="section-toc.1-1.c.1-en"><a href="#name-contributors-en">Contributors</a></p>
+</li>
+          <li id="section-toc.1-1.d-en">
+            <p id="section-toc.1-1.d.1-en"><a href="#name-authors-addresses-en">Authors' Addresses</a></p>
+</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-toc.1-1-ja">
+<li id="section-toc.1-1.1-ja">
+            <p id="section-toc.1-1.1.1-ja"><a href="#section-1-ja">1</a>.  <a href="#name-introduction-ja">はじめに</a></p>
+</li>
+          <li id="section-toc.1-1.2-ja">
+            <p id="section-toc.1-1.2.1-ja"><a href="#section-2-ja">2</a>.  <a href="#name-terminology-ja">用語</a></p>
+</li>
+          <li id="section-toc.1-1.3-ja">
+            <p id="section-toc.1-1.3.1-ja"><a href="#section-3-ja">3</a>.  <a href="#name-design-goals-ja">設計目標</a></p>
+</li>
+          <li id="section-toc.1-1.4-ja">
+            <p id="section-toc.1-1.4.1-ja"><a href="#section-4-ja">4</a>.  <a href="#name-the-basic-pie-scheme-ja">基本的なPIE方式</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.4.1.1-ja"><a href="#section-4.1-ja">4.1</a>.  <a href="#name-random-dropping-ja">ランダムドロップ</a></p>
+</li>
+            <li id="section-toc.1-1.4.2-ja">
+              <p id="section-toc.1-1.4.2.1-ja"><a href="#section-4.2-ja">4.2</a>.  <a href="#name-drop-probability-calculation-ja">ドロップ確率の計算</a></p>
+</li>
+            <li id="section-toc.1-1.4.3-ja">
+              <p id="section-toc.1-1.4.3.1-ja"><a href="#section-4.3-ja">4.3</a>.  <a href="#name-latency-calculation-ja">遅延の計算</a></p>
+</li>
+            <li id="section-toc.1-1.4.4-ja">
+              <p id="section-toc.1-1.4.4.1-ja"><a href="#section-4.4-ja">4.4</a>.  <a href="#name-burst-tolerance-ja">バースト許容</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.5-ja">
+            <p id="section-toc.1-1.5.1-ja"><a href="#section-5-ja">5</a>.  <a href="#name-optional-design-elements-of-pie-ja">PIEの省略可能な設計要素</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.5.1.1-ja"><a href="#section-5.1-ja">5.1</a>.  <a href="#name-ecn-support-ja">ECNのサポート</a></p>
+</li>
+            <li id="section-toc.1-1.5.2-ja">
+              <p id="section-toc.1-1.5.2.1-ja"><a href="#section-5.2-ja">5.2</a>.  <a href="#name-dequeue-rate-estimation-ja">デキューレートの推定</a></p>
+</li>
+            <li id="section-toc.1-1.5.3-ja">
+              <p id="section-toc.1-1.5.3.1-ja"><a href="#section-5.3-ja">5.3</a>.  <a href="#name-setting-pie-active-and-inactive-ja">PIEのアクティブ化と非アクティブ化</a></p>
+</li>
+            <li id="section-toc.1-1.5.4-ja">
+              <p id="section-toc.1-1.5.4.1-ja"><a href="#section-5.4-ja">5.4</a>.  <a href="#name-derandomization-ja">非ランダム化</a></p>
+</li>
+            <li id="section-toc.1-1.5.5-ja">
+              <p id="section-toc.1-1.5.5.1-ja"><a href="#section-5.5-ja">5.5</a>.  <a href="#name-cap-drop-adjustment-ja">ドロップ確率の調整幅の上限</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.6-ja">
+            <p id="section-toc.1-1.6.1-ja"><a href="#section-6-ja">6</a>.  <a href="#name-implementation-cost-ja">実装コスト</a></p>
+</li>
+          <li id="section-toc.1-1.7-ja">
+            <p id="section-toc.1-1.7.1-ja"><a href="#section-7-ja">7</a>.  <a href="#name-scope-of-experimentation-ja">実験の範囲</a></p>
+</li>
+          <li id="section-toc.1-1.8-ja">
+            <p id="section-toc.1-1.8.1-ja"><a href="#section-8-ja">8</a>.  <a href="#name-incremental-deployment-ja">段階的な展開</a></p>
+</li>
+          <li id="section-toc.1-1.9-ja">
+            <p id="section-toc.1-1.9.1-ja"><a href="#section-9-ja">9</a>.  <a href="#name-security-considerations-ja">セキュリティーに関する考慮事項</a></p>
+</li>
+          <li id="section-toc.1-1.10-ja">
+            <p id="section-toc.1-1.10.1-ja"><a href="#section-10-ja">10</a>.  <a href="#name-references-ja">参考文献</a></p>
+<ul>
+<li>
+              <p id="section-toc.1-1.10.1.1-ja"><a href="#section-10.1-ja">10.1</a>.  <a href="#name-normative-references-ja">引用規格</a></p>
+</li>
+            <li id="section-toc.1-1.10.2-ja">
+              <p id="section-toc.1-1.10.2.1-ja"><a href="#section-10.2-ja">10.2</a>.  <a href="#name-informative-references-ja">参考文献</a></p>
+</li>
+            </ul>
+</li>
+          <li id="section-toc.1-1.A-ja">
+            <p id="section-toc.1-1.A.1-ja"><a href="#section-appendix.a-ja">付録A</a>.  <a href="#name-the-basic-pie-pseudocode-ja">基本的なPIEの疑似コード</a></p>
+</li>
+          <li id="section-toc.1-1.B-ja">
+            <p id="section-toc.1-1.B.1-ja"><a href="#section-appendix.b-ja">付録B</a>.  <a href="#name-pseudocode-for-pie-with-optional-enhancement-ja">省略可能な拡張を含むPIEの疑似コード</a></p>
+</li>
+          <li id="section-toc.1-1.c-ja">
+            <p id="section-toc.1-1.c.1-ja"><a href="#name-contributors-ja">貢献者</a></p>
+</li>
+          <li id="section-toc.1-1.d-ja">
+            <p id="section-toc.1-1.d.1-ja"><a href="#name-authors-addresses-ja">著者の連絡先</a></p>
+</li>
+      </ul></div>
+</div></section><section><span id="section-1"></span><span id="introduction-en"></span><span id="introduction-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-introduction-en" lang="en">
+<a id="section-1-en" href="#section-1-en" class="section-number selfRef">1.</a> <a href="#name-introduction-en" class="section-name selfRef">Introduction</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-introduction-ja" lang="ja">
+<a id="section-1-ja" href="#section-1-ja" class="section-number selfRef">1.</a> <a href="#name-introduction-ja" class="section-name selfRef">はじめに</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-1-en">The explosion of smart phones, tablets, and video traffic in the
+Internet brings about a unique set of challenges for congestion
+control.  To avoid packet drops, many service providers or
+data-center operators require vendors to put in as much buffer as
+possible.  Because of the rapid decrease in memory chip prices, these
+requests are easily accommodated to keep customers happy.  While this
+solution succeeds in assuring low packet loss and high TCP
+throughput, it suffers from a major downside.  TCP continuously
+increases its sending rate and causes network buffers to fill up.
+TCP cuts its rate only when it receives a packet drop or mark that is
+interpreted as a congestion signal.  However, drops and marks usually
+occur when network buffers are full or almost full.  As a result,
+excess buffers, initially designed to avoid packet drops, would lead
+to highly elevated queuing latency and latency variation.  Designing
+a queue management scheme is a delicate balancing act: it not only
+should allow short-term bursts to smoothly pass but also should
+control the average latency in the presence of long-running greedy
+flows.</p></div>
+<div lang="ja" class="col"><p id="section-1-1-ja">インターネットにおけるスマートフォン、タブレット、ビデオトラフィックの爆発的な増加は、輻輳制御に特有の一連の課題をもたらしています。
+パケットのドロップを避けるため、多くのサービスプロバイダーやデータセンターの運用者は、できるだけ多くのバッファーを搭載するようベンダーに要求しています。
+メモリーチップの価格が急速に下がったため、顧客を満足させるためのこうした要求には容易に応じられます。
+この解決策は、低いパケット損失と高いTCPスループットを保証することには成功していますが、大きな欠点があります。
+TCPは送信レートを上げ続け、ネットワークのバッファーを満杯にします。
+TCPが送信レートを下げるのは、輻輳信号と解釈されるパケットのドロップまたはマークを受け取ったときだけです。
+しかし、ドロップやマークは通常、ネットワークのバッファーが満杯またはほぼ満杯のときに起こります。
+その結果、もともとパケットのドロップを避けるために設計された過剰なバッファーは、キューイング遅延と遅延変動を大きく増大させることになります。
+キュー管理方式の設計は、微妙なバランスを取る作業です。
+キュー管理方式は、短期的なバーストを円滑に通過させるだけでなく、長時間続く貪欲なフローが存在する状況でも平均遅延を制御すべきです。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-2-en">Active Queue Management (AQM) schemes could potentially solve the
+aforementioned problem.  AQM schemes, such as Random Early Detection
+(RED) <span>[<a href="#RED-en">RED</a>]</span> as suggested in <span>[<a href="#RFC2309-en">RFC2309</a>]</span> (which is now obsoleted by
+<span>[<a href="#RFC7567-en">RFC7567</a>]</span>), have been around for well over a decade.  RED is
+implemented in a wide variety of network devices, both in hardware
+and software.  Unfortunately, due to the fact that RED needs careful
+tuning of its parameters for various network conditions, most network
+operators don't turn RED on.  In addition, RED is designed to control
+the queue length, which would affect latency implicitly.  It does not
+control latency directly.  Hence, the Internet today still lacks an
+effective design that can control buffer latency to improve the
+quality of experience to latency-sensitive applications.  The more
+recently published RFC 7567 calls for new methods of controlling
+network latency.</p></div>
+<div lang="ja" class="col"><p id="section-1-2-ja">アクティブキュー管理（Active Queue Management、AQM）方式は、前述の問題を解決できる可能性があります。
+<span>[<a href="#RFC2309-ja">RFC2309</a>]</span>（現在は<span>[<a href="#RFC7567-ja">RFC7567</a>]</span>によって廃止されています）で提案されたランダム早期検出（Random Early Detection、RED）<span>[<a href="#RED-ja">RED</a>]</span>などのAQM方式は、10年をはるかに超える期間にわたって存在してきました。
+REDは、ハードウェアとソフトウェアの両方で、多種多様なネットワーク機器に実装されています。
+残念ながら、REDはさまざまなネットワーク条件に合わせてパラメーターを慎重に調整する必要があるため、ほとんどのネットワーク運用者はREDを有効にしていません。
+さらに、REDはキュー長を制御するように設計されており、それは遅延に暗黙的に影響を与えるにすぎません。
+REDは遅延を直接制御しません。
+そのため、今日のインターネットには、遅延に敏感なアプリケーションの体感品質を向上させるためにバッファー遅延を制御できる効果的な設計が依然として欠けています。
+より最近発行されたRFC 7567は、ネットワーク遅延を制御する新しい手法を求めています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-3-en">New algorithms are beginning to emerge to control queuing latency
+directly to address the bufferbloat problem <span>[<a href="#CoDel-en">CoDel</a>]</span>.  Along these
+lines, Proportional Integral controller Enhanced (PIE) also aims to
+keep the benefits of RED, including easy implementation and
+scalability to high speeds.  Similar to RED, PIE randomly drops an
+incoming packet at the onset of congestion.  Congestion detection,
+however, is based on the queuing latency instead of the queue length
+(as with RED).  Furthermore, PIE also uses the derivative (rate of
+change) of the queuing latency to help determine congestion levels
+and an appropriate response.  The design parameters of PIE are chosen
+via control theory stability analysis.  While these parameters can be
+fixed to work in various traffic conditions, they could be made
+self-tuning to optimize system performance.</p></div>
+<div lang="ja" class="col"><p id="section-1-3-ja">バッファーブロート問題に対処するために、キューイング遅延を直接制御する新しいアルゴリズムが登場し始めています<span>[<a href="#CoDel-ja">CoDel</a>]</span>。
+これらと同じ方向で、Proportional Integral controller Enhanced（PIE）も、実装の容易さや高速化へのスケーラビリティーといったREDの利点を維持することを目指しています。
+REDと同様に、PIEは輻輳の始まりに、到着したパケットをランダムにドロップします。
+ただし、輻輳の検出は、（REDのような）キュー長ではなく、キューイング遅延に基づきます。
+さらに、PIEはキューイング遅延の導関数（変化率）も使用して、輻輳のレベルと適切な応答の決定に役立てます。
+PIEの設計パラメーターは、制御理論の安定性解析によって選ばれます。
+これらのパラメーターはさまざまなトラフィック条件で機能するように固定できますが、システム性能を最適化するために自己チューニングするようにもできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-4-en">Separately, it is assumed that any latency-based AQM scheme would be
+applied over a Fair Queuing (FQ) structure or one of its approximate
+designs, Flow Queuing or Class-Based Queuing (CBQ).  FQ is one of the
+most studied scheduling algorithms since it was first proposed in
+1985 <span>[<a href="#RFC970-en">RFC970</a>]</span>.  CBQ has been a standard feature in most network
+devices today <span>[<a href="#CBQ-en">CBQ</a>]</span>.  Any AQM scheme that is built on top of FQ or
+CBQ could benefit from these advantages.  Furthermore, these
+advantages, such as per-flow or per-class fairness, are orthogonal to
+the AQM design whose primary goal is to control latency for a given
+queue.  For flows that are classified into the same class and put
+into the same queue, one needs to ensure that their latency is better
+controlled and that their fairness is not worse than those under the
+standard DropTail or RED design.  More details about the relationship
+between FQ and AQM can be found in <span>[<a href="#RFC7806-en">RFC7806</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-1-4-ja">これとは別に、遅延に基づくAQM方式は、公平キューイング（Fair Queuing、FQ）構造、またはその近似的な設計の1つであるフローキューイング（Flow Queuing）やクラスベースキューイング（Class-Based Queuing、CBQ）の上に適用されることを想定しています。
+FQは、1985年に最初に提案されて<span>[<a href="#RFC970-ja">RFC970</a>]</span>以来、最も研究されてきたスケジューリングアルゴリズムの1つです。
+CBQは、今日のほとんどのネットワーク機器で標準的な機能となっています<span>[<a href="#CBQ-ja">CBQ</a>]</span>。
+FQやCBQの上に構築されたAQM方式はどれも、これらの利点を享受できます。
+さらに、フローごとやクラスごとの公平性といったこれらの利点は、所与のキューの遅延を制御することを主な目的とするAQMの設計とは直交しています。
+同じクラスに分類されて同じキューに入れられるフローについては、それらの遅延がよりよく制御され、それらの公平性が標準的なDropTailやREDの設計のもとでの公平性より悪くならないことを保証する必要があります。
+FQとAQMの関係についての詳細は<span>[<a href="#RFC7806-ja">RFC7806</a>]</span>にあります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-5-en">In October 2013, CableLabs' Data-Over-Cable Service Interface
+Specification 3.1 (DOCSIS 3.1) specification <span>[<a href="#DOCSIS_3.1-en">DOCSIS_3.1</a>]</span> mandated
+that cable modems implement a specific variant of the PIE design as
+the active queue management algorithm.  In addition to cable-specific
+improvements, the PIE design in DOCSIS 3.1 <span>[<a href="#RFC8034-en">RFC8034</a>]</span> has improved the
+original design in several areas, including derandomization of coin
+tosses and enhanced burst protection.</p></div>
+<div lang="ja" class="col"><p id="section-1-5-ja">2013年10月、CableLabsのData-Over-Cable Service Interface Specification 3.1（DOCSIS 3.1）仕様<span>[<a href="#DOCSIS_3.1-ja">DOCSIS_3.1</a>]</span>は、ケーブルモデムがアクティブキュー管理アルゴリズムとしてPIEの設計の特定の変種を実装することを義務づけました。
+ケーブル固有の改良に加えて、DOCSIS 3.1におけるPIEの設計<span>[<a href="#RFC8034-ja">RFC8034</a>]</span>は、コイントスの非ランダム化（derandomization）やバースト保護の強化など、いくつかの点で元の設計を改良しています。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-1-6-en">This document describes the design of PIE and separates it into basic
+elements and optional components that may be implemented to enhance
+the performance of PIE.</p></div>
+<div lang="ja" class="col"><p id="section-1-6-ja">この文書は、PIEの設計を説明し、それを基本的な要素と、PIEの性能を向上させるために実装してもよい省略可能なコンポーネントとに分けて示します。</p></div>
+</div></section><section><span id="section-2"></span><span id="terminology-en"></span><span id="terminology-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-terminology-en" lang="en">
+<a id="section-2-en" href="#section-2-en" class="section-number selfRef">2.</a> <a href="#name-terminology-en" class="section-name selfRef">Terminology</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-terminology-ja" lang="ja">
+<a id="section-2-ja" href="#section-2-ja" class="section-number selfRef">2.</a> <a href="#name-terminology-ja" class="section-name selfRef">用語</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-2-1-en">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>",
+"<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and "<span class="bcp14">OPTIONAL</span>" in this
+document are to be interpreted as described in RFC 2119 <span>[<a href="#RFC2119-en">RFC2119</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-2-1-ja">キーワード「<span class="bcp14">しなければなりません（MUST）</span>」、「<span class="bcp14">してはなりません（MUST NOT）</span>」、
+「<span class="bcp14">要求されています（REQUIRED）</span>」、
+「<span class="bcp14">することになります（SHALL）</span>」、「<span class="bcp14">することはありません（SHALL NOT）</span>」、
+「<span class="bcp14">すべきです（SHOULD）</span>」、「<span class="bcp14">すべきではありません（SHOULD NOT）</span>」、
+「<span class="bcp14">推奨されます（RECOMMENDED）</span>」、
+「<span class="bcp14">してもよいです（MAY）</span>」、「<span class="bcp14">選択できます（OPTIONAL）</span>」は、
+RFC 2119 <span>[<a href="#RFC2119-ja">RFC2119</a>]</span>に記載されているとおりに解釈されるものとします。</p></div>
+</div></section><section><span id="section-3"></span><span id="design-goals-en"></span><span id="design-goals-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-design-goals-en" lang="en">
+<a id="section-3-en" href="#section-3-en" class="section-number selfRef">3.</a> <a href="#name-design-goals-en" class="section-name selfRef">Design Goals</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-design-goals-ja" lang="ja">
+<a id="section-3-ja" href="#section-3-ja" class="section-number selfRef">3.</a> <a href="#name-design-goals-ja" class="section-name selfRef">設計目標</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-1-en">A queue management framework is designed to improve the performance
+of interactive and latency-sensitive applications.  It should follow
+the general guidelines set by the AQM working group document "IETF
+Recommendations Regarding Active Queue Management" <span>[<a href="#RFC7567-en">RFC7567</a>]</span>.  More
+specifically, the PIE design has the following basic criteria.</p></div>
+<div lang="ja" class="col"><p id="section-3-1-ja">キュー管理のフレームワークは、対話型で遅延に敏感なアプリケーションの性能を向上させるために設計されます。
+それは、AQMワーキンググループの文書「IETF Recommendations Regarding Active Queue Management」<span>[<a href="#RFC7567-ja">RFC7567</a>]</span>で定められた一般的なガイドラインに従うべきです。
+より具体的には、PIEの設計には次の基本的な基準があります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-3-2-en">
+<li id="section-3-2.1-en">First, queuing latency, instead of queue length, is controlled.
+Queue sizes change with queue draining rates and various flows'
+round-trip times.  Latency bloat is the real issue that needs to
+be addressed, as it impairs real-time applications.  If latency
+can be controlled, bufferbloat is not an issue.  In fact, once
+latency is under control, it frees up buffers for sporadic bursts.</li>
+        <li id="section-3-2.2-en">Secondly, PIE aims to attain high link utilization.  The goal of
+low latency shall be achieved without suffering link
+underutilization or losing network efficiency.  An early
+congestion signal could cause TCP to back off and avoid queue
+buildup.  On the other hand, however, TCP's rate reduction could
+result in link underutilization.  There is a delicate balance
+between achieving high link utilization and low latency.</li>
+        <li id="section-3-2.3-en">Furthermore, the scheme should be simple to implement and easily
+scalable in both hardware and software.  PIE strives to maintain
+design simplicity similar to that of RED, which has been
+implemented in a wide variety of network devices.</li>
+        <li id="section-3-2.4-en">Finally, the scheme should ensure system stability for various
+network topologies and scale well across an arbitrary number of
+streams.  Design parameters shall be set automatically.  Users
+only need to set performance-related parameters such as target
+queue latency, not design parameters.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-3-2-ja">
+<li id="section-3-2.1-ja">第一に、キュー長ではなく、キューイング遅延を制御します。
+キューのサイズは、キューの排出レートやさまざまなフローのラウンドトリップ時間に応じて変化します。
+遅延の膨張は、リアルタイムアプリケーションを損なうため、対処する必要がある本当の問題です。
+遅延を制御できれば、バッファーブロートは問題になりません。
+実際、遅延が制御されていれば、散発的なバーストのためにバッファーが空きます。</li>
+        <li id="section-3-2.2-ja">第二に、PIEは高いリンク利用率の達成を目指します。
+低遅延という目標は、リンクの利用率低下やネットワーク効率の損失を被ることなく達成されるものとします。
+早期の輻輳信号は、TCPを後退させて、キューの蓄積を回避させる可能性があります。
+しかしその一方で、TCPのレート低下はリンクの利用率低下を招く可能性があります。
+高いリンク利用率の達成と低遅延の間には、微妙なバランスがあります。</li>
+        <li id="section-3-2.3-ja">さらに、この方式は、実装が単純で、ハードウェアとソフトウェアの両方で容易にスケールできるべきです。
+PIEは、多種多様なネットワーク機器に実装されてきたREDと同程度の設計の単純さを維持するよう努めています。</li>
+        <li id="section-3-2.4-ja">最後に、この方式は、さまざまなネットワークトポロジーでシステムの安定性を保証し、任意の数のストリームにわたってうまくスケールすべきです。
+設計パラメーターは自動的に設定されるものとします。
+ユーザーは、設計パラメーターではなく、目標キュー遅延などの性能に関するパラメーターを設定するだけで済みます。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-3-3-en">In the following text, the design of PIE and its operation are
+described in detail.</p></div>
+<div lang="ja" class="col"><p id="section-3-3-ja">以降では、PIEの設計とその動作を詳しく説明します。</p></div>
+</div></section><section><span id="section-4"></span><span id="the-basic-pie-scheme-en"></span><span id="the-basic-pie-scheme-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-basic-pie-scheme-en" lang="en">
+<a id="section-4-en" href="#section-4-en" class="section-number selfRef">4.</a> <a href="#name-the-basic-pie-scheme-en" class="section-name selfRef">The Basic PIE Scheme</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-basic-pie-scheme-ja" lang="ja">
+<a id="section-4-ja" href="#section-4-ja" class="section-number selfRef">4.</a> <a href="#name-the-basic-pie-scheme-ja" class="section-name selfRef">基本的なPIE方式</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-1-en">As illustrated in <a href="#figure-1-en">Figure 1</a>, PIE is comprised of three simple basic
+components: a) random dropping at enqueuing, b) periodic drop
+probability updates, and c) latency calculation.  When a packet
+arrives, a random decision is made regarding whether to drop the
+packet.  The drop probability is updated periodically based on how
+far the current latency is away from the target value and whether the
+queuing latency is currently trending up or down.  The queuing
+latency can be obtained using direct measurements or using
+estimations calculated from the queue length and the dequeue rate.</p></div>
+<div lang="ja" class="col"><p id="section-4-1-ja"><a href="#figure-1-ja">図1</a>に示すように、PIEは3つの単純な基本コンポーネントで構成されます。
+a）エンキュー時のランダムドロップ、b）ドロップ確率の定期的な更新、c）遅延の計算です。
+パケットが到着すると、そのパケットをドロップするかどうかがランダムに決定されます。
+ドロップ確率は、現在の遅延が目標値からどれだけ離れているか、およびキューイング遅延が現在増加傾向にあるか減少傾向にあるかに基づいて、定期的に更新されます。
+キューイング遅延は、直接測定するか、キュー長とデキューレートから計算した推定値を使って得ることができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4-2-en">The detailed definition of parameters can be found in <a href="#section-appendix.a-en">Appendix A</a> of
+this document ("The Basic PIE Pseudocode").  Any state variables that
+PIE maintains are noted using "PIE-&gt;".  For a full description of the
+algorithm, one can refer to the full paper <span>[<a href="#HPSR-PIE-en">HPSR-PIE</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-4-2-ja">パラメーターの詳細な定義は、この文書の<a href="#section-appendix.a-ja">付録A</a>（「基本的なPIEの疑似コード」）にあります。
+PIEが維持する状態変数は、「PIE-&gt;」を使って表記します。
+アルゴリズムの完全な説明については、論文の全文<span>[<a href="#HPSR-PIE-ja">HPSR-PIE</a>]</span>を参照できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-1-en"><div lang="" id="section-4-3.1-en"><pre tabindex="0" role="region" aria-label="Figure 1: The PIE Structure">
+      Random Drop
+           /               --------------
+   -------/  --------------&gt;    | | | | | --------------&gt;
+          /|\                   | | | | |
+           |               --------------
+           |             Queue Buffer   \
+           |                     |       \
+           |                     |Queue   \
+           |                     |Length   \
+           |                     |          \
+           |                    \|/         \/
+           |          -----------------    -------------------
+           |          |     Drop      |    |                 |
+           -----&lt;-----|  Probability  |&lt;---| Latency         |
+                      |  Calculation  |    | Calculation     |
+                      -----------------    -------------------
+</pre></div>
+<figcaption><span>Figure 1</span>:
+<span>The PIE Structure</span>
+        </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-1-ja"><div lang="" id="section-4-3.1-ja"><pre tabindex="0" role="region" aria-label="図1: PIEの構造">
+      Random Drop
+           /               --------------
+   -------/  --------------&gt;    | | | | | --------------&gt;
+          /|\                   | | | | |
+           |               --------------
+           |             Queue Buffer   \
+           |                     |       \
+           |                     |Queue   \
+           |                     |Length   \
+           |                     |          \
+           |                    \|/         \/
+           |          -----------------    -------------------
+           |          |     Drop      |    |                 |
+           -----&lt;-----|  Probability  |&lt;---| Latency         |
+                      |  Calculation  |    | Calculation     |
+                      -----------------    -------------------
+</pre></div>
+<figcaption><span>図1</span>:
+<span>PIEの構造</span>
+        </figcaption></figure></div>
+</div>
+<section><span id="section-4.1"></span><span id="random-dropping-en"></span><span id="random-dropping-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-random-dropping-en" lang="en">
+<a id="section-4.1-en" href="#section-4.1-en" class="section-number selfRef">4.1.</a> <a href="#name-random-dropping-en" class="section-name selfRef">Random Dropping</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-random-dropping-ja" lang="ja">
+<a id="section-4.1-ja" href="#section-4.1-ja" class="section-number selfRef">4.1.</a> <a href="#name-random-dropping-ja" class="section-name selfRef">ランダムドロップ</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-1-en">PIE randomly drops a packet upon its arrival to a queue according to
+a drop probability, PIE-&gt;drop_prob_, that is obtained from the
+drop-probability-calculation component.  The random drop is triggered
+by a packet's arrival before enqueuing into a queue.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-1-ja">PIEは、キューへのパケットの到着時に、ドロップ確率の計算コンポーネントから得られるドロップ確率PIE-&gt;drop_prob_に従って、そのパケットをランダムにドロップします。
+ランダムドロップは、パケットがキューにエンキューされる前に、パケットの到着によって起動されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.1-2-en">
+<li id="section-4.1-2.1-en">
+            <p id="section-4.1-2.1.1-en">Upon a packet enqueue:</p>
+<div lang="" id="section-4.1-2.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   randomly drop the packet with a probability of PIE-&gt;drop_prob_.
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.1-2-ja">
+<li id="section-4.1-2.1-ja">
+            <p id="section-4.1-2.1.1-ja">パケットのエンキュー時：</p>
+<div lang="" id="section-4.1-2.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   randomly drop the packet with a probability of PIE-&gt;drop_prob_.
+</pre></div>
+</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-3-en">To ensure that PIE is "work conserving", we bypass the random drop if
+the latency sample, PIE-&gt;qdelay_old_, is smaller than half of the
+target latency value (QDELAY_REF) when the drop probability is not
+too high (i.e., PIE-&gt;drop_prob_ &lt; 0.2), or if the queue has less than
+a couple of packets.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-3-ja">PIEが「ワークコンサービング（work conserving）」であることを保証するために、ドロップ確率がそれほど高くない（つまり、PIE-&gt;drop_prob_ &lt; 0.2の）ときに遅延サンプルPIE-&gt;qdelay_old_が目標遅延値（QDELAY_REF）の半分より小さい場合、またはキューにあるパケットが2、3個未満の場合には、ランダムドロップを迂回します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.1-4-en">
+<li id="section-4.1-4.1-en">
+            <p id="section-4.1-4.1.1-en">Upon a packet enqueue, PIE does the following:</p>
+<div lang="" id="section-4.1-4.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   //Safeguard PIE to be work conserving
+   if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+         || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) )
+             return ENQUE;
+   else
+      randomly drop the packet with a probability of
+      PIE-&gt;drop_prob_.
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.1-4-ja">
+<li id="section-4.1-4.1-ja">
+            <p id="section-4.1-4.1.1-ja">パケットのエンキュー時に、PIEは次のことを行います：</p>
+<div lang="" id="section-4.1-4.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   //Safeguard PIE to be work conserving
+   if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+         || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) )
+             return ENQUE;
+   else
+      randomly drop the packet with a probability of
+      PIE-&gt;drop_prob_.
+</pre></div>
+</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.1-5-en">PIE optionally supports Explicit Congestion Notification (ECN); see
+<a href="#section-5.1-en">Section 5.1</a>.</p></div>
+<div lang="ja" class="col"><p id="section-4.1-5-ja">PIEは、省略可能な機能として明示的輻輳通知（Explicit Congestion Notification、ECN）をサポートします。
+<a href="#section-5.1-ja">セクション5.1</a>を参照してください。</p></div>
+</div></section><section><span id="section-4.2"></span><span id="drop-probability-calculation-en"></span><span id="drop-probability-calculation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-drop-probability-calculation-en" lang="en">
+<a id="section-4.2-en" href="#section-4.2-en" class="section-number selfRef">4.2.</a> <a href="#name-drop-probability-calculation-en" class="section-name selfRef">Drop Probability Calculation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-drop-probability-calculation-ja" lang="ja">
+<a id="section-4.2-ja" href="#section-4.2-ja" class="section-number selfRef">4.2.</a> <a href="#name-drop-probability-calculation-ja" class="section-name selfRef">ドロップ確率の計算</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-1-en">The PIE algorithm periodically updates the drop probability based on
+the latency samples -- not only the current latency sample but also
+whether the latency is trending up or down.  This is the classical
+Proportional Integral (PI) controller method, which is known for
+eliminating steady-state errors.  This type of controller has been
+studied before for controlling the queue length <span>[<a href="#PI-en">PI</a>]</span> <span>[<a href="#QCN-en">QCN</a>]</span>.  PIE
+adopts the PI controller for controlling latency.  The algorithm also
+auto-adjusts the control parameters based on how heavy the congestion
+is, which is reflected in the current drop probability.  Note that
+the current drop probability is a direct measure of the current
+congestion level; there is no need to measure the arrival rate and
+dequeue rate mismatches.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-1-ja">PIEアルゴリズムは、遅延サンプルに基づいてドロップ確率を定期的に更新します。
+その際には、現在の遅延サンプルだけでなく、遅延が増加傾向にあるか減少傾向にあるかも考慮します。
+これは古典的な比例積分（Proportional Integral、PI）コントローラーの手法であり、定常偏差を解消することで知られています。
+この種のコントローラーは、以前にキュー長を制御するために研究されています<span>[<a href="#PI-ja">PI</a>]</span> <span>[<a href="#QCN-ja">QCN</a>]</span>。
+PIEは、遅延を制御するためにPIコントローラーを採用しています。
+このアルゴリズムは、現在のドロップ確率に反映される輻輳の重さに基づいて、制御パラメーターの自動調整も行います。
+現在のドロップ確率は現在の輻輳レベルを直接示す尺度であるため、到着レートとデキューレートの不一致を測定する必要はないことに注意してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-2-en">When a congestion period ends, we might be left with a high drop
+probability with light packet arrivals.  Hence, the PIE algorithm
+includes a mechanism by which the drop probability decays
+exponentially (rather than linearly) when the system is not
+congested.  This would help the drop probability converge to 0 more
+quickly, while the PI controller ensures that it would eventually
+reach zero.  The decay parameter of 2% gives us a time constant
+around 50 * T_UPDATE.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-2-ja">輻輳期間が終わると、パケットの到着が少ないのにドロップ確率が高いまま残ってしまうことがあります。
+そのため、PIEアルゴリズムには、システムが輻輳していないときに、ドロップ確率を（線形ではなく）指数関数的に減衰させる仕組みが含まれています。
+これはドロップ確率がより速く0に収束するのに役立ち、一方でPIコントローラーは、最終的にドロップ確率が0に達することを保証します。
+2%という減衰パラメーターにより、時定数は約50 * T_UPDATEになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-3-en">Specifically, the PIE algorithm periodically adjusts the drop
+probability every T_UPDATE interval:</p></div>
+<div lang="ja" class="col"><p id="section-4.2-3-ja">具体的には、PIEアルゴリズムは、T_UPDATEの間隔ごとに、次のようにドロップ確率を定期的に調整します：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.2-4-en">
+<li id="section-4.2-4.1-en">
+            <p id="section-4.2-4.1.1-en">calculate drop probability PIE-&gt;drop_prob_, and autotune it as
+follows:</p>
+<div lang="" id="section-4.2-4.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      p = alpha * (current_qdelay - QDELAY_REF) +
+             beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+      if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+          p /= 2048;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+          p /= 512;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+          p /= 128;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+          p /= 32;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+          p /= 8;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+          p /= 2;
+      } else {
+          p = p;
+      }
+      PIE-&gt;drop_prob_ += p;
+</pre></div>
+</li>
+          <li id="section-4.2-4.2-en">
+            <p id="section-4.2-4.2.1-en">decay the drop probability exponentially:</p>
+<div lang="" id="section-4.2-4.2.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      if (current_qdelay == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0) {
+          PIE-&gt;drop_prob_ = PIE-&gt;drop_prob_ * 0.98;
+                                              //1 - 1/64 is
+                                              //sufficient
+      }
+</pre></div>
+</li>
+          <li id="section-4.2-4.3-en">
+            <p id="section-4.2-4.3.1-en">bound the drop probability:</p>
+<div lang="" id="section-4.2-4.3.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      if (PIE-&gt;drop_prob_ &lt; 0)
+               PIE-&gt;drop_prob_ = 0.0
+      if (PIE-&gt;drop_prob_ &gt; 1)
+               PIE-&gt;drop_prob_ = 1.0
+</pre></div>
+</li>
+          <li id="section-4.2-4.4-en">
+            <p id="section-4.2-4.4.1-en">store the current latency value:</p>
+<div lang="" id="section-4.2-4.4.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      PIE-&gt;qdelay_old_ = current_qdelay.
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.2-4-ja">
+<li id="section-4.2-4.1-ja">
+            <p id="section-4.2-4.1.1-ja">ドロップ確率PIE-&gt;drop_prob_を計算し、次のように自動チューニングします：</p>
+<div lang="" id="section-4.2-4.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      p = alpha * (current_qdelay - QDELAY_REF) +
+             beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+      if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+          p /= 2048;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+          p /= 512;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+          p /= 128;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+          p /= 32;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+          p /= 8;
+      } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+          p /= 2;
+      } else {
+          p = p;
+      }
+      PIE-&gt;drop_prob_ += p;
+</pre></div>
+</li>
+          <li id="section-4.2-4.2-ja">
+            <p id="section-4.2-4.2.1-ja">ドロップ確率を指数関数的に減衰させます：</p>
+<div lang="" id="section-4.2-4.2.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      if (current_qdelay == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0) {
+          PIE-&gt;drop_prob_ = PIE-&gt;drop_prob_ * 0.98;
+                                              //1 - 1/64 is
+                                              //sufficient
+      }
+</pre></div>
+</li>
+          <li id="section-4.2-4.3-ja">
+            <p id="section-4.2-4.3.1-ja">ドロップ確率を範囲内に制限します：</p>
+<div lang="" id="section-4.2-4.3.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      if (PIE-&gt;drop_prob_ &lt; 0)
+               PIE-&gt;drop_prob_ = 0.0
+      if (PIE-&gt;drop_prob_ &gt; 1)
+               PIE-&gt;drop_prob_ = 1.0
+</pre></div>
+</li>
+          <li id="section-4.2-4.4-ja">
+            <p id="section-4.2-4.4.1-ja">現在の遅延値を保存します：</p>
+<div lang="" id="section-4.2-4.4.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      PIE-&gt;qdelay_old_ = current_qdelay.
+</pre></div>
+</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-5-en">The update interval, T_UPDATE, is defaulted to be 15 milliseconds.
+It <span class="bcp14">MAY</span> be reduced on high-speed links in order to provide smoother
+response.  The target latency value, QDELAY_REF, <span class="bcp14">SHOULD</span> be set to 15
+milliseconds.  The variables current_qdelay and PIE-&gt;qdelay_old_
+represent the current and previous samples of the queuing latency,
+which are calculated by the "latency calculation" component (see
+<a href="#section-4.3-en">Section 4.3</a>).  The variable current_qdelay is actually a temporary
+variable, while PIE-&gt;qdelay_old_ is a state variable that PIE keeps.
+The drop probability is a value between 0 and 1.  However,
+implementations can certainly use integers.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-5-ja">更新間隔T_UPDATEのデフォルトは15ミリ秒です。
+高速リンクでは、より滑らかな応答を提供するために、この値を小さくしても<span class="bcp14">よいです（MAY）</span>。
+目標遅延値QDELAY_REFは、15ミリ秒に設定す<span class="bcp14">べきです（SHOULD）</span>。
+変数current_qdelayとPIE-&gt;qdelay_old_は、キューイング遅延の現在のサンプルと前回のサンプルを表し、これらは「遅延の計算」コンポーネントによって計算されます（<a href="#section-4.3-ja">セクション4.3</a>を参照）。
+変数current_qdelayは実際には一時変数であり、一方PIE-&gt;qdelay_old_はPIEが保持する状態変数です。
+ドロップ確率は0から1の間の値です。
+ただし、実装では当然、整数を使用できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-6-en">The controller parameters, alpha and beta (expressed in Hz), are
+designed using feedback loop analysis, where TCP's behaviors are
+modeled using the results from well-studied prior art <span>[<a href="#TCP-Models-en">TCP-Models</a>]</span>.
+Note that the above adjustment of 'p' effectively scales the alpha
+and beta parameters based on the current congestion level indicated
+by the drop probability.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-6-ja">コントローラーのパラメーターalphaとbeta（単位はHz）は、フィードバックループ解析を用いて設計されており、そこでのTCPの振る舞いは、よく研究された先行技術の成果<span>[<a href="#TCP-Models-ja">TCP-Models</a>]</span>を用いてモデル化されています。
+上記の「p」の調整によって、ドロップ確率が示す現在の輻輳レベルに基づいて、alphaとbetaのパラメーターが実質的にスケーリングされることに注意してください。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.2-7-en">The theoretical analysis of PIE can be found in <span>[<a href="#HPSR-PIE-en">HPSR-PIE</a>]</span>.  As a
+rule of thumb, to keep the same feedback loop dynamics, if we cut
+T_UPDATE in half, we should also cut alpha by half and increase beta
+by alpha/4.  If the target latency is reduced, e.g., for data-center
+use, the values of alpha and beta should be increased by the same
+order of magnitude by which the target latency is reduced.  For
+example, if QDELAY_REF is reduced and changed from 15 milliseconds to
+150 microseconds -- a reduction of two orders of magnitude -- then
+alpha and beta values should be increased to alpha * 100 and
+beta * 100.</p></div>
+<div lang="ja" class="col"><p id="section-4.2-7-ja">PIEの理論解析は<span>[<a href="#HPSR-PIE-ja">HPSR-PIE</a>]</span>にあります。
+経験則として、同じフィードバックループの動特性を保つには、T_UPDATEを半分にする場合、alphaも半分にし、betaをalpha/4だけ増やすべきです。
+データセンターでの使用などのために目標遅延を小さくする場合は、alphaとbetaの値を、目標遅延を小さくしたのと同じ桁数だけ大きくすべきです。
+たとえば、QDELAY_REFを15ミリ秒から150マイクロ秒に小さくする（2桁の縮小）場合、alphaとbetaの値はalpha * 100とbeta * 100に増やすべきです。</p></div>
+</div></section><section><span id="section-4.3"></span><span id="latency-calculation-en"></span><span id="latency-calculation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-latency-calculation-en" lang="en">
+<a id="section-4.3-en" href="#section-4.3-en" class="section-number selfRef">4.3.</a> <a href="#name-latency-calculation-en" class="section-name selfRef">Latency Calculation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-latency-calculation-ja" lang="ja">
+<a id="section-4.3-ja" href="#section-4.3-ja" class="section-number selfRef">4.3.</a> <a href="#name-latency-calculation-ja" class="section-name selfRef">遅延の計算</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.3-1-en">The PIE algorithm uses latency to calculate drop probability in one
+of two ways:</p></div>
+<div lang="ja" class="col"><p id="section-4.3-1-ja">PIEアルゴリズムは、次の2つの方法のいずれかで遅延を使ってドロップ確率を計算します：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.3-2-en">
+<li id="section-4.3-2.1-en">
+            <p id="section-4.3-2.1.1-en">It estimates the current queuing latency using Little's law (see
+<a href="#section-5.2-en">Section 5.2</a> for details):</p>
+<div lang="" id="section-4.3-2.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      current_qdelay = queue_.byte_length()/dequeue_rate;
+</pre></div>
+</li>
+          <li id="section-4.3-2.2-en">It may use other techniques for calculating queuing latency, e.g.,
+time-stamp the packets at enqueue, and use the timestamps to
+calculate latency during dequeue.</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.3-2-ja">
+<li id="section-4.3-2.1-ja">
+            <p id="section-4.3-2.1.1-ja">リトルの法則を用いて現在のキューイング遅延を推定します（詳細は<a href="#section-5.2-ja">セクション5.2</a>を参照）：</p>
+<div lang="" id="section-4.3-2.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      current_qdelay = queue_.byte_length()/dequeue_rate;
+</pre></div>
+</li>
+          <li id="section-4.3-2.2-ja">キューイング遅延を計算するためにほかの手法を使ってもかまいません。
+たとえば、エンキュー時にパケットにタイムスタンプを付け、デキュー時にそのタイムスタンプを使って遅延を計算します。</li>
+        </ul></div>
+</div></section><section><span id="section-4.4"></span><span id="burst-tolerance-en"></span><span id="burst-tolerance-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-burst-tolerance-en" lang="en">
+<a id="section-4.4-en" href="#section-4.4-en" class="section-number selfRef">4.4.</a> <a href="#name-burst-tolerance-en" class="section-name selfRef">Burst Tolerance</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-burst-tolerance-ja" lang="ja">
+<a id="section-4.4-ja" href="#section-4.4-ja" class="section-number selfRef">4.4.</a> <a href="#name-burst-tolerance-ja" class="section-name selfRef">バースト許容</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.4-1-en">PIE does not penalize short-term packet bursts as suggested in
+<span>[<a href="#RFC7567-en">RFC7567</a>]</span>.  PIE allows bursts of traffic that create finite-duration
+events in which current queuing latency exceeds QDELAY_REF without
+triggering packet drops.  This document introduces a parameter called
+"MAX_BURST"; MAX_BURST defines the burst duration that will be
+protected.  By default, the parameter <span class="bcp14">SHOULD</span> be set to 150
+milliseconds.  For simplicity, the PIE algorithm <span class="bcp14">MAY</span> effectively
+round MAX_BURST up to an integer multiple of T_UPDATE.</p></div>
+<div lang="ja" class="col"><p id="section-4.4-1-ja"><span>[<a href="#RFC7567-ja">RFC7567</a>]</span>で提案されているように、PIEは短期的なパケットのバーストにペナルティーを課しません。
+PIEは、現在のキューイング遅延がQDELAY_REFを超える有限時間の事象を生み出すトラフィックのバーストを、パケットのドロップを引き起こさずに許容します。
+この文書では、「MAX_BURST」と呼ばれるパラメーターを導入します。
+MAX_BURSTは、保護されるバーストの持続時間を定義します。
+デフォルトでは、このパラメーターは150ミリ秒に設定す<span class="bcp14">べきです（SHOULD）</span>。
+簡単にするため、PIEアルゴリズムは、MAX_BURSTを実質的にT_UPDATEの整数倍に切り上げても<span class="bcp14">よいです（MAY）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.4-2-en">To implement the burst tolerance function, two basic components of
+PIE are involved: "random dropping" and "drop probability
+calculation".  The PIE algorithm does the following:</p></div>
+<div lang="ja" class="col"><p id="section-4.4-2-ja">バースト許容機能を実装するには、PIEの2つの基本コンポーネント「ランダムドロップ」と「ドロップ確率の計算」が関わります。
+PIEアルゴリズムは次のことを行います：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-4.4-3-en">
+<li id="section-4.4-3.1-en">
+            <p id="section-4.4-3.1.1-en">In the "random dropping" block and upon packet arrival, PIE checks
+the following:</p>
+<div lang="" id="section-4.4-3.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   Upon a packet enqueue:
+      if PIE-&gt;burst_allowance_ &gt; 0
+         enqueue packet;
+      else
+         randomly drop a packet with a probability of
+         PIE-&gt;drop_prob_.
+
+      if (PIE-&gt;drop_prob_ == 0 and current_qdelay &lt; QDELAY_REF/2 and
+          PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2)
+          PIE-&gt;burst_allowance_ = MAX_BURST;
+</pre></div>
+</li>
+          <li id="section-4.4-3.2-en">
+            <p id="section-4.4-3.2.1-en">In the "drop probability calculation" block, PIE additionally
+calculates:</p>
+<div lang="" id="section-4.4-3.2.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   PIE-&gt;burst_allowance_ = max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-4.4-3-ja">
+<li id="section-4.4-3.1-ja">
+            <p id="section-4.4-3.1.1-ja">「ランダムドロップ」ブロックで、パケットの到着時に、PIEは次のことを確認します：</p>
+<div lang="" id="section-4.4-3.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   Upon a packet enqueue:
+      if PIE-&gt;burst_allowance_ &gt; 0
+         enqueue packet;
+      else
+         randomly drop a packet with a probability of
+         PIE-&gt;drop_prob_.
+
+      if (PIE-&gt;drop_prob_ == 0 and current_qdelay &lt; QDELAY_REF/2 and
+          PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2)
+          PIE-&gt;burst_allowance_ = MAX_BURST;
+</pre></div>
+</li>
+          <li id="section-4.4-3.2-ja">
+            <p id="section-4.4-3.2.1-ja">「ドロップ確率の計算」ブロックで、PIEは次の計算を追加で行います：</p>
+<div lang="" id="section-4.4-3.2.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   PIE-&gt;burst_allowance_ = max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+</pre></div>
+</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-4.4-4-en">The burst allowance, noted by PIE-&gt;burst_allowance_, is initialized
+to MAX_BURST.  As long as PIE-&gt;burst_allowance_ is above zero, an
+incoming packet will be enqueued, bypassing the random drop process.
+During each update instance, the value of PIE-&gt;burst_allowance_ is
+decremented by the update period, T_UPDATE, and is bottomed at 0.
+When the congestion goes away -- defined here as PIE-&gt;drop_prob_
+equals 0 and both the current and previous samples of estimated
+latency are less than half of QDELAY_REF -- PIE-&gt;burst_allowance_ is
+reset to MAX_BURST.</p></div>
+<div lang="ja" class="col"><p id="section-4.4-4-ja">PIE-&gt;burst_allowance_で表されるバースト許容量は、MAX_BURSTに初期化されます。
+PIE-&gt;burst_allowance_が0より大きい限り、到着したパケットはランダムドロップの処理を迂回してエンキューされます。
+各更新の時点で、PIE-&gt;burst_allowance_の値は更新周期T_UPDATEだけ減らされ、下限は0です。
+輻輳がなくなったとき（ここでは、PIE-&gt;drop_prob_が0に等しく、かつ推定遅延の現在と前回のサンプルがどちらもQDELAY_REFの半分未満であることと定義します）、PIE-&gt;burst_allowance_はMAX_BURSTにリセットされます。</p></div>
+</div></section></section><section><span id="section-5"></span><span id="optional-design-elements-of-pie-en"></span><span id="optional-design-elements-of-pie-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-optional-design-elements-of-pie-en" lang="en">
+<a id="section-5-en" href="#section-5-en" class="section-number selfRef">5.</a> <a href="#name-optional-design-elements-of-pie-en" class="section-name selfRef">Optional Design Elements of PIE</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-optional-design-elements-of-pie-ja" lang="ja">
+<a id="section-5-ja" href="#section-5-ja" class="section-number selfRef">5.</a> <a href="#name-optional-design-elements-of-pie-ja" class="section-name selfRef">PIEの省略可能な設計要素</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5-1-en">There are several enhancements that are added to further augment the
+performance of the basic algorithm.  For purposes of clarity, they
+are included in this section.</p></div>
+<div lang="ja" class="col"><p id="section-5-1-ja">基本アルゴリズムの性能をさらに高めるために追加された拡張がいくつかあります。
+わかりやすくするため、それらをこのセクションにまとめています。</p></div>
+</div>
+<section><span id="section-5.1"></span><span id="ecn-support-en"></span><span id="ecn-support-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-ecn-support-en" lang="en">
+<a id="section-5.1-en" href="#section-5.1-en" class="section-number selfRef">5.1.</a> <a href="#name-ecn-support-en" class="section-name selfRef">ECN Support</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-ecn-support-ja" lang="ja">
+<a id="section-5.1-ja" href="#section-5.1-ja" class="section-number selfRef">5.1.</a> <a href="#name-ecn-support-ja" class="section-name selfRef">ECNのサポート</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.1-1-en">PIE <span class="bcp14">MAY</span> support ECN by marking (rather than dropping) ECN-capable
+packets <span>[<a href="#ECN-en">ECN</a>]</span>.  This document introduces an additional threshold
+called "mark_ecnth", which acts as a safeguard: if the calculated
+drop probability exceeds mark_ecnth, PIE reverts to packet-dropping
+for ECN-capable packets.  The variable mark_ecnth <span class="bcp14">SHOULD</span> be set to
+0.1 (10%).</p></div>
+<div lang="ja" class="col"><p id="section-5.1-1-ja">PIEは、ECN対応パケットを（ドロップするのではなく）マーキングすることによってECNをサポートしても<span class="bcp14">よいです（MAY）</span><span>[<a href="#ECN-ja">ECN</a>]</span>。
+この文書では、安全装置として機能する「mark_ecnth」と呼ばれる追加のしきい値を導入します。
+計算されたドロップ確率がmark_ecnthを超えた場合、PIEはECN対応パケットについてもパケットのドロップに戻ります。
+変数mark_ecnthは、0.1（10%）に設定す<span class="bcp14">べきです（SHOULD）</span>。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.1-2-en">
+<li id="section-5.1-2.1-en">
+            <p id="section-5.1-2.1.1-en">To support ECN, the "random drop with a probability of
+PIE-&gt;drop_prob_" function in the "random dropping" block is
+changed to the following:</p>
+<ul id="section-5.1-2.1.2-en">
+<li id="section-5.1-2.1.2.1-en">
+                <p id="section-5.1-2.1.2.1.1-en">Upon a packet enqueue:</p>
+<div lang="" id="section-5.1-2.1.2.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+      if rand() &lt; PIE-&gt;drop_prob_:
+       if PIE-&gt;drop_prob_ &lt; mark_ecnth &amp;&amp; ecn_capable_packet == TRUE:
+          mark packet;
+       else
+          drop packet;
+</pre></div>
+</li>
+            </ul>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.1-2-ja">
+<li id="section-5.1-2.1-ja">
+            <p id="section-5.1-2.1.1-ja">ECNをサポートするために、「ランダムドロップ」ブロックの「PIE-&gt;drop_prob_の確率でのランダムドロップ」機能を次のように変更します：</p>
+<ul id="section-5.1-2.1.2-ja">
+<li id="section-5.1-2.1.2.1-ja">
+                <p id="section-5.1-2.1.2.1.1-ja">パケットのエンキュー時：</p>
+<div lang="" id="section-5.1-2.1.2.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+      if rand() &lt; PIE-&gt;drop_prob_:
+       if PIE-&gt;drop_prob_ &lt; mark_ecnth &amp;&amp; ecn_capable_packet == TRUE:
+          mark packet;
+       else
+          drop packet;
+</pre></div>
+</li>
+            </ul>
+</li>
+        </ul></div>
+</div></section><section><span id="section-5.2"></span><span id="dequeue-rate-estimation-en"></span><span id="dequeue-rate-estimation-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-dequeue-rate-estimation-en" lang="en">
+<a id="section-5.2-en" href="#section-5.2-en" class="section-number selfRef">5.2.</a> <a href="#name-dequeue-rate-estimation-en" class="section-name selfRef">Dequeue Rate Estimation</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-dequeue-rate-estimation-ja" lang="ja">
+<a id="section-5.2-ja" href="#section-5.2-ja" class="section-number selfRef">5.2.</a> <a href="#name-dequeue-rate-estimation-ja" class="section-name selfRef">デキューレートの推定</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-1-en">Using timestamps, a latency sample can only be obtained when a packet
+reaches the head of a queue.  When a quick response time is desired
+or a direct latency sample is not available, one may obtain latency
+through measuring the dequeue rate.  The draining rate of a queue in
+the network often varies either because other queues are sharing the
+same link or because the link capacity fluctuates.  Rate fluctuation
+is particularly common in wireless networks.  One may measure
+directly at the dequeue operation.  Short, non-persistent bursts of
+packets result in empty queues from time to time; this would make the
+measurement less accurate.  PIE only measures latency when there is
+sufficient data in the buffer, i.e., when the queue length is over a
+certain threshold (DQ_THRESHOLD).  PIE measures how long it takes to
+drain DQ_THRESHOLD packets.  More specifically, the rate estimation
+can be implemented as follows:</p></div>
+<div lang="ja" class="col"><p id="section-5.2-1-ja">タイムスタンプを使う場合、遅延サンプルはパケットがキューの先頭に達したときにしか得られません。
+速い応答時間が望まれる場合や、直接的な遅延サンプルが利用できない場合には、デキューレートを測定することによって遅延を得ることができます。
+ネットワーク内のキューの排出レートは、ほかのキューが同じリンクを共有しているため、またはリンク容量が変動するために、しばしば変化します。
+レートの変動は、無線ネットワークで特によく見られます。
+デキュー操作の時点で直接測定することもできます。
+持続しない短いパケットのバーストによって、キューはときどき空になります。
+これにより、測定の精度が下がります。
+PIEは、バッファー内に十分なデータがあるとき、つまりキュー長があるしきい値（DQ_THRESHOLD）を超えているときにだけ遅延を測定します。
+PIEは、DQ_THRESHOLDパケットを排出するのにかかる時間を測定します。
+より具体的には、レートの推定は次のように実装できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-5.2-2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   current_qdelay = queue_.byte_length() *
+                    PIE-&gt;avg_dq_time_/DQ_THRESHOLD;
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-5.2-2-ja"><pre tabindex="0" role="region" aria-label="図">
+   current_qdelay = queue_.byte_length() *
+                    PIE-&gt;avg_dq_time_/DQ_THRESHOLD;
+</pre></div></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.2-3-en">
+<li id="section-5.2-3.1-en">
+            <p id="section-5.2-3.1.1-en">Upon a packet dequeue:</p>
+<div lang="" id="section-5.2-3.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   if PIE-&gt;in_measurement_ == FALSE and queue.byte_length() &gt;=
+   DQ_THRESHOLD:
+      PIE-&gt;in_measurement_ = TRUE;
+      PIE-&gt;measurement_start_ = now;
+      PIE-&gt;dq_count_ = 0;
+
+   if PIE-&gt;in_measurement_ == TRUE:
+      PIE-&gt;dq_count_ = PIE-&gt;dq_count_ + deque_pkt_size;
+      if PIE-&gt;dq_count_ &gt;= DQ_THRESHOLD then
+         weight = DQ_THRESHOLD/2^16
+         PIE-&gt;avg_dq_time_ = (now - PIE-&gt;measurement_start_) *
+                             weight + PIE-&gt;avg_dq_time_ *
+                             (1 - weight);
+         PIE-&gt;dq_count_ = 0;
+         PIE-&gt;measurement_start_ = now
+      else
+         PIE-&gt;in_measurement_ = FALSE;
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.2-3-ja">
+<li id="section-5.2-3.1-ja">
+            <p id="section-5.2-3.1.1-ja">パケットのデキュー時：</p>
+<div lang="" id="section-5.2-3.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   if PIE-&gt;in_measurement_ == FALSE and queue.byte_length() &gt;=
+   DQ_THRESHOLD:
+      PIE-&gt;in_measurement_ = TRUE;
+      PIE-&gt;measurement_start_ = now;
+      PIE-&gt;dq_count_ = 0;
+
+   if PIE-&gt;in_measurement_ == TRUE:
+      PIE-&gt;dq_count_ = PIE-&gt;dq_count_ + deque_pkt_size;
+      if PIE-&gt;dq_count_ &gt;= DQ_THRESHOLD then
+         weight = DQ_THRESHOLD/2^16
+         PIE-&gt;avg_dq_time_ = (now - PIE-&gt;measurement_start_) *
+                             weight + PIE-&gt;avg_dq_time_ *
+                             (1 - weight);
+         PIE-&gt;dq_count_ = 0;
+         PIE-&gt;measurement_start_ = now
+      else
+         PIE-&gt;in_measurement_ = FALSE;
+</pre></div>
+</li>
+        </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-4-en">The parameter PIE-&gt;dq_count_ represents the number of bytes departed
+since the last measurement.  Once PIE-&gt;dq_count_ is over
+DQ_THRESHOLD, a measurement sample is obtained.  It is recommended
+that the threshold be set to 16 KB, assuming a typical packet size of
+around 1 KB or 1.5 KB.  This threshold would allow sufficient data to
+obtain an average draining rate but would also be fast enough (&lt; 64
+KB) to reflect sudden changes in the draining rate.  If DQ_THRESHOLD
+is smaller than 64 KB, a small weight is used to smooth out the
+dequeue time and obtain PIE-&gt;avg_dq_time_.  The dequeue rate is
+simply DQ_THRESHOLD divided by PIE-&gt;avg_dq_time_.  This threshold is
+not crucial for the system's stability.  Please note that the update
+interval for calculating the drop probability is different from the
+rate measurement cycle.  The drop probability calculation is done
+periodically per <a href="#section-4.2-en">Section 4.2</a>, and it is done even when the algorithm
+is not in a measurement cycle; in this case, the previously latched
+value of PIE-&gt;avg_dq_time_ is used.</p></div>
+<div lang="ja" class="col"><p id="section-5.2-4-ja">パラメーターPIE-&gt;dq_count_は、前回の測定以降に送出されたバイト数を表します。
+PIE-&gt;dq_count_がDQ_THRESHOLDを超えると、測定サンプルが得られます。
+典型的なパケットサイズを約1KBまたは1.5KBと想定して、このしきい値は16KBに設定することが推奨されます。
+このしきい値は、平均排出レートを得るのに十分なデータを確保できると同時に、排出レートの急激な変化を反映できるほど十分に速くもあります（&lt; 64KB）。
+DQ_THRESHOLDが64KBより小さい場合、デキュー時間を平滑化してPIE-&gt;avg_dq_time_を得るために、小さな重みを使用します。
+デキューレートは、単にDQ_THRESHOLDをPIE-&gt;avg_dq_time_で割ったものです。
+このしきい値は、システムの安定性にとって重要ではありません。
+ドロップ確率を計算するための更新間隔は、レートの測定周期とは異なることに注意してください。
+ドロップ確率の計算は<a href="#section-4.2-ja">セクション4.2</a>に従って定期的に行われ、アルゴリズムが測定周期の中にないときにも行われます。
+その場合は、以前に保持されたPIE-&gt;avg_dq_time_の値が使用されます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><figure id="figure-2-en"><div lang="" id="section-5.2-5.1-en"><pre tabindex="0" role="region" aria-label="Figure 2: The Enqueue-Based PIE Structure">
+         Random Drop
+             /                     --------------
+     -------/  --------------------&gt;    | | | | | --------------&gt;
+            /|\             |           | | | | |
+             |              |      --------------
+             |              |       Queue Buffer
+             |              |             |
+             |              |             |Queue
+             |              |             |Length
+             |              |             |
+             |             \|/           \|/
+             |          ------------------------------
+             |          |     Dequeue Rate           |
+             -----&lt;-----|  &amp; Drop Probability        |
+                        |        Calculation         |
+                        ------------------------------
+</pre></div>
+<figcaption><span>Figure 2</span>:
+<span>The Enqueue-Based PIE Structure</span>
+          </figcaption></figure></div>
+<div lang="ja" class="col"><figure id="figure-2-ja"><div lang="" id="section-5.2-5.1-ja"><pre tabindex="0" role="region" aria-label="図2: エンキューに基づくPIEの構造">
+         Random Drop
+             /                     --------------
+     -------/  --------------------&gt;    | | | | | --------------&gt;
+            /|\             |           | | | | |
+             |              |      --------------
+             |              |       Queue Buffer
+             |              |             |
+             |              |             |Queue
+             |              |             |Length
+             |              |             |
+             |             \|/           \|/
+             |          ------------------------------
+             |          |     Dequeue Rate           |
+             -----&lt;-----|  &amp; Drop Probability        |
+                        |        Calculation         |
+                        ------------------------------
+</pre></div>
+<figcaption><span>図2</span>:
+<span>エンキューに基づくPIEの構造</span>
+          </figcaption></figure></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.2-6-en">In some platforms, enqueuing and dequeuing functions belong to
+different modules that are independent of each other.  In such
+situations, a pure enqueue-based design can be developed.  An
+enqueue-based design is depicted in <a href="#figure-2-en">Figure 2</a>.  The dequeue rate is
+deduced from the number of packets enqueued and the queue length.
+The design is based on the following key observation: over a certain
+time interval, the number of dequeued packets = the number of
+enqueued packets minus the number of remaining packets in the queue.
+In this design, everything can be triggered by packet arrival,
+including the background update process.  The design complexity here
+is similar to the original design.</p></div>
+<div lang="ja" class="col"><p id="section-5.2-6-ja">プラットフォームによっては、エンキュー機能とデキュー機能が互いに独立した別々のモジュールに属している場合があります。
+そのような状況では、純粋にエンキューに基づく設計を開発できます。
+エンキューに基づく設計を<a href="#figure-2-ja">図2</a>に示します。
+デキューレートは、エンキューされたパケットの数とキュー長から推定されます。
+この設計は、次の重要な観察に基づいています。
+ある時間間隔において、デキューされたパケットの数は、エンキューされたパケットの数からキューに残っているパケットの数を引いたものに等しくなります。
+この設計では、バックグラウンドの更新処理を含め、すべてをパケットの到着によって起動できます。
+ここでの設計の複雑さは、元の設計と同程度です。</p></div>
+</div></section><section><span id="section-5.3"></span><span id="setting-pie-active-and-inactive-en"></span><span id="setting-pie-active-and-inactive-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-setting-pie-active-and-inactive-en" lang="en">
+<a id="section-5.3-en" href="#section-5.3-en" class="section-number selfRef">5.3.</a> <a href="#name-setting-pie-active-and-inactive-en" class="section-name selfRef">Setting PIE Active and Inactive</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-setting-pie-active-and-inactive-ja" lang="ja">
+<a id="section-5.3-ja" href="#section-5.3-ja" class="section-number selfRef">5.3.</a> <a href="#name-setting-pie-active-and-inactive-ja" class="section-name selfRef">PIEのアクティブ化と非アクティブ化</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-1-en">Traffic naturally fluctuates in a network.  It would be preferable
+not to unnecessarily drop packets due to a spurious uptick in queuing
+latency.  PIE has an optional feature of automatically becoming
+active/inactive.  To implement this feature, PIE may choose to only
+become active (from inactive) when the buffer occupancy is over a
+certain threshold, which may be set to 1/3 of the tail drop
+threshold.  PIE becomes inactive when congestion ends; i.e., when the
+drop probability reaches 0, current and previous latency samples are
+all below half of QDELAY_REF.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-1-ja">ネットワークでは、トラフィックは自然に変動します。
+キューイング遅延の見せかけの増加のために、パケットを不必要にドロップしないことが望ましいでしょう。
+PIEには、自動的にアクティブ／非アクティブになる省略可能な機能があります。
+この機能を実装するために、PIEは、バッファー占有量があるしきい値を超えたときにだけ（非アクティブから）アクティブになるように選択してもかまいません。
+このしきい値は、テールドロップしきい値の1/3に設定してもかまいません。
+PIEは、輻輳が終わったとき、つまりドロップ確率が0に達し、遅延の現在と前回のサンプルがすべてQDELAY_REFの半分を下回ったときに、非アクティブになります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-2-en">Ideally, PIE should become active/inactive based on latency.
+However, calculating latency when PIE is inactive would introduce
+unnecessary packet-processing overhead.  Weighing the trade-offs,
+we decided to compare against the tail drop threshold to keep things
+simple.</p></div>
+<div lang="ja" class="col"><p id="section-5.3-2-ja">理想的には、PIEは遅延に基づいてアクティブ／非アクティブになるべきです。
+しかし、PIEが非アクティブのときに遅延を計算すると、不必要なパケット処理のオーバーヘッドが生じます。
+トレードオフを比較検討した結果、物事を単純に保つために、テールドロップしきい値と比較することにしました。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.3-3-en">When PIE optionally becomes active/inactive, the burst protection
+logic described in <a href="#section-4.4-en">Section 4.4</a> is modified as follows:</p></div>
+<div lang="ja" class="col"><p id="section-5.3-3-ja">PIEが省略可能な機能としてアクティブ／非アクティブになる場合、<a href="#section-4.4-ja">セクション4.4</a>で説明したバースト保護のロジックは次のように変更されます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.3-4-en">
+<li id="section-5.3-4.1-en">
+            <p id="section-5.3-4.1.1-en">"Random dropping" block: PIE adds the following:</p>
+<div lang="" id="section-5.3-4.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   Upon packet arrival:
+
+   if PIE-&gt;active_ == FALSE &amp;&amp; queue_length &gt;= TAIL_DROP/3:
+      PIE-&gt;active_ = TRUE;
+      PIE-&gt;burst_allowance_ = MAX_BURST;
+
+   if PIE-&gt;burst_allowance_ &gt; 0
+      enqueue packet;
+   else
+      randomly drop a packet with a probability of
+      PIE-&gt;drop_prob_.
+
+   if (PIE-&gt;drop_prob_ == 0 and current_qdelay &lt; QDELAY_REF/2 and
+       PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2)
+       PIE-&gt;active_ = FALSE;
+       PIE-&gt;burst_allowance_ = MAX_BURST;
+</pre></div>
+</li>
+          <li id="section-5.3-4.2-en">
+            <p id="section-5.3-4.2.1-en">"Drop probability calculation" block: PIE does the following:</p>
+<div lang="" id="section-5.3-4.2.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   if PIE-&gt;active_ == TRUE:
+      PIE-&gt;burst_allowance_ =
+         max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.3-4-ja">
+<li id="section-5.3-4.1-ja">
+            <p id="section-5.3-4.1.1-ja">「ランダムドロップ」ブロック：PIEは次の処理を追加します：</p>
+<div lang="" id="section-5.3-4.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   Upon packet arrival:
+
+   if PIE-&gt;active_ == FALSE &amp;&amp; queue_length &gt;= TAIL_DROP/3:
+      PIE-&gt;active_ = TRUE;
+      PIE-&gt;burst_allowance_ = MAX_BURST;
+
+   if PIE-&gt;burst_allowance_ &gt; 0
+      enqueue packet;
+   else
+      randomly drop a packet with a probability of
+      PIE-&gt;drop_prob_.
+
+   if (PIE-&gt;drop_prob_ == 0 and current_qdelay &lt; QDELAY_REF/2 and
+       PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2)
+       PIE-&gt;active_ = FALSE;
+       PIE-&gt;burst_allowance_ = MAX_BURST;
+</pre></div>
+</li>
+          <li id="section-5.3-4.2-ja">
+            <p id="section-5.3-4.2.1-ja">「ドロップ確率の計算」ブロック：PIEは次のことを行います：</p>
+<div lang="" id="section-5.3-4.2.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   if PIE-&gt;active_ == TRUE:
+      PIE-&gt;burst_allowance_ =
+         max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+</pre></div>
+</li>
+        </ul></div>
+</div></section><section><span id="section-5.4"></span><span id="derandomization-en"></span><span id="derandomization-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-derandomization-en" lang="en">
+<a id="section-5.4-en" href="#section-5.4-en" class="section-number selfRef">5.4.</a> <a href="#name-derandomization-en" class="section-name selfRef">Derandomization</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-derandomization-ja" lang="ja">
+<a id="section-5.4-ja" href="#section-5.4-ja" class="section-number selfRef">5.4.</a> <a href="#name-derandomization-ja" class="section-name selfRef">非ランダム化</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.4-1-en">Although PIE adopts random dropping to achieve latency control,
+independent coin tosses could introduce outlier situations where
+packets are dropped too close to each other or too far from each
+other.  This would cause the real drop percentage to temporarily
+deviate from the intended value PIE-&gt;drop_prob_.  In certain
+scenarios, such as a small number of simultaneous TCP flows, these
+deviations can cause significant deviations in link utilization and
+queuing latency.  PIE may use a derandomization mechanism to avoid
+such situations.  A parameter called "PIE-&gt;accu_prob_" is reset to 0
+after a drop.  Upon packet arrival, PIE-&gt;accu_prob_ is incremented by
+the amount of drop probability, PIE-&gt;drop_prob_.  If PIE-&gt;accu_prob_
+is less than a low threshold, e.g., 0.85, the arriving packet is
+enqueued; on the other hand, if PIE-&gt;accu_prob_ is more than a high
+threshold, e.g., 8.5, and the queue is congested, the arrival packet
+is forced to be dropped.  A packet is only randomly dropped if
+PIE-&gt;accu_prob_ falls between the two thresholds.  Since
+PIE-&gt;accu_prob_ is reset to 0 after a drop, another drop will not
+happen until 0.85/PIE-&gt;drop_prob_ packets later.  This avoids packets
+being dropped too close to each other.  In the other extreme case
+where 8.5/PIE-&gt;drop_prob_ packets have been enqueued without
+incurring a drop, PIE would force a drop in order to prevent the
+drops from being spaced too far apart.  Further analysis can be found
+in <span>[<a href="#RFC8034-en">RFC8034</a>]</span>.</p></div>
+<div lang="ja" class="col"><p id="section-5.4-1-ja">PIEは遅延を制御するためにランダムドロップを採用していますが、独立したコイントスによって、パケットのドロップの間隔が近すぎたり離れすぎたりする外れ値的な状況が生じる可能性があります。
+これにより、実際のドロップ率が、意図した値PIE-&gt;drop_prob_から一時的にずれることになります。
+同時に存在するTCPフローの数が少ない場合など、特定のシナリオでは、こうしたずれがリンク利用率とキューイング遅延に大きなずれを引き起こすことがあります。
+PIEは、そのような状況を避けるために非ランダム化の仕組みを使用してもかまいません。
+「PIE-&gt;accu_prob_」と呼ばれるパラメーターは、ドロップの後に0にリセットされます。
+パケットの到着時に、PIE-&gt;accu_prob_はドロップ確率PIE-&gt;drop_prob_の分だけ増やされます。
+PIE-&gt;accu_prob_が低いしきい値（たとえば0.85）未満の場合、到着したパケットはエンキューされます。
+一方、PIE-&gt;accu_prob_が高いしきい値（たとえば8.5）を超え、かつキューが輻輳している場合、到着したパケットは強制的にドロップされます。
+パケットがランダムにドロップされるのは、PIE-&gt;accu_prob_が2つのしきい値の間にある場合だけです。
+PIE-&gt;accu_prob_はドロップの後に0にリセットされるので、次のドロップは0.85/PIE-&gt;drop_prob_パケット後まで起こりません。
+これにより、パケットのドロップの間隔が近くなりすぎることが避けられます。
+もう一方の極端な場合、つまりドロップが起こらずに8.5/PIE-&gt;drop_prob_パケットがエンキューされた場合には、ドロップの間隔が離れすぎるのを防ぐために、PIEは強制的にドロップを行います。
+さらなる分析は<span>[<a href="#RFC8034-ja">RFC8034</a>]</span>にあります。</p></div>
+</div></section><section><span id="section-5.5"></span><span id="cap-drop-adjustment-en"></span><span id="cap-drop-adjustment-ja"></span><div class="row">
+<div lang="en" class="col"><h3 id="name-cap-drop-adjustment-en" lang="en">
+<a id="section-5.5-en" href="#section-5.5-en" class="section-number selfRef">5.5.</a> <a href="#name-cap-drop-adjustment-en" class="section-name selfRef">Cap Drop Adjustment</a>
+        </h3></div>
+<div lang="ja" class="col"><h3 id="name-cap-drop-adjustment-ja" lang="ja">
+<a id="section-5.5-ja" href="#section-5.5-ja" class="section-number selfRef">5.5.</a> <a href="#name-cap-drop-adjustment-ja" class="section-name selfRef">ドロップ確率の調整幅の上限</a>
+        </h3></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-5.5-1-en">In the case of a single TCP flow, during the slow-start phase the
+queue could quickly increase, which could result in a very rapid
+increase in drop probability.  In order to prevent an excessive
+ramp-up that could negatively impact the throughput in this scenario,
+PIE can cap the maximum drop probability increase in each step.</p></div>
+<div lang="ja" class="col"><p id="section-5.5-1-ja">TCPフローが1つだけの場合、スロースタートの段階ではキューが急速に増加することがあり、その結果、ドロップ確率が非常に急激に増加する可能性があります。
+このシナリオでスループットに悪影響を与えかねない過度の上昇を防ぐために、PIEは各ステップにおけるドロップ確率の増加量に上限を設けることができます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-5.5-2-en">
+<li id="section-5.5-2.1-en">
+            <p id="section-5.5-2.1.1-en">"Drop probability calculation" block: PIE adds the following:</p>
+<div lang="" id="section-5.5-2.1.2-en"><pre tabindex="0" role="region" aria-label="Figure">
+   if (PIE-&gt;drop_prob_ &gt;= 0.1 &amp;&amp; p &gt; 0.02) {
+       p = 0.02;
+   }
+</pre></div>
+</li>
+        </ul></div>
+<div lang="ja" class="col"><ul id="section-5.5-2-ja">
+<li id="section-5.5-2.1-ja">
+            <p id="section-5.5-2.1.1-ja">「ドロップ確率の計算」ブロック：PIEは次の処理を追加します：</p>
+<div lang="" id="section-5.5-2.1.2-ja"><pre tabindex="0" role="region" aria-label="図">
+   if (PIE-&gt;drop_prob_ &gt;= 0.1 &amp;&amp; p &gt; 0.02) {
+       p = 0.02;
+   }
+</pre></div>
+</li>
+        </ul></div>
+</div></section></section><section><span id="section-6"></span><span id="implementation-cost-en"></span><span id="implementation-cost-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-implementation-cost-en" lang="en">
+<a id="section-6-en" href="#section-6-en" class="section-number selfRef">6.</a> <a href="#name-implementation-cost-en" class="section-name selfRef">Implementation Cost</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-implementation-cost-ja" lang="ja">
+<a id="section-6-ja" href="#section-6-ja" class="section-number selfRef">6.</a> <a href="#name-implementation-cost-ja" class="section-name selfRef">実装コスト</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-1-en">PIE can be applied to existing hardware or software solutions.  There
+are three steps involved in PIE, as discussed in <a href="#section-4-en">Section 4</a>.  Their
+complexities are examined below.</p></div>
+<div lang="ja" class="col"><p id="section-6-1-ja">PIEは、既存のハードウェアまたはソフトウェアのソリューションに適用できます。
+<a href="#section-4-ja">セクション4</a>で説明したように、PIEには3つのステップがあります。
+以下では、それらの複雑さを検討します。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-2-en">Upon packet arrival, the algorithm simply drops a packet randomly,
+based on the drop probability.  This step is straightforward and
+requires no packet header examination and manipulation.  If the
+implementation doesn't rely on packet timestamps for calculating
+latency, PIE does not require extra memory.  Furthermore, the input
+side of a queue is typically under software control while the output
+side of a queue is hardware based.  Hence, a drop at enqueuing can be
+readily retrofitted into existing or software implementations.</p></div>
+<div lang="ja" class="col"><p id="section-6-2-ja">パケットの到着時、アルゴリズムはドロップ確率に基づいてパケットをランダムにドロップするだけです。
+このステップは単純で、パケットヘッダーの検査や操作を必要としません。
+実装が遅延の計算にパケットのタイムスタンプを使用しない場合、PIEは追加のメモリーを必要としません。
+さらに、キューの入力側は通常ソフトウェアで制御され、キューの出力側はハードウェアに基づいています。
+そのため、エンキュー時のドロップは、既存の実装やソフトウェアの実装に容易に後付けできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-3-en">The drop probability calculation is done in the background, and it
+occurs every T_UPDATE interval.  Given modern high-speed links, this
+period translates into once every tens, hundreds, or even thousands
+of packets.  Hence, the calculation occurs at a much slower time
+scale than the packet-processing time -- at least an order of
+magnitude slower.  The calculation of drop probability involves
+multiplications using alpha and beta.  Since PIE's control law is
+robust to minor changes in alpha and beta values, an implementation
+<span class="bcp14">MAY</span> choose these values to the closest multiples of 2 or 1/2 (e.g.,
+alpha = 1/8, beta = 1 + 1/4) such that the multiplications can be
+done using simple adds and shifts.  As no complicated functions are
+required, PIE can be easily implemented in both hardware and
+software.  The state requirement is only three variables per queue:
+burst_allowance_, PIE-&gt;drop_prob_, and PIE-&gt;qdelay_old_.  Hence, the
+memory overhead is small.</p></div>
+<div lang="ja" class="col"><p id="section-6-3-ja">ドロップ確率の計算はバックグラウンドで行われ、T_UPDATEの間隔ごとに実行されます。
+現代の高速リンクでは、この周期はパケット数十個、数百個、あるいは数千個ごとに1回に相当します。
+そのため、この計算はパケットの処理時間よりもはるかに遅い時間スケール（少なくとも1桁遅い）で行われます。
+ドロップ確率の計算には、alphaとbetaを用いた乗算が含まれます。
+PIEの制御則はalphaとbetaの値のわずかな変化に対して頑健なので、実装は、単純な加算とシフトで乗算を行えるように、これらの値として2または1/2の倍数のうち最も近い値（たとえば、alpha = 1/8、beta = 1 + 1/4）を選んでも<span class="bcp14">よいです（MAY）</span>。
+複雑な関数は必要ないため、PIEはハードウェアとソフトウェアのどちらでも容易に実装できます。
+必要な状態は、キューごとにburst_allowance_、PIE-&gt;drop_prob_、PIE-&gt;qdelay_old_の3つの変数だけです。
+そのため、メモリーのオーバーヘッドは小さくなります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-4-en">If one chooses to implement the departure rate estimation, PIE uses a
+counter to keep track of the number of bytes departed for the current
+interval.  This counter is incremented per packet departure.  Every
+T_UPDATE, PIE calculates latency using the departure rate, which can
+be implemented using a single multiply operation.  Note that many
+network devices keep track of an interface's departure rate.  In this
+case, PIE might be able to reuse this information and simply skip the
+third step of the algorithm; hence, it would incur no extra cost.  If
+a platform already leverages packet timestamps for other purposes,
+PIE can make use of these packet timestamps for latency calculation
+instead of estimating the departure rate.</p></div>
+<div lang="ja" class="col"><p id="section-6-4-ja">送出レートの推定を実装することを選んだ場合、PIEは、現在の間隔に送出されたバイト数を追跡するためにカウンターを使用します。
+このカウンターは、パケットが送出されるたびに増やされます。
+T_UPDATEごとに、PIEは送出レートを使って遅延を計算しますが、これは1回の乗算操作で実装できます。
+多くのネットワーク機器はインターフェイスの送出レートを追跡していることに注意してください。
+その場合、PIEはこの情報を再利用して、アルゴリズムの3番目のステップを単に省略できる可能性があり、そうすれば追加のコストは生じません。
+プラットフォームがすでにほかの目的でパケットのタイムスタンプを活用している場合、PIEは送出レートを推定する代わりに、それらのパケットのタイムスタンプを遅延の計算に利用できます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-5-en">Flow queuing can also be combined with PIE to provide isolation
+between flows.  In this case, it is preferable to have an independent
+value of drop probability per queue.  This allows each flow to
+receive the most appropriate level of congestion signal and ensures
+that sparse flows are protected from experiencing packet drops.
+However, running the entire PIE algorithm independently on each queue
+in order to calculate the drop probability may be overkill.
+Furthermore, in the case where departure rate estimation is used to
+predict queuing latency, it is not possible to calculate an accurate
+per-queue departure rate upon which to implement the PIE drop
+probability calculation.  Instead, it has been proposed <span>[<a href="#DOCSIS-AQM-en">DOCSIS-AQM</a>]</span>
+that a single implementation of the PIE drop probability calculation
+based on the overall latency estimate be used, followed by a
+per-queue scaling of drop probability based on the ratio of
+queue depth between the queue in question and the current largest
+queue.  This scaling is reasonably simple and has a couple of nice
+properties:</p></div>
+<div lang="ja" class="col"><p id="section-6-5-ja">フローキューイングをPIEと組み合わせて、フロー間の分離を提供することもできます。
+この場合、キューごとに独立したドロップ確率の値を持つことが望ましいです。
+これにより、各フローが最も適切なレベルの輻輳信号を受け取れるようになり、疎なフローがパケットのドロップを被らないように保護されます。
+しかし、ドロップ確率を計算するために各キューでPIEアルゴリズム全体を独立に実行するのは、やりすぎかもしれません。
+さらに、キューイング遅延の予測に送出レートの推定を使う場合には、PIEのドロップ確率の計算を実装する基礎となる、キューごとの正確な送出レートを計算することはできません。
+その代わりに、全体の遅延の推定値に基づくPIEのドロップ確率の計算の実装を1つだけ使用し、その後に、対象のキューと現在最大のキューとのキューの深さの比に基づいて、キューごとにドロップ確率をスケーリングすることが提案されています<span>[<a href="#DOCSIS-AQM-ja">DOCSIS-AQM</a>]</span>。
+このスケーリングはかなり単純で、いくつかの優れた特性を持っています：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-6-6-en">
+<li id="section-6-6.1-en">If a packet is arriving to an empty queue, it is given immunity
+from packet drops altogether, regardless of the state of the other
+queues.</li>
+        <li id="section-6-6.2-en">In the situation where only a single queue is in use, the
+algorithm behaves exactly like the single-queue PIE algorithm.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-6-6-ja">
+<li id="section-6-6.1-ja">空のキューにパケットが到着する場合、ほかのキューの状態にかかわらず、そのパケットはパケットのドロップを完全に免除されます。</li>
+        <li id="section-6-6.2-ja">使用中のキューが1つだけの状況では、このアルゴリズムは単一キューのPIEアルゴリズムとまったく同じように振る舞います。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-6-7-en">In summary, PIE is simple enough to be implemented in both software
+and hardware.</p></div>
+<div lang="ja" class="col"><p id="section-6-7-ja">まとめると、PIEはソフトウェアとハードウェアのどちらでも実装できるほど単純です。</p></div>
+</div></section><section><span id="section-7"></span><span id="scope-of-experimentation-en"></span><span id="scope-of-experimentation-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-scope-of-experimentation-en" lang="en">
+<a id="section-7-en" href="#section-7-en" class="section-number selfRef">7.</a> <a href="#name-scope-of-experimentation-en" class="section-name selfRef">Scope of Experimentation</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-scope-of-experimentation-ja" lang="ja">
+<a id="section-7-ja" href="#section-7-ja" class="section-number selfRef">7.</a> <a href="#name-scope-of-experimentation-ja" class="section-name selfRef">実験の範囲</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-1-en">The design of the PIE algorithm is presented in this document.  The
+PIE algorithm effectively controls the average queuing latency to a
+target value.  The following areas can be used for further study and
+experimentation:</p></div>
+<div lang="ja" class="col"><p id="section-7-1-ja">この文書では、PIEアルゴリズムの設計を示しています。
+PIEアルゴリズムは、平均キューイング遅延を目標値に効果的に制御します。
+さらなる研究と実験には、次の分野を利用できます：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-7-2-en">
+<li id="section-7-2.1-en">Autotuning of target latency without losing utilization.</li>
+        <li id="section-7-2.2-en">Autotuning for the average round-trip time of traffic.</li>
+        <li id="section-7-2.3-en">The proper threshold to transition smoothly between ECN marking
+and dropping.</li>
+        <li id="section-7-2.4-en">The enhancements described in <a href="#section-5-en">Section 5</a>, which can be used in
+experiments to see if they would be of more value in the real
+world.  If so, they will be incorporated into the basic PIE
+algorithm.</li>
+        <li id="section-7-2.5-en">The PIE design, which is separated into the data path and the
+control path.  The control path can be implemented in software.
+Field tests of other control laws can be performed to experiment
+with further improvements to PIE's performance.</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-7-2-ja">
+<li id="section-7-2.1-ja">利用率を損なわない目標遅延の自動チューニング。</li>
+        <li id="section-7-2.2-ja">トラフィックの平均ラウンドトリップ時間に合わせた自動チューニング。</li>
+        <li id="section-7-2.3-ja">ECNマーキングとドロップの間を円滑に移行するための適切なしきい値。</li>
+        <li id="section-7-2.4-ja">
+<a href="#section-5-ja">セクション5</a>で説明した拡張。
+これらを実験に使用して、実環境でより価値があるかどうかを確かめることができます。
+価値がある場合は、基本的なPIEアルゴリズムに組み込まれます。</li>
+        <li id="section-7-2.5-ja">データパスと制御パスに分かれたPIEの設計。
+制御パスはソフトウェアで実装できます。
+ほかの制御則のフィールドテストを行って、PIEの性能のさらなる改善を実験できます。</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-7-3-en">Although all network nodes cannot be changed altogether to adopt
+latency-based AQM schemes such as PIE, a gradual adoption would
+eventually lead to end-to-end low-latency service for all
+applications.</p></div>
+<div lang="ja" class="col"><p id="section-7-3-ja">PIEのような遅延に基づくAQM方式を採用するように、すべてのネットワークノードを一斉に変更することはできませんが、段階的な採用によって、最終的にはすべてのアプリケーションに対してエンドツーエンドの低遅延サービスが実現されるでしょう。</p></div>
+</div></section><section><span id="section-8"></span><span id="incremental-deployment-en"></span><span id="incremental-deployment-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-incremental-deployment-en" lang="en">
+<a id="section-8-en" href="#section-8-en" class="section-number selfRef">8.</a> <a href="#name-incremental-deployment-en" class="section-name selfRef">Incremental Deployment</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-incremental-deployment-ja" lang="ja">
+<a id="section-8-ja" href="#section-8-ja" class="section-number selfRef">8.</a> <a href="#name-incremental-deployment-ja" class="section-name selfRef">段階的な展開</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-1-en">From testbed experiments and large-scale simulations of PIE so far,
+PIE has been shown to be effective across a diverse range of network
+scenarios.  There is no indication that PIE would be harmful to
+deploy.</p></div>
+<div lang="ja" class="col"><p id="section-8-1-ja">これまでのPIEのテストベッド実験と大規模シミュレーションから、PIEは多様なネットワークシナリオにわたって効果的であることが示されています。
+PIEを展開することが有害であることを示すものはありません。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-2-en">The PIE scheme can be independently deployed and managed without a
+need for interoperability between different network devices.  In
+addition, any individual buffer queue can be incrementally upgraded
+to PIE, as it can coexist with existing AQM schemes such as
+Weighted RED (WRED).</p></div>
+<div lang="ja" class="col"><p id="section-8-2-ja">PIE方式は、異なるネットワーク機器間の相互運用性を必要とせずに、独立して展開および管理できます。
+さらに、PIEは重み付きRED（Weighted RED、WRED）などの既存のAQM方式と共存できるため、個々のバッファーキューを段階的にPIEにアップグレードできます。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-3-en">PIE is intended to be self-configuring.  Users should not need to
+configure any design parameters.  Upon installation, the two
+user-configurable parameters -- QDELAY_REF and MAX_BURST -- will be
+defaulted to 15 milliseconds and 150 milliseconds for non-data-center
+network devices and to 15 microseconds and 150 microseconds for
+data-center switches, respectively.</p></div>
+<div lang="ja" class="col"><p id="section-8-3-ja">PIEは自己設定型であることを意図しています。
+ユーザーは設計パラメーターを設定する必要はないはずです。
+インストール時に、ユーザーが設定可能な2つのパラメーターQDELAY_REFとMAX_BURSTのデフォルトは、データセンター以外のネットワーク機器ではそれぞれ15ミリ秒と150ミリ秒、データセンターのスイッチではそれぞれ15マイクロ秒と150マイクロ秒になります。</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-8-4-en">Since the data path of the algorithm needs only a simple coin toss
+and the control-path calculation happens in a much slower time scale,
+we don't foresee any scaling issues associated with the algorithm as
+the link speed scales up.</p></div>
+<div lang="ja" class="col"><p id="section-8-4-ja">このアルゴリズムのデータパスは単純なコイントスしか必要とせず、制御パスの計算ははるかに遅い時間スケールで行われるため、リンク速度が上がっても、このアルゴリズムにスケーリングの問題が生じることは予見していません。</p></div>
+</div></section><section><span id="section-9"></span><span id="security-considerations-en"></span><span id="security-considerations-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-security-considerations-en" lang="en">
+<a id="section-9-en" href="#section-9-en" class="section-number selfRef">9.</a> <a href="#name-security-considerations-en" class="section-name selfRef">Security Considerations</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-security-considerations-ja" lang="ja">
+<a id="section-9-ja" href="#section-9-ja" class="section-number selfRef">9.</a> <a href="#name-security-considerations-ja" class="section-name selfRef">セキュリティーに関する考慮事項</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-9-1-en">This document describes PIE, an active queue management algorithm
+based on implementations in different products.  The PIE algorithm
+introduces no specific security exposures.</p></div>
+<div lang="ja" class="col"><p id="section-9-1-ja">この文書では、さまざまな製品での実装に基づくアクティブキュー管理アルゴリズムであるPIEについて説明します。
+PIEアルゴリズムは、特有のセキュリティー上の危険をもたらしません。</p></div>
+</div></section><div class="row">
+<div lang="en" class="col"><section><h2 id="name-references-en" lang="en">
+<span id="section-10-en"></span><a href="#name-references-en" class="section-name selfRef">References</a>
+      </h2>
+<section><h3 id="name-normative-references-en" lang="en">
+<span id="section-10.1-en"></span><a href="#name-normative-references-en" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-en">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc2119">http://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-en" lang="en">
+<span id="section-10.2-en"></span><a href="#name-informative-references-en" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC970-en">[RFC970]</dt>
+<dd class="break">
+<span class="refAuthor">Nagle, J.</span>, <span></span><span class="refTitle">"On Packet Switches With Infinite Storage"</span>, <span class="seriesInfo">RFC 970</span>, <span class="seriesInfo">DOI 10.17487/RFC0970</span>, <time datetime="1985-12" class="refDate">December 1985</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc970">http://www.rfc-editor.org/info/rfc970</a>&gt;</span>
+</dd>
+<dt id="RFC2309-en">[RFC2309]</dt>
+<dd class="break">
+<span class="refAuthor">Braden, B.</span>, <span class="refAuthor">Clark, D.</span>, <span class="refAuthor">Crowcroft, J.</span>, <span class="refAuthor">Davie, B.</span>, <span class="refAuthor">Deering, S.</span>, <span class="refAuthor">Estrin, D.</span>, <span class="refAuthor">Floyd, S.</span>, <span class="refAuthor">Jacobson, V.</span>, <span class="refAuthor">Minshall, G.</span>, <span class="refAuthor">Partridge, C.</span>, <span class="refAuthor">Peterson, L.</span>, <span class="refAuthor">Ramakrishnan, K.</span>, <span class="refAuthor">Shenker, S.</span>, <span class="refAuthor">Wroclawski, J.</span>, and <span class="refAuthor">L. Zhang</span>, <span></span><span class="refTitle">"Recommendations on Queue Management and Congestion Avoidance in the Internet"</span>, <span class="seriesInfo">RFC 2309</span>, <span class="seriesInfo">DOI 10.17487/RFC2309</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc2309">http://www.rfc-editor.org/info/rfc2309</a>&gt;</span>
+</dd>
+<dt id="RFC7567-en">[RFC7567]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F., Ed.</span> and <span class="refAuthor">G. Fairhurst, Ed.</span>, <span></span><span class="refTitle">"IETF Recommendations Regarding Active Queue Management"</span>, <span class="seriesInfo">BCP 197</span>, <span class="seriesInfo">RFC 7567</span>, <span class="seriesInfo">DOI 10.17487/RFC7567</span>, <time datetime="2015-07" class="refDate">July 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7567">http://www.rfc-editor.org/info/rfc7567</a>&gt;</span>
+</dd>
+<dt id="RFC7806-en">[RFC7806]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"On Queuing, Marking, and Dropping"</span>, <span class="seriesInfo">RFC 7806</span>, <span class="seriesInfo">DOI 10.17487/RFC7806</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7806">http://www.rfc-editor.org/info/rfc7806</a>&gt;</span>
+</dd>
+<dt id="RFC8034-en">[RFC8034]</dt>
+<dd class="break">
+<span class="refAuthor">White, G.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"Active Queue Management (AQM) Based on Proportional Integral Controller Enhanced (PIE) for Data-Over-Cable Service Interface Specifications (DOCSIS) Cable Modems"</span>, <span class="seriesInfo">RFC 8034</span>, <span class="seriesInfo">DOI 10.17487/RFC8034</span>, <time datetime="2017-02" class="refDate">February 2017</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc8034">http://www.rfc-editor.org/info/rfc8034</a>&gt;</span>
+</dd>
+<dt id="CBQ-en">[CBQ]</dt>
+<dd class="break">
+<span class="refAuthor">Cisco</span>, <span></span><span class="refTitle">"Class-Based Weighted Fair Queueing"</span>, <span>&lt;<a href="http://www.cisco.com/en/US/docs/ios/12_0t/12_0t5/feature/guide/cbwfq.html">http://www.cisco.com/en/US/docs/ios/12_0t/12_0t5/feature/guide/cbwfq.html</a>&gt;</span>
+</dd>
+<dt id="CoDel-en">[CoDel]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Controlling Queue Delay"</span>, <span class="refContent">Communications of the ACM, Volume 55, Issue 7, pp. 42-50</span>, <span class="seriesInfo">DOI 10.1145/2209249.2209264</span>, <time datetime="2012-07" class="refDate">July 2012</time>, </dd>
+<dt id="DOCSIS_3.1-en">[DOCSIS_3.1]</dt>
+<dd class="break">
+<span class="refAuthor">CableLabs</span>, <span></span><span class="refTitle">"MAC and Upper Layer Protocols Interface Specification"</span>, <span class="refContent">DOCSIS 3.1</span>, <time datetime="2017-01" class="refDate">January 2017</time>, <span>&lt;<a href="https://apps.cablelabs.com/specification/CM-SP-MULPIv3.1">https://apps.cablelabs.com/specification/CM-SP-MULPIv3.1</a>&gt;</span>
+</dd>
+<dt id="DOCSIS-AQM-en">[DOCSIS-AQM]</dt>
+<dd class="break">
+<span class="refAuthor">White, G.</span>, <span></span><span class="refTitle">"Active Queue Management in DOCSIS 3.x Cable Modems"</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="http://www.cablelabs.com/wp-content/uploads/2014/06/DOCSIS-AQM_May2014.pdf">http://www.cablelabs.com/wp-content/uploads/2014/06/DOCSIS-AQM_May2014.pdf</a>&gt;</span>
+</dd>
+<dt id="ECN-en">[ECN]</dt>
+<dd class="break">
+<span class="refAuthor">Briscoe, B.</span>, <span class="refAuthor">Kaippallimalil, J.</span>, and <span class="refAuthor">P. Thaler</span>, <span></span><span class="refTitle">"Guidelines for Adding Congestion Notification to Protocols that Encapsulate IP"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-tsvwg-ecn-encap-guidelines-07</span>, <time datetime="2016-07" class="refDate">July 2016</time>, </dd>
+<dt id="HPSR-PIE-en">[HPSR-PIE]</dt>
+<dd class="break">
+<span class="refAuthor">Pan, R.</span>, <span class="refAuthor">Natarajan, P.</span>, <span class="refAuthor">Piglione, C.</span>, <span class="refAuthor">Prabhu, M.S.</span>, <span class="refAuthor">Subramanian, V.</span>, <span class="refAuthor">Baker, F.</span>, and <span class="refAuthor">B. Ver Steeg</span>, <span></span><span class="refTitle">"PIE: A lightweight control scheme to address the bufferbloat problem"</span>, <span class="refContent">IEEE HPSR</span>, <span class="seriesInfo">DOI 10.1109/HPSR.2013.6602305</span>, <time datetime="2013" class="refDate">2013</time>, <span>&lt;<a href="https://www.researchgate.net/publication/261134127_PIE_A_lightweight_control_scheme_to_address_the_bufferbloat_problem?origin=mail">https://www.researchgate.net/publication/261134127_PIE_A_lightweight_control_scheme_to_address_the_bufferbloat_problem?origin=mail</a>&gt;</span>
+</dd>
+<dt id="PI-en">[PI]</dt>
+<dd class="break">
+<span class="refAuthor">Hollot, C.V.</span>, <span class="refAuthor">Misra, V.</span>, <span class="refAuthor">Towsley, D.</span>, and <span class="refAuthor">W. Gong</span>, <span></span><span class="refTitle">"On designing improved controllers for AQM routers supporting TCP flows"</span>, <span class="refContent">INFOCOM 2001</span>, <span class="seriesInfo">DOI 10.1109/INFCOM.2001.916670</span>, <time datetime="2001-04" class="refDate">April 2001</time>, </dd>
+<dt id="QCN-en">[QCN]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and Metropolitan Area Networks--Virtual Bridged Local Area Networks - Amendment: 10: Congestion Notification"</span>, <span class="seriesInfo">IEEE 802.1Qau</span>, <span>&lt;<a href="http://www.ieee802.org/1/pages/802.1au.html">http://www.ieee802.org/1/pages/802.1au.html</a>&gt;</span>
+</dd>
+<dt id="RED-en">[RED]</dt>
+<dd class="break">
+<span class="refAuthor">Floyd, S.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Random Early Detection (RED) Gateways for Congestion Avoidance"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 1, Issue 4</span>, <span class="seriesInfo">DOI 10.1109/90.251892</span>, <time datetime="1993-08" class="refDate">August 1993</time>, </dd>
+<dt id="TCP-Models-en">[TCP-Models]</dt>
+<dd class="break">
+<span class="refAuthor">Misra, V.</span>, <span class="refAuthor">Gong, W.</span>, and <span class="refAuthor">D. Towsley</span>, <span></span><span class="refTitle">"Fluid-based analysis of a network of AQM routers supporting TCP flows with an application to RED"</span>, <span class="refContent">SIGCOMM 2000, Volume 30, Issue 4, pp. 151-160</span>, <span class="seriesInfo">DOI 10.1145/347057.347421</span>, <time datetime="2000-10" class="refDate">October 2000</time>, </dd>
+</dl></section></section></div>
+<div lang="ja" class="col"><section><h2 id="name-references-ja" lang="ja">
+<span id="section-10-ja"></span><a href="#name-references-ja" class="section-name selfRef">参考文献</a>
+      </h2>
+<section><h3 id="name-normative-references-ja" lang="ja">
+<span id="section-10.1-ja"></span><a href="#name-normative-references-ja" class="section-name selfRef">引用規格</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119-ja">[RFC2119]</dt>
+<dd class="break">
+<span class="refAuthor">Bradner, S.</span>, <span></span><span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc2119">http://www.rfc-editor.org/info/rfc2119</a>&gt;</span>
+</dd>
+</dl></section><section><h3 id="name-informative-references-ja" lang="ja">
+<span id="section-10.2-ja"></span><a href="#name-informative-references-ja" class="section-name selfRef">参考文献</a>
+        </h3>
+<dl class="references">
+<dt id="RFC970-ja">[RFC970]</dt>
+<dd class="break">
+<span class="refAuthor">Nagle, J.</span>, <span></span><span class="refTitle">"On Packet Switches With Infinite Storage"</span>, <span class="seriesInfo">RFC 970</span>, <span class="seriesInfo">DOI 10.17487/RFC0970</span>, <time datetime="1985-12" class="refDate">December 1985</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc970">http://www.rfc-editor.org/info/rfc970</a>&gt;</span>
+</dd>
+<dt id="RFC2309-ja">[RFC2309]</dt>
+<dd class="break">
+<span class="refAuthor">Braden, B.</span>, <span class="refAuthor">Clark, D.</span>, <span class="refAuthor">Crowcroft, J.</span>, <span class="refAuthor">Davie, B.</span>, <span class="refAuthor">Deering, S.</span>, <span class="refAuthor">Estrin, D.</span>, <span class="refAuthor">Floyd, S.</span>, <span class="refAuthor">Jacobson, V.</span>, <span class="refAuthor">Minshall, G.</span>, <span class="refAuthor">Partridge, C.</span>, <span class="refAuthor">Peterson, L.</span>, <span class="refAuthor">Ramakrishnan, K.</span>, <span class="refAuthor">Shenker, S.</span>, <span class="refAuthor">Wroclawski, J.</span>, and <span class="refAuthor">L. Zhang</span>, <span></span><span class="refTitle">"Recommendations on Queue Management and Congestion Avoidance in the Internet"</span>, <span class="seriesInfo">RFC 2309</span>, <span class="seriesInfo">DOI 10.17487/RFC2309</span>, <time datetime="1998-04" class="refDate">April 1998</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc2309">http://www.rfc-editor.org/info/rfc2309</a>&gt;</span>
+</dd>
+<dt id="RFC7567-ja">[RFC7567]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F., Ed.</span> and <span class="refAuthor">G. Fairhurst, Ed.</span>, <span></span><span class="refTitle">"IETF Recommendations Regarding Active Queue Management"</span>, <span class="seriesInfo">BCP 197</span>, <span class="seriesInfo">RFC 7567</span>, <span class="seriesInfo">DOI 10.17487/RFC7567</span>, <time datetime="2015-07" class="refDate">July 2015</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7567">http://www.rfc-editor.org/info/rfc7567</a>&gt;</span>
+</dd>
+<dt id="RFC7806-ja">[RFC7806]</dt>
+<dd class="break">
+<span class="refAuthor">Baker, F.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"On Queuing, Marking, and Dropping"</span>, <span class="seriesInfo">RFC 7806</span>, <span class="seriesInfo">DOI 10.17487/RFC7806</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc7806">http://www.rfc-editor.org/info/rfc7806</a>&gt;</span>
+</dd>
+<dt id="RFC8034-ja">[RFC8034]</dt>
+<dd class="break">
+<span class="refAuthor">White, G.</span> and <span class="refAuthor">R. Pan</span>, <span></span><span class="refTitle">"Active Queue Management (AQM) Based on Proportional Integral Controller Enhanced (PIE) for Data-Over-Cable Service Interface Specifications (DOCSIS) Cable Modems"</span>, <span class="seriesInfo">RFC 8034</span>, <span class="seriesInfo">DOI 10.17487/RFC8034</span>, <time datetime="2017-02" class="refDate">February 2017</time>, <span>&lt;<a href="http://www.rfc-editor.org/info/rfc8034">http://www.rfc-editor.org/info/rfc8034</a>&gt;</span>
+</dd>
+<dt id="CBQ-ja">[CBQ]</dt>
+<dd class="break">
+<span class="refAuthor">Cisco</span>, <span></span><span class="refTitle">"Class-Based Weighted Fair Queueing"</span>, <span>&lt;<a href="http://www.cisco.com/en/US/docs/ios/12_0t/12_0t5/feature/guide/cbwfq.html">http://www.cisco.com/en/US/docs/ios/12_0t/12_0t5/feature/guide/cbwfq.html</a>&gt;</span>
+</dd>
+<dt id="CoDel-ja">[CoDel]</dt>
+<dd class="break">
+<span class="refAuthor">Nichols, K.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Controlling Queue Delay"</span>, <span class="refContent">Communications of the ACM, Volume 55, Issue 7, pp. 42-50</span>, <span class="seriesInfo">DOI 10.1145/2209249.2209264</span>, <time datetime="2012-07" class="refDate">July 2012</time>, </dd>
+<dt id="DOCSIS_3.1-ja">[DOCSIS_3.1]</dt>
+<dd class="break">
+<span class="refAuthor">CableLabs</span>, <span></span><span class="refTitle">"MAC and Upper Layer Protocols Interface Specification"</span>, <span class="refContent">DOCSIS 3.1</span>, <time datetime="2017-01" class="refDate">January 2017</time>, <span>&lt;<a href="https://apps.cablelabs.com/specification/CM-SP-MULPIv3.1">https://apps.cablelabs.com/specification/CM-SP-MULPIv3.1</a>&gt;</span>
+</dd>
+<dt id="DOCSIS-AQM-ja">[DOCSIS-AQM]</dt>
+<dd class="break">
+<span class="refAuthor">White, G.</span>, <span></span><span class="refTitle">"Active Queue Management in DOCSIS 3.x Cable Modems"</span>, <time datetime="2014-05" class="refDate">May 2014</time>, <span>&lt;<a href="http://www.cablelabs.com/wp-content/uploads/2014/06/DOCSIS-AQM_May2014.pdf">http://www.cablelabs.com/wp-content/uploads/2014/06/DOCSIS-AQM_May2014.pdf</a>&gt;</span>
+</dd>
+<dt id="ECN-ja">[ECN]</dt>
+<dd class="break">
+<span class="refAuthor">Briscoe, B.</span>, <span class="refAuthor">Kaippallimalil, J.</span>, and <span class="refAuthor">P. Thaler</span>, <span></span><span class="refTitle">"Guidelines for Adding Congestion Notification to Protocols that Encapsulate IP"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft draft-ietf-tsvwg-ecn-encap-guidelines-07</span>, <time datetime="2016-07" class="refDate">July 2016</time>, </dd>
+<dt id="HPSR-PIE-ja">[HPSR-PIE]</dt>
+<dd class="break">
+<span class="refAuthor">Pan, R.</span>, <span class="refAuthor">Natarajan, P.</span>, <span class="refAuthor">Piglione, C.</span>, <span class="refAuthor">Prabhu, M.S.</span>, <span class="refAuthor">Subramanian, V.</span>, <span class="refAuthor">Baker, F.</span>, and <span class="refAuthor">B. Ver Steeg</span>, <span></span><span class="refTitle">"PIE: A lightweight control scheme to address the bufferbloat problem"</span>, <span class="refContent">IEEE HPSR</span>, <span class="seriesInfo">DOI 10.1109/HPSR.2013.6602305</span>, <time datetime="2013" class="refDate">2013</time>, <span>&lt;<a href="https://www.researchgate.net/publication/261134127_PIE_A_lightweight_control_scheme_to_address_the_bufferbloat_problem?origin=mail">https://www.researchgate.net/publication/261134127_PIE_A_lightweight_control_scheme_to_address_the_bufferbloat_problem?origin=mail</a>&gt;</span>
+</dd>
+<dt id="PI-ja">[PI]</dt>
+<dd class="break">
+<span class="refAuthor">Hollot, C.V.</span>, <span class="refAuthor">Misra, V.</span>, <span class="refAuthor">Towsley, D.</span>, and <span class="refAuthor">W. Gong</span>, <span></span><span class="refTitle">"On designing improved controllers for AQM routers supporting TCP flows"</span>, <span class="refContent">INFOCOM 2001</span>, <span class="seriesInfo">DOI 10.1109/INFCOM.2001.916670</span>, <time datetime="2001-04" class="refDate">April 2001</time>, </dd>
+<dt id="QCN-ja">[QCN]</dt>
+<dd class="break">
+<span class="refAuthor">IEEE</span>, <span></span><span class="refTitle">"IEEE Standard for Local and Metropolitan Area Networks--Virtual Bridged Local Area Networks - Amendment: 10: Congestion Notification"</span>, <span class="seriesInfo">IEEE 802.1Qau</span>, <span>&lt;<a href="http://www.ieee802.org/1/pages/802.1au.html">http://www.ieee802.org/1/pages/802.1au.html</a>&gt;</span>
+</dd>
+<dt id="RED-ja">[RED]</dt>
+<dd class="break">
+<span class="refAuthor">Floyd, S.</span> and <span class="refAuthor">V. Jacobson</span>, <span></span><span class="refTitle">"Random Early Detection (RED) Gateways for Congestion Avoidance"</span>, <span class="refContent">IEEE/ACM Transactions on Networking, Volume 1, Issue 4</span>, <span class="seriesInfo">DOI 10.1109/90.251892</span>, <time datetime="1993-08" class="refDate">August 1993</time>, </dd>
+<dt id="TCP-Models-ja">[TCP-Models]</dt>
+<dd class="break">
+<span class="refAuthor">Misra, V.</span>, <span class="refAuthor">Gong, W.</span>, and <span class="refAuthor">D. Towsley</span>, <span></span><span class="refTitle">"Fluid-based analysis of a network of AQM routers supporting TCP flows with an application to RED"</span>, <span class="refContent">SIGCOMM 2000, Volume 30, Issue 4, pp. 151-160</span>, <span class="seriesInfo">DOI 10.1145/347057.347421</span>, <time datetime="2000-10" class="refDate">October 2000</time>, </dd>
+</dl></section></section></div>
+</div>
+<section><span id="appendix-A"></span><span id="the-basic-pie-pseudocode-en"></span><span id="the-basic-pie-pseudocode-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-the-basic-pie-pseudocode-en" lang="en">
+<span id="section-appendix.a-en"></span><a id="appendix-A-en" href="#appendix-A-en" class="section-number selfRef">Appendix A.</a> <a href="#name-the-basic-pie-pseudocode-en" class="section-name selfRef">The Basic PIE Pseudocode</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-the-basic-pie-pseudocode-ja" lang="ja">
+<span id="section-appendix.a-ja"></span><a id="appendix-A-ja" href="#appendix-A-ja" class="section-number selfRef">付録A.</a> <a href="#name-the-basic-pie-pseudocode-ja" class="section-name selfRef">基本的なPIEの疑似コード</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-1-en">Configurable parameters:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-1-ja">設定可能なパラメーター：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.a-2-en">
+<li id="section-appendix.a-2.1-en">QDELAY_REF.  AQM Latency Target (default: 15 milliseconds)</li>
+        <li id="section-appendix.a-2.2-en">MAX_BURST.  AQM Max Burst Allowance (default: 150 milliseconds)</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.a-2-ja">
+<li id="section-appendix.a-2.1-ja">QDELAY_REF。AQMの目標遅延（デフォルト：15ミリ秒）</li>
+        <li id="section-appendix.a-2.2-ja">MAX_BURST。AQMの最大バースト許容量（デフォルト：150ミリ秒）</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-3-en">Internal parameters:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-3-ja">内部パラメーター：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.a-4-en">
+<li id="section-appendix.a-4.1-en">Weights in the drop probability calculation (1/s):
+alpha (default: 1/8), beta (default: 1 + 1/4)</li>
+        <li id="section-appendix.a-4.2-en">T_UPDATE: a period to calculate drop probability
+(default: 15 milliseconds)</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.a-4-ja">
+<li id="section-appendix.a-4.1-ja">ドロップ確率の計算における重み（1/s）：
+alpha（デフォルト：1/8）、beta（デフォルト：1 + 1/4）</li>
+        <li id="section-appendix.a-4.2-ja">T_UPDATE：ドロップ確率を計算する周期（デフォルト：15ミリ秒）</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-5-en">Table that stores status variables (ending with "_"):</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-5-ja">状態変数（「_」で終わる）を格納するテーブル：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.a-6-en">
+<li id="section-appendix.a-6.1-en">burst_allowance_: current burst allowance</li>
+        <li id="section-appendix.a-6.2-en">drop_prob_: The current packet drop probability.  Reset to 0</li>
+        <li id="section-appendix.a-6.3-en">qdelay_old_: The previous queue delay.  Reset to 0</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.a-6-ja">
+<li id="section-appendix.a-6.1-ja">burst_allowance_：現在のバースト許容量</li>
+        <li id="section-appendix.a-6.2-ja">drop_prob_：現在のパケットのドロップ確率。0にリセットされます</li>
+        <li id="section-appendix.a-6.3-ja">qdelay_old_：前回のキューイング遅延。0にリセットされます</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.a-7-en">Public/system functions:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.a-7-ja">公開関数／システム関数：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.a-8-en">
+<li id="section-appendix.a-8.1-en">queue_.  Holds the pending packets</li>
+        <li id="section-appendix.a-8.2-en">drop(packet).  Drops/discards a packet</li>
+        <li id="section-appendix.a-8.3-en">now().  Returns the current time</li>
+        <li id="section-appendix.a-8.4-en">random().  Returns a uniform r.v. in the range 0 ~ 1</li>
+        <li id="section-appendix.a-8.5-en">queue_.byte_length().  Returns current queue_ length in bytes</li>
+        <li id="section-appendix.a-8.6-en">queue_.enque(packet).  Adds packet to tail of queue_</li>
+        <li id="section-appendix.a-8.7-en">queue_.deque().  Returns the packet from the head of queue_</li>
+        <li id="section-appendix.a-8.8-en">packet.size().  Returns size of packet</li>
+        <li id="section-appendix.a-8.9-en">packet.timestamp_delay().  Returns timestamped packet latency</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.a-8-ja">
+<li id="section-appendix.a-8.1-ja">queue_。保留中のパケットを保持します</li>
+        <li id="section-appendix.a-8.2-ja">drop(packet)。パケットをドロップ／破棄します</li>
+        <li id="section-appendix.a-8.3-ja">now()。現在時刻を返します</li>
+        <li id="section-appendix.a-8.4-ja">random()。0～1の範囲の一様な確率変数を返します</li>
+        <li id="section-appendix.a-8.5-ja">queue_.byte_length()。現在のqueue_の長さをバイト単位で返します</li>
+        <li id="section-appendix.a-8.6-ja">queue_.enque(packet)。queue_の末尾にパケットを追加します</li>
+        <li id="section-appendix.a-8.7-ja">queue_.deque()。queue_の先頭からパケットを返します</li>
+        <li id="section-appendix.a-8.8-ja">packet.size()。パケットのサイズを返します</li>
+        <li id="section-appendix.a-8.9-ja">packet.timestamp_delay()。タイムスタンプに基づくパケットの遅延を返します</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-appendix.a-9-en"><pre tabindex="0" role="region" aria-label="Figure">
+============================
+
+//Called on each packet arrival
+  enque(Packet packet) {
+       if (PIE-&gt;drop_prob_ == 0 &amp;&amp; current_qdelay &lt; QDELAY_REF/2
+           &amp;&amp; PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2) {
+           PIE-&gt;burst_allowance_ = MAX_BURST;
+       }
+       if (PIE-&gt;burst_allowance_ == 0 &amp;&amp; drop_early() == DROP) {
+                drop(packet);
+       } else {
+                queue_.enque(packet);
+       }
+  }
+
+============================
+
+  drop_early() {
+
+      //Safeguard PIE to be work conserving
+      if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+            || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) ) {
+           return ENQUE;
+      }
+
+      double u = random();
+      if (u &lt; PIE-&gt;drop_prob_) {
+           return DROP;
+      } else {
+
+           return ENQUE;
+      }
+   }
+
+============================
+
+//We choose the timestamp option of obtaining latency for clarity
+//Rate estimation method can be found in the extended PIE pseudocode
+
+  deque(Packet packet) {
+
+    current_qdelay = packet.timestamp_delay();
+  }
+
+============================
+
+//Update periodically, T_UPDATE = 15 milliseconds
+
+  calculate_drop_prob() {
+
+       //Can be implemented using integer multiply
+
+       p = alpha * (current_qdelay - QDELAY_REF) + \
+           beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+       if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+           p /= 2048;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+           p /= 512;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+           p /= 128;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+           p /= 32;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+           p /= 8;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+           p /= 2;
+       } else {
+           p = p;
+       }
+
+       PIE-&gt;drop_prob_ += p;
+
+       //Exponentially decay drop prob when congestion goes away
+       if (current_qdelay == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0) {
+           PIE-&gt;drop_prob_ *= 0.98;           //1 - 1/64 is
+                                              //sufficient
+       }
+
+       //Bound drop probability
+       if (PIE-&gt;drop_prob_ &lt; 0)
+                PIE-&gt;drop_prob_ = 0.0
+       if (PIE-&gt;drop_prob_ &gt; 1)
+                PIE-&gt;drop_prob_ = 1.0
+
+       PIE-&gt;qdelay_old_ = current_qdelay;
+
+       PIE-&gt;burst_allowance_ =
+          max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+    }
+}
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-appendix.a-9-ja"><pre tabindex="0" role="region" aria-label="図">
+============================
+
+//Called on each packet arrival
+  enque(Packet packet) {
+       if (PIE-&gt;drop_prob_ == 0 &amp;&amp; current_qdelay &lt; QDELAY_REF/2
+           &amp;&amp; PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2) {
+           PIE-&gt;burst_allowance_ = MAX_BURST;
+       }
+       if (PIE-&gt;burst_allowance_ == 0 &amp;&amp; drop_early() == DROP) {
+                drop(packet);
+       } else {
+                queue_.enque(packet);
+       }
+  }
+
+============================
+
+  drop_early() {
+
+      //Safeguard PIE to be work conserving
+      if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+            || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) ) {
+           return ENQUE;
+      }
+
+      double u = random();
+      if (u &lt; PIE-&gt;drop_prob_) {
+           return DROP;
+      } else {
+
+           return ENQUE;
+      }
+   }
+
+============================
+
+//We choose the timestamp option of obtaining latency for clarity
+//Rate estimation method can be found in the extended PIE pseudocode
+
+  deque(Packet packet) {
+
+    current_qdelay = packet.timestamp_delay();
+  }
+
+============================
+
+//Update periodically, T_UPDATE = 15 milliseconds
+
+  calculate_drop_prob() {
+
+       //Can be implemented using integer multiply
+
+       p = alpha * (current_qdelay - QDELAY_REF) + \
+           beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+       if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+           p /= 2048;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+           p /= 512;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+           p /= 128;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+           p /= 32;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+           p /= 8;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+           p /= 2;
+       } else {
+           p = p;
+       }
+
+       PIE-&gt;drop_prob_ += p;
+
+       //Exponentially decay drop prob when congestion goes away
+       if (current_qdelay == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0) {
+           PIE-&gt;drop_prob_ *= 0.98;           //1 - 1/64 is
+                                              //sufficient
+       }
+
+       //Bound drop probability
+       if (PIE-&gt;drop_prob_ &lt; 0)
+                PIE-&gt;drop_prob_ = 0.0
+       if (PIE-&gt;drop_prob_ &gt; 1)
+                PIE-&gt;drop_prob_ = 1.0
+
+       PIE-&gt;qdelay_old_ = current_qdelay;
+
+       PIE-&gt;burst_allowance_ =
+          max(0,PIE-&gt;burst_allowance_ - T_UPDATE);
+    }
+}
+</pre></div></div>
+</div></section><section><span id="appendix-B"></span><span id="pseudocode-for-pie-with-optional-enhancement-en"></span><span id="pseudocode-for-pie-with-optional-enhancement-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-pseudocode-for-pie-with-optional-enhancement-en" lang="en">
+<span id="section-appendix.b-en"></span><a id="appendix-B-en" href="#appendix-B-en" class="section-number selfRef">Appendix B.</a> <a href="#name-pseudocode-for-pie-with-optional-enhancement-en" class="section-name selfRef">Pseudocode for PIE with Optional Enhancement</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-pseudocode-for-pie-with-optional-enhancement-ja" lang="ja">
+<span id="section-appendix.b-ja"></span><a id="appendix-B-ja" href="#appendix-B-ja" class="section-number selfRef">付録B.</a> <a href="#name-pseudocode-for-pie-with-optional-enhancement-ja" class="section-name selfRef">省略可能な拡張を含むPIEの疑似コード</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-1-en">Configurable parameters:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-1-ja">設定可能なパラメーター：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.b-2-en">
+<li id="section-appendix.b-2.1-en">QDELAY_REF.  AQM Latency Target (default: 15 milliseconds)</li>
+        <li id="section-appendix.b-2.2-en">MAX_BURST.  AQM Max Burst Allowance (default: 150 milliseconds)</li>
+        <li id="section-appendix.b-2.3-en">MAX_ECNTH.  AQM Max ECN Marking Threshold (default: 10%)</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.b-2-ja">
+<li id="section-appendix.b-2.1-ja">QDELAY_REF。AQMの目標遅延（デフォルト：15ミリ秒）</li>
+        <li id="section-appendix.b-2.2-ja">MAX_BURST。AQMの最大バースト許容量（デフォルト：150ミリ秒）</li>
+        <li id="section-appendix.b-2.3-ja">MAX_ECNTH。AQMの最大ECNマーキングしきい値（デフォルト：10%）</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-3-en">Internal parameters:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-3-ja">内部パラメーター：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.b-4-en">
+<li id="section-appendix.b-4.1-en">Weights in the drop probability calculation (1/s):
+alpha (default: 1/8), beta (default: 1 + 1/4)</li>
+        <li id="section-appendix.b-4.2-en">DQ_THRESHOLD: (in bytes, default: 2^14 (in a power of 2) )</li>
+        <li id="section-appendix.b-4.3-en">T_UPDATE: a period to calculate drop probability
+(default: 15 milliseconds)</li>
+        <li id="section-appendix.b-4.4-en">TAIL_DROP: the tail drop threshold (max allowed queue depth)
+for the queue</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.b-4-ja">
+<li id="section-appendix.b-4.1-ja">ドロップ確率の計算における重み（1/s）：
+alpha（デフォルト：1/8）、beta（デフォルト：1 + 1/4）</li>
+        <li id="section-appendix.b-4.2-ja">DQ_THRESHOLD：（バイト単位、デフォルト：2^14（2のべき乗で））</li>
+        <li id="section-appendix.b-4.3-ja">T_UPDATE：ドロップ確率を計算する周期（デフォルト：15ミリ秒）</li>
+        <li id="section-appendix.b-4.4-ja">TAIL_DROP：キューのテールドロップしきい値（許容される最大のキューの深さ）</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-5-en">Table that stores status variables (ending with "_"):</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-5-ja">状態変数（「_」で終わる）を格納するテーブル：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.b-6-en">
+<li id="section-appendix.b-6.1-en">active_: INACTIVE/ACTIVE</li>
+        <li id="section-appendix.b-6.2-en">burst_allowance_: current burst allowance</li>
+        <li id="section-appendix.b-6.3-en">drop_prob_: The current packet drop probability.  Reset to 0</li>
+        <li id="section-appendix.b-6.4-en">accu_prob_: Accumulated drop probability.  Reset to 0</li>
+        <li id="section-appendix.b-6.5-en">qdelay_old_: The previous queue delay estimate.  Reset to 0</li>
+        <li id="section-appendix.b-6.6-en">last_timestamp_: Timestamp of previous status update</li>
+        <li id="section-appendix.b-6.7-en">dq_count_, measurement_start_, in_measurement_, avg_dq_time_.
+Variables for measuring average dequeue rate</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.b-6-ja">
+<li id="section-appendix.b-6.1-ja">active_：INACTIVE／ACTIVE</li>
+        <li id="section-appendix.b-6.2-ja">burst_allowance_：現在のバースト許容量</li>
+        <li id="section-appendix.b-6.3-ja">drop_prob_：現在のパケットのドロップ確率。0にリセットされます</li>
+        <li id="section-appendix.b-6.4-ja">accu_prob_：累積ドロップ確率。0にリセットされます</li>
+        <li id="section-appendix.b-6.5-ja">qdelay_old_：前回のキューイング遅延の推定値。0にリセットされます</li>
+        <li id="section-appendix.b-6.6-ja">last_timestamp_：前回の状態更新のタイムスタンプ</li>
+        <li id="section-appendix.b-6.7-ja">dq_count_、measurement_start_、in_measurement_、avg_dq_time_。
+平均デキューレートを測定するための変数</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.b-7-en">Public/system functions:</p></div>
+<div lang="ja" class="col"><p id="section-appendix.b-7-ja">公開関数／システム関数：</p></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><ul id="section-appendix.b-8-en">
+<li id="section-appendix.b-8.1-en">queue_.  Holds the pending packets</li>
+        <li id="section-appendix.b-8.2-en">drop(packet).  Drops/discards a packet</li>
+        <li id="section-appendix.b-8.3-en">mark(packet).  Marks ECN for a packet</li>
+        <li id="section-appendix.b-8.4-en">now().  Returns the current time</li>
+        <li id="section-appendix.b-8.5-en">random().  Returns a uniform r.v. in the range 0 ~ 1</li>
+        <li id="section-appendix.b-8.6-en">queue_.byte_length().  Returns current queue_ length in bytes</li>
+        <li id="section-appendix.b-8.7-en">queue_.enque(packet).  Adds packet to tail of queue_</li>
+        <li id="section-appendix.b-8.8-en">queue_.deque().  Returns the packet from the head of queue_</li>
+        <li id="section-appendix.b-8.9-en">packet.size().  Returns size of packet</li>
+        <li id="section-appendix.b-8.10-en">packet.ecn().  Returns whether packet is ECN capable or not</li>
+      </ul></div>
+<div lang="ja" class="col"><ul id="section-appendix.b-8-ja">
+<li id="section-appendix.b-8.1-ja">queue_。保留中のパケットを保持します</li>
+        <li id="section-appendix.b-8.2-ja">drop(packet)。パケットをドロップ／破棄します</li>
+        <li id="section-appendix.b-8.3-ja">mark(packet)。パケットにECNのマークを付けます</li>
+        <li id="section-appendix.b-8.4-ja">now()。現在時刻を返します</li>
+        <li id="section-appendix.b-8.5-ja">random()。0～1の範囲の一様な確率変数を返します</li>
+        <li id="section-appendix.b-8.6-ja">queue_.byte_length()。現在のqueue_の長さをバイト単位で返します</li>
+        <li id="section-appendix.b-8.7-ja">queue_.enque(packet)。queue_の末尾にパケットを追加します</li>
+        <li id="section-appendix.b-8.8-ja">queue_.deque()。queue_の先頭からパケットを返します</li>
+        <li id="section-appendix.b-8.9-ja">packet.size()。パケットのサイズを返します</li>
+        <li id="section-appendix.b-8.10-ja">packet.ecn()。パケットがECN対応かどうかを返します</li>
+      </ul></div>
+</div>
+<div class="row">
+<div lang="en" class="col"><div lang="" id="section-appendix.b-9-en"><pre tabindex="0" role="region" aria-label="Figure">
+============================
+
+//Called on each packet arrival
+  enque(Packet packet) {
+       if (queue_.byte_length() + packet.size() &gt; TAIL_DROP) {
+              drop(packet);
+              PIE-&gt;accu_prob_ = 0;
+       } else if (PIE-&gt;active_ == TRUE &amp;&amp; drop_early() == DROP
+                  &amp;&amp; PIE-&gt;burst_allowance_ == 0) {
+              if (PIE-&gt;drop_prob_ &lt; MAX_ECNTH &amp;&amp; packet.ecn() ==
+                  TRUE)
+                    mark(packet);
+              else
+                    drop(packet);
+                    PIE-&gt;accu_prob_ = 0;
+       } else {
+              queue_.enque(packet);
+       }
+
+       //If the queue is over a certain threshold, turn on PIE
+       if (PIE-&gt;active_ == INACTIVE
+           &amp;&amp; queue_.byte_length() &gt;= TAIL_DROP/3) {
+            PIE-&gt;active_ = ACTIVE;
+            PIE-&gt;qdelay_old_ = 0;
+            PIE-&gt;drop_prob_ = 0;
+            PIE-&gt;in_measurement_ = TRUE;
+            PIE-&gt;dq_count_ = 0;
+            PIE-&gt;avg_dq_time_ = 0;
+            PIE-&gt;last_timestamp_ = now;
+            PIE-&gt;burst_allowance_ = MAX_BURST;
+            PIE-&gt;accu_prob_ = 0;
+            PIE-&gt;measurement_start_ = now;
+       }
+
+       //If the queue has been idle for a while, turn off PIE
+       //Reset counters when accessing the queue after some idle
+       //period if PIE was active before
+       if ( PIE-&gt;drop_prob_ == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0
+            &amp;&amp; current_qdelay == 0) {
+            PIE-&gt;active_ = INACTIVE;
+            PIE-&gt;in_measurement_ = FALSE;
+       }
+
+  }
+
+============================
+
+  drop_early() {
+
+      //PIE is active but the queue is not congested: return ENQUE
+      if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+            || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) ) {
+           return ENQUE;
+      }
+
+
+      if (PIE-&gt;drop_prob_ == 0) {
+               PIE-&gt;accu_prob_ = 0;
+      }
+
+      //For practical reasons, drop probability can be further scaled
+      //according to packet size, but one needs to set a bound to
+      //avoid unnecessary bias
+
+      //Random drop
+      PIE-&gt;accu_prob_ += PIE-&gt;drop_prob_;
+      if (PIE-&gt;accu_prob_ &lt; 0.85)
+          return ENQUE;
+      if (PIE-&gt;accu_prob_ &gt;= 8.5)
+          return DROP;
+              double u = random();
+      if (u &lt; PIE-&gt;drop_prob_) {
+                   PIE-&gt;accu_prob_ = 0;
+                   return DROP;
+      } else {
+                   return ENQUE;
+      }
+   }
+
+============================
+
+ //Update periodically, T_UPDATE = 15 milliseconds
+ calculate_drop_prob() {
+     if ( (now - PIE-&gt;last_timestamp_) &gt;= T_UPDATE &amp;&amp;
+             PIE-&gt;active_ == ACTIVE) {
+
+       //Can be implemented using integer multiply
+       //DQ_THRESHOLD is power of 2 value
+       current_qdelay = queue_.byte_length() *
+       PIE-&gt;avg_dq_time_/DQ_THRESHOLD;
+
+       p = alpha * (current_qdelay - QDELAY_REF) + \
+           beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+       if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+           p /= 2048;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+           p /= 512;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+           p /= 128;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+           p /= 32;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+           p /= 8;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+           p /= 2;
+       } else {
+           p = p;
+       }
+
+       if (PIE-&gt;drop_prob_ &gt;= 0.1 &amp;&amp; p &gt; 0.02) {
+           p = 0.02;
+       }
+       PIE-&gt;drop_prob_ += p;
+
+       //Exponentially decay drop prob when congestion goes away
+       if (current_qdelay &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;qdelay_old_ &lt;
+           QDELAY_REF/2) {
+              PIE-&gt;drop_prob_ *= 0.98;        //1 - 1/64 is
+                                              //sufficient
+       }
+
+       //Bound drop probability
+       if (PIE-&gt;drop_prob_ &lt; 0)
+                PIE-&gt;drop_prob_ = 0
+       if (PIE-&gt;drop_prob_ &gt; 1)
+                PIE-&gt;drop_prob_ = 1
+
+       PIE-&gt;qdelay_old_ = current_qdelay;
+       PIE-&gt;last_timestamp_ = now;
+       PIE-&gt;burst_allowance_ = max(0,PIE-&gt;burst_allowance_ -
+          T_UPDATE);
+    }
+}
+
+============================
+
+//Called on each packet departure
+  deque(Packet packet) {
+
+     //Dequeue rate estimation
+     if (PIE-&gt;in_measurement_ == TRUE) {
+          PIE-&gt;dq_count_ = packet.size() + PIE-&gt;dq_count_;
+          //Start a new measurement cycle if we have enough packets
+          if ( PIE-&gt;dq_count_ &gt;= DQ_THRESHOLD) {
+            dq_time = now - PIE-&gt;measurement_start_;
+            if (PIE-&gt;avg_dq_time_ == 0) {
+                PIE-&gt;avg_dq_time_ = dq_time;
+            } else {
+                weight = DQ_THRESHOLD/2^16
+                PIE-&gt;avg_dq_time_ = dq_time * weight +
+                   PIE-&gt;avg_dq_time_ * (1 - weight);
+            }
+            PIE-&gt;in_measurement_ = FALSE;
+          }
+     }
+
+     //Start a measurement if we have enough data in the queue
+     if (queue_.byte_length() &gt;= DQ_THRESHOLD &amp;&amp;
+         PIE-&gt;in_measurement_ == FALSE) {
+            PIE-&gt;in_measurement_ = TRUE;
+            PIE-&gt;measurement_start_ = now;
+            PIE-&gt;dq_count_ = 0;
+     }
+  }
+</pre></div></div>
+<div lang="ja" class="col"><div lang="" id="section-appendix.b-9-ja"><pre tabindex="0" role="region" aria-label="図">
+============================
+
+//Called on each packet arrival
+  enque(Packet packet) {
+       if (queue_.byte_length() + packet.size() &gt; TAIL_DROP) {
+              drop(packet);
+              PIE-&gt;accu_prob_ = 0;
+       } else if (PIE-&gt;active_ == TRUE &amp;&amp; drop_early() == DROP
+                  &amp;&amp; PIE-&gt;burst_allowance_ == 0) {
+              if (PIE-&gt;drop_prob_ &lt; MAX_ECNTH &amp;&amp; packet.ecn() ==
+                  TRUE)
+                    mark(packet);
+              else
+                    drop(packet);
+                    PIE-&gt;accu_prob_ = 0;
+       } else {
+              queue_.enque(packet);
+       }
+
+       //If the queue is over a certain threshold, turn on PIE
+       if (PIE-&gt;active_ == INACTIVE
+           &amp;&amp; queue_.byte_length() &gt;= TAIL_DROP/3) {
+            PIE-&gt;active_ = ACTIVE;
+            PIE-&gt;qdelay_old_ = 0;
+            PIE-&gt;drop_prob_ = 0;
+            PIE-&gt;in_measurement_ = TRUE;
+            PIE-&gt;dq_count_ = 0;
+            PIE-&gt;avg_dq_time_ = 0;
+            PIE-&gt;last_timestamp_ = now;
+            PIE-&gt;burst_allowance_ = MAX_BURST;
+            PIE-&gt;accu_prob_ = 0;
+            PIE-&gt;measurement_start_ = now;
+       }
+
+       //If the queue has been idle for a while, turn off PIE
+       //Reset counters when accessing the queue after some idle
+       //period if PIE was active before
+       if ( PIE-&gt;drop_prob_ == 0 &amp;&amp; PIE-&gt;qdelay_old_ == 0
+            &amp;&amp; current_qdelay == 0) {
+            PIE-&gt;active_ = INACTIVE;
+            PIE-&gt;in_measurement_ = FALSE;
+       }
+
+  }
+
+============================
+
+  drop_early() {
+
+      //PIE is active but the queue is not congested: return ENQUE
+      if ( (PIE-&gt;qdelay_old_ &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;drop_prob_ &lt; 0.2)
+            || (queue_.byte_length() &lt;= 2 * MEAN_PKTSIZE) ) {
+           return ENQUE;
+      }
+
+
+      if (PIE-&gt;drop_prob_ == 0) {
+               PIE-&gt;accu_prob_ = 0;
+      }
+
+      //For practical reasons, drop probability can be further scaled
+      //according to packet size, but one needs to set a bound to
+      //avoid unnecessary bias
+
+      //Random drop
+      PIE-&gt;accu_prob_ += PIE-&gt;drop_prob_;
+      if (PIE-&gt;accu_prob_ &lt; 0.85)
+          return ENQUE;
+      if (PIE-&gt;accu_prob_ &gt;= 8.5)
+          return DROP;
+              double u = random();
+      if (u &lt; PIE-&gt;drop_prob_) {
+                   PIE-&gt;accu_prob_ = 0;
+                   return DROP;
+      } else {
+                   return ENQUE;
+      }
+   }
+
+============================
+
+ //Update periodically, T_UPDATE = 15 milliseconds
+ calculate_drop_prob() {
+     if ( (now - PIE-&gt;last_timestamp_) &gt;= T_UPDATE &amp;&amp;
+             PIE-&gt;active_ == ACTIVE) {
+
+       //Can be implemented using integer multiply
+       //DQ_THRESHOLD is power of 2 value
+       current_qdelay = queue_.byte_length() *
+       PIE-&gt;avg_dq_time_/DQ_THRESHOLD;
+
+       p = alpha * (current_qdelay - QDELAY_REF) + \
+           beta * (current_qdelay - PIE-&gt;qdelay_old_);
+
+       if (PIE-&gt;drop_prob_ &lt; 0.000001) {
+           p /= 2048;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.00001) {
+           p /= 512;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.0001) {
+           p /= 128;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.001) {
+           p /= 32;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.01) {
+           p /= 8;
+       } else if (PIE-&gt;drop_prob_ &lt; 0.1) {
+           p /= 2;
+       } else {
+           p = p;
+       }
+
+       if (PIE-&gt;drop_prob_ &gt;= 0.1 &amp;&amp; p &gt; 0.02) {
+           p = 0.02;
+       }
+       PIE-&gt;drop_prob_ += p;
+
+       //Exponentially decay drop prob when congestion goes away
+       if (current_qdelay &lt; QDELAY_REF/2 &amp;&amp; PIE-&gt;qdelay_old_ &lt;
+           QDELAY_REF/2) {
+              PIE-&gt;drop_prob_ *= 0.98;        //1 - 1/64 is
+                                              //sufficient
+       }
+
+       //Bound drop probability
+       if (PIE-&gt;drop_prob_ &lt; 0)
+                PIE-&gt;drop_prob_ = 0
+       if (PIE-&gt;drop_prob_ &gt; 1)
+                PIE-&gt;drop_prob_ = 1
+
+       PIE-&gt;qdelay_old_ = current_qdelay;
+       PIE-&gt;last_timestamp_ = now;
+       PIE-&gt;burst_allowance_ = max(0,PIE-&gt;burst_allowance_ -
+          T_UPDATE);
+    }
+}
+
+============================
+
+//Called on each packet departure
+  deque(Packet packet) {
+
+     //Dequeue rate estimation
+     if (PIE-&gt;in_measurement_ == TRUE) {
+          PIE-&gt;dq_count_ = packet.size() + PIE-&gt;dq_count_;
+          //Start a new measurement cycle if we have enough packets
+          if ( PIE-&gt;dq_count_ &gt;= DQ_THRESHOLD) {
+            dq_time = now - PIE-&gt;measurement_start_;
+            if (PIE-&gt;avg_dq_time_ == 0) {
+                PIE-&gt;avg_dq_time_ = dq_time;
+            } else {
+                weight = DQ_THRESHOLD/2^16
+                PIE-&gt;avg_dq_time_ = dq_time * weight +
+                   PIE-&gt;avg_dq_time_ * (1 - weight);
+            }
+            PIE-&gt;in_measurement_ = FALSE;
+          }
+     }
+
+     //Start a measurement if we have enough data in the queue
+     if (queue_.byte_length() &gt;= DQ_THRESHOLD &amp;&amp;
+         PIE-&gt;in_measurement_ == FALSE) {
+            PIE-&gt;in_measurement_ = TRUE;
+            PIE-&gt;measurement_start_ = now;
+            PIE-&gt;dq_count_ = 0;
+     }
+  }
+</pre></div></div>
+</div></section><section><span id="appendix-C"></span><span id="contributors-en"></span><span id="contributors-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-contributors-en" lang="en">
+<span id="section-appendix.c-en"></span><a href="#name-contributors-en" class="section-name selfRef">Contributors</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-contributors-ja" lang="ja">
+<span id="section-appendix.c-ja"></span><a href="#name-contributors-ja" class="section-name selfRef">貢献者</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Bill Ver Steeg</div>
+<div class="author-org">Comcast Cable</div>
+<div class="author-email"><a href="mailto:William_VerSteeg@comcast.com">William_VerSteeg@comcast.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Bill Ver Steeg</div>
+<div class="author-org">Comcast Cable</div>
+<div class="author-email"><a href="mailto:William_VerSteeg@comcast.com">William_VerSteeg@comcast.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Mythili Prabhu*</div>
+<div class="author-org">Akamai Technologies</div>
+<div class="author-postal"><span class="street-address">3355 Scott Blvd.</span></div>
+<div class="author-postal">
+<span class="locality">Santa Clara</span>, <span class="region">CA</span> <span class="postal-code">95054</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:mythili@akamai.com">mythili@akamai.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Mythili Prabhu*</div>
+<div class="author-org">Akamai Technologies</div>
+<div class="author-postal"><span class="street-address">3355 Scott Blvd.</span></div>
+<div class="author-postal">
+<span class="locality">Santa Clara</span>, <span class="region">CA</span> <span class="postal-code">95054</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:mythili@akamai.com">mythili@akamai.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Chiara Piglione*</div>
+<div class="author-org">Broadcom Corporation</div>
+<div class="author-postal"><span class="street-address">3151 Zanker Road</span></div>
+<div class="author-postal">
+<span class="locality">San Jose</span>, <span class="region">CA</span> <span class="postal-code">95134</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:chiara@broadcom.com">chiara@broadcom.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Chiara Piglione*</div>
+<div class="author-org">Broadcom Corporation</div>
+<div class="author-postal"><span class="street-address">3151 Zanker Road</span></div>
+<div class="author-postal">
+<span class="locality">San Jose</span>, <span class="region">CA</span> <span class="postal-code">95134</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:chiara@broadcom.com">chiara@broadcom.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Vijay Subramanian*</div>
+<div class="author-org">PLUMgrid, Inc.</div>
+<div class="author-postal"><span class="street-address">350 Oakmead Parkway</span></div>
+<div class="author-postal"><span class="street-address">Suite 250</span></div>
+<div class="author-postal">
+<span class="locality">Sunnyvale</span>, <span class="region">CA</span> <span class="postal-code">94085</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:vns@plumgrid.com">vns@plumgrid.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Vijay Subramanian*</div>
+<div class="author-org">PLUMgrid, Inc.</div>
+<div class="author-postal"><span class="street-address">350 Oakmead Parkway</span></div>
+<div class="author-postal"><span class="street-address">Suite 250</span></div>
+<div class="author-postal">
+<span class="locality">Sunnyvale</span>, <span class="region">CA</span> <span class="postal-code">94085</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:vns@plumgrid.com">vns@plumgrid.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col"><p id="section-appendix.c-1-en">* Formerly at Cisco Systems</p></div>
+<div lang="ja" class="col"><p id="section-appendix.c-1-ja">* 以前はCisco Systemsに所属していました</p></div>
+</div></section><section><span id="appendix-D"></span><span id="authors-addresses-en"></span><span id="authors-addresses-ja"></span><div class="row">
+<div lang="en" class="col"><h2 id="name-authors-addresses-en" lang="en">
+<span id="section-appendix.d-en"></span><a href="#name-authors-addresses-en" class="section-name selfRef">Authors' Addresses</a>
+      </h2></div>
+<div lang="ja" class="col"><h2 id="name-authors-addresses-ja" lang="ja">
+<span id="section-appendix.d-ja"></span><a href="#name-authors-addresses-ja" class="section-name selfRef">著者の連絡先</a>
+      </h2></div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Rong Pan</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">3625 Cisco Way</span></div>
+<div class="author-postal">
+<span class="locality">San Jose</span>, <span class="region">CA</span> <span class="postal-code">95134</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:ropan@cisco.com">ropan@cisco.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Rong Pan</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">3625 Cisco Way</span></div>
+<div class="author-postal">
+<span class="locality">San Jose</span>, <span class="region">CA</span> <span class="postal-code">95134</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:ropan@cisco.com">ropan@cisco.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Preethi Natarajan</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">725 Alder Drive</span></div>
+<div class="author-postal">
+<span class="locality">Milpitas</span>, <span class="region">CA</span> <span class="postal-code">95035</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:prenatar@cisco.com">prenatar@cisco.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Preethi Natarajan</div>
+<div class="author-org">Cisco Systems</div>
+<div class="author-postal"><span class="street-address">725 Alder Drive</span></div>
+<div class="author-postal">
+<span class="locality">Milpitas</span>, <span class="region">CA</span> <span class="postal-code">95035</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:prenatar@cisco.com">prenatar@cisco.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Fred Baker</div>
+<div class="author-postal">
+<span class="locality">Santa Barbara</span>, <span class="region">CA</span> <span class="postal-code">93117</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:FredBaker.IETF@gmail.com">FredBaker.IETF@gmail.com</a></div>
+</address>
+      </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Fred Baker</div>
+<div class="author-postal">
+<span class="locality">Santa Barbara</span>, <span class="region">CA</span> <span class="postal-code">93117</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:FredBaker.IETF@gmail.com">FredBaker.IETF@gmail.com</a></div>
+</address>
+      </div>
+</div>
+<div class="row">
+<div lang="en" class="col">
+<address>
+<div class="author-name">Greg White</div>
+<div class="author-org">CableLabs</div>
+<div class="author-postal"><span class="street-address">858 Coal Creek Circle</span></div>
+<div class="author-postal">
+<span class="locality">Louisville</span>, <span class="region">CO</span> <span class="postal-code">80027</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:g.white@cablelabs.com">g.white@cablelabs.com</a></div>
+</address>
+    </div>
+<div lang="ja" class="col">
+<address>
+<div class="author-name">Greg White</div>
+<div class="author-org">CableLabs</div>
+<div class="author-postal"><span class="street-address">858 Coal Creek Circle</span></div>
+<div class="author-postal">
+<span class="locality">Louisville</span>, <span class="region">CO</span> <span class="postal-code">80027</span>
+</div>
+<div class="author-postal"><span class="country-name">United States of America</span></div>
+<div class="author-email"><a href="mailto:g.white@cablelabs.com">g.white@cablelabs.com</a></div>
+</address>
+    </div>
+</div></section>
+</body>
+</html>

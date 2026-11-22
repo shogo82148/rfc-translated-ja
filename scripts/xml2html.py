@@ -9,6 +9,7 @@ import sys
 
 import xml2rfc
 import lxml
+import lxml.etree
 from lxml.html import html_parser
 from lxml.html.builder import ElementMaker
 
@@ -2030,6 +2031,31 @@ class HtmlWriter:
         """Is a section with this number an appendix?"""
         return cls.appendix_pn_re.match(pn) is not None
 
+RFC_INDEX_NS = '{https://www.rfc-editor.org/rfc-index}'
+
+def pub_date_from_index(rfc_number, path='src/rfcs/rfc-index.xml'):
+    """rfc-index.xml から発行日を "June 2022" や "1 April 1998" の形式で返す。
+
+    同期 JSON の pub_date は、月末に発行された RFC で翌月にずれていることがある
+    （例: RFC 8034 は 2017-02-28 発行だが JSON は "March 2017"）。
+    rfc-index.xml の日付は RFC Editor の情報ページと一致するので、こちらを優先する。
+    見つからなければ None を返す。
+    """
+    if not os.path.exists(path):
+        return None
+    doc_id = 'RFC%d' % int(rfc_number)
+    for _, entry in lxml.etree.iterparse(path, tag=RFC_INDEX_NS + 'rfc-entry'):
+        if entry.findtext(RFC_INDEX_NS + 'doc-id') != doc_id:
+            entry.clear()
+            continue
+        date = entry.find(RFC_INDEX_NS + 'date')
+        if date is None:
+            return None
+        parts = [date.findtext(RFC_INDEX_NS + k) for k in ('day', 'month', 'year')]
+        parts = [p.strip() for p in parts if p and p.strip()]
+        return ' '.join(parts) if parts else None
+    return None
+
 def main():
     rfc_number = sys.argv[1]
     parserEN = xml2rfc.XmlRfcParser("src/en/rfc%s.xml" % (rfc_number,))
@@ -2040,6 +2066,9 @@ def main():
     # メタデーターを取得
     with open("src/rfcs/rfc%s.json" % (rfc_number,), 'r') as file:
         metadata = json.load(file)
+    pub_date = pub_date_from_index(rfc_number)
+    if pub_date:
+        metadata['pub_date'] = pub_date
 
     writer = HtmlWriter(rfcEN, rfcJA, metadata)
     writer.write(rfc_number)

@@ -40,6 +40,7 @@
 - `src/en-txt/rfc*.xml`（TXT 原本の RFC の英語 XML。`txt2xml.pl` の変換の崩れを直す場合のみ）
 - `scripts/*.pl` と `scripts/*.py`（ツール類）
 - `data/xml2rfc-ja.css` と `data/xml2rfc-ja.js`（レンダリングのスタイル・挙動）
+- `data/index.css` と `data/index.js`（RFC 一覧ページ `docs/index.html` のスタイル・挙動。`perl Makefile.PL` で `docs/index.html` に埋め込まれる）
 
 以下は生成物または同期物として扱ってください（明示的な依頼がない限り手編集しないこと）。
 

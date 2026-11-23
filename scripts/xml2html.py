@@ -225,6 +225,7 @@ class HtmlWriter:
         self.pn_ids = set()
         self.ol_groups = {}
         self.li_marker = None
+        self.in_toc = False
 
     def unique_id(self, value):
         if value is None:
@@ -597,8 +598,13 @@ class HtmlWriter:
         return h
 
     def render_toc(self, h, en, ja):
-        for (c0, c1) in zip(en, ja):
-            self.render(h, c0, c1)
+        # 目次のリストも empty="true" だが、従来どおりの表示を保つため empty/bare のクラスは付けない
+        self.in_toc = True
+        try:
+            for (c0, c1) in zip(en, ja):
+                self.render(h, c0, c1)
+        finally:
+            self.in_toc = False
         return h
 
     def render_section(self, h, en, ja):
@@ -1455,6 +1461,14 @@ class HtmlWriter:
     def render1_ul(self, h, x):
         ul = build('ul')
         h.append(ul)
+        # empty="true" は記号なし、bare="true" はさらに字下げなし（bare は empty と組み合わせたときだけ有効）
+        classes = []
+        if x.get('empty') == 'true' and not self.in_toc:
+            classes.append('empty')
+            if x.get('bare') == 'true':
+                classes.append('bare')
+        if classes:
+            ul.set('class', ' '.join(classes))
         for c in x:
             self.render1(ul, c)
         return ul

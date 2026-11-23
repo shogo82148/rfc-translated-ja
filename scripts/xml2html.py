@@ -215,6 +215,17 @@ def ol_html_type(labels, prefer=None):
 def css_string(s):
     return s.replace('\\', '\\\\').replace('"', '\\"')
 
+def indent_chars(x, default):
+    """<ul>/<ol>/<dl> の indent 属性の文字数を返す。数値でなければ default を返す"""
+    indent = x.get('indent')
+    if indent is not None and indent.isdigit():
+        return int(indent)
+    return default
+
+def indent_length(chars):
+    """indent 属性の文字数を CSS の長さにする（xml2rfc の HTML 出力と同じく 1 文字を 0.5em とする）"""
+    return '%gem' % (chars * 0.5)
+
 class HtmlWriter:
     def __init__(self, xmlrfcEN, xmlrfcJA, metadata):
         self.root_en = xmlrfcEN.getroot()
@@ -1421,6 +1432,8 @@ class HtmlWriter:
     def render1_dl(self, h, x):
         dl = build('dl')
         h.append(dl)
+        if x.get('spacing') == 'compact':
+            dl.set('class', 'compact')
         for c in x:
             self.render1(dl, c)
         return dl
@@ -1441,6 +1454,10 @@ class HtmlWriter:
     def render1_dd(self, h, x):
         dd = build('dd')
         h.append(dd)
+        # 親の <dl> の indent 属性の文字数だけ字下げする（既定は 3 文字）
+        parent = x.getparent()
+        if parent is not None and parent.tag == 'dl':
+            dd.set('style', 'margin-left: %s' % indent_length(indent_chars(parent, 3)))
         if x.get('anchor'):
             dd.set('id', '%s-%s' % (x.get('anchor'), self.lang))
         if x.text:
@@ -1455,21 +1472,20 @@ class HtmlWriter:
     def render1_ul(self, h, x):
         ul = build('ul')
         h.append(ul)
-        # empty="true" は記号なし。bare="true" は記号の幅を取らず、indent 属性の文字数だけ字下げする
+        # empty="true" は記号なし。bare="true" は記号の幅を取らないことを表すが、
+        # 記号は項目の左の余白に置くので、どちらも字下げは indent 属性の文字数で決まる
         # （bare は empty と組み合わせたときだけ有効。xml2rfc のテキスト出力と同じ解釈）
         classes = []
-        style = None
         if x.get('empty') == 'true':
             classes.append('empty')
             if x.get('bare') == 'true':
                 classes.append('bare')
-                indent = x.get('indent')
-                if indent is not None and indent.isdigit():
-                    style = 'padding-left: %dch' % int(indent)
+        if x.get('spacing') == 'compact':
+            classes.append('compact')
         if classes:
             ul.set('class', ' '.join(classes))
-        if style:
-            ul.set('style', style)
+        # indent の既定は記号 1 文字と空白 2 文字の 3 文字
+        ul.set('style', 'padding-left: %s' % indent_length(indent_chars(x, 3)))
         for c in x:
             self.render1(ul, c)
         return ul
@@ -1480,6 +1496,13 @@ class HtmlWriter:
         items = [c for c in x if c.tag == 'li']
         labels = self.ol_labels(x, items)
         html_type, start = ol_html_type(labels, x.get('type'))
+        if x.get('spacing') == 'compact':
+            ul.set('class', 'compact')
+        # indent="adaptive" は最も長い番号の文字数と空白 2 文字（xml2rfc のテキスト出力と同じ解釈）
+        adaptive = max([len(label) for label in labels], default=1) + 2
+        indent = x.get('indent') or '3'
+        chars = int(indent) if indent.isdigit() else adaptive
+        ul.set('style', 'padding-left: %s' % indent_length(chars))
         li_labels = {}
         if html_type is None:
             # "(a)" や "Step 1:" のような独自書式は、項目ごとに文字列のマーカーを指定する

@@ -1432,8 +1432,14 @@ class HtmlWriter:
     def render1_dl(self, h, x):
         dl = build('dl')
         h.append(dl)
+        classes = []
+        # newline="true" は定義を用語の次の行から始める（既定の "false" は用語と同じ行に続ける）
+        if x.get('newline') == 'true':
+            classes.append('newline')
         if x.get('spacing') == 'compact':
-            dl.set('class', 'compact')
+            classes.append('compact')
+        if classes:
+            dl.set('class', ' '.join(classes))
         for c in x:
             self.render1(dl, c)
         return dl

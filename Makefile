@@ -2111,6 +2111,7 @@ all: \
 	docs/rfc7314.html \
 	docs/rfc7304.html \
 	docs/rfc7300.html \
+	docs/rfc7296.html \
 	docs/rfc7284.html \
 	docs/rfc7249.html \
 	docs/rfc7239.html \
@@ -12032,6 +12033,10 @@ src/en/rfc7304.xml: src/en-txt/rfc7304.xml
 docs/rfc7300.html: src/en/rfc7300.xml src/rfcs/rfc7300.json src/ja/rfc7300.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 7300
 src/en/rfc7300.xml: src/en-txt/rfc7300.xml
+	cp $< $@
+docs/rfc7296.html: src/en/rfc7296.xml src/rfcs/rfc7296.json src/ja/rfc7296.xml scripts/xml2html.py data/xml2rfc-ja.js
+	scripts/xml2html.py 7296
+src/en/rfc7296.xml: src/en-txt/rfc7296.xml
 	cp $< $@
 docs/rfc7284.html: src/en/rfc7284.xml src/rfcs/rfc7284.json src/ja/rfc7284.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 7284

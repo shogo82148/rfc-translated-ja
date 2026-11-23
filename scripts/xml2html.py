@@ -225,7 +225,6 @@ class HtmlWriter:
         self.pn_ids = set()
         self.ol_groups = {}
         self.li_marker = None
-        self.in_toc = False
 
     def unique_id(self, value):
         if value is None:
@@ -598,13 +597,8 @@ class HtmlWriter:
         return h
 
     def render_toc(self, h, en, ja):
-        # 目次のリストも empty="true" だが、従来どおりの表示を保つため empty/bare のクラスは付けない
-        self.in_toc = True
-        try:
-            for (c0, c1) in zip(en, ja):
-                self.render(h, c0, c1)
-        finally:
-            self.in_toc = False
+        for (c0, c1) in zip(en, ja):
+            self.render(h, c0, c1)
         return h
 
     def render_section(self, h, en, ja):
@@ -1461,14 +1455,21 @@ class HtmlWriter:
     def render1_ul(self, h, x):
         ul = build('ul')
         h.append(ul)
-        # empty="true" は記号なし、bare="true" はさらに字下げなし（bare は empty と組み合わせたときだけ有効）
+        # empty="true" は記号なし。bare="true" は記号の幅を取らず、indent 属性の文字数だけ字下げする
+        # （bare は empty と組み合わせたときだけ有効。xml2rfc のテキスト出力と同じ解釈）
         classes = []
-        if x.get('empty') == 'true' and not self.in_toc:
+        style = None
+        if x.get('empty') == 'true':
             classes.append('empty')
             if x.get('bare') == 'true':
                 classes.append('bare')
+                indent = x.get('indent')
+                if indent is not None and indent.isdigit():
+                    style = 'padding-left: %dch' % int(indent)
         if classes:
             ul.set('class', ' '.join(classes))
+        if style:
+            ul.set('style', style)
         for c in x:
             self.render1(ul, c)
         return ul

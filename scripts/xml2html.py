@@ -1794,9 +1794,9 @@ class HtmlWriter:
         if p.tag != 'referencegroup':
             # リンクを追加
             target = x.get('target')
-            if len(inner):
-                inner[-1].tail = ', '
             if target:
+                if len(inner):
+                    inner[-1].tail = ', '
                 a = build('a', href=target)
                 a.text = target
                 span = build('span')

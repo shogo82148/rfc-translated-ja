@@ -97,7 +97,6 @@ export default function (context) {
         case "べきです（SHOULD）":
         case "べきではありません（SHOULD NOT）":
         case "選択可能な（OPTIONAL）":
-        case "推奨します（RECOMMEND）":
           return;
       }
 

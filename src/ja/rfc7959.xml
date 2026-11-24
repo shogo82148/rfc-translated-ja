@@ -1,0 +1,1293 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-core-block-21" indexInclude="true" number="7959" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-core-block-21" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc7959" rel="alternate"/>
+  <front>
+    <title abbrev="Block-Wise Transfer in CoAP">制約付きアプリケーションプロトコル（CoAP）におけるブロック単位転送</title>
+    <seriesInfo name="RFC" value="7959" stream="IETF"/>
+    <date year="2016" month="August"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">制約付きアプリケーションプロトコル（Constrained Application Protocol、CoAP）は、制約のあるノードとネットワークのためのRESTfulな転送プロトコルです。
+基本的なCoAPメッセージは、センサーやアクチュエーターからの小さなペイロードにはうまく機能します。
+しかし、アプリケーションはときおり、たとえばファームウェアの更新のために、より大きなペイロードを転送する必要があります。
+TCPがセグメント化と順序の並べ直しという面倒な作業を担うHTTPとは対照的に、CoAPはUDPやデータグラムトランスポート層セキュリティー（DTLS）のようなデータグラムトランスポートに基づいています。
+これらのトランスポートが提供するのは断片化だけであり、断片化は制約のあるノードとネットワークではさらに問題が多く、実際に転送できるリソース表現の最大サイズを制限します。</t>
+      <t indent="0" pn="section-abstract-2">この仕様は、IPの断片化に頼る代わりに、リソース表現からの情報の複数のブロックを、複数のリクエスト・レスポンスのペアで転送するための一対の「Block」オプションによって、基本のCoAPを拡張します。
+多くの重要なケースで、Blockオプションによってサーバーは真にステートレスになれます。
+つまり、サーバーはコネクションの確立も、以前のブロック転送に関するサーバー側の記憶も必要とせずに、各ブロック転送を個別に処理できます。
+要するに、Blockオプションは、より大きな表現をブロック単位で転送するための最小限の方法を提供します。</t>
+      <t indent="0" pn="section-abstract-3">これらのオプションをサポートしないCoAP実装は、一般に交換できる表現のサイズが制限されるため、BlockオプションはCoAP実装で広く使用されることが期待されています。
+したがって、この仕様はRFC 7252を更新します。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。
+この文書は、IETFコミュニティーのコンセンサスを代表するものです。
+この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。
+インターネット標準に関する詳しい情報は、RFC 7841のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、
+<eref target="http://www.rfc-editor.org/info/rfc7959" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2016 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="http://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。
+これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。
+この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-block-wise-transfers">ブロック単位転送</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2">
+              <li pn="section-toc.1-1.2.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.1.1"><xref derivedContent="2.1" format="counter" sectionFormat="of" target="section-2.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-block2-and-block1-options">Block2オプションとBlock1オプション</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.2.1"><xref derivedContent="2.2" format="counter" sectionFormat="of" target="section-2.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-structure-of-a-block-option">Blockオプションの構造</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.3.1"><xref derivedContent="2.3" format="counter" sectionFormat="of" target="section-2.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-block-options-in-requests-and-responses">リクエストとレスポンスにおけるBlockオプション</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.4.1"><xref derivedContent="2.4" format="counter" sectionFormat="of" target="section-2.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-the-block2-option">Block2オプションの使用</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.5">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.5.1"><xref derivedContent="2.5" format="counter" sectionFormat="of" target="section-2.5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-using-the-block1-option">Block1オプションの使用</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.6">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.6.1"><xref derivedContent="2.6" format="counter" sectionFormat="of" target="section-2.6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-combining-block-wise-transfers-with-the-observe-option">ブロック単位転送とObserveオプションの組み合わせ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.7">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.7.1"><xref derivedContent="2.7" format="counter" sectionFormat="of" target="section-2.7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-combining-block1-and-block2">Block1とBlock2の組み合わせ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.8">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.8.1"><xref derivedContent="2.8" format="counter" sectionFormat="of" target="section-2.8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-combining-block2-with-multicast">Block2とマルチキャストの組み合わせ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.2.2.9">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.9.1"><xref derivedContent="2.9" format="counter" sectionFormat="of" target="section-2.9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-response-codes">レスポンスコード</xref></t>
+                <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.2.2.9.2">
+                  <li pn="section-toc.1-1.2.2.9.2.1">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.9.2.1.1"><xref derivedContent="2.9.1" format="counter" sectionFormat="of" target="section-2.9.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-2.31-continue">2.31 Continue</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.9.2.2">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.9.2.2.1"><xref derivedContent="2.9.2" format="counter" sectionFormat="of" target="section-2.9.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-4.08-request-entity-incomplete">4.08 Request Entity Incomplete</xref></t>
+                  </li>
+                  <li pn="section-toc.1-1.2.2.9.2.3">
+                    <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.9.2.3.1"><xref derivedContent="2.9.3" format="counter" sectionFormat="of" target="section-2.9.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-4.13-request-entity-too-large">4.13 Request Entity Too Large</xref></t>
+                  </li>
+                </ul>
+              </li>
+              <li pn="section-toc.1-1.2.2.10">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.2.10.1"><xref derivedContent="2.10" format="counter" sectionFormat="of" target="section-2.10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-caching-considerations">キャッシュに関する考慮事項</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-examples">例</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+              <li pn="section-toc.1-1.3.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-block2-examples">Block2の例</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-block1-examples">Block1の例</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.3">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.3.1"><xref derivedContent="3.3" format="counter" sectionFormat="of" target="section-3.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-combining-block1-and-block2-2">Block1とBlock2の組み合わせ</xref></t>
+              </li>
+              <li pn="section-toc.1-1.3.2.4">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.4.1"><xref derivedContent="3.4" format="counter" sectionFormat="of" target="section-3.4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-combining-observe-and-block2">ObserveとBlock2の組み合わせ</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-the-size2-and-size1-options">Size2オプションとSize1オプション</xref></t>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-http-mapping-considerations">HTTPへのマッピングに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-iana-considerations">IANAに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+              <li pn="section-toc.1-1.7.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mitigating-resource-exhaustion-attacks">リソース枯渇攻撃の緩和</xref></t>
+              </li>
+              <li pn="section-toc.1-1.7.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mitigating-amplification-attacks">増幅攻撃の緩和</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.8.2">
+              <li pn="section-toc.1-1.8.2.1">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.1.1"><xref derivedContent="8.1" format="counter" sectionFormat="of" target="section-8.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+              </li>
+              <li pn="section-toc.1-1.8.2.2">
+                <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.2.2.1"><xref derivedContent="8.2" format="counter" sectionFormat="of" target="section-8.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+              </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" pn="section-toc.1-1.9.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.a"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgements">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" pn="section-toc.1-1.10.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.b"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+        </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1">制約のあるRESTful環境（Constrained RESTful Environments、CoRE）に関する取り組みは、表現状態転送（Representational State Transfer、REST）アーキテクチャーを、最も制約のあるノード（RAMとROMが限られたマイクロコントローラーなど<xref target="RFC7228" format="default" sectionFormat="of" derivedContent="RFC7228"/>）とネットワーク（低電力無線パーソナルエリアネットワーク上のIPv6（6LoWPAN）など<xref target="RFC4944" format="default" sectionFormat="of" derivedContent="RFC4944"/>）に適した形で実現することを目指しています<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>。
+CoAPプロトコルは、HTTP<xref target="RFC7230" format="default" sectionFormat="of" derivedContent="RFC7230"/>によく似たRESTful<xref target="REST" format="default" sectionFormat="of" derivedContent="REST"/>なサービスを提供することを意図しています。
+その一方で、高度に制約のあるノードからなる高度に制約のあるネットワークでこれらのサービスを役立てるために、実装の複雑さと交換されるパケットのサイズを削減しています。</t>
+      <t indent="0" pn="section-1-2">この目的のためには、ときに相反するいくつかの点で抑制が必要になります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-3">
+        <li pn="section-1-3.1">コードサイズを最小化するために実装の複雑さを削減すること。</li>
+        <li pn="section-1-3.2">各メッセージに必要な断片の数（メッセージの配送確率を最大化するため）、必要な送信電力の量、帯域幅の限られたチャネルの負荷を最小化するために、メッセージサイズを削減すること。</li>
+        <li pn="section-1-3.3">安定ストレージ、良質な乱数源、ユーザーとの対話機能など、環境に対する要件を削減すること。</li>
+      </ul>
+      <t indent="0" pn="section-1-4">CoAPはUDPやデータグラムトランスポート層セキュリティー（DTLS）のようなデータグラムトランスポートに基づいているため、過度な断片化なしに転送できるリソース表現の最大サイズは限られています。
+さらに、すべてのリソース表現が制約のあるネットワークの単一のリンク層パケットに収まるわけではなく、そのためにIP層での断片化が不要な場合でも適応層での断片化が発生する可能性があります。
+より大きな表現の転送に（適応層またはIP層での）断片化を使用することは、下位のデータグラムプロトコル（UDPなど）の最大サイズまでは可能ですが、断片化と再構築のプロセスは、アプリケーション層で管理したほうがよい会話状態を下位の層に負わせることになります。</t>
+      <t indent="0" pn="section-1-5">この仕様は、リソース表現へのブロック単位のアクセスを可能にする一対のCoAPオプションを定義します。
+Blockオプションは、より大きなリソース表現をブロック単位で転送するための最小限の方法を提供します。
+最も重要な目的は、ブロック単位のGETリクエストのためにサーバーで会話状態を作成する必要をなくすことです。
+（リソースの作成や置換をアトミックに行う必要がある場合、POSTやPUTで会話状態の作成を完全に避けることはできません。
+その性質が必要ない場合は、この場合もサーバーの会話状態を作成する必要はありません。）</t>
+      <t indent="0" pn="section-1-6">ブロック単位転送は交換の組み合わせとして実現され、各交換はCoAPの基本プロトコル<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>に従って実行されます。
+そのような組み合わせの中の各交換は、輻輳制御の仕様（<xref target="RFC7252" section="4.7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-4.7" derivedContent="RFC7252"/>）やセキュリティーに関する考慮事項（<xref target="RFC7252" section="11" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-11" derivedContent="RFC7252"/>。さらに、転送全体には追加のセキュリティーに関する考慮事項が適用されます。<xref target="section-7" format="default" sectionFormat="of" derivedContent="Section 7"/>を参照してください）を含め、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>の仕様に従います。
+この仕様は、これらの基本の交換に追加する制約を最小限にしています。
+しかし、CoAPのあらゆる使い方がブロック単位転送の中で非常に有用というわけではありません（たとえば、<xref target="section-2.8" format="default" sectionFormat="of" derivedContent="Section 2.8"/>のユースケース以外のブロック単位転送の中でNon-confirmableリクエストを使用すると、全体として配送されない確率が高まります）。
+誤解のないように付け加えると、この仕様は、その上に厳密に階層化されている基本の仕様が課す制約を一切取り除くものではありません。
+たとえば、連続するパケットは、<xref target="RFC7252" section="4.7" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-4.7" derivedContent="RFC7252"/>で説明されている輻輳制御（交換の開始に対する制限としてのNSTART、レスポンスのない送信に対する制限としてのPROBING_RATE）によって制限されます。
+ブロック単位転送は、ブロック単位モードを使用しない場合にクライアントが同じサーバーに送信できる（または同じサーバーから要求できる）トラフィックよりも多くのトラフィックを送信（または要求）することはできません。</t>
+      <t indent="0" pn="section-1-7">いくつかのケースでは、この仕様は、クライアントが一連のブロック単位転送を「不当な遅延なしに」実行することをRECOMMENDします。
+これは相互運用性の要件として表現できるものではなく、実装品質に対する期待です。
+逆に、ブロック単位転送を完了するのにかなりの時間がかかるクライアントに対応するために、サーバーがわざわざ特別なことをする必要はないと期待されています。
+たとえば、ブロック単位のGETの場合、転送の進行中にリソースが変更されると、後で取得したブロックのエンティティータグ（ETag）が異なる場合があります。
+頻繁に変更されるリソースでこれが常に起きるのを避けるために、サーバーは特定のクライアントのために短時間キャッシュを保持しようとしても<bcp14>よいです（MAY）</bcp14>。
+ここで期待されているのは、そのようなキャッシュの有効期間を、直前のブロックが転送されてから数回の往復時間程度と、短く保てることです。</t>
+      <t indent="0" pn="section-1-8">要約すると、この仕様は、ブロック単位転送に使用できる一対のBlockオプションをCoAPに追加します。
+これらのオプションを使用する利点には、次のものがあります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-1-9">
+        <li pn="section-1-9.1">制約のあるネットワークのリンク層パケットに収まるよりも大きな転送を、より小さなブロックで実行できます。</li>
+        <li pn="section-1-9.2">断片化のために、管理の難しい会話状態が適応層やIP層に作成されることがありません。</li>
+        <li pn="section-1-9.3">各ブロックの転送が確認応答されるため、必要に応じて個別に再送できます。</li>
+        <li pn="section-1-9.4">実際に使用されるブロックサイズについて、双方が意見を述べることができます。</li>
+        <li pn="section-1-9.5">結果として行われる交換はパケット解析ツールを使って容易に理解できるため、デバッグがかなり容易です。</li>
+        <li pn="section-1-9.6">必要であれば、Blockオプションを（変更なしで）使用して、リソース表現の中の2のべき乗のサイズのブロックへのランダムアクセスを提供することもできます。</li>
+      </ul>
+      <t indent="0" pn="section-1-10">これらのオプションをサポートしないCoAP実装は、一般に交換できる表現のサイズが制限されます。
+<xref target="RFC7252" section="4.6" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-4.6" derivedContent="RFC7252"/>を参照してください。
+これらのオプションはクリティカル（Critical）ですが、サーバーは要求されていないのにレスポンスでこれらを使い始めることを決めてもかまいません。
+その判断を支える能力表示のメカニズムを提供する取り組みは行われていません。
+ブロック単位転送のメカニズムは、約1キロバイトより大きな表現にCoAPを使用するうえで非常に基本的なものなので、非常に広く実装されることが期待されているからです。</t>
+      <t indent="0" pn="section-1-11">この文書のキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>推奨されません（NOT RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、RFC 2119、BCP 14<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているように解釈され、準拠するCoAP実装の要件レベルを示します。</t>
+      <t indent="0" pn="section-1-12">この文書では、「バイト（byte）」という用語は、現在の慣例的な意味で「オクテット（octet）」の同義語として使用します。</t>
+      <t indent="0" pn="section-1-13">ビット演算を説明する箇所では、この文書はプログラミング言語Cでなじみのある表記を使用します。
+ただし、演算子「**」はべき乗を表します。</t>
+    </section>
+    <section anchor="block-wise-transfers" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-block-wise-transfers">ブロック単位転送</name>
+      <t indent="0" pn="section-2-1">「はじめに」で述べたように、制約のあるネットワークでデータグラムのサイズを制限するのには、次のような十分な理由があります。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2-2">
+        <li pn="section-2-2.1">データグラムの最大サイズによるもの（UDPでは約64KiB）</li>
+        <li pn="section-2-2.2">IPの断片化を避けたいという要望によるもの（IPv6ではMTUは1280）</li>
+        <li pn="section-2-2.3">適応層での断片化を避けたいという要望によるもの（6LoWPAN<xref target="RFC4919" format="default" sectionFormat="of" derivedContent="RFC4919"/>では60〜80バイト）</li>
+      </ul>
+      <t indent="0" pn="section-2-3">リソース表現が単一のCoAPデータグラムのペイロードで無理なく転送できるサイズよりも大きい場合、Blockオプションを使用してブロック単位転送を示すことができます。
+ペイロードはリクエストでもレスポンスでも送信できるため、この仕様は、ペイロード転送の方向ごとに別々の2つのオプションを提供します。
+これらのオプションの命名では（ブロック単位転送でも<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>でも）、リクエストに関係するリソース表現の転送を指すために番号1（「Block1」、「Size1」）を使用し、レスポンスのためのリソース表現の転送を指すために番号2（「Block2」、「Size2」）を使用します。</t>
+      <t indent="0" pn="section-2-4">以下では、「ペイロード（payload）」という用語は単一のCoAPメッセージの実際のコンテンツ、つまり転送される単一のブロックに対して使用し、「ボディー（body）」という用語はブロック単位で転送されるリソース表現全体に対して使用します。
+Content-Formatオプションは、ペイロードではなくボディーに適用されます。
+特に、ブロック間の境界は、Content-Formatが使用する構造、エンコーディング、またはコンテンツコーディングの観点で、完全な単位を区切らない位置にある場合があります。
+（同様に、<xref target="RFC7252" section="5.10.6" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-5.10.6" derivedContent="RFC7252"/>で定義されているETagオプションはリソースの表現全体に適用され、したがってレスポンスのボディーに適用されます。）</t>
+      <t indent="0" pn="section-2-5">ほとんどの場合、ボディーのために転送されるすべてのブロックは（最後のブロックを除いて）同じサイズになります。
+（最初のリクエストで受信者が好むよりも大きなブロックサイズを使用した場合、後続のリクエストでは好ましいブロックサイズを使用します。）
+ブロックサイズはプロトコルによって固定されていません。
+実装をできるだけ単純に保つために、Blockオプションは、2**4（16）バイトから2**10（1024）バイトまでの、2のべき乗の狭い範囲のブロックサイズだけをサポートします。
+ボディーが選択した2のべき乗のブロックサイズで割り切れないことが多いため、最後のブロックはそのサイズに達する必要はありません（ただし、最後のブロックでも、選択した2のべき乗のサイズがBlockオプションのブロックサイズのフィールドで示されます）。</t>
+      <section anchor="the-block2-and-block1-options" numbered="true" removeInRFC="false" toc="include" pn="section-2.1">
+        <name slugifiedName="name-the-block2-and-block1-options">Block2オプションとBlock1オプション</name>
+        <table anchor="table-1" align="center" pn="table-1">
+          <name slugifiedName="name-block-option-numbers">Blockオプション番号</name>
+          <thead>
+            <tr>
+              <th align="left" colspan="1" rowspan="1">No.</th>
+              <th align="left" colspan="1" rowspan="1">C</th>
+              <th align="left" colspan="1" rowspan="1">U</th>
+              <th align="left" colspan="1" rowspan="1">N</th>
+              <th align="left" colspan="1" rowspan="1">R</th>
+              <th align="left" colspan="1" rowspan="1">Name</th>
+              <th align="left" colspan="1" rowspan="1">Format</th>
+              <th align="left" colspan="1" rowspan="1">Length</th>
+              <th align="left" colspan="1" rowspan="1">Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">23</td>
+              <td align="left" colspan="1" rowspan="1">C</td>
+              <td align="left" colspan="1" rowspan="1">U</td>
+              <td align="left" colspan="1" rowspan="1">-</td>
+              <td align="left" colspan="1" rowspan="1">-</td>
+              <td align="left" colspan="1" rowspan="1">Block2</td>
+              <td align="left" colspan="1" rowspan="1">uint</td>
+              <td align="left" colspan="1" rowspan="1">0-3</td>
+              <td align="left" colspan="1" rowspan="1">(none)</td>
+            </tr>
+            <tr>
+              <td align="left" colspan="1" rowspan="1">27</td>
+              <td align="left" colspan="1" rowspan="1">C</td>
+              <td align="left" colspan="1" rowspan="1">U</td>
+              <td align="left" colspan="1" rowspan="1">-</td>
+              <td align="left" colspan="1" rowspan="1">-</td>
+              <td align="left" colspan="1" rowspan="1">Block1</td>
+              <td align="left" colspan="1" rowspan="1">uint</td>
+              <td align="left" colspan="1" rowspan="1">0-3</td>
+              <td align="left" colspan="1" rowspan="1">(none)</td>
+            </tr>
+          </tbody>
+        </table>
+        <t indent="0" pn="section-2.1-2">Block1オプションとBlock2オプションは、どちらもリクエストメッセージとレスポンスメッセージの両方に含めることができます。
+いずれの場合も、Block1オプションはリクエストのペイロードに関係し、Block2オプションはレスポンスのペイロードに関係します。</t>
+        <t indent="0" pn="section-2.1-3">したがって、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>で定義されているメソッドでは、Block1はペイロードを持つPOSTリクエストとPUTリクエスト、およびそれらのレスポンスで役立ちます。
+Block2は、GETリクエスト、POSTリクエスト、PUTリクエストと、それらに対するペイロードを持つレスポンス（2.01、2.02、2.04、2.05。<xref target="RFC7252" section="5.5" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-5.5" derivedContent="RFC7252"/>を参照）で役立ちます。</t>
+        <t indent="0" pn="section-2.1-4">Block1がリクエストに含まれる場合、またはBlock2がレスポンスに含まれる場合（つまり、オプションが関係するペイロードを持つメッセージに含まれる場合）、そのオプションはブロック単位転送であることを示し、この特定のブロック単位のペイロードが、転送されるボディー全体のどの部分を構成するかを記述します（「記述的用法（descriptive usage）」）。
+オプションが逆方向に含まれる場合は、そのペイロードがどのように形成されるか、またはどのように処理されたかについて追加の制御を提供します（「制御用法（control usage）」）。</t>
+        <t indent="0" pn="section-2.1-5">どちらのBlockオプションも、実装は任意であることが意図されています。
+しかし、CoAPメッセージにBlockオプションが含まれている場合は、そのオプションを処理<bcp14>しなければなりません（MUST）</bcp14>（そうしない場合はメッセージを拒否します）。
+したがって、Blockオプションはクリティカルなオプションとして識別されます。
+どちらのBlockオプションも、単一のメッセージに2回以上含まれては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+      <section anchor="structure-of-a-block-option" numbered="true" removeInRFC="false" toc="include" pn="section-2.2">
+        <name slugifiedName="name-structure-of-a-block-option">Blockオプションの構造</name>
+        <t indent="0" pn="section-2.2-1">Block（Block1またはBlock2）オプションでは、3つの情報項目を転送する必要がある場合があります。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.2-2">
+          <li pn="section-2.2-2.1">ブロックのサイズ（SZX）</li>
+          <li pn="section-2.2-2.2">さらにブロックが続くかどうか（M）</li>
+          <li pn="section-2.2-2.3">指定されたサイズのブロックの並びの中での、ブロックの相対的な番号（NUM）</li>
+        </ul>
+        <t indent="0" pn="section-2.2-3">Blockオプションの値は、可変サイズ（0〜3バイト）の符号なし整数（uint。<xref target="RFC7252" section="3.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-3.2" derivedContent="RFC7252"/>を参照）です。
+この整数値は、これら3つのフィールドをエンコードします。
+<xref target="figure-1" format="default" sectionFormat="of" derivedContent="Figure 1"/>を参照してください。
+（CoAPのuintのエンコーディング規則により、NUM、M、SZXがすべてたまたまゼロの場合は、ゼロバイトの整数が送信されます。）</t>
+        <figure anchor="figure-1" align="left" suppress-title="false" pn="figure-1">
+          <name slugifiedName="name-block-option-value">Blockオプションの値</name>
+          <artwork name="" type="" align="left" alt="" pn="section-2.2-4.1"><![CDATA[
+        0
+        0 1 2 3 4 5 6 7
+       +-+-+-+-+-+-+-+-+
+       |  NUM  |M| SZX |
+       +-+-+-+-+-+-+-+-+
+
+        0                   1
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |          NUM          |M| SZX |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        0                   1                   2
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                   NUM                 |M| SZX |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-2.2-5">ブロックサイズは3ビットの符号なし整数（2**4バイトを表す0から、2**10バイトを表す6まで）を使用してエンコードされ、これを「SZX」（「サイズ指数（size exponent）」）と呼びます。
+実際のブロックサイズは「2**(SZX + 4)」になります。
+SZXは、オプション値の下位3ビット（つまり、「val」をオプションの値として「val &amp; 7」）で転送されます。</t>
+        <t indent="0" pn="section-2.2-6">下位から4番目のビットであるM、つまり「more」ビット（「val &amp; 8」）は、さらにブロックが続くかどうか、または現在のブロック単位転送が転送される最後のブロックであるかどうかを示します。</t>
+        <t indent="0" pn="section-2.2-7">オプション値を16で割った値（NUMフィールド）は、現在転送されているブロックの、ゼロから始まるシーケンス番号です。
+したがって、現在の転送は、バイト「NUM &lt;&lt; (SZX + 4)」から始まる「size」バイトに関するものです。</t>
+        <dl newline="false" spacing="normal" indent="3" pn="section-2.2-8">
+          <dt pn="section-2.2-8.1">実装上の注意：</dt>
+          <dd pn="section-2.2-8.2">実装上の便宜として、「(val &amp; ~0xF) &lt;&lt; (val &amp; 7)」、つまり下位4ビットをマスクしたオプション値をSZXの値だけ左にシフトしたものが、転送されるブロックの最初のバイトのバイト位置になります。</dd>
+        </dl>
+        <t indent="0" pn="section-2.2-9">より具体的には、Block1オプションまたはBlock2オプションのオプション値の中で、オプションのフィールドの意味は次のように定義されます。</t>
+        <dl newline="false" spacing="normal" indent="3" pn="section-2.2-10">
+          <dt pn="section-2.2-10.1">NUM：</dt>
+          <dd pn="section-2.2-10.2">ブロック番号（Block Number）。
+リクエストまたは提供されるブロック番号を示します。
+ブロック番号0は、ボディーの最初のブロック（つまり、ボディーの最初のバイトから始まるブロック）を示します。</dd>
+          <dt pn="section-2.2-10.3">M：</dt>
+          <dd pn="section-2.2-10.4">Moreフラグ（「最後のブロックではない」）。
+記述的用法では、このフラグがセットされていない場合、このメッセージのペイロードがボディーの最後のブロックであることを示します。
+セットされている場合は、利用可能な追加のブロックが1つ以上あることを示します。
+特定のブロック番号を取得するためにリクエストでBlock2オプションを使用する場合（「制御用法」）、Mビットはゼロとして送信され、受信時には無視され<bcp14>なければなりません（MUST）</bcp14>。
+（レスポンスのBlock1オプションでは、Mフラグはアトミック性を示すために使用されます。後述を参照してください。）</dd>
+          <dt pn="section-2.2-10.5">SZX：</dt>
+          <dd pn="section-2.2-10.6">ブロックサイズ（Block Size）。
+ブロックサイズは、ブロックのサイズを2のべき乗で示す3ビットの符号なし整数で表されます。
+したがって、ブロックサイズ = 2**(SZX + 4)です。
+SZXに許される値は0から6までです。
+つまり、最小のブロックサイズは2**(0+4) = 16で、最大は2**(6+4) = 1024です。
+SZXの値7（ブロックサイズ2048を示すことになる値）は予約済みです。
+つまり、送信しては<bcp14>なりません（MUST NOT）</bcp14>。
+また、リクエストで受信した場合は、4.00 Bad Requestレスポンスコードとなら<bcp14>なければなりません（MUST）</bcp14>。</dd>
+        </dl>
+        <t indent="0" pn="section-2.2-11">Block1オプションとBlock2オプションにはデフォルト値はありません。
+これらのオプションのいずれかがないことは、オプションで指定されうるNUMとMの値に関しては、オプション値が0であることと同等です。
+つまり、現在のブロックが転送の最初で唯一のブロックであること（ブロック番号0、Mビットはセットされていない）を示します。
+しかし、SZXが0、したがってサイズの値が16バイトであることを示す明示的な値0とは対照的に、オプションがないことによって特定の明示的なサイズが暗示されることはなく、サイズは未規定のままになります。
+（他のuintと同様に、明示的な値0は長さゼロのオプションによって効率的に示されます。
+したがって、これはオプションがないこととはセマンティクスが異なります。）</t>
+      </section>
+      <section anchor="block-options-in-requests-and-responses" numbered="true" removeInRFC="false" toc="include" pn="section-2.3">
+        <name slugifiedName="name-block-options-in-requests-and-responses">リクエストとレスポンスにおけるBlockオプション</name>
+        <t indent="0" pn="section-2.3-1">Blockオプションは、次の3つの役割のいずれかで使用されます。</t>
+        <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.3-2">
+          <li pn="section-2.3-2.1">
+            <t indent="0" pn="section-2.3-2.1.1">記述的用法、つまり、レスポンス（GETに対する2.05レスポンスなど）のBlock2オプション、またはリクエスト（PUTまたはPOST）のBlock1オプション：</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.3-2.1.2">
+              <li pn="section-2.3-2.1.2.1">オプション値のNUMフィールドは、このメッセージのペイロードにどのブロック番号が含まれているかを記述します。</li>
+              <li pn="section-2.3-2.1.2.2">Mビットは、そのボディーの転送を完了するためにさらにブロックを転送する必要があるかどうかを示します。</li>
+              <li pn="section-2.3-2.1.2.3">Mビットがセットされている場合、SZXが暗示するブロックサイズは、ペイロードのバイト単位のサイズと一致<bcp14>しなければなりません（MUST）</bcp14>。
+（Mがセットされていない場合、SZXはペイロードのサイズを規定しません。）
+Block2の場合、リクエストがより大きなSZXの値を提案していたならば、次のリクエストはSZXをレスポンスで示されたサイズまで下げ<bcp14>なければなりません（MUST）</bcp14>。
+（その効果として、サーバーが（1）自身の好むブロックサイズと（2）リクエストされたブロックサイズのうち小さいほうを使用すれば、ボディーのすべてのブロックが同じブロックサイズを使用することになります。）</li>
+            </ul>
+          </li>
+          <li pn="section-2.3-2.2">
+            <t indent="0" pn="section-2.3-2.2.1">リクエスト（GETなど）における制御用法のBlock2オプション：</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.3-2.2.2">
+              <li pn="section-2.3-2.2.2.1">Block2オプションのNUMフィールドは、レスポンスで返すように要求されているペイロードのブロック番号を示します。</li>
+              <li pn="section-2.3-2.2.2.2">この場合、Mビットは機能を持たず、ゼロに設定<bcp14>しなければなりません（MUST）</bcp14>。</li>
+              <li pn="section-2.3-2.2.2.3">指定されたブロックサイズ（SZX）は、ブロックサイズを提案するか（ブロック番号0の場合）、以前に受信したブロックのブロックサイズを繰り返します（ブロック番号が0以外の場合）。</li>
+            </ul>
+          </li>
+          <li pn="section-2.3-2.3">
+            <t indent="0" pn="section-2.3-2.3.1">レスポンス（PUTリクエストまたはPOSTリクエストに対する2.xxレスポンスなど）における制御用法のBlock1オプション：</t>
+            <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.3-2.3.2">
+              <li pn="section-2.3-2.3.2.1">Block1オプションのNUMフィールドは、どのブロック番号が確認応答されているかを示します。</li>
+              <li pn="section-2.3-2.3.2.2">
+                <t indent="0" pn="section-2.3-2.3.2.2.1">リクエストでMビットがセットされていた場合、サーバーは、記憶を持たずに各ブロックを個別に処理するか、ボディー全体に対するリクエストをアトミックに処理するか、またはその2つを任意に組み合わせるかを選択できます。</t>
+                <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-2.3-2.3.2.2.2">
+                  <li pn="section-2.3-2.3.2.2.2.1">レスポンスでもMビットがセットされている場合、このレスポンスはリクエストに対する最終的なレスポンスコードを運んでいないことを示します。
+つまり、サーバーは同じエンドポイントからさらにブロックを集め、リクエストをアトミックに実行する予定です（たとえば、ペイロードの最後のブロックを受信したときにだけ処理を行います）。
+この場合、レスポンスはBlock2オプションを運んでは<bcp14>なりません（MUST NOT）</bcp14>。</li>
+                  <li pn="section-2.3-2.3.2.2.2.2">逆に、リクエストではMビットがセットされていたにもかかわらずMビットがセットされていない場合は、ブロック単位のリクエストがこのブロックについて個別に今実行されたことを示し、レスポンスはこのリクエスト（および、この一連のブロック単位転送の中で、レスポンスのBlock1オプションのMビットがセットされていた以前のリクエスト）に対する最終的なレスポンスを運びます。
+クライアントは引き続きさらにブロックを送信し続けることが期待されており、それらのブロックに対するリクエストメソッドも、ブロックごとに実行される場合とされない場合があります。
+（リソースはこの時点で部分的に更新された状態にあることに注意してください。
+この方法は、そのような中間状態を公開しても差し支えない場合にのみ適切です。
+クライアントは、リソースの更新をすばやく続けることや、失敗した場合に更新をやり直すことによって、その時間枠を短縮できます。）</li>
+                </ul>
+              </li>
+              <li pn="section-2.3-2.3.2.3">最後に、制御用のBlock1オプションで指定されたSZXのブロックサイズは、そのリソースに向けた転送においてサーバーが好む最大のブロックサイズであって、最初の交換で使用されたブロックサイズと同じかそれより小さいものを示します。
+クライアントは、それ以降にブロックサイズを変更する（そして、それに応じてブロック番号を換算し直す可能性がある）ことになるとしても、転送シーケンスのそれ以降のすべてのリクエストで、このブロックサイズまたはそれより小さいブロックサイズを使用す<bcp14>べきです（SHOULD）</bcp14>。</li>
+            </ul>
+          </li>
+        </ul>
+        <t indent="0" pn="section-2.3-3">一方または両方のBlockオプションを使用すると、単一のREST操作を複数のCoAPメッセージ交換に分割できます。
+<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>で規定されているように、これらのメッセージ交換はそれぞれ独自のCoAPメッセージIDを使用します。</t>
+        <t indent="0" pn="section-2.3-4">リクエストまたはレスポンスとともに送信されるContent-Formatオプションは、ボディー全体のContent-Formatを反映<bcp14>しなければなりません（MUST）</bcp14>。
+レスポンスボディーのブロックが異なるContent-Formatオプションとともに到着した場合、このエラーをどのように処理するかはクライアント次第です（通常は、進行中のブロック単位転送を中断します）。
+リクエストのブロックが一致しないContent-Formatオプションとともにサーバーに到着した場合、サーバーはそれらを単一のリクエストに組み立てては<bcp14>なりません（MUST NOT）</bcp14>。
+これは通常、一致しないブロックに対する4.08（Request Entity Incomplete、<xref target="section-2.9.2" format="default" sectionFormat="of" derivedContent="Section 2.9.2"/>）エラーレスポンスにつながります。</t>
+      </section>
+      <section anchor="using-the-block2-option" numbered="true" removeInRFC="false" toc="include" pn="section-2.4">
+        <name slugifiedName="name-using-the-block2-option">Block2オプションの使用</name>
+        <t indent="0" pn="section-2.4-1">MビットがセットされたBlock2オプションを運ぶレスポンスでリクエストに応答された場合、リクエスターは、最初のリクエストと同じオプションと、希望するブロック番号とブロックサイズを指定したBlock2オプションを持つリクエストをさらに送信することによって、リソース表現の追加のブロックを取得できます。
+リクエストでは、クライアントはBlock2オプションのMビットをゼロに設定<bcp14>しなければなりません（MUST）</bcp14>。
+サーバーは受信時にそれを無視<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.4-2">レスポンスで使用されるブロックサイズに影響を与えるために、リクエスターは、希望するサイズ、ゼロのブロック番号、ゼロのMビットを指定して、最初のリクエストでもBlock2オプションを使用<bcp14>してもよいです（MAY）</bcp14>。
+サーバーは、示されたブロックサイズまたはそれより小さいサイズを使用<bcp14>しなければなりません（MUST）</bcp14>。
+最初のブロックより後のブロックに対するそれ以降のブロック単位のリクエストはすべて、Block2オプションを使って希望するサイズを指定した最初のリクエストに対するレスポンスでサーバーが使用したのと同じブロックサイズを示さ<bcp14>なければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.4-3">リクエスターがBlock2オプションを使用し、調整された可能性のあるブロックサイズで最初のレスポンスを受信すると、単一のブロック単位転送のそれ以降のすべてのリクエストは、最終的に同じサイズの使用に収束します。
+ただし、最後のブロック（Mビットがセットされていない状態で返されるブロック）を満たすのに十分なコンテンツがない場合があります。
+（Block2オプションのない最初のリクエストの結果としてレスポンスにBlock2オプションが含まれていた後で、クライアントが2番目のリクエストでBlock2オプションを使い始める場合があることに注意してください。）
+サーバーはリクエストのオプションで示されたブロックサイズまたはそれより小さいサイズを使用しますが、リクエスターは、最初のリクエストに対して受信したレスポンスで使用された実際のブロックサイズに注意を払い、後続のリクエストでそのブロックサイズを使用し<bcp14>なければなりません（MUST）</bcp14>。
+サーバーの振る舞いは、このクライアントの振る舞いによって、一連のすべてのレスポンス（Mビットがセットされていない最後のレスポンスと、最初のリクエストにBlock2オプションが含まれていなかった場合の最初のレスポンスを除く）で同じブロックサイズになることを保証<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <t indent="0" pn="section-2.4-4">ブロック単位転送は、表現が完全に静的な（デバイスを記述するスキーマのように、時間の経過によってまったく変化しない）リソースをGETするためにも、動的に変化するリソースのためにも使用できます。
+後者の場合、再構築されるブロックが表現の同じバージョンからのものであることを保証するために、Block2オプションはETagオプション（<xref target="RFC7252" section="5.10.6" format="default" sectionFormat="comma" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-5.10.6" derivedContent="RFC7252"/>）と組み合わせて使用す<bcp14>べきです（SHOULD）</bcp14>。
+すなわち、サーバーは各レスポンスにETagオプションを含める<bcp14>べきです（SHOULD）</bcp14>。
+ETagオプションが利用可能な場合、クライアントは、交換されたブロックから表現を再構築する際にETagオプションを比較<bcp14>しなければなりません（MUST）</bcp14>。
+GET転送でETagオプションが一致しない場合、リクエスターには、最初に取得したブロックの新しい値の取得を試みるという選択肢があります。
+その結果生じる非効率を最小限に抑えるために、サーバーは、進行中の一連のリクエストのために表現の現在の値をキャッシュ<bcp14>してもよいです（MAY）</bcp14>。
+（サーバーは、リクエストを行うエンドポイントとURIの組み合わせが各ブロック単位のリクエストで同じであることによって、その一連のリクエストを識別できます。）
+この仕様は、サーバーが何らかの状態を確立することを要求していないことに十分注意してください。
+しかし、頻繁に変化するリソースを提供するサーバーでは、その結果として、クライアントが一貫性のあるブロックの集合を取得することが不可能になる場合があります。
+リソースのすべてのブロックを取得したいクライアントは、不当な遅延なしにそうするよう努める<bcp14>べきです（SHOULD）</bcp14>。
+サーバーは、状態への最後のアクセスからEXCHANGE_LIFETIME（<xref target="RFC7252" section="4.8.2" format="default" sectionFormat="comma" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-4.8.2" derivedContent="RFC7252"/>）の期間が経過した後は、キャッシュした状態を自由に破棄できると考えてかまいません。
+ただし、常にその期間だけ状態を保持しておくという要件はありません。</t>
+        <t indent="0" pn="section-2.4-5">Block2オプションは、単一のエンドポイントが同じリソースに対して、並行して進行する複数のブロック単位のレスポンスペイロード転送（たとえばGET）操作を実行する方法を提供しません。
+これが必要になることはまれですが、回避策として、クライアントはキャッシュキーを変えることができます（たとえば、同じセマンティクスを持つリソースにアクセスする複数のURIのうちの1つを使用することや、プロキシー安全な選択的オプションを変えることによって）。</t>
+      </section>
+      <section anchor="using-the-block1-option" numbered="true" removeInRFC="false" toc="include" pn="section-2.5">
+        <name slugifiedName="name-using-the-block1-option">Block1オプションの使用</name>
+        <t indent="0" pn="section-2.5-1">リクエストペイロードを持つリクエスト（たとえばPUTやPOST）では、Block1オプションはリクエストのペイロードを参照します（記述的用法）。</t>
+        <t indent="0" pn="section-2.5-2">ペイロードを持つリクエスト（たとえばPUTやPOSTの転送）に対するレスポンスでは、Block1オプションで指定されたブロックサイズは、このリソースについてのサーバーのブロックサイズの希望を示します（制御用法）。
+当然ながら、この時点で、最初のブロックはこの情報を利用せずにすでにクライアントから転送されています。
+それでも、クライアントは示された希望に従い、それ以降のすべてのブロックについて、サーバーが好むブロックサイズまたはそれより小さいブロックサイズを使用す<bcp14>べきです（SHOULD）</bcp14>。
+最初のリクエストですでに、小さいほうのサイズで数えて複数のブロックを転送しているため、ブロックサイズを小さくすると、2番目のリクエストが1より大きなブロック番号から始まる場合があることに注意してください。</t>
+        <t indent="0" pn="section-2.5-3">適応層での断片化がパケットの配送確率に与える影響に対抗するために、クライアントは、比較的大きなペイロードを持つリクエストの再送を、MAX_RETRANSMITに達する前でもあきらめて、より小さなペイロードによるブロック単位転送としてリクエストをやり直そうとする場合があります。
+この新しい試行は新しいメッセージ層のトランザクションとなり、新しいメッセージIDを必要とすることに注意してください。
+（失われたのがリクエストと確認応答のどちらなのかが不確かなため、この戦略は主に冪等なリクエストで有用です。）</t>
+        <t indent="0" pn="section-2.5-4">サーバーでアトミックに実行されることを意図したリクエストペイロード（たとえばPUTやPOST）のブロック単位転送では、実際の作成や置換は、最後のブロック、つまりBlock1オプションのMビットがセットされていないブロックを受信した時点で行われます。
+この場合、最後でないブロックに対する成功レスポンスはすべて、レスポンスコード2.31（Continue、<xref target="section-2.9.1" format="default" sectionFormat="of" derivedContent="Section 2.9.1"/>）を運びます。
+最後のブロックを処理する時点で、以前のすべてのブロックがサーバーで利用可能でない場合、転送は失敗し、エラーコード4.08（Request Entity Incomplete、<xref target="section-2.9.2" format="default" sectionFormat="of" derivedContent="Section 2.9.2"/>）を返さ<bcp14>なければなりません（MUST）</bcp14>。
+サーバーは、順序どおりでない（最後のものであるか否かを問わず）任意のBlock1転送に対しても4.08エラーコードを返<bcp14>してもよいです（MAY）</bcp14>。
+したがって、このケースを処理する特定のメカニズムを持たないクライアントは、常にブロック0から始め、後続のブロックを順番に送信す<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-2.5-5">クライアントが4.08エラーコードに遭遇する理由の1つは、サーバーがすでにタイムアウトし、組み立て中の部分的なリクエストボディーを破棄したことです。
+クライアントは、リクエストのすべてのブロックを不当な遅延なしに送信するよう努める<bcp14>べきです（SHOULD）</bcp14>。
+サーバーは、最後のブロックが転送されてからEXCHANGE_LIFETIME（<xref target="RFC7252" section="4.8.2" format="default" sectionFormat="comma" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-4.8.2" derivedContent="RFC7252"/>）の期間が経過した時点で、部分的なリクエストボディーを自由に破棄できると考えてかまいません。
+ただし、サーバーが常にその期間だけ部分的なリクエストボディーを保持しておくという要件はありません。</t>
+        <t indent="0" pn="section-2.5-6">エラーコード4.13（Request Entity Too Large）は、アトミックに実行しようとしているブロック単位のリクエストペイロード転送のブロックを格納するためのリソースを現在持っていないサーバーが、いつでも返すことができます。
+（Block1を使用していないリクエストに対する4.13レスポンスは、クライアントに対してBlock1の送信を試みるよう促すヒントであり、リクエストされたものより小さいSZXをBlock1オプションに持つ4.13レスポンスは、より小さいSZXを試みるよう促すヒントであることに注意してください。）</t>
+        <t indent="0" pn="section-2.5-7">サーバーでステートレスに実行されるリクエストペイロードのブロック単位転送では、転送がまだ進行中の間や、クライアントが転送を完了しなかった場合に、操作対象のリソースが一貫性のない状態のままになる可能性があります。
+この特性は、転送中は常にサーバーで状態が保持されるHTTPの特性よりも、リモートファイルシステムの特性に近いものです。
+共有ファイルアクセスでよく知られている手法（たとえば、クライアント固有の一時的なリソース）を使用して、HTTPとのこの違いを緩和できます。</t>
+        <t indent="0" pn="section-2.5-8">Block1オプションは、単一のエンドポイントが同じリソースに対して、並行して進行する複数のブロック単位のリクエストペイロード転送（たとえばPUTやPOST）操作を実行する方法を提供しません。
+（同じエンドポイントからの古いシーケンスが完了する前に）同じリソースに対する新しいブロック単位のリクエストのシーケンスを開始すると、サーバーがまだ保持しているかもしれないコンテキストが単に上書きされます。
+（これはおそらく、この場合にまさに望まれることです。
+クライアントは単に再起動して、以前のシーケンスについての情報を失っただけかもしれません。）</t>
+      </section>
+      <section anchor="combining-block-wise-transfers-with-the-observe-option" numbered="true" removeInRFC="false" toc="include" pn="section-2.6">
+        <name slugifiedName="name-combining-block-wise-transfers-with-the-observe-option">ブロック単位転送とObserveオプションの組み合わせ</name>
+        <t indent="0" pn="section-2.6-1">Observeオプションは、リソースの時間経過による変化についてクライアントが通知を受ける方法を提供します<xref target="RFC7641" format="default" sectionFormat="of" derivedContent="RFC7641"/>。
+クライアントが観測するリソースは、1つのCoAPメッセージで無理なく処理または転送できるサイズよりも大きい場合があります。
+ブロック単位転送と通知の組み合わせには、次の規則が適用されます。</t>
+        <t indent="0" pn="section-2.6-2">観測関係（observation relationship）は常にリソース全体に適用されます。
+Block2オプションは、リソースの単一のブロックを観測する方法を提供しません。</t>
+        <t indent="0" pn="section-2.6-3">基本的なGET転送の場合と同様に、クライアントは、観測関係を確立または更新するGETリクエストのBlock2オプションで、希望するブロックサイズを示すことができます。
+サーバーがブロック単位転送をサポートしている場合、サーバーはそのブロックサイズに注意を払い、（クライアントが観測者のリストから削除されるか、サーバーがクライアントからそのリソースに対する新しいGETリクエストを受信してそのリストのエントリーが更新されるまで）そのGETリクエストの結果として生じるすべての通知やレスポンスに、それを最大サイズとして適用す<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-2.6-4">2.05（Content）通知を送信するとき、サーバーは表現の最初のブロックだけを送信します。
+クライアントは、この最初のレスポンスがGETリクエストによって生じたかのように、表現の残りの部分を取得します。
+つまり、0より大きいNUM値を含むBlock2オプションを持つGETリクエストを追加で使用します。
+（その結果、以前の通知と比べて一部のブロックしか変化していない場合でも、表現全体が転送されることになります。）</t>
+        <t indent="0" pn="section-2.6-5">動的に変化する他のリソースと同様に、再構築されるブロックが表現の同じバージョンからのものであることを保証するために、サーバーは各レスポンスにETagオプションを含める<bcp14>べきです（SHOULD）</bcp14>。
+また、再構築するクライアントはETagオプションを比較<bcp14>しなければなりません（MUST）</bcp14>（<xref target="section-2.4" format="default" sectionFormat="of" derivedContent="Section 2.4"/>）。
+最初のブロックによって通知を受けたリソースのすべてのブロックを取得したいクライアントは、Block2の一般的なケースにもまして、不当な遅延なしにそうするよう努める<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-2.6-6">例については<xref target="section-3.4" format="default" sectionFormat="of" derivedContent="Section 3.4"/>を参照してください。</t>
+      </section>
+      <section anchor="combining-block1-and-block2" numbered="true" removeInRFC="false" toc="include" pn="section-2.7">
+        <name slugifiedName="name-combining-block1-and-block2">Block1とBlock2の組み合わせ</name>
+        <t indent="0" pn="section-2.7-1">PUT、特にPOSTの交換では、リクエストボディーとレスポンスボディーの両方が、ブロック単位転送の使用を必要とするほど大きくなる場合があります。
+まず、リクエストボディーのBlock1転送が通常どおりに進行します。
+このブロック単位転送の最後の断片の交換で、レスポンスはBlock2転送の最初の断片（NUMはゼロ）を運びます。
+このBlock2転送を続けるために、クライアントは、Block1フェーズのリクエストと同様のリクエストを送信し続けますが、Block1オプションを除き、ゼロ以外のNUMを持つBlock2リクエストオプションを含めます。</t>
+        <t indent="0" pn="section-2.7-2">Block1を使用したリクエストに対するレスポンスボディーを取得するBlock2転送は、順番どおりに実行<bcp14>しなければなりません（MUST）</bcp14>。</t>
+      </section>
+      <section anchor="combining-block2-with-multicast" numbered="true" removeInRFC="false" toc="include" pn="section-2.8">
+        <name slugifiedName="name-combining-block2-with-multicast">Block2とマルチキャストの組み合わせ</name>
+        <t indent="0" pn="section-2.8-1">クライアントは、レスポンスのサイズを制限するのに役立てるために、マルチキャストのGETリクエストでNUM = 0のBlock2オプションを使用できます。</t>
+        <t indent="0" pn="section-2.8-2">同様に、マルチキャストのGETリクエストに対するレスポンスでは、表現が大きい場合や、レスポンスのサイズをさらに制限するために、NUM = 0のBlock2オプションを使用できます。</t>
+        <t indent="0" pn="section-2.8-3">どちらの場合も、クライアントはそれ以降のブロックをユニキャストの交換を使用して取得します。
+ユニキャストのリクエストでは、クライアントは、マルチキャストのリクエストに対するレスポンスでサーバーが示したブロックサイズの希望に従う<bcp14>べきです（SHOULD）</bcp14>。</t>
+        <t indent="0" pn="section-2.8-4">マルチキャストメッセージと組み合わせたBlockオプションのその他の使用法は、今後の研究課題です。</t>
+      </section>
+      <section anchor="response-codes" numbered="true" removeInRFC="false" toc="include" pn="section-2.9">
+        <name slugifiedName="name-response-codes">レスポンスコード</name>
+        <t indent="0" pn="section-2.9-1"><xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>で定義されているレスポンスコードに加えて、この仕様は2つのレスポンスコードを定義し、1つのレスポンスコードの意味を拡張します。</t>
+        <section anchor="2.31-continue" numbered="true" removeInRFC="false" toc="include" pn="section-2.9.1">
+          <name slugifiedName="name-2.31-continue">2.31 Continue</name>
+          <t indent="0" pn="section-2.9.1-1">この新しい成功ステータスコードは、リクエストボディーのこのブロックの転送が成功し、サーバーがさらにブロックを送信することを促しているものの、ブロック単位のリクエスト全体の最終的な結果はまだ決定できないことを示します。
+このレスポンスコードではペイロードは返されません。</t>
+        </section>
+        <section anchor="4.08-request-entity-incomplete" numbered="true" removeInRFC="false" toc="include" pn="section-2.9.2">
+          <name slugifiedName="name-4.08-request-entity-incomplete">4.08 Request Entity Incomplete</name>
+          <t indent="0" pn="section-2.9.2-1">この新しいクライアントエラーのステータスコードは、サーバーが処理を進めるのに必要なリクエストボディーのブロックを受信していないことを示します。
+クライアントは、すべてのブロックを送信していないか、サーバーが要求する順序で送信していないか、サーバーがすでに破棄してしまうほど前にそれらを送信しています。</t>
+          <t indent="0" pn="section-2.9.2-2">（必要なブロックが手元にない理由の1つとして、Content-Formatの不一致がありうることに注意してください。
+<xref target="section-2.3" format="default" sectionFormat="of" derivedContent="Section 2.3"/>を参照してください。
+実装上の注意：サーバーは、NUM != 0で、リソースの現在の状態から期待されるものとは異なるContent-Formatが示されている場合に、このコードでBlock1転送を拒否できます。
+転送をステートレスに実行する場合、サーバーはブロックのContent-Formatを既存のリソースのContent-Formatと照合できます。
+転送をアトミックに実行する場合、サーバーは、リソースの状態を置き換えることになる、部分的に再構築された表現の断片とブロックを照合できます。）</t>
+        </section>
+        <section anchor="4.13-request-entity-too-large" numbered="true" removeInRFC="false" toc="include" pn="section-2.9.3">
+          <name slugifiedName="name-4.13-request-entity-too-large">4.13 Request Entity Too Large</name>
+          <t indent="0" pn="section-2.9.3-1"><xref target="RFC7252" section="5.9.2.9" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-5.9.2.9" derivedContent="RFC7252"/>では、レスポンスコード4.13（Request Entity Too Large）はHTTPの413「Request Entity Too Large」と同様のものとして定義されています。
+また、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>は、サーバーがこの情報を提供できる立場にない場合を除き、サーバーが処理できかつ処理する意思のあるリクエストエンティティーの最大サイズを示すために、このレスポンスにSize1オプション（<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>）を含める<bcp14>べきです（SHOULD）</bcp14>と推奨しています。</t>
+          <t indent="0" pn="section-2.9.3-2">この仕様では、サーバーがアトミックに実行しようとしている転送のブロックを格納するためのリソースを現在持っていないことを示すために、Block1転送中のいつでもこのレスポンスコードを返すことを許可します。
+また、Block1を使用していないリクエストに対して、クライアントにBlock1の送信を試みるよう促すヒントとして、サーバーが4.13レスポンスを返すことも許可します。
+最後に、Block1オプションを持つリクエスト（制御用法。<xref target="section-2.3" format="default" sectionFormat="of" derivedContent="Section 2.3"/>を参照）に対する4.13レスポンスで、レスポンスのBlock1オプションがより小さいSZXを運んでいる場合、それはそのより小さいSZXを試みるよう促すヒントです。</t>
+        </section>
+      </section>
+      <section anchor="caching-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-2.10">
+        <name slugifiedName="name-caching-considerations">キャッシュに関する考慮事項</name>
+        <t indent="0" pn="section-2.10-1">この仕様は、キャッシュ、特にキャッシュプロキシーのキャッシュに対して、さまざまな実装戦略の余地を残すように努めています。
+たとえば、キャッシュはブロックを個別にキャッシュしてもかまいませんが、完全な表現を取得するまで待ってからその一部を提供することもできます。
+部分的なキャッシュは、クロスプロキシー（ストリーミングを行うHTTPプロキシーに相当するもの）ではより効率的な場合があります。
+キャッシュされたブロック（部分的にキャッシュされたレスポンス）は、キャッシュに提示されたブロック単位のリクエストを満たすために、完全なレスポンスの代わりに使用できます。
+異なるブロックは異なる時点で転送されるため、異なるMax-Age値を持つ場合があることに注意してください。
+ブロックを持つレスポンスは、完全な表現の新鮮さを更新します。
+個々のブロックは検証でき、単一のブロックを検証すると完全な表現が検証されます。
+制御用法のBlock1オプションを持ち、Mビットがセットされたレスポンスは、ターゲットURIについてキャッシュされたレスポンスを無効にします。</t>
+        <t indent="0" pn="section-2.10-2">レスポンスを結合するキャッシュやプロキシー（たとえば、リクエストのブロックを分割したり、レスポンスのブロックサイズを大きくしたりするもの、またはクロスプロキシー）は、2.31レスポンスと2.01/2.04レスポンスを結合する必要がある場合があります。
+ステートレスなサーバーは、最初に転送されたBlock1ブロックに対してだけ2.01で応答している場合があり、それは後のブロックに対するすべての2.04レスポンスに優先します。</t>
+        <t indent="0" pn="section-2.10-3">If-None-Matchは、（NUM=0）のBlock1リクエストでのみ正しく機能し、NUM != 0のBlock1リクエストで使用しては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      </section>
+    </section>
+    <section anchor="examples" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-examples">例</name>
+      <t indent="0" pn="section-3-1">このセクションでは、ブロック単位のGET、およびPUTやPOSTについて、メッセージフローを含むいくつかの短い例を示します。
+これらの例は、基本的な操作、再送がある場合の操作、ブロックサイズのネゴシエーションの操作の例を示します。</t>
+      <t indent="0" pn="section-3-2">これらのすべての例では、Blockオプションを分解した形で示します。
+Blockオプションの種類（1または2）の後にコロンを置き、その後にブロック番号（NUM）、moreビット（M）、ブロックサイズの指数（2**(SZX+4)）をスラッシュで区切って示します。
+たとえば、Block2オプションの値33は2:2/0/32)と示され、Block1オプションの値59は1:3/1/128と示されます。</t>
+      <t indent="0" pn="section-3-3"><xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>と同様に、「MID」は「メッセージID（Message ID）」の略語として使用します。</t>
+      <section anchor="block2-examples" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-block2-examples">Block2の例</name>
+        <t indent="0" pn="section-3.1-1">最初の例（<xref target="figure-2" format="default" sectionFormat="of" derivedContent="Figure 2"/>）は、3つのブロックに分割されたGETリクエストを示しています。
+サーバーは128のブロックサイズを提案し、クライアントはそれに同意します。
+最初の2つのACKはそれぞれ128バイトのペイロードを含み、3番目のACKは1〜128バイトのペイロードを含みます。</t>
+        <figure anchor="figure-2" align="left" suppress-title="false" pn="figure-2">
+          <name slugifiedName="name-simple-block-wise-get">単純なブロック単位のGET</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-2.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                            |
+  | CON [MID=1234], GET, /status                       ------> |
+  |                                                            |
+  | <------   ACK [MID=1234], 2.05 Content, 2:0/1/128          |
+  |                                                            |
+  | CON [MID=1235], GET, /status, 2:1/0/128            ------> |
+  |                                                            |
+  | <------   ACK [MID=1235], 2.05 Content, 2:1/1/128          |
+  |                                                            |
+  | CON [MID=1236], GET, /status, 2:2/0/128            ------> |
+  |                                                            |
+  | <------   ACK [MID=1236], 2.05 Content, 2:2/0/128          |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.1-3">2番目の例（<xref target="figure-3" format="default" sectionFormat="of" derivedContent="Figure 3"/>）では、クライアントは（たとえば、リンクフォーマットの記述<xref target="RFC6690" format="default" sectionFormat="of" derivedContent="RFC6690"/>にあるサイズの表示から）ブロック単位転送を予期して、ブロックサイズの提案を送信します。
+最後のものを除くすべてのACKメッセージは64バイトのペイロードを運び、最後のものは1〜64バイトを運びます。</t>
+        <figure anchor="figure-3" align="left" suppress-title="false" pn="figure-3">
+          <name slugifiedName="name-block-wise-get-with-early-negotiation">早期ネゴシエーションを伴うブロック単位のGET</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-4.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], GET, /status, 2:0/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.05 Content, 2:0/1/64         |
+  |                                                          |
+  | CON [MID=1235], GET, /status, 2:1/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.05 Content, 2:1/1/64         |
+  :                                                          :
+  :                          ...                             :
+  :                                                          :
+  | CON [MID=1238], GET, /status, 2:4/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1238], 2.05 Content, 2:4/1/64         |
+  |                                                          |
+  | CON [MID=1239], GET, /status, 2:5/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1239], 2.05 Content, 2:5/0/64         |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.1-5">3番目の例（<xref target="figure-4" format="default" sectionFormat="of" derivedContent="Figure 4"/>）では、クライアントはブロック単位転送が必要になったことに驚き、サーバーが一方的に選択したサイズに不満を持っています。
+クライアントは最初にサイズの提案を送信しなかったため、ネゴシエーションは2番目のメッセージ交換以降のサイズにのみ影響します。
+クライアントは、最初の128バイトの交換で、1番目と2番目の64バイトのブロックをすでに両方とも取得しているため、続けて3番目の64バイトのブロック（「2/0/64」）を要求します。
+サーバーはこれらのことを一切理解しておらず（また理解する必要もなく）、単にリクエストにできるかぎり応答するだけです。</t>
+        <figure anchor="figure-4" align="left" suppress-title="false" pn="figure-4">
+          <name slugifiedName="name-block-wise-get-with-late-negotiation">遅延ネゴシエーションを伴うブロック単位のGET</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-6.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], GET, /status                     ------> |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.05 Content, 2:0/1/128        |
+  |                                                          |
+  | CON [MID=1235], GET, /status, 2:2/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.05 Content, 2:2/1/64         |
+  |                                                          |
+  | CON [MID=1236], GET, /status, 2:3/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1236], 2.05 Content, 2:3/1/64         |
+  |                                                          |
+  | CON [MID=1237], GET, /status, 2:4/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1237], 2.05 Content, 2:4/1/64         |
+  |                                                          |
+  | CON [MID=1238], GET, /status, 2:5/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1238], 2.05 Content, 2:5/0/64         |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.1-7">これらのすべての（そして以下の）ケースで、再送はCoAPのメッセージ交換層によって処理されるため、ブロック操作には影響しません（図<xref target="figure-5" format="counter" sectionFormat="of" derivedContent="5"/>と図<xref target="figure-6" format="counter" sectionFormat="of" derivedContent="6"/>）。</t>
+        <figure anchor="figure-5" align="left" suppress-title="false" pn="figure-5">
+          <name slugifiedName="name-block-wise-get-with-late-negotiation-and-lost-con">遅延ネゴシエーションを伴い、CONが失われたブロック単位のGET</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-8.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], GET, /status                     ------> |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.05 Content, 2:0/1/128        |
+  |                                                          |
+  | CON [MID=1235], GE/////////////////////////              |
+  |                                                          |
+  | (timeout)                                                |
+  |                                                          |
+  | CON [MID=1235], GET, /status, 2:2/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.05 Content, 2:2/1/64         |
+  :                                                          :
+  :                          ...                             :
+  :                                                          :
+  | CON [MID=1238], GET, /status, 2:5/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1238], 2.05 Content, 2:5/0/64         |
+]]></artwork>
+        </figure>
+        <figure anchor="figure-6" align="left" suppress-title="false" pn="figure-6">
+          <name slugifiedName="name-block-wise-get-with-late-negotiation-and-lost-ack">遅延ネゴシエーションを伴い、ACKが失われたブロック単位のGET</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.1-9.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], GET, /status                     ------> |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.05 Content, 2:0/1/128        |
+  |                                                          |
+  | CON [MID=1235], GET, /status, 2:2/0/64           ------> |
+  |                                                          |
+  | //////////////////////////////////tent, 2:2/1/64         |
+  |                                                          |
+  | (timeout)                                                |
+  |                                                          |
+  | CON [MID=1235], GET, /status, 2:2/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.05 Content, 2:2/1/64         |
+  :                                                          :
+  :                          ...                             :
+  :                                                          :
+  | CON [MID=1238], GET, /status, 2:5/0/64           ------> |
+  |                                                          |
+  | <------   ACK [MID=1238], 2.05 Content, 2:5/0/64         |
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="block1-examples" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-block1-examples">Block1の例</name>
+        <t indent="0" pn="section-3.2-1">以下の例はPUTの交換を示しています。
+POSTの交換も、アトミック性や冪等性に関する要件が異なるだけで、同じように見えます。
+GETと同様に、リクエストのBlock1オプションにmoreビットを持つリクエストに対するレスポンスは暫定的なものであり、レスポンスコード2.31（Continue）を運ぶことに注意してください。
+PUTが成功したことをクライアントに伝えるのは、最後のレスポンスだけです。</t>
+        <figure anchor="figure-7" align="left" suppress-title="false" pn="figure-7">
+          <name slugifiedName="name-simple-atomic-block-wise-put">単純なアトミックなブロック単位のPUT</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-2.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], PUT, /options, 1:0/1/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.31 Continue, 1:0/1/128       |
+  |                                                          |
+  | CON [MID=1235], PUT, /options, 1:1/1/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.31 Continue, 1:1/1/128       |
+  |                                                          |
+  | CON [MID=1236], PUT, /options, 1:2/0/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1236], 2.04 Changed, 1:2/0/128        |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.2-3">リソースをその場で（ステートレスに）単純に構築または更新するステートレスなサーバーは、レスポンスでmoreビットをセットしないことによってそのことを示せます（<xref target="figure-8" format="default" sectionFormat="of" derivedContent="Figure 8"/>）。
+この場合、レスポンスコードは、更新される各ブロックについて個別に有効です。
+もちろん、これがサーバーの振る舞いとして許容されるのは、たとえば作成または変更されるリソースがまだ、または現在使用されていないために、メッセージ交換シーケンスの実行中に存在しうる不整合が問題につながらない場合だけです。</t>
+        <figure anchor="figure-8" align="left" suppress-title="false" pn="figure-8">
+          <name slugifiedName="name-simple-stateless-block-wise-put">単純なステートレスなブロック単位のPUT</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-4.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], PUT, /options, 1:0/1/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.04 Changed, 1:0/0/128        |
+  |                                                          |
+  | CON [MID=1235], PUT, /options, 1:1/1/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.04 Changed, 1:1/0/128        |
+  |                                                          |
+  | CON [MID=1236], PUT, /options, 1:2/0/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1236], 2.04 Changed, 1:2/0/128        |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.2-5">最後に、ブロック単位のPUTやPOSTを受信したサーバーが、より小さいブロックサイズの希望を示したい場合があります（<xref target="figure-9" format="default" sectionFormat="of" derivedContent="Figure 9"/>）。
+この場合、クライアントはより小さいブロックサイズで続行す<bcp14>べきです（SHOULD）</bcp14>。
+そうする場合、クライアントは、その小さいサイズで正しく数えるようにブロック番号を調整<bcp14>しなければなりません（MUST）</bcp14>。</t>
+        <figure anchor="figure-9" align="left" suppress-title="false" pn="figure-9">
+          <name slugifiedName="name-simple-atomic-block-wise-put-with-negotiation">ネゴシエーションを伴う単純なアトミックなブロック単位のPUT</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.2-6.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                          |
+  | CON [MID=1234], PUT, /options, 1:0/1/128    ------>      |
+  |                                                          |
+  | <------   ACK [MID=1234], 2.31 Continue, 1:0/1/32        |
+  |                                                          |
+  | CON [MID=1235], PUT, /options, 1:4/1/32     ------>      |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.31 Continue, 1:4/1/32        |
+  |                                                          |
+  | CON [MID=1236], PUT, /options, 1:5/1/32     ------>      |
+  |                                                          |
+  | <------   ACK [MID=1235], 2.31 Continue, 1:5/1/32        |
+  |                                                          |
+  | CON [MID=1237], PUT, /options, 1:6/0/32     ------>      |
+  |                                                          |
+  | <------   ACK [MID=1236], 2.04 Changed, 1:6/0/32         |
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="combining-block1-and-block2-1" numbered="true" removeInRFC="false" toc="include" pn="section-3.3">
+        <name slugifiedName="name-combining-block1-and-block2-2">Block1とBlock2の組み合わせ</name>
+        <t indent="0" pn="section-3.3-1">Blockオプションは、単一の交換の両方向で使用できます。
+次の例は、ブロック単位のPOSTリクエストと、その結果として生じる別のブロック単位のレスポンスを示しています。</t>
+        <figure anchor="figure-10" align="left" suppress-title="false" pn="figure-10">
+          <name slugifiedName="name-atomic-block-wise-post-with-block-wise-response">ブロック単位のレスポンスを伴うアトミックなブロック単位のPOST</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.3-2.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                              |
+  | CON [MID=1234], POST, /soap, 1:0/1/128      ------>          |
+  |                                                              |
+  | <------   ACK [MID=1234], 2.31 Continue, 1:0/1/128           |
+  |                                                              |
+  | CON [MID=1235], POST, /soap, 1:1/1/128      ------>          |
+  |                                                              |
+  | <------   ACK [MID=1235], 2.31 Continue, 1:1/1/128           |
+  |                                                              |
+  | CON [MID=1236], POST, /soap, 1:2/0/128      ------>          |
+  |                                                              |
+  | <------   ACK [MID=1236], 2.04 Changed, 2:0/1/128, 1:2/0/128 |
+  |                                                              |
+  | CON [MID=1237], POST, /soap, 2:1/0/128      ------>          |
+  | (no payload for requests with Block2 with NUM != 0)          |
+  | (could also do late negotiation by requesting,               |
+  |  e.g., 2:2/0/64)                                             |
+  |                                                              |
+  | <------   ACK [MID=1237], 2.04 Changed, 2:1/1/128            |
+  |                                                              |
+  | CON [MID=1238], POST, /soap, 2:2/0/128      ------>          |
+  |                                                              |
+  | <------   ACK [MID=1238], 2.04 Changed, 2:2/1/128            |
+  |                                                              |
+  | CON [MID=1239], POST, /soap, 2:3/0/128      ------>          |
+  |                                                              |
+  | <------   ACK [MID=1239], 2.04 Changed, 2:3/0/128            |
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.3-3">以下に示すように、このモデルでは、Block2のブロック単位転送に対して早期ネゴシエーションの入力を与えることもできます。</t>
+        <figure anchor="figure-11" align="left" suppress-title="false" pn="figure-11">
+          <name slugifiedName="name-atomic-block-wise-post-with-block-wise-response-early-negotiation">ブロック単位のレスポンスを伴うアトミックなブロック単位のPOST、早期ネゴシエーション</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.3-4.1"><![CDATA[
+CLIENT                                                     SERVER
+  |                                                              |
+  | CON [MID=1234], POST, /soap, 1:0/1/128 ------>               |
+  |                                                              |
+  | <------   ACK [MID=1234], 2.31 Continue, 1:0/1/128           |
+  |                                                              |
+  | CON [MID=1235], POST, /soap, 1:1/1/128 ------>               |
+  |                                                              |
+  | <------   ACK [MID=1235], 2.31 Continue, 1:1/1/128           |
+  |                                                              |
+  | CON [MID=1236], POST, /soap, 1:2/0/128, 2:0/0/64 ------>     |
+  |                                                              |
+  | <------   ACK [MID=1236], 2.04 Changed, 1:2/0/128, 2:0/1/64  |
+  |                                                              |
+  | CON [MID=1237], POST, /soap, 2:1/0/64      ------>           |
+  | (no payload for requests with Block2 with NUM != 0)          |
+  |                                                              |
+  | <------   ACK [MID=1237], 2.04 Changed, 2:1/1/64             |
+  |                                                              |
+  | CON [MID=1238], POST, /soap, 2:2/0/64      ------>           |
+  |                                                              |
+  | <------   ACK [MID=1238], 2.04 Changed, 2:2/1/64             |
+  |                                                              |
+  | CON [MID=1239], POST, /soap, 2:3/0/64      ------>           |
+  |                                                              |
+  | <------   ACK [MID=1239], 2.04 Changed, 2:3/0/64             |
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="combining-observe-and-block2" numbered="true" removeInRFC="false" toc="include" pn="section-3.4">
+        <name slugifiedName="name-combining-observe-and-block2">ObserveとBlock2の組み合わせ</name>
+        <t indent="0" pn="section-3.4-1">次の例では、サーバーはまず最初のGETリクエストに対して直接のレスポンス（Observeシーケンス番号62350）を送信します（その結果として行われるブロック単位転送は<xref target="figure-4" format="default" sectionFormat="of" derivedContent="Figure 4"/>と同様なので省略しています）。
+2番目の転送は、最初のブロックだけを含む2.05通知（Observeシーケンス番号62354）によって開始されます。
+その後、クライアントは残りのブロックを取得していきます。</t>
+        <figure anchor="figure-12" align="left" suppress-title="false" pn="figure-12">
+          <name slugifiedName="name-observe-sequence-with-block-wise-response">ブロック単位のレスポンスを伴うObserveシーケンス</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.4-2.1"><![CDATA[
+    CLIENT  SERVER
+      |      |
+      +----->|     Header: GET 0x41011636
+      | GET  |      Token: 0xfb
+      |      |   Uri-Path: status-icon
+      |      |    Observe: (empty)
+      |      |
+      |<-----+     Header: 2.05 0x61451636
+      | 2.05 |      Token: 0xfb
+      |      |     Block2: 0/1/128
+      |      |    Observe: 62350
+      |      |       ETag: 6f00f38e
+      |      |    Payload: [128 bytes]
+      |      |
+      |      |  (Usual GET transfer left out)
+        ...
+      |      |  (Notification of first block)
+      |      |
+      |<-----+     Header: 2.05 0x4145af9c
+      | 2.05 |      Token: 0xfb
+      |      |     Block2: 0/1/128
+      |      |    Observe: 62354
+      |      |       ETag: 6f00f392
+      |      |    Payload: [128 bytes]
+      |      |
+      +- - ->|     Header: 0x6000af9c
+      |      |
+      |      |  (Retrieval of remaining blocks)
+      |      |
+      +----->|     Header: GET 0x41011637
+      | GET  |      Token: 0xfc
+      |      |   Uri-Path: status-icon
+      |      |     Block2: 1/0/128
+      |      |
+      |<-----+     Header: 2.05 0x61451637
+      | 2.05 |      Token: 0xfc
+      |      |     Block2: 1/1/128
+      |      |       ETag: 6f00f392
+      |      |    Payload: [128 bytes]
+      |      |
+      +----->|     Header: GET 0x41011638
+      | GET  |      Token: 0xfc
+      |      |   Uri-Path: status-icon
+      |      |     Block2: 2/0/128
+      |      |
+      |<-----+     Header: 2.05 0x61451638
+      | 2.05 |      Token: 0xfc
+      |      |     Block2: 2/0/128
+      |      |       ETag: 6f00f392
+      |      |    Payload: [53 bytes]
+]]></artwork>
+        </figure>
+        <t indent="0" pn="section-3.4-3">（この例でのトークン0xfcの選択は任意であることに注意してください。
+この例でトークンを示しているのは、追加のブロックに対するリクエストが観測関係のトークンを利用できないことを説明するためにすぎません。
+トークンに関する一般的なコメントとして、ブロック単位転送は他のCoAPの交換と同様にトークンを扱うため、この文書ではトークンについて他に言及していません。
+通常どおり、クライアントは各交換のトークンを自由に選択できます。）</t>
+        <t indent="0" pn="section-3.4-4">次の例では、クライアントは早期ネゴシエーションも使用して、ブロックサイズを64バイトに制限しています。</t>
+        <figure anchor="figure-13" align="left" suppress-title="false" pn="figure-13">
+          <name slugifiedName="name-observe-sequence-with-early-negotiation">早期ネゴシエーションを伴うObserveシーケンス</name>
+          <artwork name="" type="" align="left" alt="" pn="section-3.4-5.1"><![CDATA[
+    CLIENT  SERVER
+      |      |
+      +----->|     Header: GET 0x41011636
+      | GET  |      Token: 0xfb
+      |      |   Uri-Path: status-icon
+      |      |    Observe: (empty)
+      |      |     Block2: 0/0/64
+      |      |
+      |<-----+     Header: 2.05 0x61451636
+      | 2.05 |      Token: 0xfb
+      |      |     Block2: 0/1/64
+      |      |    Observe: 62350
+      |      |       ETag: 6f00f38e
+      |      |    Max-Age: 60
+      |      |    Payload: [64 bytes]
+      |      |
+      |      |  (Usual GET transfer left out)
+        ...
+      |      |  (Notification of first block)
+      |      |
+      |<-----+     Header: 2.05 0x4145af9c
+      | 2.05 |      Token: 0xfb
+      |      |     Block2: 0/1/64
+      |      |    Observe: 62354
+      |      |       ETag: 6f00f392
+      |      |    Payload: [64 bytes]
+      |      |
+      +- - ->|     Header: 0x6000af9c
+      |      |
+      |      |  (Retrieval of remaining blocks)
+      |      |
+      +----->|     Header: GET 0x41011637
+      | GET  |      Token: 0xfc
+      |      |   Uri-Path: status-icon
+      |      |     Block2: 1/0/64
+      |      |
+      |<-----+     Header: 2.05 0x61451637
+      | 2.05 |      Token: 0xfc
+      |      |     Block2: 1/1/64
+      |      |       ETag: 6f00f392
+      |      |    Payload: [64 bytes]
+        ....
+      |      |
+      +----->|     Header: GET 0x41011638
+      | GET  |      Token: 0xfc
+      |      |   Uri-Path: status-icon
+      |      |     Block2: 4/0/64
+      |      |
+      |<-----+     Header: 2.05 0x61451638
+      | 2.05 |      Token: 0xfc
+      |      |     Block2: 4/0/64
+      |      |       ETag: 6f00f392
+      |      |    Payload: [53 bytes]
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="the-size2-and-size1-options" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-the-size2-and-size1-options">Size2オプションとSize1オプション</name>
+      <t indent="0" pn="section-4-1">大きなリソース表現をブロックごとに転送する場合、多くのケースで、プロセスの早い段階で全体のサイズを知っていると有利です。
+リソースの記述<xref target="RFC6690" format="default" sectionFormat="of" derivedContent="RFC6690"/>で提供される最大サイズの推定値の属性「sz」から、何らかの目安が得られる場合があります。
+しかし、サイズは動的に変化する場合があるため、より最新の表示が役立つ場合があります。</t>
+      <t indent="0" pn="section-4-2">この仕様は、2つのCoAPオプションを定義します。
+リクエストで転送される表現のサイズを示すためのSize1と、レスポンスで転送される表現のサイズを示すためのSize2です。
+（Size1は、「リクエストにおけるリソース表現についてのサイズ情報」を提供するために、<xref target="RFC7252" section="5.10.9" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc7252#section-5.10.9" derivedContent="RFC7252"/>ですでに定義されています。
+しかし、そのセクションで詳しく説明されているのは、サーバーが処理できかつ処理する意思のあるリクエストペイロードの最大サイズを4.13レスポンスで示すという限られたケースだけです。
+この仕様は、リクエストオプションとしての使用法についても詳細を提供します。）</t>
+      <t indent="0" pn="section-4-3">Size2オプションは、次の2つの目的で使用できます。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4-4">
+        <li pn="section-4-4.1">リクエストで、通常のレスポンスとともにサイズの推定値を提供するようサーバーに求めるため（「サイズリクエスト（size request）」）。
+この用法では、値を0に設定<bcp14>しなければなりません（MUST）</bcp14>。</li>
+        <li pn="section-4-4.2">Block2オプションを運ぶレスポンスで、リソース表現の全体のサイズについてサーバーが持っている現在の推定値をバイト単位で示すため（「サイズ表示（size indication）」）。</li>
+      </ul>
+      <t indent="0" pn="section-4-5">同様に、Size1オプションは、次の2つの目的で使用できます。</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4-6">
+        <li pn="section-4-6.1">Block1オプションを運ぶリクエストで、リソース表現の全体のサイズについてクライアントが持っている現在の推定値をバイト単位で示すため（「サイズ表示」）。</li>
+        <li pn="section-4-6.2">4.13レスポンスで、受け入れ可能であったはずの最大サイズをバイト単位で示すため<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>。</li>
+      </ul>
+      <t indent="0" pn="section-4-7">Sizeオプションは、サイズ情報を伝えたり求めたりする以外には、リクエストやレスポンスの処理に影響を与えません。
+クライアントが結果として得られるレスポンスのペイロードのサイズを最小化したい場合は、小さいブロックサイズを指定した（たとえば、SZX=0に設定した）Block2オプションをリクエストに追加すべきです。</t>
+      <t indent="0" pn="section-4-8">Sizeオプションは「選択的（elective）」です。
+つまり、クライアントは、サーバーがサイズ推定値のリクエストを無視することに備え<bcp14>なければなりません（MUST）</bcp14>。
+どちらのSizeオプションも、単一のメッセージに2回以上含まれては<bcp14>なりません（MUST NOT）</bcp14>。</t>
+      <table anchor="table-2" align="center" pn="table-2">
+        <name slugifiedName="name-size-option-numbers">Sizeオプション番号</name>
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">No.</th>
+            <th align="left" colspan="1" rowspan="1">C</th>
+            <th align="left" colspan="1" rowspan="1">U</th>
+            <th align="left" colspan="1" rowspan="1">N</th>
+            <th align="left" colspan="1" rowspan="1">R</th>
+            <th align="left" colspan="1" rowspan="1">Name</th>
+            <th align="left" colspan="1" rowspan="1">Format</th>
+            <th align="left" colspan="1" rowspan="1">Length</th>
+            <th align="left" colspan="1" rowspan="1">Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">60</td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">x</td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">Size1</td>
+            <td align="left" colspan="1" rowspan="1">uint</td>
+            <td align="left" colspan="1" rowspan="1">0-4</td>
+            <td align="left" colspan="1" rowspan="1">(none)</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">28</td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">x</td>
+            <td align="left" colspan="1" rowspan="1"/>
+            <td align="left" colspan="1" rowspan="1">Size2</td>
+            <td align="left" colspan="1" rowspan="1">uint</td>
+            <td align="left" colspan="1" rowspan="1">0-4</td>
+            <td align="left" colspan="1" rowspan="1">(none)</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-4-10">実装上の注意：</t>
+      <ul bare="false" empty="false" indent="3" spacing="normal" pn="section-4-11">
+        <li pn="section-4-11.1">実装品質の観点から、全体のサイズが1つのブロックのサイズを大幅に超えるブロック単位転送では、過度の労力なしに提供できる場合には常に（できれば最初に交換されるブロックで）サイズ表示を含めることが期待されます。
+サイズの推定値が変わらない場合は、ブロックごとに表示を繰り返す必要はありません。</li>
+        <li pn="section-4-11.2">ブロック単位転送の終了は、BlockオプションのMビットによって決まるのであり、交換されたサイズ推定値を使い切ることによって決まるの<em>ではありません</em>。</li>
+        <li pn="section-4-11.3">uint型のオプションでは通常そうであるように、値0は空のオプション（0バイト）として表すのが最適です。
+どちらのSizeオプションにもデフォルト値はありません。</li>
+        <li pn="section-4-11.4">Sizeオプションはクリティカルでも安全でない（unsafe）オプションでもなく、No-Cache-Keyとしてマークされています。</li>
+      </ul>
+    </section>
+    <section anchor="http-mapping-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-http-mapping-considerations">HTTPへのマッピングに関する考慮事項</name>
+      <t indent="0" pn="section-5-1">このサブセクションでは、CoAPとHTTPの間のマッピングを行う仲介者に対してBlockオプションが与えうる影響について、いくつかの簡単な例を示します。</t>
+      <t indent="0" pn="section-5-2">CoAPリクエストをHTTPにマッピングする場合、仲介者は一連のブロック単位転送を単一のHTTP転送にマッピングしたい場合があります。
+たとえば、GETリクエストの場合、仲介者は最初のブロックが要求された時点でHTTPリクエストを実行し、その後のすべてのブロックのリクエストを自身のキャッシュから満たすことができます。
+制約のある実装では、オブジェクト全体をキャッシュできない場合があり、次のブロック転送に必要な情報を適切なタイミングで取得するために、TCPのフロー制御と（特にタイムアウトが発生した場合は）HTTPの範囲リクエストを組み合わせて使用する場合があります。</t>
+      <t indent="0" pn="section-5-3">PUTリクエストやPOSTリクエストについては、歴史的に、HTTPサーバーが範囲をどのように実装するかにより大きなばらつきがありました。
+最近になって<xref target="RFC7233" format="default" sectionFormat="of" derivedContent="RFC7233"/>が、GET以外のリクエストメソッドとともに受信したRangeヘッダーフィールドは解釈されないことを定義しました。
+そのため、一般に、CoAPからHTTPへの仲介者は、これらの他のメソッドについては、ブロック単位転送のすべてのブロックのペイロードを1つのHTTPリクエストで送信しようとする必要があります。
+十分なバッファリングが可能であれば、このリクエストはCoAPの最後のブロックを受信した時点で開始できます。
+制約のある実装では、CoAPの最初のブロックを受信した時点でHTTPリクエストの送信をすでに開始することによって、バッファリングの負担を軽減したい場合があります。
+その場合、結果として生じる転送をHTTPサーバーが待ちきれなくなったことを示すHTTPの408ステータスコードは、CoAPの4.08レスポンスコードにマッピングできます（同様に、413は4.13にマッピングされます）。</t>
+      <t indent="0" pn="section-5-4">HTTPをCoAPにマッピングする場合、仲介者は単一のHTTP転送を一連のブロック単位転送にマッピングしたい場合があります。
+HTTPクライアントがPUTやPOSTでリクエストボディーを届けるのが遅すぎる場合、CoAPサーバーはタイムアウトして4.08レスポンスコードを返すかもしれず、それはHTTPの408ステータスコードにうまくマッピングされます（同じく、4.13は413にマッピングされます）。
+HTTP側で受信したHTTPの範囲リクエストは、キャッシュから提供したり、その範囲をカバーする一連のブロックを要求するGETリクエストにマッピングしたりできます。</t>
+      <t indent="0" pn="section-5-5">（CoAPの4.08とHTTPの408はセマンティクスが異なりますが、この違いは主に、2つのプロトコルがトランスポートにマッピングされる方法の違いによるものであることに注意してください。
+HTTPには下位にTCPコネクションがあり、それがコネクションの状態を提供するため、HTTPの408ステータスコードは、そのアクティブなTCPコネクションを通じてリクエストを送信している間にタイムアウトが発生したことを示すために、ただちに使用できます。
+CoAPの4.08レスポンスコードは、1つ以上のブロックが欠けていることを示し、その原因はタイムアウトやリソースの制約である可能性があります。
+コネクションの状態がないため、そのようなレスポンスをただちに届ける方法はなく、代わりに次のブロック転送で届けられます。
+それでも、CoAPの4.08の最も可能性の高い原因はタイムアウトであるため、HTTPへ逆にマッピングする場合はおそらくHTTPの408が最適です。
+追加の状態を作成せずに、サーバーがタイムアウトと欠けているブロックを区別する方法はなく、私たちはその必要性を避けたいと考えていることに注意してください。）</t>
+    </section>
+    <section anchor="iana-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-iana-considerations">IANAに関する考慮事項</name>
+      <t indent="0" pn="section-6-1">この文書は、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>で定義された「CoAP Option Numbers」レジストリーに次のオプション番号を追加します。</t>
+      <table anchor="table-3" align="center" pn="table-3">
+        <name slugifiedName="name-coap-option-numbers">CoAPオプション番号</name>
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">Number</th>
+            <th align="left" colspan="1" rowspan="1">Name</th>
+            <th align="left" colspan="1" rowspan="1">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">23</td>
+            <td align="left" colspan="1" rowspan="1">Block2</td>
+            <td align="left" colspan="1" rowspan="1">RFC 7959</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">27</td>
+            <td align="left" colspan="1" rowspan="1">Block1</td>
+            <td align="left" colspan="1" rowspan="1">RFC 7959</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">28</td>
+            <td align="left" colspan="1" rowspan="1">Size2</td>
+            <td align="left" colspan="1" rowspan="1">RFC 7959</td>
+          </tr>
+        </tbody>
+      </table>
+      <t indent="0" pn="section-6-3">この文書は、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>で定義された「CoAP Response Codes」レジストリーに次のレスポンスコードを追加します。</t>
+      <table anchor="table-4" align="center" pn="table-4">
+        <name slugifiedName="name-coap-response-codes">CoAPレスポンスコード</name>
+        <thead>
+          <tr>
+            <th align="left" colspan="1" rowspan="1">Code</th>
+            <th align="left" colspan="1" rowspan="1">Description</th>
+            <th align="left" colspan="1" rowspan="1">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">2.31</td>
+            <td align="left" colspan="1" rowspan="1">Continue</td>
+            <td align="left" colspan="1" rowspan="1">RFC 7959</td>
+          </tr>
+          <tr>
+            <td align="left" colspan="1" rowspan="1">4.08</td>
+            <td align="left" colspan="1" rowspan="1">Request Entity Incomplete</td>
+            <td align="left" colspan="1" rowspan="1">RFC 7959</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">リソース内のブロックへのアクセスを提供すると、思いがけない脆弱性につながる可能性があります。
+リクエストがアトミックに実行されない場合、攻撃者は競合状態を悪用したり、部分的に更新されたリソース表現を使用するようにサーバーを誘導して混乱させたりできる可能性があります。
+また、部分的な転送によって、特定の問題のあるデータが侵入検知システム（IDS）から見えなくなる可能性もあります。
+CoAPで転送されるリソース表現を解析するIDSは、リソース表現全体にアクセスできるようにBlockオプションを実装することが<bcp14>推奨されます（RECOMMENDED）</bcp14>。
+それでも、偶数番号のブロックをある経路で転送し、奇数番号のブロックを別の経路で転送するといった手法や、さらには、異なるコンテンツでブロックを複数回転送し、IDSとサーバーとで時間的な順序の解釈が異なるようにするといった手法によって、IDSが全体像を把握できなくなる可能性があります。
+この種の攻撃はIPの断片化やTCPのセグメント化からよく理解されており、CoAPが根本的に新しい考慮事項を追加するわけではありません。</t>
+      <t indent="0" pn="section-7-2">リソースへのアクセスが特定のセキュリティーアソシエーションを使用するクライアントにのみ許可される場合、そのリソースのすべてのブロックは同じセキュリティーチェックの対象となら<bcp14>なければなりません（MUST）</bcp14>。
+保護されていない交換が、本来は保護されているリソースのブロックに影響を与えることが可能であっては<bcp14>なりません（MUST NOT）</bcp14>。
+関連する考慮事項として、オブジェクトセキュリティーが採用されている場合、オブジェクトセキュリティーの操作がアクセスごとに実行され、かつ使用できないリソースの作成が許容できる場合を除き、PUTやPOSTはアトミックな方法で実装すべきです。
+将来CoAP自体に追加される可能性のあるエンドツーエンドのセキュリティーメカニズムには、関連するセキュリティーに関する考慮事項がある可能性があり、それにはクライアントやプロキシーにおけるブロックのキャッシュに関する考慮事項も含まれます（このキャッシュを行う際のさまざまな戦略については、セクション<xref target="section-2.10" format="counter" sectionFormat="of" derivedContent="2.10"/>と<xref target="section-5" format="counter" sectionFormat="of" derivedContent="5"/>を参照してください）。
+これらのセキュリティーに関する考慮事項は、それらのメカニズムの仕様で記述される必要があります。</t>
+      <t indent="0" pn="section-7-3">ステートレスなサーバーは、敵対者が大きなブロック番号を持つBlock1（たとえばPUT）のブロックを送信する攻撃の影響を受けやすい可能性があります。
+単純な実装では、巨大なリソース表現を作成することによってリソースを使い果たしてしまう可能性があります。</t>
+      <t indent="0" pn="section-7-4">攻撃者は、誤解を招くサイズ表示を使用して、質の低い実装でバッファーオーバーフローを引き起こす可能性があります。
+これについては通常の考慮事項が適用されます。</t>
+      <section anchor="mitigating-resource-exhaustion-attacks" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-mitigating-resource-exhaustion-attacks">リソース枯渇攻撃の緩和</name>
+        <t indent="0" pn="section-7.1-1">特定のブロック単位のリクエストは、サーバーに状態を作成させる可能性があります。
+たとえば、頻繁に変化するリソースのブロック単位のGETのためにスナップショットを作成して、すべてのブロックについてリソースの同じバージョンへの一貫したアクセスを可能にする場合や、moreビットがセットされていない最後のPUTまたはPOSTによって使用されるまで集められる一時的なリソース表現を作成する場合です。
+単純には片付けられない状態をサーバーに作成させるメカニズムはすべて、サービス拒否攻撃の機会を生み出します。
+サーバーは、信頼できない送信元によって作成された状態に基づくリソース枯渇の影響を受けないようにす<bcp14>べきです（SHOULD）</bcp14>。
+しかし、そうしたとしても、正当なリクエストが状態を作成する他のリクエストに埋もれてしまうと、その緩和策が正当なリクエストに対するサービス拒否を引き起こす可能性があります。
+したがって、サーバーは、可能な限り、たとえばステートレスな手法を使用することによって、信頼できない送信元のために状態を作成する機会を最小限に抑えるべきです。</t>
+        <t indent="0" pn="section-7.1-2">この点で、アプリケーション層でセグメント化を行うことは、トランスポート層以下（IPの断片化、適応層での断片化）で行うよりもほとんどの場合優れています。
+その理由はたとえば、緩和に使用できるアプリケーション層のセマンティクスがあることや、下位の層が攻撃を防ぐことのできるセキュリティーアソシエーションを提供することです。
+しかし、アプリケーション層でタイムアウトやキープアライブのメカニズムを適用することは、下位の層で適用するよりも一般的ではありません。
+サーバーは、蓄積された状態をタイムアウトさせることによって片付けたい<bcp14>場合があります（MAY）</bcp14>（レスポンスコード4.08を参照）。
+また、クライアントは、そのようなタイムアウトに遭遇する可能性を最小限に抑えるために、ブロック単位転送を迅速に実行できるように準備す<bcp14>べきです（SHOULD）</bcp14>。</t>
+      </section>
+      <section anchor="mitigating-amplification-attacks" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-mitigating-amplification-attacks">増幅攻撃の緩和</name>
+        <t indent="0" pn="section-7.2-1"><xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>では、CoAPエンドポイントが増幅攻撃に利用される可能性について説明しています。</t>
+        <t indent="0" pn="section-7.2-2">CoAPサーバーは、大きなリソース表現を比較的小さなブロックでのみ提供することによって、攻撃者に提供する増幅の量を減らすことができます。
+これにより、たとえば1000バイトのリソースの場合、10バイトのリクエストの結果として、1016バイトのレスポンスではなく、（64バイトのブロックを伴う）80バイトのレスポンスになり、提供される増幅を大幅に削減できます。</t>
+      </section>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-8">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-8.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="http://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC7252" target="http://www.rfc-editor.org/info/rfc7252" quoteTitle="true" derivedAnchor="RFC7252">
+          <front>
+            <title>The Constrained Application Protocol (CoAP)</title>
+            <author fullname="Z. Shelby" initials="Z." surname="Shelby"/>
+            <author fullname="K. Hartke" initials="K." surname="Hartke"/>
+            <author fullname="C. Bormann" initials="C." surname="Bormann"/>
+            <date year="2014" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="7252"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7252"/>
+        </reference>
+        <reference anchor="RFC7641" target="http://www.rfc-editor.org/info/rfc7641" quoteTitle="true" derivedAnchor="RFC7641">
+          <front>
+            <title>Observing Resources in the Constrained Application Protocol (CoAP)</title>
+            <author fullname="K. Hartke" initials="K." surname="Hartke"/>
+            <date year="2015" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="7641"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7641"/>
+        </reference>
+      </references>
+      <references pn="section-8.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="REST" target="http://www.ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation.pdf" quoteTitle="true" derivedAnchor="REST">
+          <front>
+            <title>Architectural Styles and the Design of Network-based Software Architectures</title>
+            <author fullname="R. Fielding" initials="R." surname="Fielding"/>
+            <date year="2000"/>
+          </front>
+          <refcontent>Ph.D. Dissertation, University of California, Irvine</refcontent>
+        </reference>
+        <reference anchor="RFC4919" target="http://www.rfc-editor.org/info/rfc4919" quoteTitle="true" derivedAnchor="RFC4919">
+          <front>
+            <title>IPv6 over Low-Power Wireless Personal Area Networks (6LoWPANs): Overview, Assumptions, Problem Statement, and Goals</title>
+            <author fullname="N. Kushalnagar" initials="N." surname="Kushalnagar"/>
+            <author fullname="G. Montenegro" initials="G." surname="Montenegro"/>
+            <author fullname="C. Schumacher" initials="C." surname="Schumacher"/>
+            <date year="2007" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="4919"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4919"/>
+        </reference>
+        <reference anchor="RFC4944" target="http://www.rfc-editor.org/info/rfc4944" quoteTitle="true" derivedAnchor="RFC4944">
+          <front>
+            <title>Transmission of IPv6 Packets over IEEE 802.15.4 Networks</title>
+            <author fullname="G. Montenegro" initials="G." surname="Montenegro"/>
+            <author fullname="N. Kushalnagar" initials="N." surname="Kushalnagar"/>
+            <author fullname="J. Hui" initials="J." surname="Hui"/>
+            <author fullname="D. Culler" initials="D." surname="Culler"/>
+            <date year="2007" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="4944"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4944"/>
+        </reference>
+        <reference anchor="RFC6690" target="http://www.rfc-editor.org/info/rfc6690" quoteTitle="true" derivedAnchor="RFC6690">
+          <front>
+            <title>Constrained RESTful Environments (CoRE) Link Format</title>
+            <author fullname="Z. Shelby" initials="Z." surname="Shelby"/>
+            <date year="2012" month="August"/>
+          </front>
+          <seriesInfo name="RFC" value="6690"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6690"/>
+        </reference>
+        <reference anchor="RFC7228" target="http://www.rfc-editor.org/info/rfc7228" quoteTitle="true" derivedAnchor="RFC7228">
+          <front>
+            <title>Terminology for Constrained-Node Networks</title>
+            <author fullname="C. Bormann" initials="C." surname="Bormann"/>
+            <author fullname="M. Ersue" initials="M." surname="Ersue"/>
+            <author fullname="A. Keranen" initials="A." surname="Keranen"/>
+            <date year="2014" month="May"/>
+          </front>
+          <seriesInfo name="RFC" value="7228"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7228"/>
+        </reference>
+        <reference anchor="RFC7230" target="http://www.rfc-editor.org/info/rfc7230" quoteTitle="true" derivedAnchor="RFC7230">
+          <front>
+            <title>Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing</title>
+            <author fullname="R. Fielding" initials="R." surname="Fielding" role="editor"/>
+            <author fullname="J. Reschke" initials="J." surname="Reschke" role="editor"/>
+            <date year="2014" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="7230"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7230"/>
+        </reference>
+        <reference anchor="RFC7233" target="http://www.rfc-editor.org/info/rfc7233" quoteTitle="true" derivedAnchor="RFC7233">
+          <front>
+            <title>Hypertext Transfer Protocol (HTTP/1.1): Range Requests</title>
+            <author fullname="R. Fielding" initials="R." surname="Fielding" role="editor"/>
+            <author fullname="Y. Lafon" initials="Y." surname="Lafon" role="editor"/>
+            <author fullname="J. Reschke" initials="J." surname="Reschke" role="editor"/>
+            <date year="2014" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="7233"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7233"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="acknowledgements" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-acknowledgements">謝辞</name>
+      <t indent="0" pn="section-appendix.a-1">この文書の内容の多くは、<xref target="RFC7252" format="default" sectionFormat="of" derivedContent="RFC7252"/>の著者たちとの議論や、CoRE WGでの多くの議論の成果です。</t>
+      <t indent="0" pn="section-appendix.a-2">Charles Palmerは、この文書の以前のドラフト版に対して広範な編集上のコメントを提供し、その一部はこの文書に反映されています。
+Esko Dijkはより最近の版をレビューし、それによってさらにいくつかの編集上の改善、4.13のあいまいさの問題の解決策、Blockとマルチキャストの組み合わせに関するセクション（<xref target="section-2.8" format="default" sectionFormat="of" derivedContent="Section 2.8"/>）がもたらされました。
+Markus Beckerは、Block2オプションとBlock1オプションの不適切なデフォルト値を取り除くことを提案しました。
+Peter Bigotは、オプションとレスポンスコードをより体系的に扱うよう強く求めました。
+Qin WuはIETF Operations directorateのためのレビューを提供し、Goeran Selanderはセキュリティーに関する考慮事項についてコメントしました。</t>
+      <t indent="0" pn="section-appendix.a-3">Kepeng Li、Linyi Tian、Barry Leibaは、この文書で説明しているSizeオプションの初期の版を書き上げました。
+Klaus Hartkeは、Block2とObserveの相互作用を説明するテキストの一部を書きました。
+Matthias Kovatschは、プロトコルのいくつかの重要な簡素化を提供しました。</t>
+      <t indent="0" pn="section-appendix.a-4">IESGのレビュアーたちは、非常に有益なコメントを提供しました。
+Spencer Dawkinsは新しいテキストまで提案しました。
+彼とMirja Kuehlewindは、基本プロトコルの上へのブロック単位転送の階層化について、より明示的な情報を求めました。
+Ben Campbellは、MUSTとSHOULDがごちゃ混ぜになった部分を解きほぐす手助けをしました。
+Alexey Melnikovのコメント、およびJouni KorhonenによるGen-ARTレビューによって、テキストはさらに改善されました。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Carsten Bormann" initials="C." surname="Bormann">
+        <organization showOnFrontPage="true">Universitaet Bremen TZI</organization>
+        <address>
+          <postal>
+            <street>Postfach 330440</street>
+            <city>Bremen</city>
+            <code>D-28359</code>
+            <country>Germany</country>
+          </postal>
+          <phone>+49-421-218-63921</phone>
+          <email>cabo@tzi.org</email>
+        </address>
+      </author>
+      <author fullname="Zach Shelby" initials="Z." surname="Shelby" role="editor">
+        <organization showOnFrontPage="true">ARM</organization>
+        <address>
+          <postal>
+            <street>150 Rose Orchard</street>
+            <city>San Jose</city>
+            <region>CA</region>
+            <code>95134</code>
+            <country>United States of America</country>
+          </postal>
+          <phone>+1-408-203-9434</phone>
+          <email>zach.shelby@arm.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

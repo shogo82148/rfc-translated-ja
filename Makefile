@@ -2846,6 +2846,7 @@ all: \
 	docs/rfc2068.html \
 	docs/rfc2061.html \
 	docs/rfc2053.html \
+	docs/rfc2044.html \
 	docs/rfc2042.html \
 	docs/rfc2034.html \
 	docs/rfc2031.html \
@@ -14974,6 +14975,10 @@ src/en/rfc2061.xml: src/en-txt/rfc2061.xml
 docs/rfc2053.html: src/en/rfc2053.xml src/rfcs/rfc2053.json src/ja/rfc2053.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 2053
 src/en/rfc2053.xml: src/en-txt/rfc2053.xml
+	cp $< $@
+docs/rfc2044.html: src/en/rfc2044.xml src/rfcs/rfc2044.json src/ja/rfc2044.xml scripts/xml2html.py data/xml2rfc-ja.js
+	scripts/xml2html.py 2044
+src/en/rfc2044.xml: src/en-txt/rfc2044.xml
 	cp $< $@
 docs/rfc2042.html: src/en/rfc2042.xml src/rfcs/rfc2042.json src/ja/rfc2042.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 2042

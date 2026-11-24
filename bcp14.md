@@ -31,6 +31,13 @@
 <bcp14>選択可能な（OPTIONAL）</bcp14>
 ```
 
+古いRFCには、RFC 2119の一覧にない「We RECOMMEND ...」という書き方があります。
+TXT原本の大文字の「RECOMMEND」は英語XMLで`<bcp14>RECOMMEND</bcp14>`とし、次のように訳します。
+
+```xml
+<bcp14>推奨します（RECOMMEND）</bcp14>
+```
+
 ## 例
 
 ```xml

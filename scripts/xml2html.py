@@ -309,6 +309,21 @@ class HtmlWriter:
             dd.text = status
             external_updates.append(dd)
 
+        # STD・BCP・FYI の番号（例: STD 66）
+        for series_id in self.metadata.get('is_also') or []:
+            m = re.fullmatch(r'(STD|BCP|FYI)0*(\d+)', series_id)
+            if not m:
+                continue
+            series, number = m.group(1), m.group(2)
+            dt = build('dt')
+            dt.text = '%s:' % (series,)
+            external_updates.append(dt)
+            dd = build('dd')
+            a = build('a', href='https://www.rfc-editor.org/info/%s%s' % (series.lower(), number))
+            a.text = number
+            dd.append(a)
+            external_updates.append(dd)
+
         # 発行日
         pub_date = self.metadata.get('pub_date')
         if pub_date:
@@ -2072,28 +2087,37 @@ class HtmlWriter:
 
 RFC_INDEX_NS = '{https://www.rfc-editor.org/rfc-index}'
 
-def pub_date_from_index(rfc_number, path='src/rfcs/rfc-index.xml'):
-    """rfc-index.xml から発行日を "June 2022" や "1 April 1998" の形式で返す。
+def metadata_from_index(rfc_number, path='src/rfcs/rfc-index.xml'):
+    """rfc-index.xml から RFC のメタデータを取り出して dict で返す。
 
-    同期 JSON の pub_date は、月末に発行された RFC で翌月にずれていることがある
-    （例: RFC 8034 は 2017-02-28 発行だが JSON は "March 2017"）。
-    rfc-index.xml の日付は RFC Editor の情報ページと一致するので、こちらを優先する。
-    見つからなければ None を返す。
+    - pub_date: 発行日。"June 2022" や "1 April 1998" の形式。
+      同期 JSON の pub_date は、月末に発行された RFC で翌月にずれていることがある
+      （例: RFC 8034 は 2017-02-28 発行だが JSON は "March 2017"）。
+      rfc-index.xml の日付は RFC Editor の情報ページと一致するので、こちらを優先する。
+    - is_also: その RFC が属する STD・BCP・FYI の番号（例: ["STD66"]）。
+      同期 JSON には含まれないので rfc-index.xml から取る。
+
+    見つからない項目は dict に含めない。
     """
+    result = {}
     if not os.path.exists(path):
-        return None
+        return result
     doc_id = 'RFC%d' % int(rfc_number)
     for _, entry in lxml.etree.iterparse(path, tag=RFC_INDEX_NS + 'rfc-entry'):
         if entry.findtext(RFC_INDEX_NS + 'doc-id') != doc_id:
             entry.clear()
             continue
         date = entry.find(RFC_INDEX_NS + 'date')
-        if date is None:
-            return None
-        parts = [date.findtext(RFC_INDEX_NS + k) for k in ('day', 'month', 'year')]
-        parts = [p.strip() for p in parts if p and p.strip()]
-        return ' '.join(parts) if parts else None
-    return None
+        if date is not None:
+            parts = [date.findtext(RFC_INDEX_NS + k) for k in ('day', 'month', 'year')]
+            parts = [p.strip() for p in parts if p and p.strip()]
+            if parts:
+                result['pub_date'] = ' '.join(parts)
+        is_also = [d.text.strip() for d in entry.iterfind(RFC_INDEX_NS + 'is-also/' + RFC_INDEX_NS + 'doc-id') if d.text]
+        if is_also:
+            result['is_also'] = is_also
+        break
+    return result
 
 def main():
     rfc_number = sys.argv[1]
@@ -2105,9 +2129,7 @@ def main():
     # メタデーターを取得
     with open("src/rfcs/rfc%s.json" % (rfc_number,), 'r') as file:
         metadata = json.load(file)
-    pub_date = pub_date_from_index(rfc_number)
-    if pub_date:
-        metadata['pub_date'] = pub_date
+    metadata.update(metadata_from_index(rfc_number))
 
     writer = HtmlWriter(rfcEN, rfcJA, metadata)
     writer.write(rfc_number)

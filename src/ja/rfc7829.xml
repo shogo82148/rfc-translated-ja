@@ -1,0 +1,572 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" docName="draft-ietf-tsvwg-sctp-failover-16" indexInclude="true" number="7829" symRefs="true" tocDepth="3" tocInclude="true" xml:lang="en">
+  <link href="https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-failover-16" rel="prev"/>
+<link href="https://dx.doi.org/10.17487/rfc7829" rel="alternate"/>
+  <front>
+    <title abbrev="SCTP-PF">SCTP-PF：ストリーム制御伝送プロトコルのための高速フェイルオーバーアルゴリズム</title>
+    <seriesInfo name="RFC" value="7829" stream="IETF"/>
+    <author fullname="Y. Nishida" initials="Y." surname="Nishida">
+      <organization showOnFrontPage="true">GE Global Research</organization>
+      <address/>
+    </author>
+    <author fullname="P. Natarajan" initials="P." surname="Natarajan">
+      <organization showOnFrontPage="true">Cisco Systems</organization>
+      <address/>
+    </author>
+    <author fullname="A. Caro" initials="A." surname="Caro">
+      <organization showOnFrontPage="true">BBN Technologies</organization>
+      <address/>
+    </author>
+    <author fullname="P. Amer" initials="P." surname="Amer">
+      <organization showOnFrontPage="true">University of Delaware</organization>
+      <address/>
+    </author>
+    <author fullname="K. Nielsen" initials="K." surname="Nielsen">
+      <organization showOnFrontPage="true">Ericsson</organization>
+      <address/>
+    </author>
+    <date year="2016" month="April"/>
+    <abstract pn="section-abstract">
+      <t indent="0" pn="section-abstract-1">ストリーム制御伝送プロトコル（SCTP）はマルチホーミングをサポートしています。しかし、RFC 4960で規定されたフェイルオーバー操作に従うと、データ転送パスのフェイルオーバーにおいて、大きな遅延と性能低下が生じることがあります。この文書は、高速フェイルオーバーアルゴリズムを規定し、SCTPパス管理にSCTP潜在的障害（SCTP Potentially Failed、SCTP-PF）宛先状態を導入します。</t>
+      <t indent="0" pn="section-abstract-2">この文書はまた、SCTPの休止状態（dormant state）の動作も規定します。これはSCTP-PF実装が従う必要があるものですが、RFC 4960で説明されている標準のSCTP実装にも同様に適用できます。</t>
+      <t indent="0" pn="section-abstract-3">さらに、この文書は、特定の状況で有益となる「Primary Path Switchover」と呼ばれる代替のスイッチバック動作モードを導入します。この動作モードは、標準のSCTP実装とSCTP-PF実装の両方に適用されます。</t>
+      <t indent="0" pn="section-abstract-4">この文書で定義する手順は、RFC 4960の仕様に最小限の変更しか必要としません。これらの手順は送信者側のみのものであり、SCTPの受信者には影響しません。</t>
+    </abstract>
+    <boilerplate>
+      <section anchor="status-of-memo" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.1">
+        <name slugifiedName="name-status-of-this-memo">このメモのステータス</name>
+        <t indent="0" pn="section-boilerplate.1.1">これはインターネット標準化過程（Internet Standards Track）の文書です。</t>
+        <t indent="0" pn="section-boilerplate.1.2">この文書は、インターネット技術タスクフォース（IETF）の成果物です。この文書は、IETFコミュニティーのコンセンサスを代表するものです。この文書は公開レビューを受けており、インターネット技術運営グループ（IESG）により発行が承認されています。インターネット標準に関する詳しい情報は、RFC 5741のセクション2に記載されています。</t>
+        <t indent="0" pn="section-boilerplate.1.3">この文書の現在の状態、正誤表、それに対するフィードバックの提供方法に関する情報は、<eref target="http://www.rfc-editor.org/info/rfc7829" brackets="none"/>で入手できます。</t>
+      </section>
+      <section anchor="copyright" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.2">
+        <name slugifiedName="name-copyright-notice">著作権表示</name>
+        <t indent="0" pn="section-boilerplate.2-1">Copyright (c) 2016 IETF Trust and the persons identified as the
+document authors.  All rights reserved.</t>
+        <t indent="0" pn="section-boilerplate.2-2">この文書は、この文書の発行日に有効なBCP 78およびIETFトラストのIETF文書に関する法的規定（<eref target="http://trustee.ietf.org/license-info" brackets="none"/>）に従うものとします。これらの文書は、この文書に関するあなたの権利と制限を記述しているので、注意深く確認してください。この文書から抽出されたコードコンポーネントには、Trust Legal Provisionsのセクション4.eに記載されているように、Simplified BSD Licenseのテキストを含める必要があり、Simplified BSD Licenseに記載されているように保証なしで提供されます。</t>
+      </section>
+    </boilerplate>
+    <toc>
+      <section anchor="toc" numbered="false" removeInRFC="false" toc="exclude" pn="section-toc.1">
+        <name slugifiedName="name-table-of-contents">目次</name>
+        <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1">
+          <li pn="section-toc.1-1.1">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.1.1"><xref derivedContent="1" format="counter" sectionFormat="of" target="section-1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-introduction">はじめに</xref></t>
+          </li>
+          <li pn="section-toc.1-1.2">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.2.1"><xref derivedContent="2" format="counter" sectionFormat="of" target="section-2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-conventions-and-terminology">表記規則と用語</xref></t>
+          </li>
+          <li pn="section-toc.1-1.3">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1"><xref derivedContent="3" format="counter" sectionFormat="of" target="section-3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp-with-potentially-failed-(sctp-pf)-destination-state">潜在的障害（SCTP-PF）宛先状態を持つSCTP</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.3.2">
+            <li pn="section-toc.1-1.3.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.1.1"><xref derivedContent="3.1" format="counter" sectionFormat="of" target="section-3.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-overview">概要</xref></t>
+            </li>
+            <li pn="section-toc.1-1.3.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.3.2.1"><xref derivedContent="3.2" format="counter" sectionFormat="of" target="section-3.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-specification-of-the-sctp-pf-procedures">SCTP-PF手順の仕様</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.4">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1"><xref derivedContent="4" format="counter" sectionFormat="of" target="section-4"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-dormant-state-operation">休止状態の動作</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.4.2">
+            <li pn="section-toc.1-1.4.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.4.1.1"><xref derivedContent="4.1" format="counter" sectionFormat="of" target="section-4.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp-dormant-state-procedure">SCTP休止状態の手順</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.5">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.5.1"><xref derivedContent="5" format="counter" sectionFormat="of" target="section-5"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-primary-path-switchover">プライマリーパスの切り替え（Primary Path Switchover）</xref></t>
+          </li>
+          <li pn="section-toc.1-1.6">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.6.1"><xref derivedContent="6" format="counter" sectionFormat="of" target="section-6"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-suggested-sctp-protocol-parameter-values">推奨するSCTPプロトコルパラメーター値</xref></t>
+          </li>
+          <li pn="section-toc.1-1.7">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1"><xref derivedContent="7" format="counter" sectionFormat="of" target="section-7"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-socket-api-considerations">ソケットAPIに関する考慮事項</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.7.2">
+            <li pn="section-toc.1-1.7.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.1.1"><xref derivedContent="7.1" format="counter" sectionFormat="of" target="section-7.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-support-for-the-potentially-failed-path-state">潜在的障害パス状態のサポート</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.2.1"><xref derivedContent="7.2" format="counter" sectionFormat="of" target="section-7.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-peer-address-thresholds-(sctp_peer_addr_thlds)-socket-option">ピアアドレスのしきい値（SCTP_PEER_ADDR_THLDS）ソケットオプション</xref></t>
+            </li>
+            <li pn="section-toc.1-1.7.3">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.7.3.1"><xref derivedContent="7.3" format="counter" sectionFormat="of" target="section-7.3"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-exposing-the-potentially-failed-path-state-(sctp_expose_potentially_failed_state)-socket-option">潜在的障害パス状態の公開（SCTP_EXPOSE_POTENTIALLY_FAILED_STATE）ソケットオプション</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.8">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.8.1"><xref derivedContent="8" format="counter" sectionFormat="of" target="section-8"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-security-considerations">セキュリティーに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.9">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.9.1"><xref derivedContent="9" format="counter" sectionFormat="of" target="section-9"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-mib-considerations">MIBに関する考慮事項</xref></t>
+          </li>
+          <li pn="section-toc.1-1.10">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1"><xref derivedContent="10" format="counter" sectionFormat="of" target="section-10"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-references">参考文献</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.10.2">
+            <li pn="section-toc.1-1.10.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.1.1"><xref derivedContent="10.1" format="counter" sectionFormat="of" target="section-10.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-normative-references">引用規格</xref></t>
+            </li>
+            <li pn="section-toc.1-1.10.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.10.2.1"><xref derivedContent="10.2" format="counter" sectionFormat="of" target="section-10.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-informative-references">参考文献</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.A">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.A.1"><xref derivedContent="Appendix A" format="default" sectionFormat="of" target="section-appendix.a"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discussion-of-alternative-approaches">代替アプローチの検討</xref></t>
+            <ul bare="true" empty="true" indent="2" spacing="compact" pn="section-toc.1-1.A.2">
+            <li pn="section-toc.1-1.A.1">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.A.1.1"><xref derivedContent="A.1" format="counter" sectionFormat="of" target="section-a.1"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-reduce-pmr">PMRを小さくする</xref></t>
+            </li>
+            <li pn="section-toc.1-1.A.2">
+              <t indent="0" keepWithNext="true" pn="section-toc.1-1.A.2.1"><xref derivedContent="A.2" format="counter" sectionFormat="of" target="section-a.2"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-adjust-rto-related-parameters">RTO関連のパラメーターを調整する</xref></t>
+            </li>
+            </ul>
+          </li>
+          <li pn="section-toc.1-1.B">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.B.1"><xref derivedContent="Appendix B" format="default" sectionFormat="of" target="section-appendix.b"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-discussion-of-the-path-bouncing-effect">パスバウンシング効果の検討</xref></t>
+          </li>
+          <li pn="section-toc.1-1.C">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.C.1"><xref derivedContent="Appendix C" format="default" sectionFormat="of" target="section-appendix.c"/>.  <xref derivedContent="" format="title" sectionFormat="of" target="name-sctp-pf-for-sctp-single-homed-operation">SCTPのシングルホーム動作のためのSCTP-PF</xref></t>
+          </li>
+          <li pn="section-toc.1-1.D">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.D.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.d"/><xref derivedContent="" format="title" sectionFormat="of" target="name-acknowledgments">謝辞</xref></t>
+          </li>
+          <li pn="section-toc.1-1.E">
+            <t indent="0" keepWithNext="true" pn="section-toc.1-1.E.1"><xref derivedContent="" format="none" sectionFormat="of" target="section-appendix.e"/><xref derivedContent="" format="title" sectionFormat="of" target="name-authors-addresses">著者の連絡先</xref></t>
+          </li>
+      </ul>
+      </section>
+    </toc>
+  </front>
+  <middle>
+    <section anchor="introduction" numbered="true" removeInRFC="false" toc="include" pn="section-1">
+      <name slugifiedName="name-introduction">はじめに</name>
+      <t indent="0" pn="section-1-1"><xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されたストリーム制御伝送プロトコル（SCTP）は、トランスポート層でのマルチホーミングをサポートしています。SCTPのマルチホーミング機能には、ネットワークインターフェイスの冗長性とエンドツーエンドの耐障害性の向上を提供するための、障害検出とフェイルオーバーの手順が含まれています。SCTPの現在の障害検出手順では、送信者は、パスの障害を検出する前に、ある宛先アドレスに対してタイマーに基づく再送がPath.Max.Retrans（PMR）回連続して失敗するのを経験しなければなりません。パスの障害を検出するまで、送信者は障害の起きたパスでデータの送信を続けます。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で説明されているSCTPが障害の起きたパスを使い続ける時間が長引くことで、プロトコルの性能は大きく低下します。この問題に対処するため、この文書は、SCTPのパス管理に新しい潜在的障害（Potentially Failed、PF）パス状態を導入することに基づく、「SCTP-PF」と呼ばれる高速フェイルオーバーアルゴリズムを規定します。RFC 4960で説明されているフェイルオーバー操作の性能上の欠点と、SCTPにPF状態を導入することで得られる改善は、Concurrent Multipath Transfer SCTP <xref target="IYENGAR06" format="default" sectionFormat="of" derivedContent="IYENGAR06"/>を対象として<xref target="NATARAJAN09" format="default" sectionFormat="of" derivedContent="NATARAJAN09"/>で提案され、文書化されました。</t>
+      <t indent="0" pn="section-1-2">SCTP-PFはフェイルオーバーの過程を加速して性能を向上させることができますが、すべての宛先アドレスが非アクティブである休止状態にSCTPエンドポイントが入るリスクは高まる可能性があります。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>は、休止状態の間のプロトコル動作を実装に任せており、PMRとAssociation.Max.Retrans（AMR）パラメーターを注意深く調整することで、できる限りこの状態に入らないようにすることを奨励しています。私たちは、SCTP-PFのための休止状態の動作を規定します。これにより、休止状態により早く入る可能性があるにもかかわらず、SCTP-PFは<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>と同じ途絶耐性を提供できるようになります。この休止状態の動作は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の実装にも同様に適用でき、PMRとAMRのパラメーターの調整では休止状態に入ることを十分に防げない状況において、耐障害性を高める役割を果たします。</t>
+      <t indent="0" pn="section-1-3">障害の起きたパスが回復した後の動作も、プロトコルの性能に影響します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定された手順では、SCTPは（プライマリーパスからのフェイルオーバーの後）プライマリーパスが再び利用可能になるとすぐに、データ転送にプライマリーパスを使うようにスイッチバックします。性能の観点からは、このようなデータ送信パスの強制的なスイッチバックは最適ではない場合があります。データ転送が再開されると、元のプライマリー宛先アドレスに向けた輻輳ウィンドウ（CWND）を再構築しなければならないからです<xref target="CARO02" format="default" sectionFormat="of" derivedContent="CARO02"/>。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のスイッチバック操作の任意の代替として、この文書は、データ転送パスのこのような強制的なスイッチバックを回避する代替のPrimary Path Switchover手順を規定します。Primary Path Switchover操作は、もともと<xref target="CARO02" format="default" sectionFormat="of" derivedContent="CARO02"/>で提案されたものです。</t>
+      <t indent="0" pn="section-1-4">SCTP-PFは主にマルチホーム動作を改善したいという要望が動機となっていますが、この機能はSCTPのシングルホーム動作にも適用されます。この場合、このアルゴリズムはアイドル状態のアソシエーションにおける障害検出を強化する役割を果たし、アルゴリズムのフェイルオーバーやスイッチバックの側面は作動しません。これについては<xref target="section-appendix.c" format="default" sectionFormat="of" derivedContent="Appendix C"/>で詳しく説明します。</t>
+      <t indent="0" pn="section-1-5">PF状態を導入する動機の簡単な説明は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のフェイルオーバー操作の欠点を緩和するための代替アプローチの検討も含めて、付録に記載しています。頻繁な切り替えによって引き起こされる可能性のあるパスバウンシング効果の検討も、そこで行っています。</t>
+    </section>
+    <section anchor="conventions-and-terminology" numbered="true" removeInRFC="false" toc="include" pn="section-2">
+      <name slugifiedName="name-conventions-and-terminology">表記規則と用語</name>
+      <t indent="0" pn="section-2-1">この文書におけるキーワード「<bcp14>しなければなりません（MUST）</bcp14>」、「<bcp14>してはなりません（MUST NOT）</bcp14>」、「<bcp14>要求されています（REQUIRED）</bcp14>」、「<bcp14>することになります（SHALL）</bcp14>」、「<bcp14>することはありません（SHALL NOT）</bcp14>」、「<bcp14>すべきです（SHOULD）</bcp14>」、「<bcp14>すべきではありません（SHOULD NOT）</bcp14>」、「<bcp14>推奨されます（RECOMMENDED）</bcp14>」、「<bcp14>してもよいです（MAY）</bcp14>」、「<bcp14>選択できます（OPTIONAL）</bcp14>」は、<xref target="RFC2119" format="default" sectionFormat="of" derivedContent="RFC2119"/>で説明されているように解釈されます。</t>
+    </section>
+    <section anchor="sctp-with-potentially-failed-(sctp-pf)-destination-state" numbered="true" removeInRFC="false" toc="include" pn="section-3">
+      <name slugifiedName="name-sctp-with-potentially-failed-(sctp-pf)-destination-state">潜在的障害（SCTP-PF）宛先状態を持つSCTP</name>
+      <section anchor="overview" numbered="true" removeInRFC="false" toc="include" pn="section-3.1">
+        <name slugifiedName="name-overview">概要</name>
+        <t indent="0" pn="section-3.1-1">フェイルオーバー中の性能への影響を最小限に抑えるため、送信者は、障害の起きた宛先アドレスへのデータ送信をできるだけ早く避けるべきです。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で説明されているSCTPのパス管理方式では、送信者は、宛先アドレスが非アクティブとマークされた後にはじめて、その宛先アドレスへのデータ送信を停止します。この過程では宛先アドレスのエラーカウンターがPMRしきい値を超える必要があるため、かなりの時間がかかります。この問題は、PMRしきい値を下げるだけでは緩和できません。PMRしきい値を下げると、障害を誤検出したり、望ましいプライマリーパスの使用を不必要に妨げたりする可能性があるからです。また、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>ではPMRとAMRのパラメーター値が連動して調整されるため、PMRしきい値を下げるとAMRしきい値も下がる可能性があり、その結果SCTPの耐障害性が低下することになります。</t>
+        <t indent="0" pn="section-3.1-2">この文書が提供する解決策は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のパス管理方式における宛先アドレスのアクティブ状態と非アクティブ状態の間の中間状態としてPF状態を追加することで<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のSCTPパス管理方式を拡張し、宛先アドレスからのデータ転送のフェイルオーバーを、非アクティブ状態に入ることではなく、PF状態に入ることによって駆動するというものです。これにより、SCTPは、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で説明されているSCTPの全体的な耐障害性に悪影響を与えることなく、高速なフェイルオーバーを行えます。同時に、宛先アドレスがPF状態に入ると、その宛先アドレスに向けて再送タイムアウト（RTO）に基づくHEARTBEATによるプローブが開始されます。これにより、SCTPは、宛先アドレスへのネットワーク接続が切れているのか、それともフェイルオーバーが誤りだったのかを素早く確認できます。フェイルオーバーが誤りだった場合は、元の宛先アドレスへのデータ転送を素早く再開できます。</t>
+        <t indent="0" pn="section-3.1-3">新しい障害検出アルゴリズムは、タイムアウトによって検出された損失が、深刻な輻輳またはネットワーク接続の障害のいずれかを意味すると想定します。このアルゴリズムは、デフォルトでは、最初のタイムアウトが発生した時点で宛先アドレスをPFに分類することを推奨します。</t>
+      </section>
+      <section anchor="specification-of-the-sctp-pf-procedures" numbered="true" removeInRFC="false" toc="include" pn="section-3.2">
+        <name slugifiedName="name-specification-of-the-sctp-pf-procedures">SCTP-PF手順の仕様</name>
+        <t indent="0" pn="section-3.2-1">SCTP-PFの動作は次のように規定されます。</t>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-3.2-2">
+          <li pn="section-3.2-2.1">送信者は、PotentiallyFailed.Max.Retrans（PFMR）と呼ばれる、調整可能な新しいSCTPプロトコルパラメーターを保持します。PFMRは、宛先アドレスのエラーカウンターに対する新しい中間のPFしきい値を定義します。このしきい値を超えると、宛先アドレスはPFに分類されます。PFMRの値は0が<bcp14>推奨されます（RECOMMENDED）</bcp14>。PFMRがPMR以上に設定されると、結果として得られるPFしきい値が高くなりすぎて、宛先アドレスはPFに分類される前に非アクティブ状態に達してしまいます。</li>
+          <li pn="section-3.2-2.2">アクティブな宛先アドレスのエラーカウンターは、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で規定されているとおりに増加またはクリアされます。つまり、アクティブ状態の宛先アドレスのエラーカウンターは、T3再送（T3-rtx）タイマーが満了するたびに、またはアイドル時にHEARTBEATチャンクを送信してRTO以内に確認応答されなかったたびに増加します。宛先アドレスのエラーカウンターの値がPFMRを超えた場合、エンドポイントはその宛先アドレスをPF状態としてマーク<bcp14>しなければなりません（MUST）</bcp14>。</li>
+          <li pn="section-3.2-2.3">
+            <t indent="0" pn="section-3.2-2.3.1">アクティブ状態の代替の宛先アドレスが利用可能な場合、SCTP-PF送信者はPF状態の宛先アドレスにデータを送信<bcp14>すべきではありません（SHOULD NOT）</bcp14>。具体的には、次のことを意味します。</t>
+            <ol spacing="normal" type="i" indent="adaptive" start="1" pn="section-3.2-2.3.2">
+              <li pn="section-3.2-2.3.2.1">送信すべき送出データがあり、現在データ送信に使用している宛先アドレスがPF状態である場合、送信者は、アクティブ状態の宛先アドレスが存在すればそれを選択し、その宛先アドレスをデータ送信に使用<bcp14>すべきです（SHOULD）</bcp14>。</li>
+              <li pn="section-3.2-2.3.2.2"><xref target="RFC4960" section="6.4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-6.4.1" derivedContent="RFC4960"/>で規定されているように、送信者はタイムアウトしたデータを再送するとき、データの再送のために新しい宛先アドレスを選ぶよう試みるべきです。この場合、送信者は、アクティブ状態の代替の宛先トランスポートアドレスが存在すればそれを選択<bcp14>すべきです（SHOULD）</bcp14>。</li>
+              <li pn="section-3.2-2.3.2.3">送信すべき送出データがあり、SCTPユーザーがPF状態の宛先アドレスにデータを送信するよう明示的に要求した場合、送信者は、アクティブ状態の代替の宛先アドレスが存在すればそちらにデータを送信<bcp14>すべきです（SHOULD）</bcp14>。</li>
+            </ol>
+            <t indent="0" pn="section-3.2-2.3.3">アクティブ状態の複数の宛先アドレスの中から選択する場合、SCTP送信者は、<xref target="RFC4960" section="6.4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-6.4.1" derivedContent="RFC4960"/>の指針に従い、（前述のiとiiの場合について）次のものと比べて最も異なる送信元・宛先のペアを選択します。</t>
+            <ol spacing="normal" type="i" indent="adaptive" start="1" pn="section-3.2-2.3.4">
+              <li pn="section-3.2-2.3.4.1">フェイルオーバーの元となるPF状態の宛先アドレス</li>
+              <li pn="section-3.2-2.3.4.2">データがタイムアウトした宛先アドレス</li>
+            </ol>
+            <t indent="0" pn="section-3.2-2.3.5">最も異なる送信元・宛先のペアを選ぶ規則は実装上の判断であり、この文書では規定しません。</t>
+            <t indent="0" pn="section-3.2-2.3.6">いずれの場合も、送信者は、データ送信のために宛先アドレスを選択した結果として、選択した宛先アドレスの状態を、それがアクティブであれPFであれ変更<bcp14>してはなりません（MUST NOT）</bcp14>。また、その宛先アドレスのエラーカウンターをクリア<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+          </li>
+          <li pn="section-3.2-2.4">
+            <t indent="0" pn="section-3.2-2.4.1">宛先アドレスがすべてPF状態である場合、または一部がPF状態で残りが非アクティブ状態である場合、送信者はPF状態の宛先アドレスを1つ選択<bcp14>しなければなりません（MUST）</bcp14>。そして、次の規則を用いて、この宛先アドレスにデータを送信または再送<bcp14>すべきです（SHOULD）</bcp14>。</t>
+            <ol spacing="normal" type="i" indent="adaptive" start="1" pn="section-3.2-2.4.2">
+              <li pn="section-3.2-2.4.2.1">送信者は、データ送信のために、エラーカウントが最も小さい（連続したタイムアウトが最も少ない）PF状態の宛先を選択し、この宛先にデータを送信または再送<bcp14>すべきです（SHOULD）</bcp14>。</li>
+              <li pn="section-3.2-2.4.2.2">エラーカウントが同じPF状態の宛先アドレスが複数ある場合、送信者は、エラーカウントが等しいPF状態の複数の宛先アドレスの中からの選択を、<xref target="RFC4960" section="6.4.1" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-6.4.1" derivedContent="RFC4960"/>で概説されている（連続する可能性のある）再送を実行する際に最も異なる送信元・宛先のペアを選ぶという原則に基づいて行うべきです。最も異なる送信元・宛先のペアを選ぶ規則は実装上の判断であり、この文書では規定しません。</li>
+            </ol>
+            <t indent="0" pn="section-3.2-2.4.3">送信者は、この選択の結果として、いずれの宛先アドレスの状態とエラーカウンターも変更<bcp14>してはなりません（MUST NOT）</bcp14>。</t>
+          </li>
+          <li pn="section-3.2-2.5">PF状態の宛先アドレスについては、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のパスハートビート機能のHB.Intervalを無視<bcp14>しなければなりません（MUST）</bcp14>。代わりに、HEARTBEATチャンクはPF状態の宛先アドレスにRTOごとに1回送信されます。HEARTBEATチャンクはPF状態の宛先アドレスに送信<bcp14>すべきです（SHOULD）</bcp14>が、HEARTBEATの送信は、その宛先アドレスに対してパスハートビート機能（<xref target="RFC4960" section="8.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-8.3" derivedContent="RFC4960"/>）が有効になっているかどうかを尊重<bcp14>しなければなりません（MUST）</bcp14>。つまり、対象の宛先アドレスに対してパスハートビート機能が無効になっている場合、HEARTBEATを送信<bcp14>してはなりません（MUST NOT）</bcp14>。パスハートビート機能が無効になっている場合、PF状態の宛先アドレスをアクティブ状態に戻すのに時間がかかる可能性があることに注意してください。</li>
+          <li pn="section-3.2-2.6">HEARTBEATは、宛先アドレスがPF状態に達したときに送信されます。HEARTBEATチャンクがRTO以内に確認応答されない場合、送信者はエラーカウンターを増加させ、RTO値を指数関数的にバックオフします。エラーカウンターがPMR未満であれば、送信者は前のHEARTBEATのタイムアウトが満了した直後に、HEARTBEATチャンクを含む別のパケットを送信します。PF状態の宛先アドレスにデータを送信している場合、そのデータの選択的確認応答（SACK）の受信またはそのデータに対するT3-rtxタイマーの満了が同等の情報を提供できるとき、たとえばデータチャンクが単一の宛先アドレスにのみ送信されているときなどには、HEARTBEATチャンクの送信を省略<bcp14>してもよいです（MAY）</bcp14>。同様に、宛先アドレスに向けた未確認のデータがある場合は、HEARTBEATチャンクのタイムアウトを無視<bcp14>してもよいです（MAY）</bcp14>。</li>
+          <li pn="section-3.2-2.7">PF状態の宛先アドレスに送信したHEARTBEATに対するHEARTBEAT ACKを受信した場合、送信者は、その宛先アドレスのエラーカウンターをクリアし、宛先アドレスをアクティブ状態に戻す<bcp14>べきです（SHOULD）</bcp14>。しかし、HEARTBEATチャンクは通過できるがDATAチャンクは通過できないという状況もありえます。したがって、HEARTBEATを送信した宛先アドレスに向けた未確認のデータがある間にHEARTBEAT ACKが到着した状況では、実装は、HEARTBEAT ACKによってエラーカウンターをリセットせず、未確認のデータ送信の結果を待ってからエラーカウンターをリセットすることを選択<bcp14>してもよいです（MAY）</bcp14>。この状況は、PF状態の宛先アドレスにデータが送信された場合に起こりえます。宛先アドレスがPF状態からアクティブ状態に遷移した後に、送信者がその宛先アドレスでデータ送信を再開する場合は、<xref target="RFC4960" section="7.2" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-7.2" derivedContent="RFC4960"/>の規定に従って行わ<bcp14>なければなりません（MUST）</bcp14>。</li>
+          <li pn="section-3.2-2.8">PF状態の宛先アドレスでさらにPMR - PFMR回の連続したタイムアウトが発生すると、パスの障害が確定し、その時点で宛先アドレスは非アクティブ状態に遷移します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で説明されているように、送信者は、(i) この状態遷移を上位層プロトコル（ULP）に通知し、(ii) （その宛先アドレスに対してパスハートビート機能が有効になっている場合は）<xref target="RFC4960" section="8.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-8.3" derivedContent="RFC4960"/>で説明されているように、より低いHB.Intervalの頻度で非アクティブな宛先アドレスにHEARTBEATチャンクを送信<bcp14>すべきです（SHOULD）</bcp14>。</li>
+          <li pn="section-3.2-2.9">複数の宛先に送信されたチャンク（つまり、最初に送信された宛先アドレスとは異なる宛先アドレスに再送されたチャンク）に対する確認応答によって、非アクティブな宛先アドレスのエラーカウントをクリア<bcp14>すべきではありません（SHOULD NOT）</bcp14>。また、PF状態の宛先アドレスをアクティブ状態に戻す<bcp14>べきではありません（SHOULD NOT）</bcp14>。送信者は、そのACKが元の送信に対するものか再送に対するものかを区別できないからです。SCTP送信者は、複数の宛先アドレスのうちどの宛先にチャンクが到達したかを一意に判断できる場合には、確認応答以外の情報によってエラーカウンターをクリアし、宛先アドレスをアクティブ状態に戻<bcp14>してもよいです（MAY）</bcp14>。この文書は、そのような情報が何から構成されうるか、またそのような情報をどのように取得できるかについては言及しません。</li>
+          <li pn="section-3.2-2.10">1つの宛先アドレスにのみ送信されたデータチャンクに対する確認応答は、その宛先アドレスのエラーカウンターをクリア<bcp14>しなければなりません（MUST）</bcp14>。また、PF状態の宛先アドレスをアクティブ状態に戻さ<bcp14>なければなりません（MUST）</bcp14>。この状況は、PF状態の宛先アドレスに新しいデータが送信された場合に起こりえます。また、誤ったT3-rtxタイマーの発生によって宛先アドレスがPF状態になっており、誤ったT3-rtxの発生前に送信されたデータに対する確認応答が到着し始め、かつデータがまだ他の宛先に再送されていない状況でも起こりえます。この文書は、誤ったT3-rtxタイムアウトの検出やそれへの対応のための特別な処理、たとえば誤ったT3-rtxタイムアウトによってアクティブからPF、そしてアクティブへと状態遷移する宛先アドレスに向けた輻輳制御の処理やデータの再送操作に関する特別な動作は規定しません。ただし、これは、シングルホームのSCTPとマルチホームのSCTPプロトコル動作の両方について、さらなる注目、実験、仕様化から恩恵を受けるであろう分野であることを付記しておきます。</li>
+          <li pn="section-3.2-2.11">すべての宛先アドレスが非アクティブ状態であり、したがってSCTPプロトコルの動作が休止状態にあるといえる場合は、<xref target="section-4" format="default" sectionFormat="of" derivedContent="Section 4"/>で示す規定に従うものとします。</li>
+          <li pn="section-3.2-2.12">SCTPスタックは、宛先アドレスのPF状態をULPに公開するとともに、宛先アドレスのアクティブからPFへの状態遷移およびその逆の状態遷移をULPに通知する手段を提供<bcp14>すべきです（SHOULD）</bcp14>。ただし、SCTP-PFを実装するSCTPスタックは、ULPが宛先のPF状態とそれに関連する状態遷移を知らずにいられるようにして、ULPで<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のより単純な状態遷移モデルを維持できるようにすることも推奨します。このため、SCTP-PFを実装するSCTPスタックは、PF状態とそれに関連する状態遷移の公開を抑制する手段もULPに提供することを推奨します。</li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="dormant-state-operation" numbered="true" removeInRFC="false" toc="include" pn="section-4">
+      <name slugifiedName="name-dormant-state-operation">休止状態の動作</name>
+      <t indent="0" pn="section-4-1">SCTPエンドポイント間の通信が完全に途絶した状況では、PF状態の宛先アドレスに対するSCTP-PFの積極的なHEARTBEAT送信によって、PMRとAMRの設定が同じであっても、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の標準のSCTP実装よりも早くアソシエーションが休止状態に入る可能性があります。たとえば、2つの宛先アドレスを持つSCTPアソシエーションは、このような状況では、通常<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のSCTP実装の半分の時間で休止状態に達します。これは、PF状態の宛先アドレスが複数ある場合、SCTP PF送信者がRTO間隔でHEARTBEATとデータの再送を並行して送信するためです。この議論は、RTO &lt;&lt; <xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のHB.Intervalであることを前提としています。SCTP-PFが、PMRとAMRの設定が同じ標準のSCTP実装と同じレベルの途絶耐性を提供するという設計目標のもと、私たちは、SCTP-PF実装は休止状態の間、<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>で説明するように動作<bcp14>すべきです（SHOULD）</bcp14>と規定します。</t>
+      <t indent="0" pn="section-4-2">SCTP-PF実装は、選択した解決策がSCTP-PF動作の耐障害性を低下させない限り、<xref target="section-4.1" format="default" sectionFormat="of" derivedContent="Section 4.1"/>で説明するものとは異なる休止状態の動作を選択<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-4-3">以下に示すSCTP-PFの休止状態の処理に関する規定は、PFMRの値に連動させては<bcp14>なりません（MUST NOT）</bcp14>。SCTP実装においてSCTP-PFのロジックが有効になっているかどうかにのみ連動させます。</t>
+      <t indent="0" pn="section-4-4">以下の休止状態の動作は、SCTP-PFをサポートしない標準のSCTP実装にも、強化された途絶耐性を提供できることを付記しておきます。したがって、標準のSCTP実装がこの動作モードに従うことは理にかなっている場合があります。標準のSCTP実装にとっては、休止状態の間にデータ送信を継続することで、データ送信に使用しているプライマリーパスが問題を観測する前に、SCTPアソシエーションの代替パスの一部またはすべてが非アクティブ状態に近づく、または達するという状況に対して、SCTPの耐障害性がより堅牢になります。</t>
+      <section anchor="sctp-dormant-state-procedure" numbered="true" removeInRFC="false" toc="include" pn="section-4.1">
+        <name slugifiedName="name-sctp-dormant-state-procedure">SCTP休止状態の手順</name>
+        <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-4.1-1">
+          <li pn="section-4.1-1.1">宛先アドレスがすべて非アクティブ状態であり、転送可能なデータがある場合、送信者は宛先を1つ選択し、この宛先アドレスにデータを送信<bcp14>しなければなりません（MUST）</bcp14>。</li>
+          <li pn="section-4.1-1.2">送信者は、データ送信のために宛先アドレスを選択した結果として、選択した宛先アドレスの状態を変更<bcp14>してはなりません（MUST NOT）</bcp14>（非アクティブ状態のままです）。また、その宛先アドレスのエラーカウンターをクリア<bcp14>してはなりません（MUST NOT）</bcp14>。</li>
+          <li pn="section-4.1-1.3">送信者は、データ送信のために、エラーカウントが最も小さい（連続したタイムアウトが最も少ない）非アクティブ状態の宛先を選択<bcp14>すべきです（SHOULD）</bcp14>。非アクティブ状態でエラーカウントが同じ宛先が複数ある場合、送信者は、障害が観測された最後の送信元・宛先のペアから最も異なる送信元・宛先のペアを選ぶよう試みる<bcp14>べきです（SHOULD）</bcp14>。最も異なる送信元・宛先のペアを選ぶ規則は実装上の判断であり、この文書では規定しません。エラーカウントに基づいて非アクティブな宛先アドレスを区別できるようにするため、SCTPは、宛先アドレスのエラーカウンターをPMR+1を超えるある妥当な上限まで増加できるようにする必要があり、この点で<xref target="RFC4960" section="8.3" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-8.3" derivedContent="RFC4960"/>の規定を変更することになります。適用する正確な上限はこの文書では規定しませんが、上限をPMR値より1桁大きくすることを求めるのは十分に妥当であると考えられます。送信者は、ここで定義した戦略以外の戦略を採用することを選択<bcp14>してもよいです（MAY）</bcp14>。最後にアクティブだった宛先アドレス、つまりエラーカウントが最も少ない宛先アドレスを優先する戦略は、一部のパスが恒久的に非アクティブである場合には最適ですが、パスの不安定性が一時的である場合には最適ではありません。</li>
+        </ol>
+      </section>
+    </section>
+    <section anchor="primary-path-switchover" numbered="true" removeInRFC="false" toc="include" pn="section-5">
+      <name slugifiedName="name-primary-path-switchover">プライマリーパスの切り替え（Primary Path Switchover）</name>
+      <t indent="0" pn="section-5-1">Primary Path Switchover操作の目的は、古いプライマリー宛先アドレスが再びアクティブになった場合でも、SCTP送信者が新しい機能しているパスでデータ送信を継続できるようにすることです。これは、プライマリーパスのエラーカウンターがあるしきい値を超えた場合に、SCTPにプライマリーパスを新しい機能しているパスに切り替えさせることで実現します。この動作モードは、SCTP-PF実装だけでなく、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の実装にも適用できます。</t>
+      <t indent="0" pn="section-5-2">Primary Path Switchover操作に必要なのは、送信者側の変更だけです。詳細は次のとおりです。</t>
+      <ol spacing="normal" type="1" indent="adaptive" start="1" pn="section-5-3">
+        <li pn="section-5-3.1">送信者は、Primary.Switchover.Max.Retrans（PSMR）と呼ばれる、調整可能な新しいパラメーターを保持します。SCTP-PF実装では、PSMRはPFMRの値以上に設定<bcp14>しなければなりません（MUST）</bcp14>。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の実装では、PSMRはPMRの値以上に設定<bcp14>しなければなりません（MUST）</bcp14>。実装は、それ以外のPSMRの値を拒否<bcp14>しなければなりません（MUST）</bcp14>。</li>
+        <li pn="section-5-3.2">設定されたプライマリーパスのパスエラーカウンターがPSMRを超えた場合、SCTP実装は新しいプライマリーパスを自律的に選択して設定<bcp14>しなければなりません（MUST）</bcp14>。</li>
+        <li pn="section-5-3.3">SCTP実装が選択するプライマリーパスは、その時点でデータ転送のために選ばれるであろうパスで<bcp14>なければなりません（MUST）</bcp14>。以前に障害の起きたプライマリーパスは、現在のデータ転送パスに障害が起きた場合、通常のパス選択に従ってデータ転送パスとして使用できます。</li>
+        <li pn="section-5-3.4">SCTP-PFでは、Primary Path Switchover動作モードを使用する場合のPSMRの推奨値はPFMRです。これは、以前に障害の起きたプライマリーパスへの強制的なスイッチバックを行わないことを意味します。Primary Path SwitchoverのSCTP-PF実装は、PSMR = PFMRの設定をサポート<bcp14>しなければなりません（MUST）</bcp14>。Primary Path SwitchoverのSCTP-PF実装は、PSMR &gt; PFMRの設定をサポート<bcp14>してもよいです（MAY）</bcp14>。</li>
+        <li pn="section-5-3.5">標準のSCTPでは、Primary Path Switchoverを使用する場合のPSMRの推奨値はPMRです。これは、以前に障害の起きたプライマリーパスへの強制的なスイッチバックを行わないことを意味します。Primary Path Switchoverの標準のSCTP実装は、PSMR = PMRの設定をサポート<bcp14>しなければなりません（MUST）</bcp14>。Primary Path Switchoverの標準のSCTP実装は、PSMR &gt; PMRというより大きな設定をサポート<bcp14>してもよいです（MAY）</bcp14>。</li>
+        <li pn="section-5-3.6">Primary Path Switchover操作を無効にして、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の標準のスイッチバック操作を得られるようにし<bcp14>なければなりません（MUST）</bcp14>。</li>
+      </ol>
+      <t indent="0" pn="section-5-4">あるシナリオにおいてどのような切り替え操作が最適かは、設定されたプライマリーパスの品質と利用可能な代替パスの品質の相対的な関係や、動作モードによって複数のネットワークパスにトラフィックを分散させることがどの程度望まれるかによって異なります。つまり、複数のSCTPアソシエーションからのトラフィックの負荷分散は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のスイッチバック操作のもとで、設定するプライマリーパスを分散させることによって実現できます。しかし、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のスイッチバックの振る舞いは、特定の状況、特に同程度に良好なパスが複数利用可能なシナリオでは最適ではないため、SCTP実装は、代替の振る舞いとしてPrimary Path Switchover動作モードもサポート<bcp14>してもよいです（MAY）</bcp14>。また、アプリケーションの要求に基づいてそれを有効に<bcp14>してもよいです（MAY）</bcp14>。</t>
+      <t indent="0" pn="section-5-5">Primary Path Switchover操作を実装するSCTP実装について、この仕様は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の標準のスイッチバック操作をデフォルトの操作として維持することを推奨します（RECOMMENDS）。</t>
+    </section>
+    <section anchor="suggested-sctp-protocol-parameter-values" numbered="true" removeInRFC="false" toc="include" pn="section-6">
+      <name slugifiedName="name-suggested-sctp-protocol-parameter-values">推奨するSCTPプロトコルパラメーター値</name>
+      <t indent="0" pn="section-6-1">この文書は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>で定義されたSCTPプロトコルパラメーターの推奨値を変更しません。</t>
+      <t indent="0" pn="section-6-2">次のプロトコルパラメーターが<bcp14>推奨されます（RECOMMENDED）</bcp14>。</t>
+      <ul bare="false" empty="true" indent="3" spacing="normal" pn="section-6-3">
+        <li pn="section-6-3.1">PotentiallyFailed.Max.Retrans (PFMR) - 0</li>
+      </ul>
+    </section>
+    <section anchor="socket-api-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-7">
+      <name slugifiedName="name-socket-api-considerations">ソケットAPIに関する考慮事項</name>
+      <t indent="0" pn="section-7-1">このセクションでは、アプリケーションがSCTP-PFの振る舞いとPrimary Path Switchover機能を制御および観測する方法を提供するために、<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されたソケットAPIをどのように拡張するかを説明します。</t>
+      <t indent="0" pn="section-7-2">このセクションは情報提供のみを目的としていることに注意してください。</t>
+      <t indent="0" pn="section-7-3"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>に基づくソケットAPI実装は、既存のSCTP_PEER_ADDR_CHANGEイベントによって、ピアアドレスがPF状態に入ったときまたはPF状態から出たときにイベント通知を提供するよう拡張されます。また、ソケットAPI実装は、既存のSCTP_GET_PEER_ADDR_INFO構造体でピアアドレスのPF状態を公開するよう拡張されます。</t>
+      <t indent="0" pn="section-7-4">さらに、以下で説明するように、レベルがIPPROTO_SCTPで名前がSCTP_PEER_ADDR_THLDSとSCTP_EXPOSE_POTENTIALLY_FAILED_STATEである、2つの新しい読み書き可能なソケットオプションを定義します。1つ目のソケットオプションは、セクション<xref target="section-3" format="counter" sectionFormat="of" derivedContent="3"/>と<xref target="section-5" format="counter" sectionFormat="of" derivedContent="5"/>で説明したPFMRとPSMRのパラメーターの値を制御するために使用します。2つ目は、PFパス状態の公開を制御します。</t>
+      <t indent="0" pn="section-7-5">SCTP_PEER_ADDR_THLDSとSCTP_EXPOSE_POTENTIALLY_FAILED_STATEのソケットオプションのサポートは、関数sctp_opt_info()にも追加する必要があります。</t>
+      <section anchor="support-for-the-potentially-failed-path-state" numbered="true" removeInRFC="false" toc="include" pn="section-7.1">
+        <name slugifiedName="name-support-for-the-potentially-failed-path-state">潜在的障害パス状態のサポート</name>
+        <t indent="0" pn="section-7.1-1"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されているように、SCTP_PEER_ADDR_CHANGEイベントは、ピアアドレスのステータスが変化した場合に提供されます。<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で説明されている状態変化に加えて、このイベントは、ピアアドレスがPF状態に入ったときまたはPF状態から出たときにも提供されます。<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されている通知は、次の構造体を使用します。</t>
+        <sourcecode type="c" markers="false" pn="section-7.1-2"><![CDATA[
+struct sctp_paddr_change {
+  uint16_t spc_type;
+  uint16_t spc_flags;
+  uint32_t spc_length;
+  struct sockaddr_storage spc_aaddr;
+  uint32_t spc_state;
+  uint32_t spc_error;
+  sctp_assoc_t spc_assoc_id;
+}
+]]></sourcecode>
+        <t indent="0" pn="section-7.1-3"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>は、spc_stateフィールドで提供される定数SCTP_ADDR_AVAILABLE、SCTP_ADDR_UNREACHABLE、SCTP_ADDR_REMOVED、SCTP_ADDR_ADDED、SCTP_ADDR_MADE_PRIMを定義しています。この文書は、新たに追加の定数SCTP_ADDR_POTENTIALLY_FAILEDを定義します。これは、対象のアドレスがPFになった場合に報告されます。</t>
+        <t indent="0" pn="section-7.1-4"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で定義されているSCTP_GET_PEER_ADDR_INFOソケットオプションは、ピアアドレスの状態を問い合わせるために使用できます。これは次の構造体を使用します。</t>
+        <sourcecode type="c" markers="false" pn="section-7.1-5"><![CDATA[
+struct sctp_paddrinfo {
+  sctp_assoc_t spinfo_assoc_id;
+  struct sockaddr_storage spinfo_address;
+  int32_t spinfo_state;
+  uint32_t spinfo_cwnd;
+  uint32_t spinfo_srtt;
+  uint32_t spinfo_rto;
+  uint32_t spinfo_mtu;
+};
+]]></sourcecode>
+        <t indent="0" pn="section-7.1-6"><xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>は、spinfo_stateフィールドで提供される定数SCTP_UNCONFIRMED、SCTP_ACTIVE、SCTP_INACTIVEを定義しています。この文書は、新たに追加の定数SCTP_POTENTIALLY_FAILEDを定義します。これは、ピアアドレスがPFである場合に報告されます。</t>
+      </section>
+      <section anchor="peer-address-thresholds-(sctp_peer_addr_thlds)-socket-option" numbered="true" removeInRFC="false" toc="include" pn="section-7.2">
+        <name slugifiedName="name-peer-address-thresholds-(sctp_peer_addr_thlds)-socket-option">ピアアドレスのしきい値（SCTP_PEER_ADDR_THLDS）ソケットオプション</name>
+        <t indent="0" pn="section-7.2-1">アプリケーションは、ピアアドレスがPFまたは到達不能とみなされるまでの連続したタイムアウトの回数を取得または設定することで、SCTP-PFの振る舞いを制御できます。アプリケーションは、同じソケットオプションを使用して、Primary Path Switchover機能によってプライマリーパスが自動的に変更されるまでのタイムアウトの回数を設定および取得します。このソケットオプションは、レベルIPPROTO_SCTPと名前SCTP_PEER_ADDR_THLDSを使用します。</t>
+        <t indent="0" pn="section-7.2-2">しきい値へのアクセスと変更には、次の構造体を使用します。</t>
+        <sourcecode type="c" markers="false" pn="section-7.2-3"><![CDATA[
+struct sctp_paddrthlds {
+  sctp_assoc_t spt_assoc_id;
+  struct sockaddr_storage spt_address;
+  uint16_t spt_pathmaxrxt;
+  uint16_t spt_pathpfthld;
+  uint16_t spt_pathcpthld;
+};
+]]></sourcecode>
+        <dl newline="false" spacing="normal" indent="3" pn="section-7.2-4">
+          <dt pn="section-7.2-4.1">spt_assoc_id:</dt>
+          <dd pn="section-7.2-4.2">このパラメーターは、1対1形式のソケットでは無視されます。1対多形式のソケットでは、アプリケーションはアソシエーション識別子またはSCTP_FUTURE_ASSOCを指定できます。spt_assoc_idにSCTP_{CURRENT|ALL}_ASSOCを使用するのはエラーです。</dd>
+          <dt pn="section-7.2-4.3">spt_address:</dt>
+          <dd pn="section-7.2-4.4">対象とするピアアドレスを指定します。ワイルドカードアドレスが指定された場合、このソケットオプションは現在および将来のすべてのピアアドレスに適用されます。</dd>
+          <dt pn="section-7.2-4.5">spt_pathmaxrxt:</dt>
+          <dd pn="section-7.2-4.6">対象の各ピアアドレスは、そのパスエラーカウンターがspt_pathmaxrxtを超えた場合に到達不能とみなされます。</dd>
+          <dt pn="section-7.2-4.7">spt_pathpfthld:</dt>
+          <dd pn="section-7.2-4.8">対象の各ピアアドレスは、そのパスエラーカウンターがspt_pathpfthldを超えた場合にPFとみなされます。</dd>
+          <dt pn="section-7.2-4.9">spt_pathcpthld:</dt>
+          <dd pn="section-7.2-4.10">対象の各ピアアドレスは、そのパスエラーカウンターがspt_pathcpthldを超えた場合、もはやプライマリーのリモートアドレスとはみなされません。0xffffの値を使用すると、新しいプライマリーのピアアドレスの選択が無効になります。実装が新しいプライマリーアドレスの自動選択をサポートしていない場合、spt_pathcpthldに0xffff以外の値が使われたら、errnoをEINVALに設定してエラーを示すべきです。SCTP-PFでは、spt_pathcpthld &lt; spt_pathpfthldという設定は、errnoをEINVALに設定して拒否すべきです。標準のSCTPでは、spt_pathcpthld &lt; spt_pathmaxrxtという設定は、errnoをEINVALに設定して拒否すべきです。SCTP-PF実装はspt_pathcpthld = spt_pathpfthldとspt_pathcpthld = 0xffffの設定のみをサポートしてもよく、標準のSCTP実装はspt_pathcpthld = spt_pathmaxrxtとspt_pathcpthld = 0xffffの設定のみをサポートしてもかまいません。これらの場合、SCTPはそれ以外の値の設定を、errnoをEINVALに設定して拒否するものとします。</dd>
+        </dl>
+      </section>
+      <section anchor="exposing-the-potentially-failed-path-state-(sctp_expose_potentially_failed_state)-socket-option" numbered="true" removeInRFC="false" toc="include" pn="section-7.3">
+        <name slugifiedName="name-exposing-the-potentially-failed-path-state-(sctp_expose_potentially_failed_state)-socket-option">潜在的障害パス状態の公開（SCTP_EXPOSE_POTENTIALLY_FAILED_STATE）ソケットオプション</name>
+        <t indent="0" pn="section-7.3-1">アプリケーションは、<xref target="section-7.1" format="default" sectionFormat="of" derivedContent="Section 7.1"/>で説明したSCTP_PEER_ADDR_CHANGEイベントとSCTP_GET_PEER_ADDR_INFOにおけるPFパス状態の公開を制御できます。デフォルト値は実装固有です。</t>
+        <t indent="0" pn="section-7.3-2">このソケットオプションは、レベルIPPROTO_SCTPと名前SCTP_EXPOSE_POTENTIALLY_FAILED_STATEを使用します。</t>
+        <t indent="0" pn="section-7.3-3">PFパス状態の公開を制御するには、次の構造体を使用します。</t>
+        <sourcecode type="c" markers="false" pn="section-7.3-4"><![CDATA[
+struct sctp_assoc_value {
+  sctp_assoc_t assoc_id;
+  uint32_t assoc_value;
+};
+]]></sourcecode>
+        <dl newline="false" spacing="normal" indent="3" pn="section-7.3-5">
+          <dt pn="section-7.3-5.1">assoc_id:</dt>
+          <dd pn="section-7.3-5.2">このパラメーターは、1対1形式のソケットでは無視されます。1対多形式のソケットでは、アプリケーションはアソシエーション識別子またはSCTP_FUTURE_ASSOCを指定できます。assoc_idにSCTP_{CURRENT|ALL}_ASSOCを使用するのはエラーです。</dd>
+          <dt pn="section-7.3-5.3">assoc_value:</dt>
+          <dd pn="section-7.3-5.4">このパラメーターが0以外の場合に限り、PFパス状態が公開されます。</dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="security-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-8">
+      <name slugifiedName="name-security-considerations">セキュリティーに関する考慮事項</name>
+      <t indent="0" pn="section-8-1">SCTPとそのAPIの使用に関するセキュリティー上の考慮事項は、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>と<xref target="RFC6458" format="default" sectionFormat="of" derivedContent="RFC6458"/>で議論されています。</t>
+      <t indent="0" pn="section-8-2">この文書で導入するロジックは、ワイヤー上の既存のSCTPメッセージに影響を与えません。また、この文書は、新たなセキュリティー上の考慮事項を必要とするような、ワイヤー上の新しいSCTPメッセージを導入しません。</t>
+      <t indent="0" pn="section-8-3">SCTP-PFは、プライマリーパスの障害や輻輳の際にSCTPをより堅牢にするだけでなく、プライマリーパスに対するネットワーク接続や輻輳の攻撃に対してより脆弱にもします。攻撃者がネットワーク接続に悪影響を与える必要がある時間が<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の場合よりもはるかに短いため、SCTP-PFでは、攻撃者がSCTPをだましてデータ転送パスを変更させることが容易になります。しかし、SCTP-PFは、SCTPをプライマリーパスから遠ざけておくために攻撃者が必要とする時間と労力を大きく変えるものではありません。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の標準のスイッチバック操作では、SCTPは次のHEARTBEATが成功するとすぐにプライマリーパスでのデータ転送を再開します。</t>
+      <t indent="0" pn="section-8-4">一方、Primary Path Switchoverメカニズムを使用すると、脅威の分析は変わります。経路上の攻撃者は、Primary Path Switchoverアルゴリズムによってプライマリーパスの切り替えが引き起こされるまでプライマリーパスをブロックすることで、データ転送パスを恒久的に変更させることができるからです。これは特に、Primary Path SwitchoverをSCTP-PFと組み合わせてPSMR = PFMR = 0という特定の設定で使用する場合に当てはまります。この場合、Primary Path Switchoverは最初のRTOタイムアウトが発生した時点ですでに起こるからです。Primary Path Switchoverメカニズムの利用者は、この事実を認識しておくべきです。</t>
+      <t indent="0" pn="section-8-5">アクティブ状態からPF状態への、またはその逆のパス状態の遷移のイベント通知によって、攻撃者がより多くのローカルイベントを発生させられる可能性が高まります。ただし、この脅威に対処するため、実装ではイベント通知のレートが制限されていることを想定しています。</t>
+    </section>
+    <section anchor="mib-considerations" numbered="true" removeInRFC="false" toc="include" pn="section-9">
+      <name slugifiedName="name-mib-considerations">MIBに関する考慮事項</name>
+      <t indent="0" pn="section-9-1">SCTP-PFは、フェイルオーバーとスイッチバックのための新しいSCTPアルゴリズムを、関連する新しい状態パラメーターとともに導入します。SCTP-PF実装の管理をサポートするために、<xref target="RFC3873" format="default" sectionFormat="of" derivedContent="RFC3873"/>で定義されたSCTP-MIBを更新することを推奨します。これは、SCTPAssocRemAddrTableのsctpAssocRemAddrActiveフィールドを拡張して宛先アドレスのPF状態の情報を含めるようにし、PotentiallyFailed.Max.Retrans（PFMR）とPrimary.Switchover.Max.Retrans（PSMR）のパラメーターをサポートする新しいフィールドをSCTPAssocRemAddrTableに追加することで実現できます。</t>
+    </section>
+  </middle>
+  <back>
+    <references pn="section-10">
+      <name slugifiedName="name-references">参考文献</name>
+      <references pn="section-10.1">
+        <name slugifiedName="name-normative-references">引用規格</name>
+        <reference anchor="RFC2119" target="http://www.rfc-editor.org/info/rfc2119" quoteTitle="true" derivedAnchor="RFC2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+        <reference anchor="RFC4960" target="http://www.rfc-editor.org/info/rfc4960" quoteTitle="true" derivedAnchor="RFC4960">
+          <front>
+            <title>Stream Control Transmission Protocol</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart" role="editor"/>
+            <date year="2007" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="4960"/>
+          <seriesInfo name="DOI" value="10.17487/RFC4960"/>
+        </reference>
+      </references>
+      <references pn="section-10.2">
+        <name slugifiedName="name-informative-references">参考文献</name>
+        <reference anchor="CARO02" quoteTitle="true" derivedAnchor="CARO02">
+          <front>
+            <title>A Two-level Threshold Recovery Mechanism for SCTP</title>
+            <author fullname="A. Caro" initials="A." surname="Caro"/>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar"/>
+            <author fullname="P. Amer" initials="P." surname="Amer"/>
+            <author fullname="G. Heinz" initials="G." surname="Heinz"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2002" month="July"/>
+          </front>
+          <refcontent>Tech report, CIS Dept., University of Delaware</refcontent>
+        </reference>
+        <reference anchor="CARO04" quoteTitle="true" derivedAnchor="CARO04">
+          <front>
+            <title>End-to-End Failover Thresholds for Transport Layer Multihoming</title>
+            <author fullname="A. Caro" initials="A." surname="Caro"/>
+            <author fullname="P. Amer" initials="P." surname="Amer"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2004" month="November"/>
+          </front>
+          <refcontent>MILCOM 2004</refcontent>
+          <seriesInfo name="DOI" value="10.1109/MILCOM.2004.1493253"/>
+        </reference>
+        <reference anchor="CARO05" quoteTitle="true" derivedAnchor="CARO05">
+          <front>
+            <title>End-to-End Fault Tolerance using Transport Layer Multihoming</title>
+            <author fullname="A. Caro" initials="A." surname="Caro"/>
+            <date year="2005" month="January"/>
+          </front>
+          <refcontent>Ph.D. Thesis, University of Delaware</refcontent>
+          <seriesInfo name="DOI" value="10.1007/BF03219970"/>
+        </reference>
+        <reference anchor="FALLON08" quoteTitle="true" derivedAnchor="FALLON08">
+          <front>
+            <title>SCTP Switchover Performance Issues in WLAN Environments</title>
+            <author fullname="S. Fallon" initials="S." surname="Fallon"/>
+            <author fullname="P. Jacob" initials="P." surname="Jacob"/>
+            <author fullname="Y. Qiao" initials="Y." surname="Qiao"/>
+            <author fullname="L. Murphy" initials="L." surname="Murphy"/>
+            <author fullname="E. Fallon" initials="E." surname="Fallon"/>
+            <author fullname="A. Hanley" initials="A." surname="Hanley"/>
+            <date year="2008" month="January"/>
+          </front>
+          <refcontent>IEEE CCNC</refcontent>
+          <seriesInfo name="DOI" value="10.1109/ccnc08.2007.131"/>
+        </reference>
+        <reference anchor="GRINNEMO04" quoteTitle="true" derivedAnchor="GRINNEMO04">
+          <front>
+            <title>Performance of SCTP-controlled failovers in M3UA-based SIGTRAN networks</title>
+            <author fullname="K-J. Grinnemo" initials="K-J." surname="Grinnemo"/>
+            <author fullname="A. Brunstrom" initials="A." surname="Brunstrom"/>
+            <date year="2004" month="April"/>
+          </front>
+          <refcontent>Advanced Simulation Technologies Conference</refcontent>
+        </reference>
+        <reference anchor="IYENGAR06" quoteTitle="true" derivedAnchor="IYENGAR06">
+          <front>
+            <title>Concurrent Multipath Transfer using SCTP Multihoming over Independent End-to-end Paths</title>
+            <author fullname="J. Iyengar" initials="J." surname="Iyengar"/>
+            <author fullname="P. Amer" initials="P." surname="Amer"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2006" month="October"/>
+          </front>
+          <refcontent>IEEE/ACM Transactions on Networking</refcontent>
+          <seriesInfo name="DOI" value="10.1109/TNET.2006.882843"/>
+        </reference>
+        <reference anchor="JUNGMAIER02" quoteTitle="true" derivedAnchor="JUNGMAIER02">
+          <front>
+            <title>On the use of SCTP in failover scenarios</title>
+            <author fullname="A. Jungmaier" initials="A." surname="Jungmaier"/>
+            <author fullname="E. Rathgeb" initials="E." surname="Rathgeb"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <date year="2002" month="July"/>
+          </front>
+          <refcontent>World Multiconference on Systemics, Cybernetics and Informatics</refcontent>
+        </reference>
+        <reference anchor="NATARAJAN09" quoteTitle="true" derivedAnchor="NATARAJAN09">
+          <front>
+            <title>Concurrent Multipath Transfer during Path Failure</title>
+            <author fullname="P. Natarajan" initials="P." surname="Natarajan"/>
+            <author fullname="N. Ekiz" initials="N." surname="Ekiz"/>
+            <author fullname="P. Amer" initials="P." surname="Amer"/>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <date year="2009" month="May"/>
+          </front>
+          <refcontent>Computer Communications</refcontent>
+          <seriesInfo name="DOI" value="10.1016/j.comcom.2009.05.001"/>
+        </reference>
+        <reference anchor="RFC3873" target="http://www.rfc-editor.org/info/rfc3873" quoteTitle="true" derivedAnchor="RFC3873">
+          <front>
+            <title>Stream Control Transmission Protocol (SCTP) Management Information Base (MIB)</title>
+            <author fullname="J. Pastor" initials="J." surname="Pastor"/>
+            <author fullname="M. Belinchon" initials="M." surname="Belinchon"/>
+            <date year="2004" month="September"/>
+          </front>
+          <seriesInfo name="RFC" value="3873"/>
+          <seriesInfo name="DOI" value="10.17487/RFC3873"/>
+        </reference>
+        <reference anchor="RFC6458" target="http://www.rfc-editor.org/info/rfc6458" quoteTitle="true" derivedAnchor="RFC6458">
+          <front>
+            <title>Sockets API Extensions for the Stream Control Transmission Protocol (SCTP)</title>
+            <author fullname="R. Stewart" initials="R." surname="Stewart"/>
+            <author fullname="M. Tuexen" initials="M." surname="Tuexen"/>
+            <author fullname="K. Poon" initials="K." surname="Poon"/>
+            <author fullname="P. Lei" initials="P." surname="Lei"/>
+            <author fullname="V. Yasevich" initials="V." surname="Yasevich"/>
+            <date year="2011" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="6458"/>
+          <seriesInfo name="DOI" value="10.17487/RFC6458"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="discussion-of-alternative-approaches" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.a">
+      <name slugifiedName="name-discussion-of-alternative-approaches">代替アプローチの検討</name>
+      <t indent="0" pn="section-appendix.a-1">このセクションでは、この文書で説明した問題に対する代替アプローチを挙げます。これらのアプローチはRFC 4960の更新を必要としませんが、以下で説明する理由により、私たちはこれらを推奨しません。</t>
+      <section anchor="reduce-pmr" numbered="true" removeInRFC="false" toc="include" pn="section-a.1">
+        <name slugifiedName="name-reduce-pmr">PMRを小さくする</name>
+        <t indent="0" pn="section-a.1-1">Path.Max.Retransの値を小さくするとフェイルオーバーの時間が短縮されます。実際、これはいくつかの研究結果<xref target="JUNGMAIER02" format="default" sectionFormat="of" derivedContent="JUNGMAIER02"/>、<xref target="GRINNEMO04" format="default" sectionFormat="of" derivedContent="GRINNEMO04"/>、<xref target="FALLON08" format="default" sectionFormat="of" derivedContent="FALLON08"/>で推奨されています。しかし、フェイルオーバー時間を大幅に短縮するには、（PFMRと同様に）Path.Max.Retrans=0まで下げる必要があり、この設定では、SCTPはたった1回のタイムアウトで別の宛先アドレスに切り替えるため、誤ったフェイルオーバーが生じる可能性があります。標準のSCTPでは、SCTP-PFとは異なり、離れたプライマリーパスでのHEARTBEATの送信がフェイルオーバーの過程でもHB.Intervalによって制御されるため、誤ったフェイルオーバーが問題となります。HB.Intervalは通常、秒単位（推奨値は30秒）で設定されるため、プライマリーパスが非アクティブになると、次のHEARTBEATは何秒も後、推奨値どおりなら30秒後にしか送信されない可能性があります。その間に、プライマリーパスは（そもそも回復が必要だったのであれば）とっくに回復しているかもしれません（実際、フェイルオーバーがまったくの誤りである可能性もあります）。このような状況では、フェイルオーバーの後、エンドポイントは、プライマリーパスでの送信を再開できるまで何秒も待たされることになります。さらに、プライマリーパスに戻ると、CWNDを改めて再構築する必要があります。これは、代替パスにおいてすでにスループットが被らなければならなかった過程です。HB.Intervalに小さい値を使用するとこの状況は改善するかもしれませんが、そのようにHEARTBEATの頻度を上げると、問題が観測されていないときにも頻繁なHEARTBEATが行われるため、全般的に帯域幅の無駄になります。ULPが、その時点でプライマリーパスに設定されているパスでのみ小さいHB.Intervalを使用するようにすれば、帯域幅のオーバーヘッドは減らせるかもしれませんが、ULPが複雑になります。</t>
+        <t indent="0" pn="section-a.1-2">加えて、Path.Max.Retransの値を小さくすると、Association.Max.Retransの値にも影響します。SCTPアソシエーションのエラーカウントがAssociation.Max.Retransしきい値を超えると、SCTP送信者はピアエンドポイントが到達不能であるとみなし、アソシエーションを終了します。<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>のセクション8.2では、Association.Max.Retransの値は各宛先アドレスのPath.Max.Retransの合計より大きくすべきではないと推奨しています。そうでなければ、SCTP送信者は、すべての宛先がINACTIVEであってもピアを到達可能とみなしてしまいます。この休止状態の動作を避けるため、標準のSCTP実装は、Path.Max.Retransを小さくするときは常に、それに応じてAssociation.Max.Retransも小さく<bcp14>すべきです（SHOULD）</bcp14>。しかし、Association.Max.Retransの値を小さくすると、軽微な輻輳イベントの間にアソシエーションが終了する可能性が高まるため、SCTPの耐障害性が低下します。</t>
+      </section>
+      <section anchor="adjust-rto-related-parameters" numbered="true" removeInRFC="false" toc="include" pn="section-a.2">
+        <name slugifiedName="name-adjust-rto-related-parameters">RTO関連のパラメーターを調整する</name>
+        <t indent="0" pn="section-a.2-1">いくつかの研究結果<xref target="JUNGMAIER02" format="default" sectionFormat="of" derivedContent="JUNGMAIER02"/>と<xref target="FALLON08" format="default" sectionFormat="of" derivedContent="FALLON08"/>が示すように、RTO関連のパラメーターを調整することでも、フェイルオーバーの過程の時間を短縮できます。フェイルオーバーの過程では、RTOは2倍にされ続けます。しかし、RTO.maxにより小さい値を選択できれば、RTOの指数関数的な増加をある時点で止められます。また、RTO.initialやRTO.minにより小さい値を選択することも、RTO値を小さく保つことに寄与します。</t>
+        <t indent="0" pn="section-a.2-2">Path.Max.Retransを小さくする場合と同様に、このアプローチの利点は、<xref target="RFC4960" section="15" format="default" sectionFormat="of" derivedLink="https://www.rfc-editor.org/rfc/rfc4960#section-15" derivedContent="RFC4960"/>で説明されているいくつかの推奨事項を無視する必要はあるものの、現在の仕様を変更する必要がないことです。しかし、このアプローチでは、エンドポイント間のネットワーク特性について十分な知識を持っている必要があります。そうでなければ、誤ったタイムアウトなどの悪い副作用を引き起こす可能性があります。</t>
+        <t indent="0" pn="section-a.2-3">しかし、このアプローチの重大な問題は、RTO.maxを最適な低い値まで下げたとしても、Path.Max.Retransが<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>の推奨値のままである限り、RTO.maxを下げてもフェイルオーバー中の深刻な性能低下を防ぐのに十分なほどフェイルオーバー時間が短縮されないことです。</t>
+      </section>
+    </section>
+    <section anchor="discussion-of-the-path-bouncing-effect" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.b">
+      <name slugifiedName="name-discussion-of-the-path-bouncing-effect">パスバウンシング効果の検討</name>
+      <t indent="0" pn="section-appendix.b-1">この文書で説明した方法は、フェイルオーバーの過程を加速できます。そのため、送信者がデータ送信パスを頻繁に変更し続けるパスバウンシング効果を引き起こす可能性があります。これはデータ転送にとって有害に思えますが、いくつかの研究結果は、パスバウンシング効果の点でSCTPには深刻な問題はないことを示しています（<xref target="CARO04" format="default" sectionFormat="of" derivedContent="CARO04"/>と<xref target="CARO05" format="default" sectionFormat="of" derivedContent="CARO05"/>を参照）。</t>
+      <t indent="0" pn="section-appendix.b-2">これには主に2つの理由があります。第1に、SCTPは基本的にマルチパス通信のために設計されており、SCTPはパスに関連するすべてのパラメーター（CWND、ssthresh、RTT、エラーカウントなど）を宛先アドレスごとに保持しています。これらのパラメーターはパスバウンシングの影響を受けません。加えて、SCTPはデータ転送を別のパスに移すとき、最小または初期のCWNDから開始します。そのため、パケットの順序の入れ替わりや重複が起こる可能性はほとんどありません。</t>
+      <t indent="0" pn="section-appendix.b-3">第2に、エンドノード間のすべての通信パスが同じボトルネックを共有している場合でも、SCTP-PFの結果として生じる振る舞いは、<xref target="RFC4960" format="default" sectionFormat="of" derivedContent="RFC4960"/>ですでに許容されているものです。</t>
+    </section>
+    <section anchor="sctp-pf-for-sctp-single-homed-operation" numbered="true" removeInRFC="false" toc="include" pn="section-appendix.c">
+      <name slugifiedName="name-sctp-pf-for-sctp-single-homed-operation">SCTPのシングルホーム動作のためのSCTP-PF</name>
+      <t indent="0" pn="section-appendix.c-1">シングルホームのSCTPアソシエーションにおいて、SCTP-PF動作を有効にすることの唯一の具体的な効果は、障害検出の強化です。すなわち、唯一の宛先アドレスのPF状態が通知される可能性があることに加え、アイドル状態のアソシエーションについては、宛先アドレスがより早く非アクティブ状態に入ってそれが通知されること、およびエンドポイントの障害がより早く検出されることです。適切な休止状態の動作が実装されていれば、これらの効果はいずれも有害ではないと考えられます。さらに、これらの効果は、負荷分散の目的で複数のSCTPアソシエーションを展開するアプリケーションにとって特に有用である可能性があると考えられます。PF状態に入ることは潜在的な輻輳の警告として使えるため、PF状態の早期通知は予防措置に使用できます。PMRの値によっては、RTOに比べて比較的大きなHB.Interval値（たとえば30秒）が使用されている場合、PF状態での積極的なHEARTBEAT送信によって、アイドル状態のアソシエーションにおけるエンドポイントの障害検出（唯一のパスのエラーカウンターがAMRしきい値を超えること）が早まる可能性があります。</t>
+    </section>
+    <section anchor="acknowledgments" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.d">
+      <name slugifiedName="name-acknowledgments">謝辞</name>
+      <t indent="0" pn="section-appendix.d-1">著者らは、この文書に関する継続的な議論と洞察に富んだフィードバックについてIETF Transport Area Working Group（tsvwg）のメンバーに謝意を表するとともに、tsvwgの議長からの継続的な励ましと提案に感謝します。特に、多くの非常に貴重なコメントと、文書の作成における多大な支援について、Michael Tuexenに感謝します。</t>
+    </section>
+    <section anchor="authors-addresses" numbered="false" removeInRFC="false" toc="include" pn="section-appendix.e">
+      <name slugifiedName="name-authors-addresses">著者の連絡先</name>
+      <author fullname="Yoshifumi Nishida" initials="Y." surname="Nishida">
+        <organization showOnFrontPage="true">GE Global Research</organization>
+        <address>
+          <postal>
+            <street>2623 Camino Ramon</street>
+            <city>San Ramon</city>
+            <region>CA</region>
+            <code>94583</code>
+            <country>United States</country>
+          </postal>
+          <email>nishida@wide.ad.jp</email>
+        </address>
+      </author>
+      <author fullname="Preethi Natarajan" initials="P." surname="Natarajan">
+        <organization showOnFrontPage="true">Cisco Systems</organization>
+        <address>
+          <postal>
+            <street>510 McCarthy Blvd.</street>
+            <city>Milpitas</city>
+            <region>CA</region>
+            <code>95035</code>
+            <country>United States</country>
+          </postal>
+          <email>prenatar@cisco.com</email>
+        </address>
+      </author>
+      <author fullname="Armando Caro" initials="A." surname="Caro">
+        <organization showOnFrontPage="true">BBN Technologies</organization>
+        <address>
+          <postal>
+            <street>10 Moulton St.</street>
+            <city>Cambridge</city>
+            <region>MA</region>
+            <code>02138</code>
+            <country>United States</country>
+          </postal>
+          <email>acaro@bbn.com</email>
+        </address>
+      </author>
+      <author fullname="Paul D. Amer" initials="P." surname="Amer">
+        <organization showOnFrontPage="true">University of Delaware</organization>
+        <address>
+          <postal>
+            <street>Computer Science Department - 434 Smith Hall</street>
+            <city>Newark</city>
+            <region>DE</region>
+            <code>19716-2586</code>
+            <country>United States</country>
+          </postal>
+          <email>amer@udel.edu</email>
+        </address>
+      </author>
+      <author fullname="Karen E. E. Nielsen" initials="K." surname="Nielsen">
+        <organization showOnFrontPage="true">Ericsson</organization>
+        <address>
+          <postal>
+            <street>Kistavaegen 25</street>
+            <city>Stockholm</city>
+            <code>164 80</code>
+            <country>Sweden</country>
+          </postal>
+          <email>karen.nielsen@tieto.com</email>
+        </address>
+      </author>
+    </section>
+  </back>
+</rfc>

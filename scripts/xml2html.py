@@ -236,6 +236,12 @@ class HtmlWriter:
         self.pn_ids = set()
         self.ol_groups = {}
         self.li_marker = None
+        # 図の aria-label にするキャプション文字列（figure 要素 → 文字列）
+        self.figure_labels = {}
+        # 英語側のソースコードの本文（pn → 本文）
+        self.sourcecode_en = dict(
+            (e.get('pn'), e.text or '')
+            for e in self.root_en.iter('sourcecode') if e.get('pn'))
 
     def unique_id(self, value):
         if value is None:
@@ -1599,6 +1605,9 @@ class HtmlWriter:
 
         div = build('div')
         div.set('class', classes)
+        code_lang = self.sourcecode_lang(x)
+        if code_lang:
+            div.set('lang', code_lang)
         div.tail = x.tail
         h.append(div)
         # anchor が pn と同じ場合は set_pn_id で div 自身に付く ID と重複するので省略する
@@ -1610,6 +1619,19 @@ class HtmlWriter:
         self.set_scrollable_attrs(pre, x, 'Source code', 'ソースコード')
         div.append(pre)
         return div
+
+    def sourcecode_lang(self, x):
+        """ソースコードの言語（lang 属性の値）を返す。
+
+        英語側は英語とする。日本語側は、英語側と本文が同じ（翻訳していない英語の
+        ソースコード、e.g. MIB）なら英語とし、それ以外は None（親の言語を引き継ぐ）を返す。
+        """
+        if self.lang == 'en':
+            return 'en'
+        en_text = self.sourcecode_en.get(x.get('pn'))
+        if en_text is not None and en_text == (x.text or ''):
+            return 'en'
+        return None
 
     def render1_artwork(self, h, x):
         type = x.get('type')
@@ -1644,6 +1666,8 @@ class HtmlWriter:
         figure = next(x.iterancestors('figure'), None)
         if figure is None:
             return default_ja if self.lang == 'ja' else default_en
+        if figure in self.figure_labels:
+            return self.figure_labels[figure]
         pn = figure.get('pn') or ''
         text = pn.replace('-', ' ', 1).title().split(' ', 1)
         if len(text) == 2 and text[0] == 'Figure':
@@ -1700,12 +1724,9 @@ class HtmlWriter:
         if anchor and anchor != x.get('pn'):
             figure.append(build('span', id='%s-%s'%(anchor,self.lang)))
 
-        for c in x:
-            self.render1(figure, c)
-
         # キャプション
+        # 中の図やソースコードの aria-label にも使うので、先に組み立てておく
         caption = build('figcaption')
-        figure.append(caption)
         pn = x.get('pn')
         a1 = build('span')
         # 英語側は従来どおり pn 全体を title() する（e.g. figure-6a → Figure 6A）
@@ -1715,11 +1736,23 @@ class HtmlWriter:
         else:
             a1.text = ' '.join(text)
         caption.append(a1)
+        label = a1.text
         if name != None:
             a1.tail = ':\n'
             a2 = build('span')
             caption.append(a2)
             self.inline_text_renderer(a2, name)
+            # 参照などのインライン要素の文字列も含め、改行が入らないよう空白をまとめる
+            title = ' '.join(''.join(a2.itertext()).split())
+            if title:
+                label += ': ' + title
+        if label:
+            self.figure_labels[x] = label
+
+        for c in x:
+            self.render1(figure, c)
+
+        figure.append(caption)
         return figure
 
     # 引用

@@ -2423,6 +2423,7 @@ all: \
 	docs/rfc5324.html \
 	docs/rfc5301.html \
 	docs/rfc5292.html \
+	docs/rfc5280.html \
 	docs/rfc5279.html \
 	docs/rfc5249.html \
 	docs/rfc5243.html \
@@ -13415,6 +13416,10 @@ src/en/rfc5301.xml: src/en-txt/rfc5301.xml
 docs/rfc5292.html: src/en/rfc5292.xml src/rfcs/rfc5292.json src/ja/rfc5292.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 5292
 src/en/rfc5292.xml: src/en-txt/rfc5292.xml
+	cp $< $@
+docs/rfc5280.html: src/en/rfc5280.xml src/rfcs/rfc5280.json src/ja/rfc5280.xml scripts/xml2html.py data/xml2rfc-ja.js
+	scripts/xml2html.py 5280
+src/en/rfc5280.xml: src/en-txt/rfc5280.xml
 	cp $< $@
 docs/rfc5279.html: src/en/rfc5279.xml src/rfcs/rfc5279.json src/ja/rfc5279.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 5279

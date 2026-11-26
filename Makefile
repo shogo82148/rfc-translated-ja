@@ -2950,6 +2950,7 @@ all: \
 	docs/rfc2222.html \
 	docs/rfc2221.html \
 	docs/rfc2220.html \
+	docs/rfc2202.html \
 	docs/rfc2195.html \
 	docs/rfc2178.html \
 	docs/rfc2177.html \
@@ -15523,6 +15524,10 @@ src/en/rfc2221.xml: src/en-txt/rfc2221.xml
 docs/rfc2220.html: src/en/rfc2220.xml src/rfcs/rfc2220.json src/ja/rfc2220.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 2220
 src/en/rfc2220.xml: src/en-txt/rfc2220.xml
+	cp $< $@
+docs/rfc2202.html: src/en/rfc2202.xml src/rfcs/rfc2202.json src/ja/rfc2202.xml scripts/xml2html.py data/xml2rfc-ja.js
+	scripts/xml2html.py 2202
+src/en/rfc2202.xml: src/en-txt/rfc2202.xml
 	cp $< $@
 docs/rfc2195.html: src/en/rfc2195.xml src/rfcs/rfc2195.json src/ja/rfc2195.xml scripts/xml2html.py data/xml2rfc-ja.js
 	scripts/xml2html.py 2195
